@@ -1,0 +1,50 @@
+diff --git a/dep/CascLib/src/common/Sockets.cpp b/dep/CascLib/src/common/Sockets.cpp
+index dee5643..fe5868b 100644
+--- a/dep/CascLib/src/common/Sockets.cpp
++++ b/dep/CascLib/src/common/Sockets.cpp
+@@ -129,10 +129,10 @@ DWORD CASC_SOCKET::GetAddrInfoWrapper(const char * hostName, unsigned portNum, P
+     for(;;)
+     {
+         // Attempt to call the addrinfo
+-        DWORD dwErrCode = getaddrinfo(hostName, portNumString, hints, ppResult);
++        int nErrCode = getaddrinfo(hostName, portNumString, hints, ppResult);
+ 
+         // Error-specific handling
+-        switch(dwErrCode)
++        switch(nErrCode)
+         {
+ #ifdef CASCLIB_PLATFORM_WINDOWS
+             case WSANOTINITIALISED:     // Windows-specific: WSAStartup not called
+@@ -147,7 +147,7 @@ DWORD CASC_SOCKET::GetAddrInfoWrapper(const char * hostName, unsigned portNum, P
+                 continue;
+ 
+             default:                    // Any other result, incl. ERROR_SUCCESS
+-                return dwErrCode;
++                return (DWORD)nErrCode;
+         }
+     }
+ }
+diff --git a/src/server/scripts/BrokenIsles/boss_levantus.cpp b/src/server/scripts/BrokenIsles/boss_levantus.cpp
+index b46797c..cc9a1a8 100644
+--- a/src/server/scripts/BrokenIsles/boss_levantus.cpp
++++ b/src/server/scripts/BrokenIsles/boss_levantus.cpp
+@@ -31,6 +31,7 @@
+ #include "Group.h"
+ #include "GroupMgr.h"
+ #include "Vehicle.h"
++#include "CellImpl.h"
+ #include "GridNotifiersImpl.h"
+ #include "AreaTriggerAI.h"
+ #include "AreaTriggerPackets.h"
+diff --git a/src/server/scripts/Draenor/GrimrailDepot/grimrail_depot.cpp b/src/server/scripts/Draenor/GrimrailDepot/grimrail_depot.cpp
+index 805108f..a3152e8 100644
+--- a/src/server/scripts/Draenor/GrimrailDepot/grimrail_depot.cpp
++++ b/src/server/scripts/Draenor/GrimrailDepot/grimrail_depot.cpp
+@@ -4,6 +4,7 @@
+ #include "SceneMgr.h"
+ #include "AreaTrigger.h"
+ #include "AreaTriggerAI.h"
++#include "CellImpl.h"
+ #include "GridNotifiers.h"
+ 
+ enum eMovementInformed
