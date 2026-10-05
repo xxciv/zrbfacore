@@ -1,3 +1,26 @@
+diff --git a/dep/CMakeLists.txt b/dep/CMakeLists.txt
+index 7833a09..cb76b8c 100644
+--- a/dep/CMakeLists.txt
++++ b/dep/CMakeLists.txt
+@@ -21,6 +21,8 @@ if(SERVERS OR TOOLS)
+   add_subdirectory(valgrind)
+   add_subdirectory(openssl)
+   add_subdirectory(jemalloc)
++  add_subdirectory(argon2)
++  add_subdirectory(short_alloc)
+ endif()
+ 
+ if(SERVERS)
+@@ -29,9 +31,7 @@ if(SERVERS)
+   add_subdirectory(gsoap)
+   add_subdirectory(rapidjson)
+   add_subdirectory(efsw)
+-  add_subdirectory(argon2)
+   add_subdirectory(protobuf)
+-  add_subdirectory(short_alloc)
+ endif()
+ 
+ if(TOOLS)
 diff --git a/dep/CascLib/src/common/Sockets.cpp b/dep/CascLib/src/common/Sockets.cpp
 index dee5643..fe5868b 100644
 --- a/dep/CascLib/src/common/Sockets.cpp

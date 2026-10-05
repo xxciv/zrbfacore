@@ -24,12 +24,13 @@ client data and logging in with a client need an 8.3.7 client and were not run (
 |---|---|---|
 | CPU | 4 cores | 8 cores |
 | RAM | 8 GB | 16 GB |
-| Disk | 80 GB | 150 GB (source + build + client copy + extracted data) |
+| Disk | 60 GB | 100 GB (source + build + databases + extracted client data) |
 
 The full compile took 39 minutes on 4 cores with 16 GB RAM (`-j4`). The default `RelWithDebInfo`
 build keeps debug information for crash backtraces, so it is big: the build directory reaches about
-20 GB and `worldserver` alone is 2.1 GB. The 8.3.7 client is about 60 GB, and generating movement
-maps (step 6) takes several hours.
+20 GB and `worldserver` alone is 2.1 GB. The client itself doesn't need to be on the VM: extraction
+(step 6) runs on the machine that has it, which needs room for the client (about 60 GB) plus the
+extracted data, and several hours for the movement maps.
 
 ## 1. Build tools and libraries
 
@@ -89,12 +90,13 @@ cd source
 git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
 ```
 
-Upstream is built with MSVC, which accepts two things GCC 14 doesn't. The patch fixes exactly those,
-in three files:
+Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
+extractors without the servers. The patch fixes exactly those, in four files:
 
 | File | Fix |
 |---|---|
 | `dep/CascLib/src/common/Sockets.cpp` | keep `getaddrinfo`'s result as `int`: comparing it, as unsigned, with `case EAI_AGAIN:` (-3) is a narrowing error. This only breaks the extractors (`TOOLS=1`), which upstream's Docker build turns off. |
+| `dep/CMakeLists.txt` | build `argon2` and `short_alloc` whenever `src/common` is built: `common` links both, but they were only added with the servers, so a tools-only build (`-DSERVERS=0 -DTOOLS=1`) failed |
 | `src/server/scripts/BrokenIsles/boss_levantus.cpp` | include `CellImpl.h`, which defines `Cell::VisitAllObjects` |
 | `src/server/scripts/Draenor/GrimrailDepot/grimrail_depot.cpp` | the same include |
 
@@ -112,7 +114,7 @@ cd ~/bfa/source
 cmake -S . -B build -G Ninja \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DCMAKE_INSTALL_PREFIX=$HOME/bfa/server \
-  -DSCRIPTS=static -DTOOLS=1
+  -DSCRIPTS=static -DTOOLS=0
 cmake --build build -j"$(nproc)"
 cmake --build build --target install
 ```
@@ -120,9 +122,11 @@ cmake --build build --target install
 Run the compile inside `tmux` so it survives a dropped SSH session. If the machine runs out of memory,
 use fewer jobs (`-j2`). In-source builds are blocked, hence the separate `build` folder.
 
-Afterwards `~/bfa/server/bin` holds `worldserver`, `bnetserver`, the extractors (`mapextractor`,
-`vmap4extractor`, `vmap4assembler`, `mmaps_generator`) and the TLS certificate `bnetserver` uses
-(`bnetserver.cert.pem`, `bnetserver.key.pem`). `~/bfa/server/etc` holds the two `.conf.dist` templates.
+`-DTOOLS=0` leaves out the client-data extractors: they run on the machine that has the client, and
+this repo ships them prebuilt (step 6). Set `-DTOOLS=1` to build them on the VM as well.
+
+Afterwards `~/bfa/server/bin` holds `worldserver`, `bnetserver` and the TLS certificate `bnetserver`
+uses (`bnetserver.cert.pem`, `bnetserver.key.pem`). `~/bfa/server/etc` holds the two `.conf.dist` templates.
 
 To save about 2 GB of disk you can `strip ~/bfa/server/bin/worldserver`, at the cost of readable crash
 backtraces. `-DCMAKE_BUILD_TYPE=Release` builds without debug information from the start.
@@ -164,21 +168,35 @@ of step with what the updater thinks is applied.
 ## 6. Client data
 
 The server needs `dbc`, `gt`, `cameras`, `maps`, `vmaps` and (optionally) `mmaps` extracted from an
-**8.3.7 (35662)** client. Copy the client folder (the one with `Data/` and `_retail_/`) to the VM,
-then run the extractors from inside it:
+**8.3.7 (35662)** client. Extraction runs wherever the client is, not on the server VM: this repo
+ships the four extractors prebuilt in [`extractors/linux-x86_64`](../extractors), and they run on any
+current x86-64 Linux (glibc 2.38 or newer, for example Fedora 39+, Debian 13, Ubuntu 24.04) with
+nothing else installed. On the machine with the client:
 
 ```sh
-cd ~/wow-837-client
-~/bfa/server/bin/mapextractor                      # dbc/ gt/ cameras/ maps/
-~/bfa/server/bin/vmap4extractor                    # Buildings/
-mkdir -p vmaps && ~/bfa/server/bin/vmap4assembler Buildings vmaps
-mkdir -p mmaps && ~/bfa/server/bin/mmaps_generator --threads "$(nproc)"   # several hours
-mkdir -p ~/bfa/server/data
-mv dbc gt cameras maps vmaps mmaps ~/bfa/server/data/
+git clone https://github.com/xxciv/zrbfacore.git ~/zrbfacore
+X=~/zrbfacore/extractors/linux-x86_64
+(cd "$X" && sha256sum -c SHA256SUMS)
+
+cd ~/wow-837-client                                # the folder with Data/ and _retail_/
+"$X"/mapextractor                                  # dbc/ gt/ cameras/ maps/
+"$X"/vmap4extractor                                # Buildings/
+mkdir -p vmaps && "$X"/vmap4assembler Buildings vmaps
+mkdir -p mmaps && "$X"/mmaps_generator --threads "$(nproc)"   # several hours
 ```
 
-`mmaps` are optional but creatures path badly without them. Extracting on a Windows machine with the
-upstream build and copying the folders over works too.
+`mmaps` are optional but creatures path badly without them. `Buildings/` is only an intermediate
+step for `vmaps` and can be deleted afterwards. Copy the results to the VM's `DataDir` (created by
+step 7's script; create it by hand if you copy first):
+
+```sh
+ssh you@192.168.x.x mkdir -p bfa/server/data
+rsync -a --info=progress2 dbc gt cameras maps vmaps mmaps you@192.168.x.x:bfa/server/data/
+```
+
+To build the extractors yourself instead, apply the patch to a BFA-HavenCore checkout and run
+`tools/bfa/build_extractors.sh <checkout> <output-dir>`; it builds only the tools (about a minute on
+4 cores) and links them the same portable way. A Windows build of the upstream tools works too.
 
 ## 7. Configuration and first start
 
@@ -281,9 +299,9 @@ SET portal "192.168.x.x"
 
 ```sh
 cd ~/bfa/source
-git checkout -- dep/CascLib/src/common/Sockets.cpp src/server/scripts/BrokenIsles/boss_levantus.cpp \
-  src/server/scripts/Draenor/GrimrailDepot/grimrail_depot.cpp
+git apply -R ../tools-repo/tools/bfa/bfa-linux-fixes.patch    # undo the fixes before pulling
 git pull
+git -C ../tools-repo pull
 git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
@@ -294,9 +312,9 @@ Restart `worldserver`; it applies the new `sql/updates` files itself.
 
 | Step | State |
 |---|---|
-| 1-4: toolchain, MySQL 8.4, patch, compile, install | verified with GCC 14.2, Boost 1.83, CMake 3.31.6, MySQL 8.4.11 |
+| 1-4: toolchain, MySQL 8.4, patch, compile, install (servers with and without `TOOLS`) | verified with GCC 14.2, Boost 1.83, CMake 3.31.6, MySQL 8.4.11 |
 | 5: database import | verified with the dumps in `dumps/` (about 2 minutes) |
 | 7: configuration, `sql/updates` applied by `worldserver` | verified: all 261 files apply without an error, then `worldserver` stops at the missing client data |
 | `bnetserver` | verified: starts, lists the realm, serves login REST on 8081 |
-| 6: client data | extractors build and start; not run, needs an 8.3.7 client |
+| 6: client data | prebuilt extractors start on Debian 13 and Fedora 44; not run against a client, which this needs |
 | 8-9: account creation, login with a client | not tested, needs the client data from step 6 |
