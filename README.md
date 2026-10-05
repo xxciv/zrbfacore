@@ -6,6 +6,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`docs/bfa-havencore-debian13.md`](docs/bfa-havencore-debian13.md): building the core natively on
   Debian 13 with GCC 14 and MySQL 8.4, importing the databases, extracting client data, configuring
   and starting `bnetserver` and `worldserver`, and connecting a client.
+- [`dumps/`](dumps): the auth, characters, world and hotfixes databases from upstream's "Databases"
+  release, xz-compressed and split into parts under GitHub's file size limit.
 - [`tools/bfa/bfa-linux-fixes.patch`](tools/bfa/bfa-linux-fixes.patch): the source fixes GCC 14 needs
   (upstream is built with MSVC).
 - [`tools/bfa/install_databases.sh`](tools/bfa/install_databases.sh): imports the auth, characters,

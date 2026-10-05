@@ -12,10 +12,11 @@ Debian 13 ships GCC 14, CMake 3.31 and no MySQL, so a few steps differ. The layo
 **What was verified, and how.** Every step up to the databases was reproduced with the toolchain
 versions Debian 13 ships (GCC 14.2, Boost 1.83, CMake 3.31.6) against MySQL 8.4.11. The build ran on
 an Ubuntu 24.04 host with those exact versions, because Debian's package mirrors weren't reachable from
-the build machine. The core, the scripts and all four extractors compile with the fixes in step 3, and
-`bnetserver` and `worldserver` start, read their configs, connect to MySQL 8.4 and stop where the
-databases are still empty. Importing the dumps, extracting client data and logging in with a client
-are covered below but were not run on the build machine (see [step 11](#11-status)).
+the build machine. The core, the scripts and all four extractors compile with the fixes in step 3; the
+dumps in this repo import cleanly; `worldserver` applies all 261 `sql/updates` files without an error
+and then stops at the missing client data; `bnetserver` starts fully and serves the realm. Extracting
+client data and logging in with a client need an 8.3.7 client and were not run (see
+[step 11](#11-status)).
 
 ## 0. VM sizing
 
@@ -83,7 +84,7 @@ alongside it. Only MySQL was tested with this core.
 ```sh
 mkdir -p ~/bfa && cd ~/bfa
 git clone https://github.com/HavenWoW/BFA-HavenCore.git source
-git clone https://github.com/xxciv/zrbfacore.git tools-repo
+git clone -b main https://github.com/xxciv/zrbfacore.git tools-repo
 cd source
 git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
 ```
@@ -128,21 +129,35 @@ backtraces. `-DCMAKE_BUILD_TYPE=Release` builds without debug information from t
 
 ## 5. Databases
 
-The repo ships no base dumps (`sql/base/` is gitignored). They are published as "Databases" releases
-on upstream's GitHub releases page, as Mega downloads. Put the four dumps (auth, characters, world,
-hotfixes) in one folder; `tools/bfa/install_databases.sh` finds each one by name and imports it. The
-dumps can be plain `.sql`, compressed (`.sql.gz`, `.sql.xz`, `.sql.zst`, `.zip`, `.7z`) or split into
-parts (`name.part-aa`, `name.part-ab`, ... or `name.001`, `name.002`, ...).
+Upstream's repo ships no base dumps (`sql/base/` is gitignored); they are published as "Databases"
+releases on its GitHub releases page, as Mega downloads. This repo carries a copy in
+[`dumps/`](../dumps), xz-compressed and split into parts under GitHub's file size limit, so the
+`tools-repo` clone from step 3 already has them. `tools/bfa/install_databases.sh` finds each of the
+four dumps (auth, characters, world, hotfixes) by name and imports it:
 
 ```sh
 export MYSQL_PWD='your-mysql-root-password'
-MYSQL_ARGS="-u root" ~/bfa/tools-repo/tools/bfa/install_databases.sh ~/bfa/dumps
+MYSQL_ARGS="-u root" ~/bfa/tools-repo/tools/bfa/install_databases.sh ~/bfa/tools-repo/dumps
 unset MYSQL_PWD
 ```
 
+The installer reads plain `.sql`, compressed dumps (`.sql.gz`, `.sql.xz`, `.sql.zst`, `.zip`, `.7z`)
+and split ones (`name.part-aa`, `name.part-ab`, ... or `name.001`, `name.002`, ...), so a newer
+upstream release can be used the same way: put its four dumps in a folder and pass that folder.
+
 It creates `bfa_auth`, `bfa_characters`, `bfa_world` and `bfa_hotfixes` (the names in the
 `.conf.dist` files), refuses to touch any of them that already holds tables, and prints the table and
-row counts at the end. It does **not** apply `sql/updates`: `worldserver` does that itself on first
+row counts at the end. With this repo's dumps the import takes about two minutes and ends with:
+
+```
+bfa_auth: 32 tables
+bfa_characters: 146 tables
+bfa_world: 246 tables
+bfa_hotfixes: 378 tables
+creatures: 467547, gameobjects: 171503, realms: 1
+```
+
+It does **not** apply `sql/updates`: `worldserver` does that itself on first
 start (step 7) and records each file in the database's `updates` table, so the import can't drift out
 of step with what the updater thinks is applied.
 
@@ -190,8 +205,15 @@ cd ~/bfa/server/bin
 ```
 
 It applies every file under `sql/updates/{auth,characters,world,hotfixes}` that the dumps don't record
-as applied (`Updates.EnableDatabases = 15`), then loads the world. A first start takes a couple of
-minutes and ends with `World initialized`.
+as applied (`Updates.EnableDatabases = 15`), then loads the world. The dumps in this repo record none,
+so the first start applies all of them: 2 auth, 255 world and 3 hotfixes files, and the characters
+file, in about 20 seconds, all without an error. Later starts only apply files that are new since. With
+client data in place the start ends with `World initialized`; without it, it stops right after the
+updates with `Map file '.../maps/0000_43_31.map' does not exist!`.
+
+Each update logs `mysql: [Warning] Using a password on the command line interface can be insecure.`
+as an error. That is harmless: the updater passes the password to the `mysql` client on its command
+line.
 
 **If it exits right after a line like `Database Auth is empty, auto populating it...`** with no error
 on screen, read `~/bfa/server/logs/Errors.log`. The console doesn't always print the last error before
@@ -273,8 +295,8 @@ Restart `worldserver`; it applies the new `sql/updates` files itself.
 | Step | State |
 |---|---|
 | 1-4: toolchain, MySQL 8.4, patch, compile, install | verified with GCC 14.2, Boost 1.83, CMake 3.31.6, MySQL 8.4.11 |
-| `bnetserver`, `worldserver` start and connect to MySQL | verified; both stop at the empty databases, as expected without dumps |
-| 5: database import | the installer is tested on small sample dumps; not yet run on the real dumps |
-| 6: client data | extractors build and start; not run against a client |
-| 7: `sql/updates` applied by `worldserver` | not yet run on the real dumps |
-| 8-9: login with a client | not tested |
+| 5: database import | verified with the dumps in `dumps/` (about 2 minutes) |
+| 7: configuration, `sql/updates` applied by `worldserver` | verified: all 261 files apply without an error, then `worldserver` stops at the missing client data |
+| `bnetserver` | verified: starts, lists the realm, serves login REST on 8081 |
+| 6: client data | extractors build and start; not run, needs an 8.3.7 client |
+| 8-9: account creation, login with a client | not tested, needs the client data from step 6 |
