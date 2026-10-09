@@ -339,5 +339,6 @@ Restart `worldserver`; it applies the new `sql/updates` files itself.
 | 5: database import | verified with the dumps in `dumps/` (about 2 minutes) |
 | 7: configuration, `sql/updates` applied by `worldserver` | verified: all 261 files apply without an error, then `worldserver` stops at the missing client data |
 | `bnetserver` | verified: starts, lists the realm, serves login REST on 8081 |
-| 6: client data | prebuilt extractors start on Debian 13 and Fedora 44; not run against a client, which this needs |
-| 8-9: account creation, login with a client | not tested, needs the client data from step 6 |
+| 6: client data | verified: the prebuilt extractors ran on Fedora against a WoWCircle 8.3.7 repack (after `make_build_info.sh`), and the result was copied to the VM |
+| 7-8: full start, realm address, account creation | verified on a Debian 13 VM: `worldserver` reaches `World initialized`, `bnetaccount create` works |
+| 9: login, character select, entering the world | verified 2026-10-09 with the repack's own `WoW Circle.exe` from another machine on the LAN, no launcher |

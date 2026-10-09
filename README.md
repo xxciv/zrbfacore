@@ -20,4 +20,7 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/configure.sh`](tools/bfa/configure.sh): writes `worldserver.conf` and `bnetserver.conf`
   for a Linux install.
 
+Status: verified end to end on a Debian 13 VM (build, databases, client data, login and entering the
+world from another machine), 2026-10-09.
+
 The layout follows our Pandaria 5.4.8 build, [zrpandaria548](https://github.com/xxciv/zrpandaria548).
