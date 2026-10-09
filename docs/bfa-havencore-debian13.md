@@ -309,7 +309,9 @@ while true; do ./worldserver; echo "worldserver exited ($?), restarting in 10s (
 
 An 8.3.7 (35662) client only talks to a private server through a launcher that redirects its login.
 TrinityCore-based 8.3.7 servers are commonly used with the Arctium game launcher. It's an executable
-from a third party, so scan it before running it. Point the client at the server in
+from a third party, so scan it before running it. Repacked clients often ship an executable that is
+already patched (for example `WoW Circle.exe`); that one logs in and enters the world on this core
+without any launcher. Point the client at the server in
 `_retail_/WTF/Config.wtf`:
 
 ```
