@@ -185,6 +185,16 @@ mkdir -p vmaps && "$X"/vmap4assembler Buildings vmaps
 mkdir -p mmaps && "$X"/mmaps_generator --threads "$(nproc)"   # several hours
 ```
 
+If `mapextractor` stops with `Error opening casc storage '<client>/Data': FILE_NOT_FOUND`, the client
+has no `.build.info` next to `Data/` (common in repacked clients). Recreate it from the client's own
+`Data/config` files, then run the extractors again:
+
+```sh
+~/zrbfacore/tools/bfa/make_build_info.sh ~/wow-837-client
+```
+
+It also stops if the client isn't build 35662, and lists the build it found instead.
+
 `mmaps` are optional but creatures path badly without them. `Buildings/` is only an intermediate
 step for `vmaps` and can be deleted afterwards. Copy the results to the VM's `DataDir` (created by
 step 7's script; create it by hand if you copy first):

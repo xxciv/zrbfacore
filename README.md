@@ -13,6 +13,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/bfa-linux-fixes.patch`](tools/bfa/bfa-linux-fixes.patch): the source fixes GCC 14 needs
   (upstream is built with MSVC), plus a CMake fix for building the extractors on their own.
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.
+- [`tools/bfa/make_build_info.sh`](tools/bfa/make_build_info.sh): recreates a missing `.build.info` in
+  a repacked 8.3.7 client so the extractors can open it.
 - [`tools/bfa/install_databases.sh`](tools/bfa/install_databases.sh): imports the auth, characters,
   world and hotfixes dumps, plain, compressed or split.
 - [`tools/bfa/configure.sh`](tools/bfa/configure.sh): writes `worldserver.conf` and `bnetserver.conf`
