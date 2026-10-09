@@ -12,7 +12,8 @@
 #
 # Usage:
 #   DB_USER=bfa DB_PASS='choose-a-password' ./configure.sh <server-prefix> <source-dir>
-#   (optional: DB_HOST, DB_PORT, REALM_ADDRESS=192.168.x.x, FORCE=1 to overwrite .conf files)
+#   (optional: DB_HOST, DB_PORT, REALM_ADDRESS=192.168.x.x, FORCE=1 to overwrite .conf files,
+#    ALLOW_ROOT=1 to run as root)
 #
 # <server-prefix> is CMAKE_INSTALL_PREFIX from the build (it has bin/ and etc/).
 set -euo pipefail
@@ -28,6 +29,11 @@ DATA="$PREFIX/data"
 LOGS="$PREFIX/logs"
 MYSQL_BIN=$(command -v mysql || true)
 
+if [ "$(id -u)" = 0 ] && [ "${ALLOW_ROOT:-0}" != 1 ]; then
+    echo "error: run this as the user that runs the servers, not root; the .conf files are made" >&2
+    echo "       readable by their owner only (ALLOW_ROOT=1 if root really runs the servers)" >&2
+    exit 1
+fi
 [ -f "$ETC/worldserver.conf.dist" ] || { echo "error: $ETC/worldserver.conf.dist not found (run the install step first)" >&2; exit 1; }
 [ -d "$SRC/sql/updates" ] || { echo "error: $SRC/sql/updates not found; <source-dir> must be the BFA-HavenCore checkout" >&2; exit 1; }
 [ -n "$MYSQL_BIN" ] || { echo "error: the mysql client is not installed; the updater needs it" >&2; exit 1; }

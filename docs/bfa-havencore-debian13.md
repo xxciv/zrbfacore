@@ -221,7 +221,12 @@ DB_USER=bfa DB_PASS='choose-a-password' REALM_ADDRESS=192.168.x.x \
 ```
 
 `REALM_ADDRESS` is the VM's LAN address; leave it out if clients only connect from the VM itself. The
-script keeps existing `.conf` files unless you pass `FORCE=1`. The resulting files are
+script keeps existing `.conf` files unless you pass `FORCE=1`.
+
+Run it as the user that will run the servers, not with `sudo`. The `.conf` files hold the database
+password, so the script makes them readable by their owner only; written by root, they make
+`worldserver` start only under `sudo` and look empty in an editor started without it. If that already
+happened, `sudo chown -R $USER: ~/bfa/server` hands everything back. The resulting files are
 `~/bfa/server/etc/worldserver.conf` and `bnetserver.conf`; everything else in them stays at upstream's
 defaults.
 
@@ -256,6 +261,12 @@ VM's LAN address:
 ```sh
 mysql -u root -p -e "UPDATE bfa_auth.realmlist SET address = '192.168.x.x', localAddress = '192.168.x.x' WHERE id = 1;"
 ```
+
+`worldserver` reads this row only when it starts, while `bnetserver` re-reads it every few seconds. If
+`worldserver` is still running from step 7, stop it (`server shutdown 1` at its console) and start it
+again after the change. Otherwise login and character select use the new address, but Enter World
+still sends the client to `127.0.0.1` and fails with "World server is down". `localSubnetMask` only
+matters when `address` and `localAddress` differ.
 
 Start both servers, each in its own `tmux` window:
 
@@ -298,7 +309,9 @@ while true; do ./worldserver; echo "worldserver exited ($?), restarting in 10s (
 
 An 8.3.7 (35662) client only talks to a private server through a launcher that redirects its login.
 TrinityCore-based 8.3.7 servers are commonly used with the Arctium game launcher. It's an executable
-from a third party, so scan it before running it. Point the client at the server in
+from a third party, so scan it before running it. Repacked clients often ship an executable that is
+already patched (for example `WoW Circle.exe`); that one logs in and enters the world on this core
+without any launcher. Point the client at the server in
 `_retail_/WTF/Config.wtf`:
 
 ```
@@ -326,5 +339,6 @@ Restart `worldserver`; it applies the new `sql/updates` files itself.
 | 5: database import | verified with the dumps in `dumps/` (about 2 minutes) |
 | 7: configuration, `sql/updates` applied by `worldserver` | verified: all 261 files apply without an error, then `worldserver` stops at the missing client data |
 | `bnetserver` | verified: starts, lists the realm, serves login REST on 8081 |
-| 6: client data | prebuilt extractors start on Debian 13 and Fedora 44; not run against a client, which this needs |
-| 8-9: account creation, login with a client | not tested, needs the client data from step 6 |
+| 6: client data | verified: the prebuilt extractors ran on Fedora against a WoWCircle 8.3.7 repack (after `make_build_info.sh`), and the result was copied to the VM |
+| 7-8: full start, realm address, account creation | verified on a Debian 13 VM: `worldserver` reaches `World initialized`, `bnetaccount create` works |
+| 9: login, character select, entering the world | verified 2026-10-09 with the repack's own `WoW Circle.exe` from another machine on the LAN, no launcher |
