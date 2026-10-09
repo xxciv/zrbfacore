@@ -221,7 +221,12 @@ DB_USER=bfa DB_PASS='choose-a-password' REALM_ADDRESS=192.168.x.x \
 ```
 
 `REALM_ADDRESS` is the VM's LAN address; leave it out if clients only connect from the VM itself. The
-script keeps existing `.conf` files unless you pass `FORCE=1`. The resulting files are
+script keeps existing `.conf` files unless you pass `FORCE=1`.
+
+Run it as the user that will run the servers, not with `sudo`. The `.conf` files hold the database
+password, so the script makes them readable by their owner only; written by root, they make
+`worldserver` start only under `sudo` and look empty in an editor started without it. If that already
+happened, `sudo chown -R $USER: ~/bfa/server` hands everything back. The resulting files are
 `~/bfa/server/etc/worldserver.conf` and `bnetserver.conf`; everything else in them stays at upstream's
 defaults.
 
@@ -256,6 +261,12 @@ VM's LAN address:
 ```sh
 mysql -u root -p -e "UPDATE bfa_auth.realmlist SET address = '192.168.x.x', localAddress = '192.168.x.x' WHERE id = 1;"
 ```
+
+`worldserver` reads this row only when it starts, while `bnetserver` re-reads it every few seconds. If
+`worldserver` is still running from step 7, stop it (`server shutdown 1` at its console) and start it
+again after the change. Otherwise login and character select use the new address, but Enter World
+still sends the client to `127.0.0.1` and fails with "World server is down". `localSubnetMask` only
+matters when `address` and `localAddress` differ.
 
 Start both servers, each in its own `tmux` window:
 
