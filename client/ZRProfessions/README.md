@@ -3,7 +3,8 @@
 Lets characters learn up to 4 primary professions on the 8.3.7 client, and lists all of them with `/profs`.
 Ported from the [Pandaria 5.4.8 version](https://github.com/xxciv/zrpandaria548/tree/main/client/ZRProfessions).
 
-Status: not yet tested in game.
+Status: confirmed working in game on 2026-10-10 (version 2.1). Trainers teach a 3rd profession, and the panel and
+**All professions** button work.
 
 ## Why an addon is needed
 
@@ -38,9 +39,8 @@ If the server limit is not 4, change `MAX_PRIMARY_PROFESSIONS` at the top of `ZR
 - Since 8.0 a profession has no rank spells (Apprentice to Zen Master). A trainer teaches one spell per
   profession (Alchemy is 2259), and skill is kept per expansion (Classic Alchemy up to Kul Tiran Alchemy).
   The panel shows the newest expansion you have skill in, instead of a rank name.
-- The gathering tooltip fix is not in this version. Its node table holds 5.4.8 numbers that don't apply to
-  BFA. If BFA's client shows the same wrong "Requires Herbalism 1" for a 3rd or 4th profession, it can be
-  rebuilt from BFA's data.
+- The gathering tooltip fix is left out because BFA doesn't need it. On 8.3.7, nodes don't show a required
+  skill level for a 3rd or 4th profession; they are only colored by difficulty.
 
 ## Good to know
 
