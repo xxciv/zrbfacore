@@ -84,7 +84,8 @@ local function AfterSetServiceButton(skillButton, skillIndex, playerMoney, selec
     if not (ClassTrainerFrame.selectedService and selected == skillIndex) then
         return
     end
-    local _, _, serviceType = GetTrainerServiceInfo(skillIndex)
+    -- 8.3.7 returns name, type, icon, level (5.4.8 had a rank text before the type).
+    local _, serviceType = GetTrainerServiceInfo(skillIndex)
     local moneyCost, isProfession = GetTrainerServiceCost(skillIndex)
     if serviceType ~= "available" or not isProfession then
         return
@@ -297,6 +298,14 @@ local function PrintDebug()
     Print(format("%d of %d primary professions known; Professions tab slots: %s, %s",
         CountKnownPrimaries(), MAX_PRIMARY_PROFESSIONS,
         prof1 and GetProfessionInfo(prof1) or "-", prof2 and GetProfessionInfo(prof2) or "-"))
+    local selected = ClassTrainerFrame and ClassTrainerFrame:IsShown() and ClassTrainerFrame.selectedService
+    if selected then
+        local serviceName, serviceType = GetTrainerServiceInfo(selected)
+        local moneyCost, isProfession = GetTrainerServiceCost(selected)
+        Print(format("Trainer: selected %s, %s, profession %s, cost %s, Train %s", tostring(serviceName),
+            tostring(serviceType), tostring(isProfession), tostring(moneyCost),
+            ClassTrainerTrainButton:IsEnabled() and "enabled" or "disabled"))
+    end
     for _, prof in ipairs(PROFESSIONS) do
         local name = GetSpellInfo(prof.spell) or prof.spell
         local tierName, rank, maxRank = CurrentTier(prof)
