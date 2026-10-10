@@ -318,6 +318,14 @@ without any launcher. Point the client at the server in
 SET portal "192.168.x.x"
 ```
 
+### More than 2 primary professions
+
+To let characters learn up to 4 primary professions, set `MaxPrimaryTradeSkill = 4` in
+`~/bfa/server/etc/worldserver.conf` and restart `worldserver`. Each player also needs the
+[ZRProfessions](../client/ZRProfessions/README.md) addon: the client greys out **Train** once 2 professions
+are known, whatever the server allows, and its Professions tab only shows 2. The addon re-enables
+**Train** and adds a `/profs` panel listing every primary profession (verified in game 2026-10-10).
+
 ## 10. Updating
 
 ```sh
