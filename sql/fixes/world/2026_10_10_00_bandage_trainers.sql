@@ -1,12 +1,14 @@
--- Bandage trainers (Byancie in Dolanaar and the 17 other NPCs on trainer 160)
--- list "Engineering" at the top of their window.
+-- Alliance bandage trainers (Byancie in Dolanaar, Michelle Belle in Goldshire,
+-- Thamner Pol in Kharanos, Anchorite Fateema on Azuremyst and the others on
+-- trainer 877) list "Engineering" at the top of their window.
 --
--- That row is spell 3279, the old "Apprentice First Aid" skill spell. First Aid
--- was removed in 8.0 and its bandages moved to Tailoring; the 8.3.7 client no
--- longer has a First Aid entry for that id and shows it as Engineering. It is
--- the only spell on trainer 160 with no skill requirement, so every player sees
--- it as trainable. The bandage recipes on the same trainer are fine.
+-- After worldserver has applied upstream's sql/updates, these NPCs use trainer
+-- 877 (2026_09_04_00_world_trainer_mapping_sync.sql; the old trainer 160 is
+-- deleted by 2026_08_20_01_world_first_aid_bfa_migration.sql). Trainer 877
+-- carries spell 264478, the "Engineering" apprentice spell that belongs on the
+-- engineering trainers (102, 126, 405, 406, 407, 873, 993). The Horde bandage
+-- trainer 880 doesn't have it. The bandage recipes on 877 are fine.
 --
 -- worldserver reads trainers only at startup: restart it after running this.
 
-DELETE FROM `trainer_spell` WHERE `TrainerId` = 160 AND `SpellId` = 3279;
+DELETE FROM `trainer_spell` WHERE `TrainerId` = 877 AND `SpellId` = 264478;

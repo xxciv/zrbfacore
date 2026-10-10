@@ -341,7 +341,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 
 | File | Fixes |
 |---|---|
-| `2026_10_10_00_bandage_trainers.sql` | Bandage trainers such as Byancie in Dolanaar offering "Engineering" (the removed Apprentice First Aid spell) |
+| `2026_10_10_00_bandage_trainers.sql` | Alliance bandage trainers such as Byancie in Dolanaar offering the Engineering apprentice spell |
 
 ## 11. Status
 
