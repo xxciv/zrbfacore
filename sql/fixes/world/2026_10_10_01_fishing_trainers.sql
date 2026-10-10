@@ -9,7 +9,8 @@
 -- pre-BFA Apprentice Fishing rank, which in 8.3.7 no longer grants the skill.
 -- Arnold Leland in Stormwind (5493) lists 131476 instead, which does: learning
 -- it gives Fishing, Fishing Skills and the Fishing skill (verified in game
--- 2026-10-10). This gives the other 20 the same spell.
+-- 2026-10-10). This gives the other 20 the same spell (verified at Astaia the
+-- same day).
 --
 -- Characters that already bought 7620 can buy the new entry; nothing to undo.
 -- Safe to run twice. worldserver reads trainers only at startup: restart it
