@@ -331,6 +331,19 @@ cmake --build build -j"$(nproc)" && cmake --build build --target install
 
 Restart `worldserver`; it applies the new `sql/updates` files itself.
 
+This repo also carries fixes for wrong world data, under `sql/fixes/world`. They are written against
+the database as it is after `worldserver` has applied upstream's `sql/updates` (step 7), not against
+the raw dump, and `worldserver` doesn't apply them itself. Run each one yourself (it is safe to run
+twice) and restart `worldserver`, which reads most world tables only at startup:
+
+```sh
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage_trainers.sql
+```
+
+| File | Fixes |
+|---|---|
+| `2026_10_10_00_bandage_trainers.sql` | Alliance bandage trainers such as Byancie in Dolanaar offering the Engineering apprentice spell (verified in game 2026-10-10) |
+
 ## 11. Status
 
 | Step | State |
