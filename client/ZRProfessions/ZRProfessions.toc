@@ -1,0 +1,6 @@
+## Interface: 80300
+## Title: ZRProfessions
+## Notes: Lets trainers teach more than 2 primary professions and lists all of them (/profs).
+## Author: zrbfacore
+## Version: 2.1-bfa
+ZRProfessions.lua

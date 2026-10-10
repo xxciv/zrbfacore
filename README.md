@@ -19,6 +19,9 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   world and hotfixes dumps, plain, compressed or split.
 - [`tools/bfa/configure.sh`](tools/bfa/configure.sh): writes `worldserver.conf` and `bnetserver.conf`
   for a Linux install.
+- [`client/ZRProfessions`](client/ZRProfessions/README.md): a client addon that lets trainers teach up to 4
+  primary professions (the 8.3.7 client UI stops at 2 even when the server allows more) and lists them all
+  with `/profs`.
 
 Status: verified end to end on a Debian 13 VM (build, databases, client data, login and entering the
 world from another machine), 2026-10-09.
