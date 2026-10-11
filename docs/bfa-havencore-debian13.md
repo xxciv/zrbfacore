@@ -111,7 +111,9 @@ Gathering and crafting raise the expansion skill, but the client checks herb and
 profession skill, which upstream only updates when a skill is set directly (training, `.setskill`). So
 Herbalism stayed where it was trained while Classic Herbalism rose, and nodes stayed orange and then
 refused ("Requires Herbalism 50" at Classic Herbalism 59). The patch updates the profession skill on
-every skill-up too, in `Player::UpdateSkillPro` (`Player.cpp`).
+every skill-up too, in `Player::UpdateSkillPro` (`Player.cpp`). Verified in game: Herbalism now rises
+with Classic Herbalism. A character from before the patch catches up at its next skill-up, or at once
+with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning).
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
