@@ -18,10 +18,134 @@ index ea8b0cf..4271626 100644
          return me->GetVictim() != nullptr;
      }
 diff --git a/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp b/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
-index be6fb03..3ccbfad 100644
+index be6fb03..b37d1af 100644
 --- a/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
 +++ b/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
-@@ -551,7 +551,9 @@ public:
+@@ -85,6 +85,7 @@ enum Events
+     EVENT_SWITCH_TARGET,
+     EVENT_MOLTEN_SLAG,
+     EVENT_START_ATTACK,
++    EVENT_END_OVERDRIVE,
+ };
+ 
+ enum eSays
+@@ -297,6 +298,19 @@ public:
+             instance->SetBossState(DATA_FOEREAPER, FAIL);
+         }
+ 
++        bool ActiveMechsLeft() const
++        {
++            for (uint32 entry : { 47403u, 47404u })
++            {
++                std::list<Creature*> mechs;
++                me->GetCreatureListWithEntryInGrid(mechs, entry, 60.0f);
++                for (Creature* mech : mechs)
++                    if (mech->IsAlive() && mech->getFaction() != 35)
++                        return true;
++            }
++            return false;
++        }
++
+         void DespawnOldWatchers()
+         {
+             std::list<Creature*> reapers;
+@@ -327,11 +341,15 @@ public:
+ 
+             if (spell->Id == SPELL_ENERGIZE)
+             {
+-                if (Step == 3)
++                // Wake up once every Defias Reaper and Defias Watcher in the
++                // room is disabled. Both energize him, so counting four hits
++                // started the fight with two reapers still hostile once the
++                // two Watchers had been killed first.
++                if (Step < 4 && !ActiveMechsLeft())
+                 {
+                     events.ScheduleEvent(EVENT_START, 100);
++                    Step = 4;
+                 }
+-                Step++;
+             }
+         }
+ 
+@@ -363,7 +381,10 @@ public:
+             if (!me)
+                 return;
+ 
+-            DoMeleeAttackIfReady();
++            // Pick and chase the top threat target every update once he is
++            // active. The events below only did so now and then, so he stood
++            // still between them. The intro events still run before combat.
++            bool const hasVictim = UpdateVictim();
+ 
+             events.Update(uiDiff);
+ 
+@@ -392,16 +413,16 @@ public:
+ 
+                     case EVENT_SRO:
+                         me->RemoveAurasDueToSpell(SPELL_OFFLINE);
+-
+-                        if (Player* victim = me->SelectNearestPlayer(40.0f))
+-                            me->Attack(victim, false);
+                         break;
+ 
+                     case EVENT_START_ATTACK:
++                        // Back to normal speed and chase again after the
++                        // Harvest charge (SetSpeed takes yards per second, so
++                        // the old 2.0 left him crawling for the rest of the fight).
+                         me->RemoveAurasDueToSpell(SPELL_HARVEST_AURA);
+-                        me->SetSpeed(MOVE_RUN, 2.0f);
+-                        if (Player* victim = me->SelectNearestPlayer(40.0f))
+-                            me->Attack(victim, true);
++                        me->SetSpeedRate(MOVE_RUN, me->GetCreatureTemplate()->speed_run);
++                        if (Unit* victim = me->GetVictim())
++                            me->GetMotionMaster()->MoveChase(victim);
+                         break;
+ 
+                     case EVENT_OVERDRIVE:
+@@ -409,20 +430,22 @@ public:
+                             return;
+ 
+                         me->TextEmote("|TInterface\\Icons\\ability_whirlwind.blp:20|tFoe Reaper 5000 begins to activate |cFFFF0000|Hspell:91716|h[Overdrive]|h|r!", 0, true);
++                        // Overdrive: for 10 s he stops attacking and wanders
++                        // the room while the aura spins, then resumes. It used
++                        // to never end: he kept hopping targets at a fixed speed.
+                         me->AddAura(SPELL_OVERDRIVE, me);
+-                        me->SetSpeed(MOVE_RUN, 4.0f);
+-                        events.ScheduleEvent(EVENT_SWITCH_TARGET, 1500);
++                        me->AttackStop();
++                        me->SetReactState(REACT_PASSIVE);
++                        me->GetMotionMaster()->Clear();
++                        me->GetMotionMaster()->MoveRandom(15.0f);
++                        events.ScheduleEvent(EVENT_END_OVERDRIVE, 10000);
+                         events.ScheduleEvent(EVENT_OVERDRIVE, 45000);
+                         break;
+ 
+-                    case EVENT_SWITCH_TARGET:
+-                        if (Unit* victim = SelectTarget(SELECT_TARGET_RANDOM, 0, 150, true))
+-                            me->Attack(victim, true);
+-
+-                        if (me->HasAura(SPELL_OVERDRIVE))
+-                        {
+-                            events.ScheduleEvent(EVENT_SWITCH_TARGET, 1500);
+-                        }
++                    case EVENT_END_OVERDRIVE:
++                        me->RemoveAurasDueToSpell(SPELL_OVERDRIVE);
++                        me->GetMotionMaster()->Clear();
++                        me->SetReactState(REACT_AGGRESSIVE);
+                         break;
+ 
+                     case EVENT_HARVEST:
+@@ -477,6 +500,9 @@ public:
+                     Below = true;
+                 }
+             }
++
++            if (hasVictim)
++                DoMeleeAttackIfReady();
+         }
+     };
+ };
+@@ -551,7 +577,9 @@ public:
              if (!me || damage <= 0 || Status == true)
                  return;
  

@@ -130,7 +130,13 @@ with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning).
 - Foe Reaper 5000 wakes up even when a Defias Reaper is killed in one hit. Each reaper is meant
   to stop at 10% health and energize him. The health check subtracted the hit from the reaper's
   health as an unsigned number, so a hit bigger than the remaining health wrapped around and
-  killed the reaper outright, and Foe Reaper stayed asleep.
+  killed the reaper outright, and Foe Reaper stayed asleep. He now wakes once every Defias Reaper
+  and Defias Watcher in the room is disabled, instead of after any four of the six, which could
+  start the fight with two reapers still attacking.
+- Foe Reaper 5000 chases his target the whole fight. He used to pick a target only during his
+  abilities and stand still in between. Overdrive now lasts 10 seconds, during which he stops
+  attacking and wanders the room spinning, as on retail. It used to never end. After Harvest he
+  returns to his normal speed instead of crawling at 2 yards per second for the rest of the fight.
 - Helix Gearbreaker no longer melees from the Lumbering Oaf's back (he swings every 0.5 s, on top
   of the Oaf's own hits). The Oaf lets a grabbed player go if its charge doesn't happen, instead of
   carrying them until the next grab. The Oaf only gets this script with
