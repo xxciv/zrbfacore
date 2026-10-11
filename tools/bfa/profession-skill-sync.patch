@@ -1,0 +1,17 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index 00e6114..9879dd0 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -5826,6 +5826,12 @@ bool Player::UpdateSkillPro(uint16 skillId, int32 chance, uint32 step)
+     if (itr->second.uState != SKILL_NEW)
+         itr->second.uState = SKILL_CHANGED;
+ 
++    // Keep the parent profession skill in step with this expansion skill, as SetSkill does: the client
++    // checks gathering nodes (requirement and color) against the parent.
++    if (SkillLineEntry const* skillEntry = sSkillLineStore.LookupEntry(skillId))
++        if (skillEntry->ParentSkillLineID && skillEntry->ParentTierIndex > 0)
++            SetSkill(skillEntry->ParentSkillLineID, skillEntry->ParentTierIndex, new_value, max);
++
+     for (uint32 bsl : bonusSkillLevels)
+     {
+         if (value < bsl && new_value >= bsl)
