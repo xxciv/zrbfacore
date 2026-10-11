@@ -384,6 +384,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 |---|---|
 | `2026_10_10_00_bandage_trainers.sql` | Alliance bandage trainers such as Byancie in Dolanaar offering the Engineering apprentice spell (verified in game 2026-10-10) |
 | `2026_10_10_01_fishing_trainers.sql` | Fishing trainers such as Astaia in Darnassus teaching Fishing without the skill, so it shows as known but can't be used (verified in game 2026-10-10) |
+| `2026_10_11_00_deadmines_mine_bunny_damage.sql` | The two Mine Bunnies in The Deadmines hitting for about 1,700 at level 15 (raid-boss damage modifier) |
 
 ## 11. Status
 
