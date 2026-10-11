@@ -89,6 +89,7 @@ git clone -b main https://github.com/xxciv/zrbfacore.git tools-repo
 cd source
 git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
 git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
+git apply ../tools-repo/tools/bfa/deadmines-trash-ai.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -114,6 +115,13 @@ refused ("Requires Herbalism 50" at Classic Herbalism 59). The patch updates the
 every skill-up too, in `Player::UpdateSkillPro` (`Player.cpp`). Verified in game: Herbalism now rises
 with Classic Herbalism. A character from before the patch catches up at its next skill-up, or at once
 with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning).
+
+`deadmines-trash-ai.patch` makes The Deadmines' scripted trash fight back. Seven scripts in
+`boss_vanessa_vancleef.cpp` (Ogre Henchman, Defias Shadowguard, Defias Enforcer, Defias Envoker,
+Goblin Overseer, Defias Blood Wizard, and Oaf Lackey, which also runs Helix's Lumbering Oaf) never
+called `UpdateVictim()`, so they went into combat but never picked a target: they stood still and
+took hits. The patch adds the call, and lets the Oaf's Enrage and the Overseer's Threatening fire
+at low health (both flags started out already used).
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
@@ -341,12 +349,14 @@ are known, whatever the server allows, and its Professions tab only shows 2. The
 
 ```sh
 cd ~/bfa/source
-git apply -R ../tools-repo/tools/bfa/profession-skill-sync.patch  # undo the patches before pulling
+git apply -R ../tools-repo/tools/bfa/deadmines-trash-ai.patch  # undo the patches before pulling
+git apply -R ../tools-repo/tools/bfa/profession-skill-sync.patch
 git apply -R ../tools-repo/tools/bfa/bfa-linux-fixes.patch
 git pull
 git -C ../tools-repo pull
 git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
 git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
+git apply ../tools-repo/tools/bfa/deadmines-trash-ai.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
