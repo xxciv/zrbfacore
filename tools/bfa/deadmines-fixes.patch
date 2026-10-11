@@ -17,6 +17,46 @@ index ea8b0cf..4271626 100644
  
          return me->GetVictim() != nullptr;
      }
+diff --git a/src/server/scripts/EasternKingdoms/Deadmines/boss_admiral_ripsnarl.cpp b/src/server/scripts/EasternKingdoms/Deadmines/boss_admiral_ripsnarl.cpp
+index 0da7ee6..f084796 100644
+--- a/src/server/scripts/EasternKingdoms/Deadmines/boss_admiral_ripsnarl.cpp
++++ b/src/server/scripts/EasternKingdoms/Deadmines/boss_admiral_ripsnarl.cpp
+@@ -234,6 +234,10 @@ public:
+ 
+         void VaporsKilled()
+         {
++            // Only vapors killed while he is hidden bring him back early.
++            if (me->IsVisible())
++                return;
++
+             vaporCount++;
+ 
+             if (vaporCount == 4)
+@@ -400,6 +404,12 @@ public:
+                         break;
+ 
+                     case EVENT_SHOW_UP:
++                        // Fires from the 25 s timer or after 4 vapor kills,
++                        // whichever comes first. Run it once per vanish, or
++                        // the second one stacks another Swipe timer.
++                        if (me->IsVisible())
++                            break;
++                        events.CancelEvent(EVENT_SHOW_UP);
+                         me->SetVisible(true);
+                         vaporCount = 0;
+                         me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_PACIFIED));
+@@ -412,7 +422,10 @@ public:
+                         if (phase == PHASE_FOG)
+                             if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
+                                 me->CastSpell(target, SPELL_SUMMON_VAPOR);
+-                        events.RescheduleEvent(EVENT_SUMMON_VAPOR, 3500);
++                        // The fog stays for the rest of the fight. Vapors come
++                        // every 3.5 s while he is hidden, then every 12 s
++                        // (was 3.5 s for the whole fight after 75%).
++                        events.RescheduleEvent(EVENT_SUMMON_VAPOR, me->IsVisible() ? 12000 : 3500);
+                         break;
+                 }
+             }
 diff --git a/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp b/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
 index be6fb03..b37d1af 100644
 --- a/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp

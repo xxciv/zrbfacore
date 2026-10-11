@@ -142,6 +142,10 @@ with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning).
   carrying them until the next grab. The Oaf only gets this script with
   `2026_10_11_01_deadmines_lumbering_oaf_helix.sql` below. After a wipe Helix walks home before
   he mounts a new Oaf, instead of mounting one halfway and never finishing his reset.
+- Admiral Ripsnarl summons Vapors every 3.5 seconds only while he is hidden in the fog, then every
+  12 seconds. Before, once the fog rolled in at 75% he summoned one every 3.5 seconds for the rest of
+  the fight. He also comes back out of the fog once per vanish: when both his timer and the
+  four-vapor count brought him back, his Swipe ran twice as often from then on.
 - One fix is core-wide, in `CreatureAI.cpp`: a creature with no target left now resets even when
   its combat has already ended. When the last player died, combat ended but the creature stayed
   "engaged" next to the corpse. A boss then kept its encounter running, which greys out Release
