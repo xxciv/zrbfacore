@@ -1,0 +1,135 @@
+diff --git a/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp b/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
+index be6fb03..3ccbfad 100644
+--- a/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
++++ b/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
+@@ -551,7 +551,9 @@ public:
+             if (!me || damage <= 0 || Status == true)
+                 return;
+ 
+-            if (me->GetHealth() - damage <= me->GetMaxHealth()*0.10)
++            // Also catch hits bigger than the remaining health: the subtraction
++            // is unsigned, and a reaper that really dies can't energize Foe Reaper.
++            if (damage >= me->GetHealth() || me->GetHealth() - damage <= me->GetMaxHealth()*0.10)
+             {
+                 damage = 0;
+                 Energizing();
+diff --git a/src/server/scripts/EasternKingdoms/Deadmines/boss_vanessa_vancleef.cpp b/src/server/scripts/EasternKingdoms/Deadmines/boss_vanessa_vancleef.cpp
+index 4350fa5..27585a8 100644
+--- a/src/server/scripts/EasternKingdoms/Deadmines/boss_vanessa_vancleef.cpp
++++ b/src/server/scripts/EasternKingdoms/Deadmines/boss_vanessa_vancleef.cpp
+@@ -601,6 +601,9 @@ public:
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!UpdateVictim())
++                return;
++
+             if (SinisterTimer <= diff)
+             {
+                 DoCastVictim(SPELL_SINISTER);
+@@ -661,6 +664,9 @@ public:
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!UpdateVictim())
++                return;
++
+             if (BloodBathTimer <= diff)
+             {
+                 DoCastVictim(SPELL_BLOODBATH);
+@@ -703,6 +709,9 @@ public:
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!UpdateVictim())
++                return;
++
+             if (HolyfireTimer <= diff)
+             {
+                 if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
+@@ -745,11 +754,14 @@ public:
+         void Reset() override
+         {
+             MotivateTimer = 4000;
+-            threat = true;
++            threat = false;
+         }
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!UpdateVictim())
++                return;
++
+             if (MotivateTimer <= diff)
+             {
+                 if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
+@@ -791,6 +803,9 @@ public:
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!UpdateVictim())
++                return;
++
+             if (UppercutTimer <= diff)
+             {
+                 DoCastVictim(SPELL_UPPERCUT);
+@@ -823,11 +838,14 @@ public:
+         void Reset() override
+         {
+             AxeHeadTimer = 4000;
+-            below = true;
++            below = false;
+         }
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!UpdateVictim())
++                return;
++
+             if (AxeHeadTimer <= diff)
+             {
+                 DoCastVictim(SPELL_AXE_HEAD);
+@@ -872,6 +890,9 @@ public:
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!UpdateVictim())
++                return;
++
+             if (BloodboltTimer <= diff)
+             {
+                 DoCastVictim(SPELL_BLOODBOLT);
+diff --git a/src/server/scripts/EasternKingdoms/Deadmines/instance_deadmines.cpp b/src/server/scripts/EasternKingdoms/Deadmines/instance_deadmines.cpp
+index 90d70d1..0441a81 100644
+--- a/src/server/scripts/EasternKingdoms/Deadmines/instance_deadmines.cpp
++++ b/src/server/scripts/EasternKingdoms/Deadmines/instance_deadmines.cpp
+@@ -194,19 +194,29 @@ public:
+ 
+         void OnGameObjectCreate(GameObject* go) override
+         {
++            // Boss states survive a restart or grid unload, but doors are
++            // re-created closed. Open them again for bosses already killed.
+             switch (go->GetEntry())
+             {
+                 case GO_FACTORY_DOOR: // Door after first boss
+                     FactoryDoorGUID = go->GetGUID();
++                    if (GetBossState(DATA_GLUBTOK) == DONE)
++                        go->SetGoState(GO_STATE_ACTIVE);
+                     break;
+                 case GO_FOUNDRY_DOOR: // Door before ship
+                     FoundaryDoorGUID = go->GetGUID();
++                    if (GetBossState(DATA_FOEREAPER) == DONE)
++                        go->SetGoState(GO_STATE_ACTIVE);
+                     break;
+                 case GO_HEAVY_DOOR_HELIX:
+                     HeavyDoorGUID = go->GetGUID();
++                    if (GetBossState(DATA_HELIX) == DONE)
++                        go->SetGoState(GO_STATE_ACTIVE);
+                     break;
+                 case GO_IRONCLAD_DOOR:
+                     IroncladDoorGUID = go->GetGUID();
++                    if (GetBossState(DATA_RIPSNARL) == DONE)
++                        go->SetGoState(GO_STATE_ACTIVE_ALTERNATIVE);
+                     break;
+             }
+         }
