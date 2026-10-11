@@ -108,8 +108,10 @@ revert lines. Tested at level 16-17 on a rogue with SoloCraft on.
     spawn.
   - `npc_defias_watcher::Energizing()` now clears the mech's threat and stops its combat when it
     burns out, instead of calling `SetInCombatWithZone()`.
-- **Not a bug:** the rideable Prototype Reaper (49208) is Heroic-only, as on retail. The burning Reapers
-  and Watchers can't be ridden.
+- **Not a bug:** the rideable Prototype Reaper (49208) is Heroic-only, as on retail.
+- **Left as is:** burnt-out Reapers and Watchers show a vehicle cursor. `npc_spellclick_spells` gives
+  47403 and 47404 the click spells 58961 and 90102. Whether riding them does anything on Normal hasn't
+  been checked.
 - **Status:** not tested in game yet.
 
 #### Admiral Ripsnarl
