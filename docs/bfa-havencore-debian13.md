@@ -134,7 +134,13 @@ with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning).
 - Helix Gearbreaker no longer melees from the Lumbering Oaf's back (he swings every 0.5 s, on top
   of the Oaf's own hits). The Oaf lets a grabbed player go if its charge doesn't happen, instead of
   carrying them until the next grab. The Oaf only gets this script with
-  `2026_10_11_01_deadmines_lumbering_oaf_helix.sql` below.
+  `2026_10_11_01_deadmines_lumbering_oaf_helix.sql` below. After a wipe Helix walks home before
+  he mounts a new Oaf, instead of mounting one halfway and never finishing his reset.
+- One fix is core-wide, in `CreatureAI.cpp`: a creature with no target left now resets even when
+  its combat has already ended. When the last player died, combat ended but the creature stayed
+  "engaged" next to the corpse. A boss then kept its encounter running, which greys out Release
+  Spirit ("A member of your group is in combat") and keeps the boss pulling anyone who comes back.
+  Upstream TrinityCore resets here too. HavenCore had narrowed it to creatures far from their spawn.
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
@@ -391,6 +397,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_10_11_00_deadmines_mine_bunny_damage.sql` | The two Mine Bunnies in The Deadmines hitting for about 1,700 at level 15 (raid-boss damage modifier) |
 | `2026_10_11_01_deadmines_lumbering_oaf_helix.sql` | Helix's Lumbering Oaf running the trash Oaf Lackey AI, so it never grabs or charges (its script was on an unrelated Kalimdor Oaf, which now gets its own AI back), and Helix's melee lowered from 57.5 to 12 |
 | `2026_10_11_02_deadmines_boss_texts.sql` | The Deadmines bosses (Glubtok, Helix, the Lumbering Oaf, Foe Reaper 5000, Admiral Ripsnarl) saying nothing: their yells were missing |
+| `2026_10_11_03_deadmines_helix_sticky_bomb.sql` | Helix never throwing his Sticky Bombs: his Throw Bomb spell was bound to a Winter Veil quest script that cancels the cast |
 
 ## 11. Status
 

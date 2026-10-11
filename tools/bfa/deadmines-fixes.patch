@@ -1,3 +1,22 @@
+diff --git a/src/server/game/AI/CreatureAI.cpp b/src/server/game/AI/CreatureAI.cpp
+index ea8b0cf..4271626 100644
+--- a/src/server/game/AI/CreatureAI.cpp
++++ b/src/server/game/AI/CreatureAI.cpp
+@@ -243,8 +243,12 @@ bool CreatureAI::UpdateVictim()
+             if (!me->IsFocusing(nullptr, true))
+                 AttackStart(victim);
+         }
+-        else if (me->IsInCombat())                          // <-- NEW  
+-            EnterEvadeMode(EVADE_REASON_NO_HOSTILES);        // <-- NEW  
++        // No target left: evade, also when combat already ended. When the last
++        // player dies, CombatStop() ends combat but leaves us engaged, and
++        // SelectVictim() only evades far from home, so a boss would otherwise
++        // stay IN_PROGRESS and block Release Spirit.
++        else
++            EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
+ 
+         return me->GetVictim() != nullptr;
+     }
 diff --git a/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp b/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
 index be6fb03..3ccbfad 100644
 --- a/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
@@ -14,10 +33,31 @@ index be6fb03..3ccbfad 100644
                  damage = 0;
                  Energizing();
 diff --git a/src/server/scripts/EasternKingdoms/Deadmines/boss_helix_gearbreaker.cpp b/src/server/scripts/EasternKingdoms/Deadmines/boss_helix_gearbreaker.cpp
-index 909dede..dc88999 100644
+index 909dede..26e0a28 100644
 --- a/src/server/scripts/EasternKingdoms/Deadmines/boss_helix_gearbreaker.cpp
 +++ b/src/server/scripts/EasternKingdoms/Deadmines/boss_helix_gearbreaker.cpp
-@@ -281,7 +281,10 @@ public:
+@@ -133,7 +133,11 @@ public:
+             me->SetReactState(REACT_AGGRESSIVE);
+             me->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+             summons.DespawnAll();
+-            OafSupport();
++            // While evading Helix is still walking home; boarding an Oaf now
++            // would stop that walk and leave him evading for good. He mounts
++            // in JustReachedHome() instead.
++            if (!me->IsInEvadeMode())
++                OafSupport();
+ 
+             // Slinky Sharpshiv is Horde-only. Do not summon her from Reset(),
+             // because boss/grid reset can run before the first player enters the
+@@ -263,6 +267,7 @@ public:
+             _JustReachedHome();
+             Talk(1);
+             instance->SetBossState(DATA_HELIX, FAIL);
++            OafSupport();
+         }
+ 
+         void OafDead()
+@@ -281,7 +286,10 @@ public:
              if (!me)
                  return;
  
@@ -29,7 +69,7 @@ index 909dede..dc88999 100644
  
              events.Update(uiDiff);
  
-@@ -337,7 +340,7 @@ public:
+@@ -337,7 +345,7 @@ public:
  
      struct npc_lumbering_oafAI : public ScriptedAI
      {
@@ -38,7 +78,7 @@ index 909dede..dc88999 100644
          {
              _vehicle = me->GetVehicleKit();
          }
-@@ -442,6 +445,8 @@ public:
+@@ -442,6 +450,8 @@ public:
                          break;
  
                      case EVEMT_CHARGE:
@@ -47,7 +87,7 @@ index 909dede..dc88999 100644
                          if (me->GetDistance(OafPos[0]) <= 2.0f)
                          {
                              me->GetMotionMaster()->Clear(true);
-@@ -450,10 +455,19 @@ public:
+@@ -450,10 +460,19 @@ public:
                              {
                                  me->GetMotionMaster()->MovePoint(1, bunny->GetPositionX(), bunny->GetPositionY(), bunny->GetPositionZ());
                                  bunny->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
