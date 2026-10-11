@@ -15,7 +15,7 @@
 --    taken, but multiplies the player's stats, Stamina included, in dungeons
 --    (Solocraft.Dungeon = 5 is +400%), so the larger health pool does the
 --    softening. The core patch also stops him meleeing while he rides the Oaf.
-
+--
 -- Revert:
 --   UPDATE creature_template SET ScriptName = 'npc_oaf_lackey' WHERE entry = 47297;
 --   UPDATE creature_template SET ScriptName = 'npc_lumbering_oaf' WHERE entry = 40906;
