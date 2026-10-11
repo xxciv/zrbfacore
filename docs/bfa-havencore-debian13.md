@@ -398,6 +398,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_10_11_01_deadmines_lumbering_oaf_helix.sql` | Helix's Lumbering Oaf running the trash Oaf Lackey AI, so it never grabs or charges (its script was on an unrelated Kalimdor Oaf, which now gets its own AI back), and Helix's melee lowered from 57.5 to 12 |
 | `2026_10_11_02_deadmines_boss_texts.sql` | The Deadmines bosses (Glubtok, Helix, the Lumbering Oaf, Foe Reaper 5000, Admiral Ripsnarl) saying nothing: their yells were missing |
 | `2026_10_11_03_deadmines_helix_sticky_bomb.sql` | Helix never throwing his Sticky Bombs: his Throw Bomb spell was bound to a Winter Veil quest script that cancels the cast |
+| `2026_10_11_04_deadmines_boss_loot.sql` | The Deadmines bosses often dropping only gold on Normal: each item rolled on its own at 9-19%. Now each boss drops one of its usual items every kill |
 
 ## 11. Status
 
