@@ -3,6 +3,7 @@
 Notes and tools for running [BFA-HavenCore](https://github.com/HavenWoW/BFA-HavenCore), a World of
 Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 
+- [`PATCHNOTES.md`](PATCHNOTES.md): what each fix changed, with exact values and files, newest first.
 - [`docs/bfa-havencore-debian13.md`](docs/bfa-havencore-debian13.md): building the core natively on
   Debian 13 with GCC 14 and MySQL 8.4, importing the databases, extracting client data, configuring
   and starting `bnetserver` and `worldserver`, and connecting a client.
