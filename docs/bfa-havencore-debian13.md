@@ -131,6 +131,10 @@ with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning).
   to stop at 10% health and energize him. The health check subtracted the hit from the reaper's
   health as an unsigned number, so a hit bigger than the remaining health wrapped around and
   killed the reaper outright, and Foe Reaper stayed asleep.
+- Helix Gearbreaker no longer meleees from the Lumbering Oaf's back (he swings every 0.5 s, on top
+  of the Oaf's own hits). The Oaf lets a grabbed player go if its charge doesn't happen, instead of
+  carrying them until the next grab. The Oaf only gets this script with
+  `2026_10_11_01_deadmines_lumbering_oaf_helix.sql` below.
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
@@ -385,6 +389,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_10_10_00_bandage_trainers.sql` | Alliance bandage trainers such as Byancie in Dolanaar offering the Engineering apprentice spell (verified in game 2026-10-10) |
 | `2026_10_10_01_fishing_trainers.sql` | Fishing trainers such as Astaia in Darnassus teaching Fishing without the skill, so it shows as known but can't be used (verified in game 2026-10-10) |
 | `2026_10_11_00_deadmines_mine_bunny_damage.sql` | The two Mine Bunnies in The Deadmines hitting for about 1,700 at level 15 (raid-boss damage modifier) |
+| `2026_10_11_01_deadmines_lumbering_oaf_helix.sql` | Helix's Lumbering Oaf running the trash Oaf Lackey AI, so it never grabs or charges (its script was on an unrelated Kalimdor Oaf, which now gets its own AI back), and Helix's melee lowered from 57.5 to 6 |
 
 ## 11. Status
 
