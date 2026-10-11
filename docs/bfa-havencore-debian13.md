@@ -133,6 +133,8 @@ with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning).
   killed the reaper outright, and Foe Reaper stayed asleep. He now wakes once every Defias Reaper
   and Defias Watcher in the room is disabled, instead of after any four of the six, which could
   start the fight with two reapers still attacking.
+  He can't be hit before he wakes, so a stray hit can't pull him early and reset the reapers, and a
+  burnt-out reaper or watcher drops out of combat instead of keeping players in it.
 - Foe Reaper 5000 chases his target the whole fight. He used to pick a target only during his
   abilities and stand still in between. Overdrive now lasts 10 seconds, during which he stops
   attacking and wanders the room spinning, as on retail. It used to never end. After Harvest he

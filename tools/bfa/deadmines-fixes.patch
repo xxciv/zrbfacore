@@ -58,7 +58,7 @@ index 0da7ee6..f084796 100644
                  }
              }
 diff --git a/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp b/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
-index be6fb03..b37d1af 100644
+index be6fb03..c3605aa 100644
 --- a/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
 +++ b/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
 @@ -85,6 +85,7 @@ enum Events
@@ -69,7 +69,28 @@ index be6fb03..b37d1af 100644
  };
  
  enum eSays
-@@ -297,6 +298,19 @@ public:
+@@ -133,7 +134,6 @@ public:
+             {
+                 BossAI::InitializeAI();
+                 me->RemoveAura(SPELL_OFF_LINE);
+-                me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_STUNNED));
+             }
+ 
+ 
+@@ -151,6 +151,12 @@ public:
+ 
+             _Reset();
+             me->SetReactState(REACT_PASSIVE);
++            // Untouchable until the reapers wake him (EVENT_START_2 clears
++            // these). Before, a stray hit or AoE pulled him while he was still
++            // passive, and when that combat ended he reset and summoned four
++            // fresh Defias Reapers in the middle of the pull.
++            if (instance->GetBossState(DATA_FOEREAPER) != DONE)
++                me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_STUNNED));
+             me->SetPower(POWER_ENERGY, 100);
+             me->SetMaxPower(POWER_ENERGY, 100);
+             me->SetPowerType(POWER_ENERGY);
+@@ -297,6 +303,19 @@ public:
              instance->SetBossState(DATA_FOEREAPER, FAIL);
          }
  
@@ -89,7 +110,7 @@ index be6fb03..b37d1af 100644
          void DespawnOldWatchers()
          {
              std::list<Creature*> reapers;
-@@ -327,11 +341,15 @@ public:
+@@ -327,11 +346,15 @@ public:
  
              if (spell->Id == SPELL_ENERGIZE)
              {
@@ -107,7 +128,7 @@ index be6fb03..b37d1af 100644
              }
          }
  
-@@ -363,7 +381,10 @@ public:
+@@ -363,7 +386,10 @@ public:
              if (!me)
                  return;
  
@@ -119,7 +140,22 @@ index be6fb03..b37d1af 100644
  
              events.Update(uiDiff);
  
-@@ -392,16 +413,16 @@ public:
+@@ -381,27 +407,29 @@ public:
+                     case EVENT_START_2:
+                         me->TextEmote(MONSTER_SLAG, 0, true);
+                         me->SetHealth(me->GetMaxHealth());
+-                        DoZoneInCombat();
+-                        me->SetReactState(REACT_AGGRESSIVE);
++                        // Clear the flags first: players can't be pulled into
++                        // combat while he is still immune to them.
+                         me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+                         me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
+                         me->RemoveUnitFlag(UNIT_FLAG_STUNNED);
++                        me->SetReactState(REACT_AGGRESSIVE);
++                        DoZoneInCombat();
+                         me->RemoveAurasDueToSpell(SPELL_ENERGIZED);
+                         events.ScheduleEvent(EVENT_SRO, 1000);
+                         break;
  
                      case EVENT_SRO:
                          me->RemoveAurasDueToSpell(SPELL_OFFLINE);
@@ -142,7 +178,7 @@ index be6fb03..b37d1af 100644
                          break;
  
                      case EVENT_OVERDRIVE:
-@@ -409,20 +430,22 @@ public:
+@@ -409,20 +437,22 @@ public:
                              return;
  
                          me->TextEmote("|TInterface\\Icons\\ability_whirlwind.blp:20|tFoe Reaper 5000 begins to activate |cFFFF0000|Hspell:91716|h[Overdrive]|h|r!", 0, true);
@@ -175,7 +211,7 @@ index be6fb03..b37d1af 100644
                          break;
  
                      case EVENT_HARVEST:
-@@ -477,6 +500,9 @@ public:
+@@ -477,6 +507,9 @@ public:
                      Below = true;
                  }
              }
@@ -185,7 +221,23 @@ index be6fb03..b37d1af 100644
          }
      };
  };
-@@ -551,7 +577,9 @@ public:
+@@ -535,10 +568,14 @@ public:
+             Status = true;
+             me->SetHealth(15);
+             me->setRegeneratingHealth(false);
++            // A disabled mech is out of the fight: drop its threat and combat
++            // so it doesn't keep players in combat. It used to pull the whole
++            // instance into combat with itself instead.
++            me->GetThreatManager().ClearAllThreat();
++            me->CombatStop(true);
+             me->SetFaction(35);
+             me->AddAura(SPELL_ON_FIRE, me);
+             me->CastSpell(me, SPELL_ON_FIRE);
+-            me->SetInCombatWithZone();
+ 
+             if (Creature* reaper = me->FindNearestCreature(NPC_FOE_REAPER_5000, 200.0f))
+             {
+@@ -551,7 +588,9 @@ public:
              if (!me || damage <= 0 || Status == true)
                  return;
  

@@ -97,6 +97,17 @@ revert lines. Tested at level 16-17 on a rogue with SoloCraft on.
   yards while it spins, then removes the aura and attacks again. It still comes every 45 seconds.
 - **Found:** after Harvest his run speed was set to 2 yards per second for the rest of the fight.
 - **Changed:** he now goes back to his normal run speed from `creature_template` and chases again.
+- **Found** (in game, after the changes above): Defias Reapers came back mid-pull, and the burning
+  mechs kept you in combat. He was attackable, but passive, before waking, so a stray hit or AoE pulled
+  him. With the every-update target check above, he reset as soon as that combat ended, and his reset
+  despawns the Reapers and summons four fresh ones. A disabled Reaper or Watcher also kept its threat
+  and pulled every player in the instance into combat with itself.
+- **Changed:**
+  - `Reset()` now makes him non-attackable, immune to players and stunned until he wakes. The wake-up
+    clears those flags before pulling the room into combat. `InitializeAI()` no longer removes them on
+    spawn.
+  - `npc_defias_watcher::Energizing()` now clears the mech's threat and stops its combat when it
+    burns out, instead of calling `SetInCombatWithZone()`.
 - **Not a bug:** the rideable Prototype Reaper (49208) is Heroic-only, as on retail. The burning Reapers
   and Watchers can't be ridden.
 - **Status:** not tested in game yet.
