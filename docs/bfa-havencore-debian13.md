@@ -131,7 +131,7 @@ with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning).
   to stop at 10% health and energize him. The health check subtracted the hit from the reaper's
   health as an unsigned number, so a hit bigger than the remaining health wrapped around and
   killed the reaper outright, and Foe Reaper stayed asleep.
-- Helix Gearbreaker no longer meleees from the Lumbering Oaf's back (he swings every 0.5 s, on top
+- Helix Gearbreaker no longer melees from the Lumbering Oaf's back (he swings every 0.5 s, on top
   of the Oaf's own hits). The Oaf lets a grabbed player go if its charge doesn't happen, instead of
   carrying them until the next grab. The Oaf only gets this script with
   `2026_10_11_01_deadmines_lumbering_oaf_helix.sql` below.
