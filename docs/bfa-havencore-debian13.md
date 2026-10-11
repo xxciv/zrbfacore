@@ -88,6 +88,7 @@ git clone https://github.com/HavenWoW/BFA-HavenCore.git source
 git clone -b main https://github.com/xxciv/zrbfacore.git tools-repo
 cd source
 git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
+git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -103,6 +104,14 @@ extractors without the servers. The patch fixes exactly those, in four files:
 Without the two script fixes everything compiles, but linking `worldserver` fails with
 `undefined reference to Cell::VisitAllObjects<Trinity::UnitListSearcher<Trinity::AnyFriendlyUnitInObjectRangeCheck>>`.
 MSVC finds a copy of that template elsewhere; GCC needs the definition in the file that uses it.
+
+`profession-skill-sync.patch` is a gameplay fix, not a build fix. Since BFA every profession has a skill
+per expansion (Classic Herbalism, Outland Herbalism, ...) under the profession's own skill (Herbalism).
+Gathering and crafting raise the expansion skill, but the client checks herb and ore nodes against the
+profession skill, which upstream only updates when a skill is set directly (training, `.setskill`). So
+Herbalism stayed where it was trained while Classic Herbalism rose, and nodes stayed orange and then
+refused ("Requires Herbalism 50" at Classic Herbalism 59). The patch updates the profession skill on
+every skill-up too, in `Player::UpdateSkillPro` (`Player.cpp`).
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
@@ -330,10 +339,12 @@ are known, whatever the server allows, and its Professions tab only shows 2. The
 
 ```sh
 cd ~/bfa/source
-git apply -R ../tools-repo/tools/bfa/bfa-linux-fixes.patch    # undo the fixes before pulling
+git apply -R ../tools-repo/tools/bfa/profession-skill-sync.patch  # undo the patches before pulling
+git apply -R ../tools-repo/tools/bfa/bfa-linux-fixes.patch
 git pull
 git -C ../tools-repo pull
 git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
+git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
