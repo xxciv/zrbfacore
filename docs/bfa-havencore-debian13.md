@@ -148,6 +148,9 @@ with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning).
   12 seconds. Before, once the fog rolled in at 75% he summoned one every 3.5 seconds for the rest of
   the fight. He also comes back out of the fog once per vanish: when both his timer and the
   four-vapor count brought him back, his Swipe ran twice as often from then on.
+- The Mine Bunnies' Drunken Haze keeps its 10-second snare and slow but no longer sets the player's
+  drunk level to 100, which lasted about 15 minutes with no debuff shown. The script only takes
+  effect with `2026_10_12_00_deadmines_mine_bunny_drunken_haze.sql` below.
 - One fix is core-wide, in `CreatureAI.cpp`: a creature with no target left now resets even when
   its combat has already ended. When the last player died, combat ended but the creature stayed
   "engaged" next to the corpse. A boss then kept its encounter running, which greys out Release
@@ -411,6 +414,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_10_11_02_deadmines_boss_texts.sql` | The Deadmines bosses (Glubtok, Helix, the Lumbering Oaf, Foe Reaper 5000, Admiral Ripsnarl) saying nothing: their yells were missing |
 | `2026_10_11_03_deadmines_helix_sticky_bomb.sql` | Helix never throwing his Sticky Bombs: his Throw Bomb spell was bound to a Winter Veil quest script that cancels the cast |
 | `2026_10_11_04_deadmines_boss_loot.sql` | The Deadmines bosses often dropping only gold on Normal: each item rolled on its own at 9-19%. Now each boss drops one of its usual items every kill |
+| `2026_10_12_00_deadmines_mine_bunny_drunken_haze.sql` | The Mine Bunnies in The Deadmines leaving players fully drunk for about 15 minutes, with no debuff shown, after one Drunken Haze. Binds the spell script from `deadmines-fixes.patch` that keeps the 10-second snare and slow |
 
 ## 11. Status
 

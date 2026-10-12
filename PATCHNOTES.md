@@ -3,6 +3,40 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-12
+
+### The Deadmines (map 36), Normal
+
+#### Mine Bunny Drunken Haze
+- **Found:** a Mine Bunny (48338, 48351) left you fully drunk after the fight, with no debuff and
+  nothing in `.list auras`. Her SmartAI casts Drunken Haze (91032) on her target every 7 to 10
+  seconds. Besides its 10-second debuff (50% slower movement, 30% slower attacks and casts), the
+  spell has an Inebriate effect that sets your character's drunk level to 100. That level is
+  stored on the character, not as an aura, and only drops by 1 every 9 seconds, so it lasted about
+  15 minutes. `.modify drunk 0` clears it.
+- **Changed:**
+  - `boss_vanessa_vancleef.cpp`: new spell script `spell_dm_drunken_haze` skips the Inebriate
+    effect and leaves the rest of the spell alone.
+  - `2026_10_12_00_deadmines_mine_bunny_drunken_haze.sql` adds one `spell_script_names` row:
+    91032 -> `spell_dm_drunken_haze`. Nothing was bound to 91032 before.
+- **Not changed:** the being stuck in combat and unable to log out wasn't reproduced. With a live
+  Mine Bunny still on you, that is normal combat. If it happens with nothing alive near you,
+  `.combatstop` clears it.
+- **Status:** not tested in game yet.
+
+#### To pick up this fix
+```
+cd ~/bfa/source
+git checkout -- .
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
+git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
+git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
+cmake --build build -j"$(nproc)" && cmake --build build --target install
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_12_00_deadmines_mine_bunny_drunken_haze.sql
+```
+Then restart `worldserver`.
+
 ## 2026-10-11
 
 ### The Deadmines (map 36), Normal

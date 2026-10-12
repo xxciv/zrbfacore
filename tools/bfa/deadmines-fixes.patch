@@ -324,7 +324,7 @@ index 909dede..26e0a28 100644
                      case EVENT_FINISH:
                          events.ScheduleEvent(EVENT_OAFQUARD, 17000);
 diff --git a/src/server/scripts/EasternKingdoms/Deadmines/boss_vanessa_vancleef.cpp b/src/server/scripts/EasternKingdoms/Deadmines/boss_vanessa_vancleef.cpp
-index 4350fa5..27585a8 100644
+index 4350fa5..994df49 100644
 --- a/src/server/scripts/EasternKingdoms/Deadmines/boss_vanessa_vancleef.cpp
 +++ b/src/server/scripts/EasternKingdoms/Deadmines/boss_vanessa_vancleef.cpp
 @@ -601,6 +601,9 @@ public:
@@ -409,6 +409,49 @@ index 4350fa5..27585a8 100644
              if (BloodboltTimer <= diff)
              {
                  DoCastVictim(SPELL_BLOODBOLT);
+@@ -2041,6 +2062,36 @@ public:
+     };
+ };
+ 
++// 91032 - Drunken Haze (Mine Bunny)
++// The 10 s snare and slow stay. Its Inebriate effect set the player's drunk
++// value to 100, which is stored on the character and only sobers by 1 every
++// 9 s, so the player stayed smashed for about 15 minutes after the fight.
++class spell_dm_drunken_haze : public SpellScriptLoader
++{
++public:
++    spell_dm_drunken_haze() : SpellScriptLoader("spell_dm_drunken_haze") { }
++
++    class spell_dm_drunken_haze_SpellScript : public SpellScript
++    {
++        PrepareSpellScript(spell_dm_drunken_haze_SpellScript);
++
++        void PreventInebriate(SpellEffIndex effIndex)
++        {
++            PreventHitDefaultEffect(effIndex);
++        }
++
++        void Register() override
++        {
++            OnEffectHitTarget += SpellEffectFn(spell_dm_drunken_haze_SpellScript::PreventInebriate, EFFECT_ALL, SPELL_EFFECT_INEBRIATE);
++        }
++    };
++
++    SpellScript* GetSpellScript() const override
++    {
++        return new spell_dm_drunken_haze_SpellScript();
++    }
++};
++
+ void AddSC_boss_vanessa_vancleef()
+ {
+     new boss_vanessa_vancleef();
+@@ -2065,4 +2116,5 @@ void AddSC_boss_vanessa_vancleef()
+     new npc_ogre_henchman();
+     new npc_lightning_orbs();
+     new npc_vanessa_anchor_bunny();
++    new spell_dm_drunken_haze();
+ }
 diff --git a/src/server/scripts/EasternKingdoms/Deadmines/instance_deadmines.cpp b/src/server/scripts/EasternKingdoms/Deadmines/instance_deadmines.cpp
 index 90d70d1..0441a81 100644
 --- a/src/server/scripts/EasternKingdoms/Deadmines/instance_deadmines.cpp
