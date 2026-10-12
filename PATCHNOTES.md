@@ -54,6 +54,27 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### The Deadmines (map 36), Normal
 
+#### Foe Reaper never woke, Defias Reapers vanished
+- **Found** (in game): burnt-out Defias Reapers disappeared, the player stayed in combat, and Foe
+  Reaper never powered up, so he couldn't be attacked. The Defias Watchers stayed. A burnt-out
+  mech kept 15 health, and `DamageTaken` ignored all damage once it was burnt out, so poisons and
+  DoTs already on it kept ticking and killed it. The Reapers are summoned with a 10-second corpse
+  despawn, so their corpses vanished. The Watchers are normal spawns, so theirs stayed. A mech that
+  died while still casting Energize never reached Foe Reaper. He only checked whether to wake when an
+  Energize landed, so he slept for good.
+- **Changed** in `boss_foe_reaper_5000.cpp`:
+  - `npc_defias_watcher::DamageTaken`: a burnt-out mech now takes no damage at all.
+  - `npc_defias_watcher::Energizing`: on burning out, the mech drops every periodic damage aura on it
+    (`SPELL_AURA_PERIODIC_DAMAGE`, `_DAMAGE_PERCENT`, `PERIODIC_LEECH`). Energize is now cast as
+    triggered, so it lands at once and can't be interrupted.
+  - `boss_foe_reaper_5000AI::UpdateAI`: while he is asleep, he checks every second whether any
+    hostile Reaper or Watcher is still alive within 60 yards. If none is, he wakes up, even without a
+    last Energize.
+- **Not confirmed:** what held the combat. It most likely came from the mechs dying mid-burn. If you
+  are stuck in combat again, run `.debug combat` with nothing targeted. It lists every creature you
+  are in combat with. Then `.combatstop` clears it.
+- **Status:** not tested in game yet.
+
 #### Mine Bunny Drunken Haze
 - **Found:** a Mine Bunny (48338, 48351) left you fully drunk after the fight, with no debuff and
   nothing in `.list auras`. Her SmartAI casts Drunken Haze (91032) on her target every 7 to 10
