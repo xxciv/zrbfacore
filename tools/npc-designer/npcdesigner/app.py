@@ -260,7 +260,9 @@ class MainWindow(QMainWindow):
         for label, key, fn in (("&New", QKeySequence.New, self._new), ("&Open…", QKeySequence.Open, self._open),
                                ("&Save", QKeySequence.Save, self._save),
                                ("Save &as…", QKeySequence.SaveAs, lambda: self._save(True)),
-                               ("&Export SQL…", "Ctrl+E", self._export), ("&Quit", QKeySequence.Quit, self.close)):
+                               ("&Export SQL…", "Ctrl+E", self._export),
+                               ("&Apply to database…", "Ctrl+Shift+E", self._apply_db),
+                               ("&Quit", QKeySequence.Quit, self.close)):
             a = QAction(label, self)
             a.setShortcut(key)
             a.triggered.connect(fn)
@@ -275,6 +277,9 @@ class MainWindow(QMainWindow):
         m = self.menuBar().addMenu("&Database")
         a = QAction("Connect to world database…", self)
         a.triggered.connect(self._connect_db)
+        m.addAction(a)
+        a = QAction("Apply this NPC to the database…", self)
+        a.triggered.connect(self._apply_db)
         m.addAction(a)
 
     # ------------------------------------------------------------------ npc <-> form
@@ -585,6 +590,69 @@ class MainWindow(QMainWindow):
         Path(path).write_text(export_sql(npc, names))
         self.settings.setValue("dir", str(Path(path).parent))
         self._show_import_commands(path, t.database, npc.entry)
+
+    def _apply_db(self):
+        """Run the export straight on the connected world database."""
+        npc = self._read_form()
+        problems = validate(npc)
+        if problems:
+            QMessageBox.warning(self, "Fix these first", "\n".join(problems))
+            return
+        if not self._ensure_db():
+            return
+        t = TARGETS[npc.target]
+        try:
+            wrong = self.db.check_target(npc.target, "OverrideGoldCost" in export_sql(npc))
+            existing = self.db.entry_name(npc.entry)
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.critical(self, "Query failed", str(e))
+            return
+        if wrong:
+            QMessageBox.critical(self, "Wrong database?", wrong)
+            return
+        what = (f"Entry {npc.entry} already exists as \"{existing}\" and will be replaced"
+                if existing is not None else f"Entry {npc.entry} is new")
+        spawns = (f"\n\nAll spawns of entry {npc.entry} are replaced by the {len(npc.spawns)} listed."
+                  if npc.spawns else "")
+        if QMessageBox.question(
+                self, "Apply to database",
+                f"{what} in {self.db.database} on {self.db.host}.{spawns}\n\nApply now?") != QMessageBox.Yes:
+            return
+        names = {i.item: (self.catalog.get(i.item).name if self.catalog.get(i.item) else "") for i in npc.items}
+        try:
+            self.db.run_script(export_sql(npc, names))
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.critical(self, "Apply failed", f"{type(e).__name__}: {e}")
+            return
+        self._show_applied(existing is not None, npc.entry, t)
+
+    def _show_applied(self, existed, entry, t):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Applied")
+        dlg.setMinimumWidth(560)
+        v = QVBoxLayout(dlg)
+        if existed:
+            v.addWidget(QLabel("Saved in the database. For item and price changes, type this in game "
+                               "(name, model or level changes need a worldserver restart):"))
+            lines = [".reload npc_vendor"]
+        else:
+            v.addWidget(QLabel("Saved in the database. Restart worldserver (new NPCs load at startup), "
+                               "then in game where the NPC should stand:"))
+            lines = [f".npc add {entry}"]
+        for text in lines:
+            row = QHBoxLayout()
+            field = QLineEdit(text)
+            field.setReadOnly(True)
+            field.setFont(QFont("Monospace"))
+            row.addWidget(field, 1)
+            copy = QPushButton("Copy")
+            copy.clicked.connect(lambda _=False, f=field: QApplication.clipboard().setText(f.text()))
+            row.addWidget(copy)
+            v.addLayout(row)
+        bb = QDialogButtonBox(QDialogButtonBox.Close)
+        bb.rejected.connect(dlg.reject)
+        v.addWidget(bb)
+        dlg.exec()
 
     def _show_import_commands(self, path, database, entry):
         """After an export: the commands to get it into the game, each with a Copy button."""

@@ -67,13 +67,27 @@ Without item data you can still add items by ID; they just show without names.
 
 ### Database connection (optional)
 
-**Database > Connect to world database…** enables **Next free** (first unused entry from 900000), **Copy
-from NPC…** and the WotLK item list. MySQL on the server only listens on localhost by default; either run
-the designer where MySQL is, or allow a LAN user for it. The password is never saved.
+**Database > Connect to world database…** enables:
+
+- **File > Apply to database…** (Ctrl+Shift+E): runs the export straight on the world database, no file to
+  copy. It first checks the database matches the target version (and, for Pandaria prices, that the
+  vendor-price column exists), and says whether the entry is new or replaces an existing NPC.
+- **Next free** (first unused entry from 900000), **Copy from NPC…** and the WotLK item list.
+
+MySQL on the server only listens on the server itself, so connect through an SSH tunnel from your PC
+(works in fish too; leave it running while you use the designer):
+
+```sh
+ssh -N -L 3307:127.0.0.1:3306 you@192.168.x.x
+```
+
+Then connect to host `127.0.0.1`, port `3307`, user `root` and your MySQL root password. The password is
+never saved.
 
 ## Import and spawn
 
-Copy the SQL to the server, import it, restart worldserver, then spawn it in game:
+With **Apply to database** the NPC is already in the database; skip to restarting worldserver. Otherwise copy
+the SQL to the server, import it, restart worldserver, then spawn it in game:
 
 ```sh
 scp ~/900000_gilda_copperpot_bfa.sql you@192.168.x.x:

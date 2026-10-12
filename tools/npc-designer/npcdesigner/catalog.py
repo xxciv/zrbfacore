@@ -83,14 +83,39 @@ class WorldDb:
 
     def __init__(self, host: str, port: int, user: str, password: str, database: str):
         import pymysql  # imported here so the designer runs without it
+        from pymysql.constants import CLIENT
         self.host, self.database = host, database
         self.conn = pymysql.connect(host=host, port=port, user=user, password=password,
-                                    database=database, charset="utf8mb4", connect_timeout=5)
+                                    database=database, charset="utf8mb4", connect_timeout=5,
+                                    client_flag=CLIENT.MULTI_STATEMENTS)
 
     def query(self, sql: str, args=()):
         with self.conn.cursor() as cur:
             cur.execute(sql, args)
             return cur.fetchall()
+
+    def has_column(self, table: str, column: str) -> bool:
+        return bool(self.query(f"SHOW COLUMNS FROM `{table}` LIKE %s", (column,)))
+
+    def check_target(self, target: str, needs_price_column: bool) -> Optional[str]:
+        """Why this database doesn't look like the target's world DB, or None if it does."""
+        t = TARGETS[target]
+        if not self.query("SHOW TABLES LIKE 'creature_template'"):
+            return f"{self.database} has no creature_template table; is it the world database?"
+        if bool(t.model_columns) != self.has_column("creature_template", "modelid1"):
+            return f"{self.database} doesn't look like a {t.label} world database (model columns differ)."
+        if needs_price_column and not self.has_column("npc_vendor", "OverrideGoldCost"):
+            return (f"{self.database}.npc_vendor has no OverrideGoldCost column. On Pandaria apply "
+                    "tools/pandaria/vendor-price.patch and its SQL first, or untick that option.")
+        return None
+
+    def run_script(self, sql: str):
+        """Run a whole exported .sql file (several statements) and commit."""
+        with self.conn.cursor() as cur:
+            cur.execute(sql)
+            while cur.nextset():
+                pass
+        self.conn.commit()
 
     def wotlk_items(self) -> Dict[int, ItemInfo]:
         rows = self.query("SELECT entry, name, Quality, BuyPrice, BuyCount FROM item_template")
