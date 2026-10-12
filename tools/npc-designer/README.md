@@ -11,6 +11,9 @@ which you spawn the NPC with `.npc add`.
 | Mists of Pandaria 5.4.8 | pandaria_5.4.8 | `world` | with [`vendor-price.patch`](https://github.com/xxciv/zrpandaria548/blob/main/docs/pandaria-debian13.md#14-per-vendor-item-prices-optional-for-the-npc-designer) |
 | Battle for Azeroth 8.3.7 | BFA-HavenCore | `bfa_world` | yes (`npc_vendor.OverrideGoldCost`) |
 
+Status: confirmed working on BFA by Four on 2026-10-12 (item data from a real 8.3.7 `ItemSparse.db2`,
+SQL export and Apply to database). The Pandaria and WotLK exports are tested against their schemas only.
+
 The table and column names come from each core's own loader queries and base schema. Exports were imported
 into the BFA dump's schema, the pandaria_5.4.8 base schema and TrinityCore 3.3.5's current schema on MySQL 8
 in strict mode, twice each (re-importing replaces the NPC instead of duplicating it). AzerothCore keeps
