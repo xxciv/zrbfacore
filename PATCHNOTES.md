@@ -54,6 +54,32 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### The Deadmines (map 36), Normal
 
+#### Heroic Vanessa event spawned on Normal
+- **Found** (in game): a ghostly human Ripsnarl stood outside the door to the ship, and `.debug combat`
+  showed the player stuck in combat with five Vanessa VanCleefs, also inside the Foe Reaper room.
+  Vanessa's encounter and her nightmare event are Heroic-only, but 21 of their spawns had
+  `spawnDifficulties` '1,2', so they spawned on Normal too. The nightmare Vanessas (49671) pull every
+  player nearby into combat with themselves, which blocked logging out.
+- **Changed:** `2026_10_12_01_deadmines_heroic_vanessa_event_spawns.sql` sets `spawnDifficulties` from
+  '1,2' to '2' (Heroic only) for these spawns, the same as the event's lightning spawns already had:
+
+  | Entry | Creature | Spawns (guid) |
+  |---|---|---|
+  | 49429 | Vanessa VanCleef (ship intro) | 326855 |
+  | 49454 | Vanessa's Trap Bunny | 326857 |
+  | 49457 | Steam Valve | 326856, 326858, 326859, 326860 |
+  | 49552 | Vanessa's Rope Anchor | 326765, 326766, 326767, 326768, 326769 |
+  | 49670 | Glubtok (nightmare) | 326861, 326904 |
+  | 49671 | Vanessa VanCleef (nightmare) | 326862, 327028, 327095 |
+  | 49674 | Helix Gearbreaker (nightmare) | 326922 |
+  | 49681 | Foe Reaper 5000 (nightmare) | 327029, 327093 |
+  | 49682 | Ripsnarl (nightmare) | 327094 |
+  | 51624 | Vanessa Anchor Bunny JMF | 326763 |
+
+  The two Vanessas without a spawn ID in `.debug combat` were summoned by these and go with them.
+- **Status:** not tested in game yet. This also probably explains the "stuck in combat" from the Foe
+  Reaper room below and from the Mine Bunny.
+
 #### Foe Reaper never woke, Defias Reapers vanished
 - **Found** (in game): burnt-out Defias Reapers disappeared, the player stayed in combat, and Foe
   Reaper never powered up, so he couldn't be attacked. The Defias Watchers stayed. A burnt-out
@@ -104,6 +130,7 @@ git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_12_00_deadmines_mine_bunny_drunken_haze.sql
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_12_01_deadmines_heroic_vanessa_event_spawns.sql
 grep -q '^DungeonScale.Enable' ~/bfa/server/etc/worldserver.conf || sed -n '/^# DUNGEON SCALE$/,$p' ~/bfa/server/etc/worldserver.conf.dist >> ~/bfa/server/etc/worldserver.conf
 sed -i 's/^\(Solocraft\.Enable *= *\)1/\10/' ~/bfa/server/etc/worldserver.conf
 ```

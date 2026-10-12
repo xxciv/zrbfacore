@@ -447,6 +447,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_10_11_03_deadmines_helix_sticky_bomb.sql` | Helix never throwing his Sticky Bombs: his Throw Bomb spell was bound to a Winter Veil quest script that cancels the cast |
 | `2026_10_11_04_deadmines_boss_loot.sql` | The Deadmines bosses often dropping only gold on Normal: each item rolled on its own at 9-19%. Now each boss drops one of its usual items every kill |
 | `2026_10_12_00_deadmines_mine_bunny_drunken_haze.sql` | The Mine Bunnies in The Deadmines leaving players fully drunk for about 15 minutes, with no debuff shown, after one Drunken Haze. Binds the spell script from `deadmines-fixes.patch` that keeps the 10-second snare and slow |
+| `2026_10_12_01_deadmines_heroic_vanessa_event_spawns.sql` | Vanessa VanCleef's Heroic-only nightmare event spawning on Normal too: its Vanessas kept players in combat (no logout) and a ghostly Ripsnarl stood outside the ship door. Its 21 spawns become Heroic-only |
 
 ## 11. Status
 
