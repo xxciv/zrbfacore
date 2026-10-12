@@ -5,6 +5,21 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-12
 
+### NPC Designer, vendor module
+
+`tools/npc-designer/`, all new (PR #9, merged).
+
+- What: a PySide6 desktop app for designing vendor NPCs for BFA 8.3.7, Pandaria 5.4.8 and WotLK 3.3.5: name, title,
+  display IDs, levels, faction, vendor type, repair, held items, items for sale with per-vendor prices, stock and
+  restock, a drawn merchant-window preview, SQL export, and Apply to database (runs the export on the connected
+  world DB after checking it matches the target).
+- Writes: `creature_template` (npcflag 128 + repair 4096 / gossip 1 / tracking flags), `creature_template_model`
+  (BFA) or `modelid1-4`, optional `creature_equip_template`, `npc_vendor` (BFA `OverrideGoldCost`, -1 = item's own
+  price), optional `creature` spawns. Each table's old rows for the entry are deleted first.
+- Item names/prices: BFA `dbc/enUS/ItemSparse.db2` (sparse WDC3), Pandaria `Item-sparse.db2` (WDB2), WotLK world DB.
+- Status: confirmed working on BFA by Four (117,741 items loaded, export and apply). Pandaria/WotLK schema-tested only.
+- To pick up: `cd ~/zrbfacore; git pull; ./tools/npc-designer/npc-designer` (needs `sudo dnf install python3-pyside6 python3-pymysql`).
+
 ### DungeonScale: dungeon mobs scale to your group
 
 - **Found:** a pack of one Defias Enforcer and two Defias Shadowguards after Foe Reaper killed a level 17
