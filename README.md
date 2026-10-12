@@ -22,6 +22,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`client/ZRProfessions`](client/ZRProfessions/README.md): a client addon that lets trainers teach up to 4
   primary professions (the 8.3.7 client UI stops at 2 even when the server allows more) and lists them all
   with `/profs`.
+- [`tools/npc-designer`](tools/npc-designer/README.md): a desktop app for designing vendor NPCs (items,
+  prices, model, faction) with a merchant window preview, exporting SQL for BFA, Pandaria 5.4.8 or WotLK 3.3.5.
 
 Status: verified end to end on a Debian 13 VM (build, databases, client data, login and entering the
 world from another machine), 2026-10-09.
