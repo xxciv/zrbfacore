@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import re
+import shlex
 import sys
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, Qt, QTimer
-from PySide6.QtGui import QAction, QColor, QKeySequence
+from PySide6.QtGui import QAction, QColor, QFont, QKeySequence
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComboBox, QDialog,
                                QDialogButtonBox, QDoubleSpinBox, QFileDialog, QFormLayout, QGroupBox,
                                QHBoxLayout, QHeaderView, QInputDialog, QLabel, QLineEdit, QListWidget,
@@ -583,10 +584,59 @@ class MainWindow(QMainWindow):
         names = {i.item: (self.catalog.get(i.item).name if self.catalog.get(i.item) else "") for i in npc.items}
         Path(path).write_text(export_sql(npc, names))
         self.settings.setValue("dir", str(Path(path).parent))
-        QMessageBox.information(
-            self, "Exported",
-            f"Wrote {path}\n\nOn the server:\n  mysql -u root -p {t.database} < {Path(path).name}\n"
-            f"then restart worldserver, and in game:\n  .npc add {npc.entry}")
+        self._show_import_commands(path, t.database, npc.entry)
+
+    def _show_import_commands(self, path, database, entry):
+        """After an export: the commands to get it into the game, each with a Copy button."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Exported")
+        dlg.setMinimumWidth(620)
+        v = QVBoxLayout(dlg)
+        wrote = QLabel(f"Wrote {path}")
+        wrote.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        v.addWidget(wrote)
+
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Server login:"))
+        target = QLineEdit(self.settings.value("ssh/target", "you@192.168.x.x"))
+        target.setToolTip("user@address of the server, used in the scp line below (remembered)")
+        row.addWidget(target, 1)
+        v.addLayout(row)
+
+        name = Path(path).name
+        steps = [
+            ("1. Copy the file to the server (on this PC):", lambda: f"scp {shlex.quote(path)} {target.text()}:"),
+            ("2. Import it (on the server):", lambda: f"mysql -u root -p {database} < ~/{shlex.quote(name)}"),
+            ("3. Restart worldserver, then in game where the NPC should stand:", lambda: f".npc add {entry}"),
+        ]
+        fields = []
+        for label, make in steps:
+            v.addWidget(QLabel(label))
+            row = QHBoxLayout()
+            field = QLineEdit(make())
+            field.setReadOnly(True)
+            field.setFont(QFont("Monospace"))
+            row.addWidget(field, 1)
+            copy = QPushButton("Copy")
+            copy.clicked.connect(lambda _=False, f=field: (QApplication.clipboard().setText(f.text()),
+                                                            self.status.showMessage("Copied", 2000)))
+            row.addWidget(copy)
+            v.addLayout(row)
+            fields.append((field, make))
+
+        def refresh():
+            for field, make in fields:
+                field.setText(make())
+            self.settings.setValue("ssh/target", target.text())
+        target.textChanged.connect(refresh)
+
+        bb = QDialogButtonBox(QDialogButtonBox.Close)
+        copy_all = bb.addButton("Copy all", QDialogButtonBox.ActionRole)
+        copy_all.clicked.connect(lambda: QApplication.clipboard().setText(
+            "\n".join(f.text() for f, _ in fields)))
+        bb.rejected.connect(dlg.reject)
+        v.addWidget(bb)
+        dlg.exec()
 
     def _dir(self):
         return self.settings.value("dir", str(Path.home()))
