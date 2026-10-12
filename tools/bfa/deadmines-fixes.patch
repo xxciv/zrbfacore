@@ -58,7 +58,7 @@ index 0da7ee6..f084796 100644
                  }
              }
 diff --git a/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp b/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
-index be6fb03..fc7f428 100644
+index be6fb03..b9de40b 100644
 --- a/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
 +++ b/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
 @@ -85,6 +85,7 @@ enum Events
@@ -69,7 +69,19 @@ index be6fb03..fc7f428 100644
  };
  
  enum eSays
-@@ -133,12 +134,12 @@ public:
+@@ -101,6 +102,11 @@ enum eSays
+ 
+ #define MONSTER_START "A stray jolt from the Foe Reaper has distrupted the foundry controls!"
+ #define MONSTER_SLAG "The monster slag begins to bubble furiously!"
++#define MONSTER_POWER_DOWN "Foe Reaper 5000 powers down."
++
++// After waking he waits this long for someone to pull him before he goes
++// back to sleep and the Defias Reapers come back.
++uint32 const FOE_REAPER_WAIT_FOR_PULL = 5 * MINUTE * IN_MILLISECONDS;
+ 
+ 
+ Position const HarvestSpawn[] =
+@@ -133,12 +139,14 @@ public:
              {
                  BossAI::InitializeAI();
                  me->RemoveAura(SPELL_OFF_LINE);
@@ -80,10 +92,12 @@ index be6fb03..fc7f428 100644
          uint32 eventId;
          uint32 Step;
 +        uint32 _wakeCheckTimer = 1000;
++        bool _waitingForPull = false;
++        uint32 _sleepTimer = 0;
          ObjectGuid prototypeGUID;
  
          bool Below;
-@@ -151,10 +152,17 @@ public:
+@@ -151,10 +159,19 @@ public:
  
              _Reset();
              me->SetReactState(REACT_PASSIVE);
@@ -98,10 +112,20 @@ index be6fb03..fc7f428 100644
              me->SetPowerType(POWER_ENERGY);
              Step = 0;
 +            _wakeCheckTimer = 1000;
++            _waitingForPull = false;
++            _sleepTimer = 0;
              Below = false;
              _notQuiteThereOfferedTo.clear();
  
-@@ -297,6 +305,19 @@ public:
+@@ -238,6 +255,7 @@ public:
+ 
+         void JustEngagedWith(Unit* /*who*/) override
+         {
++            _waitingForPull = false;
+             _JustEngagedWith();
+             events.ScheduleEvent(EVENT_REAPER_STRIKE, 10000);
+             events.ScheduleEvent(EVENT_OVERDRIVE, 11000);
+@@ -297,6 +315,19 @@ public:
              instance->SetBossState(DATA_FOEREAPER, FAIL);
          }
  
@@ -121,7 +145,7 @@ index be6fb03..fc7f428 100644
          void DespawnOldWatchers()
          {
              std::list<Creature*> reapers;
-@@ -327,11 +348,15 @@ public:
+@@ -327,11 +358,15 @@ public:
  
              if (spell->Id == SPELL_ENERGIZE)
              {
@@ -139,7 +163,7 @@ index be6fb03..fc7f428 100644
              }
          }
  
-@@ -363,7 +388,27 @@ public:
+@@ -363,7 +398,39 @@ public:
              if (!me)
                  return;
  
@@ -165,10 +189,22 @@ index be6fb03..fc7f428 100644
 +                else
 +                    _wakeCheckTimer -= uiDiff;
 +            }
++
++            // Awake but nobody has pulled him yet: wait, then go back to sleep.
++            if (_waitingForPull && !me->IsEngaged())
++            {
++                if (_sleepTimer <= uiDiff)
++                {
++                    me->TextEmote(MONSTER_POWER_DOWN, 0, true);
++                    Reset();
++                    return;
++                }
++                _sleepTimer -= uiDiff;
++            }
  
              events.Update(uiDiff);
  
-@@ -381,27 +426,29 @@ public:
+@@ -381,27 +448,36 @@ public:
                      case EVENT_START_2:
                          me->TextEmote(MONSTER_SLAG, 0, true);
                          me->SetHealth(me->GetMaxHealth());
@@ -180,7 +216,14 @@ index be6fb03..fc7f428 100644
                          me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
                          me->RemoveUnitFlag(UNIT_FLAG_STUNNED);
 +                        me->SetReactState(REACT_AGGRESSIVE);
-+                        DoZoneInCombat();
++                        // Wait to be pulled instead of DoZoneInCombat(). That
++                        // put everyone in the instance in combat at once; a
++                        // stealthed player was not a valid target, so he found
++                        // nobody, evaded, and respawned the Defias Reapers.
++                        // Waiting also lets a solo player recover first.
++                        // JustEngagedWith() still pulls the whole group.
++                        _waitingForPull = true;
++                        _sleepTimer = FOE_REAPER_WAIT_FOR_PULL;
                          me->RemoveAurasDueToSpell(SPELL_ENERGIZED);
                          events.ScheduleEvent(EVENT_SRO, 1000);
                          break;
@@ -206,7 +249,7 @@ index be6fb03..fc7f428 100644
                          break;
  
                      case EVENT_OVERDRIVE:
-@@ -409,20 +456,22 @@ public:
+@@ -409,20 +485,22 @@ public:
                              return;
  
                          me->TextEmote("|TInterface\\Icons\\ability_whirlwind.blp:20|tFoe Reaper 5000 begins to activate |cFFFF0000|Hspell:91716|h[Overdrive]|h|r!", 0, true);
@@ -239,7 +282,7 @@ index be6fb03..fc7f428 100644
                          break;
  
                      case EVENT_HARVEST:
-@@ -477,6 +526,9 @@ public:
+@@ -477,6 +555,9 @@ public:
                      Below = true;
                  }
              }
@@ -249,7 +292,7 @@ index be6fb03..fc7f428 100644
          }
      };
  };
-@@ -535,23 +587,41 @@ public:
+@@ -535,23 +616,41 @@ public:
              Status = true;
              me->SetHealth(15);
              me->setRegeneratingHealth(false);
@@ -279,16 +322,16 @@ index be6fb03..fc7f428 100644
          {
 -            if (!me || damage <= 0 || Status == true)
 +            if (!me || damage <= 0)
-                 return;
- 
--            if (me->GetHealth() - damage <= me->GetMaxHealth()*0.10)
++                return;
++
 +            // A burnt-out mech takes no more damage, so nothing can kill it.
 +            if (Status == true)
 +            {
 +                damage = 0;
-+                return;
+                 return;
 +            }
-+
+ 
+-            if (me->GetHealth() - damage <= me->GetMaxHealth()*0.10)
 +            // Also catch hits bigger than the remaining health: the subtraction
 +            // is unsigned, and a reaper that really dies can't energize Foe Reaper.
 +            if (damage >= me->GetHealth() || me->GetHealth() - damage <= me->GetMaxHealth()*0.10)

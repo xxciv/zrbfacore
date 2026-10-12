@@ -96,10 +96,25 @@ to do to pick it up (rebuild, restart, run SQL).
   - `boss_foe_reaper_5000AI::UpdateAI`: while he is asleep, he checks every second whether any
     hostile Reaper or Watcher is still alive within 60 yards. If none is, he wakes up, even without a
     last Energize.
-- **Not confirmed:** what held the combat. It most likely came from the mechs dying mid-burn. If you
-  are stuck in combat again, run `.debug combat` with nothing targeted. It lists every creature you
-  are in combat with. Then `.combatstop` clears it.
-- **Status:** not tested in game yet.
+- **Combat:** the combat that held you came from the heroic Vanessa event spawns (see above), not
+  from the mechs.
+- **Status:** confirmed in game 2026-10-12. All mechs stayed disabled and Foe Reaper powered up.
+
+#### Foe Reaper reset right after waking on a stealthed player
+- **Found** (in game, rogue in stealth): Foe Reaper powered up, said "Target destroyed", summoned four
+  new Defias Reapers and went back to sleep a moment later. On waking he called `DoZoneInCombat()`,
+  which puts every player in the instance into combat with him. A stealthed player he can't see is
+  not a valid target, so he had nobody to attack, evaded and reset. Even without stealth, a solo
+  player was pulled the instant the last mech went down, with no time to recover.
+- **Changed** in `boss_foe_reaper_5000.cpp`, `boss_foe_reaper_5000AI`:
+  - `EVENT_START_2` (powering up) no longer calls `DoZoneInCombat()`. He becomes attackable and
+    aggressive and waits to be pulled: attack him, or walk into his aggro range. Once pulled,
+    `JustEngagedWith()` still puts the whole group in combat as before.
+  - New `_waitingForPull` / `_sleepTimer`, reset in `Reset()`. If nobody pulls him within 5 minutes
+    (`FOE_REAPER_WAIT_FOR_PULL`), he emotes "Foe Reaper 5000 powers down." and resets: asleep and
+    untouchable again, with four new Defias Reapers. The Defias Watchers stay disabled, as before.
+- **Not changed:** dying or vanishing during the fight still resets him as before.
+- **Status:** compiles; not tested in game yet.
 
 #### Mine Bunny Drunken Haze
 - **Found:** a Mine Bunny (48338, 48351) left you fully drunk after the fight, with no debuff and
