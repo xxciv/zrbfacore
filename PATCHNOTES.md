@@ -1,0 +1,354 @@
+# Patch notes
+
+Newest first. Each entry says what changed, the exact values and files it touches, and what you need
+to do to pick it up (rebuild, restart, run SQL).
+
+## 2026-10-12
+
+### NPC Designer, vendor module
+
+`tools/npc-designer/`, all new (PR #9, merged).
+
+- What: a PySide6 desktop app for designing vendor NPCs for BFA 8.3.7, Pandaria 5.4.8 and WotLK 3.3.5: name, title,
+  display IDs, levels, faction, vendor type, repair, held items, items for sale with per-vendor prices, stock and
+  restock, a drawn merchant-window preview, SQL export, and Apply to database (runs the export on the connected
+  world DB after checking it matches the target).
+- Writes: `creature_template` (npcflag 128 + repair 4096 / gossip 1 / tracking flags), `creature_template_model`
+  (BFA) or `modelid1-4`, optional `creature_equip_template`, `npc_vendor` (BFA `OverrideGoldCost`, -1 = item's own
+  price), optional `creature` spawns. Each table's old rows for the entry are deleted first.
+- Item names/prices: BFA `dbc/enUS/ItemSparse.db2` (sparse WDC3), Pandaria `Item-sparse.db2` (WDB2), WotLK world DB.
+- Status: confirmed working on BFA by Four (117,741 items loaded, export and apply). Pandaria/WotLK schema-tested only.
+- To pick up: `cd ~/zrbfacore; git pull; ./tools/npc-designer/npc-designer` (needs `sudo dnf install python3-pyside6 python3-pymysql`).
+
+### DungeonScale: dungeon mobs scale to your group
+
+- **Found:** a pack of one Defias Enforcer and two Defias Shadowguards after Foe Reaper killed a level 17
+  rogue in about 20 hits (235 to 508 each). Neither mob is out of line for the dungeon: the Enforcer
+  has `DamageModifier` 15, like the ogres, Goblin Overseers and Defias Pirates. The Shadowguard has
+  17.9, and the Squallshapers, Blood Wizards and Envokers have 20.8. Three elites built for a group of
+  five were all hitting one player. HavenCore's Solocraft only raises the player's stats. It has no way
+  to lower the damage you take.
+- **Changed:** new `tools/bfa/dungeon-scale.patch`, a port of ZRPandaria's DungeonScale:
+  - 5-man dungeon creatures get a share of their health and damage that depends on how many players
+    are inside:
+
+    | Rank | Health solo | Damage solo |
+    |---|---|---|
+    | Normal and elite trash | 30% | 30% |
+    | Bosses | 35% | 35% |
+    | Final boss | 40% | 35% |
+
+    Both rise in a straight line to 100% at 5 players. For trash: 1 player 30%, 2 players 47.5%,
+    3 players 65%, 4 players 82.5%, 5 players 100%.
+  - A boss is any creature in `instance_encounters`. The final boss is the one with
+    `lastEncounterDungeon` set: "Captain" Cookie on Normal and Vanessa VanCleef on Heroic. Adds a boss
+    summons are scaled like the boss.
+  - No single hit or DoT tick from a scaled creature takes more than 35% of your max health. The
+    combat log still shows the uncapped number.
+  - When someone joins or leaves, creatures out of combat are rescaled within a second. Creatures in
+    combat keep their values until the fight ends for them.
+  - Raids, scenarios and Mythic+ are not scaled unless turned on in the settings.
+  - GM commands: `.dungeonscale info` and `.dungeonscale creature`.
+  - Left out from the ZRPandaria version: the honor per kill.
+- **Files:**
+  - `ScriptMgr.h` / `ScriptMgr.cpp`: new `AllCreatureScript` hook type with `OnCreatureAddWorld`,
+    `OnCreatureRemoveWorld` and `OnCreatureSelectLevel`.
+  - `Creature.cpp`: `AddToWorld()`, `RemoveFromWorld()` and `UpdateLevelDependantStats()` call those
+    hooks.
+  - `solocraft.cpp`: the DungeonScale script, added at the end of the file so the patch creates no new
+    files and `git checkout -- .` still removes it cleanly.
+  - `custom_script_loader.cpp`: registers it.
+  - `worldserver.conf.dist`: a new `DUNGEON SCALE` block at the end, with every setting explained.
+- **Settings to change:** copy the `DungeonScale.*` block into `worldserver.conf` and set
+  `Solocraft.Enable = 0`. Solocraft's +400% stats on top of 30% mobs would make dungeons trivial. The
+  commands below do both.
+- **Watch for:** Helix's `DamageModifier` is still 12 from `2026_10_11_01`. Scaled to 35%, he hits for
+  about 21 instead of 60. If he's now too soft, his stock 57.5 scaled to 35% comes out at about 20, the
+  value ZRPandaria used. The revert line is in that SQL file.
+- **Status:** not tested in game yet.
+
+### The Deadmines (map 36), Normal
+
+Merged to `main` with PR #8 on 2026-10-12, together with the 2026-10-11 Deadmines fixes below.
+Still open, not fixed: a few old vanilla NPCs in the normal phase (Defias Miner 598 ×1, Defias Pirate
+657 ×3 near the ship, Squallshaper 1732 ×1), and heroic Cookie can leave up to three "A Note From
+Vanessa".
+
+#### Heroic Vanessa event spawned on Normal
+- **Found** (in game): a ghostly human Ripsnarl stood outside the door to the ship, and `.debug combat`
+  showed the player stuck in combat with five Vanessa VanCleefs, also inside the Foe Reaper room.
+  Vanessa's encounter and her nightmare event are Heroic-only, but 21 of their spawns had
+  `spawnDifficulties` '1,2', so they spawned on Normal too. The nightmare Vanessas (49671) pull every
+  player nearby into combat with themselves, which blocked logging out.
+- **Changed:** `2026_10_12_01_deadmines_heroic_vanessa_event_spawns.sql` sets `spawnDifficulties` from
+  '1,2' to '2' (Heroic only) for these spawns, the same as the event's lightning spawns already had:
+
+  | Entry | Creature | Spawns (guid) |
+  |---|---|---|
+  | 49429 | Vanessa VanCleef (ship intro) | 326855 |
+  | 49454 | Vanessa's Trap Bunny | 326857 |
+  | 49457 | Steam Valve | 326856, 326858, 326859, 326860 |
+  | 49552 | Vanessa's Rope Anchor | 326765, 326766, 326767, 326768, 326769 |
+  | 49670 | Glubtok (nightmare) | 326861, 326904 |
+  | 49671 | Vanessa VanCleef (nightmare) | 326862, 327028, 327095 |
+  | 49674 | Helix Gearbreaker (nightmare) | 326922 |
+  | 49681 | Foe Reaper 5000 (nightmare) | 327029, 327093 |
+  | 49682 | Ripsnarl (nightmare) | 327094 |
+  | 51624 | Vanessa Anchor Bunny JMF | 326763 |
+
+  The two Vanessas without a spawn ID in `.debug combat` were summoned by these and go with them.
+- **Status:** the cause is confirmed in game (`.debug combat` listed these Vanessas). The fix itself
+  is not tested in game yet. It also probably explains the "stuck in combat" from the Foe Reaper room
+  below and from the Mine Bunny.
+
+#### Foe Reaper never woke, Defias Reapers vanished
+- **Found** (in game): burnt-out Defias Reapers disappeared, the player stayed in combat, and Foe
+  Reaper never powered up, so he couldn't be attacked. The Defias Watchers stayed. A burnt-out
+  mech kept 15 health, and `DamageTaken` ignored all damage once it was burnt out, so poisons and
+  DoTs already on it kept ticking and killed it. The Reapers are summoned with a 10-second corpse
+  despawn, so their corpses vanished. The Watchers are normal spawns, so theirs stayed. A mech that
+  died while still casting Energize never reached Foe Reaper. He only checked whether to wake when an
+  Energize landed, so he slept for good.
+- **Changed** in `boss_foe_reaper_5000.cpp`:
+  - `npc_defias_watcher::DamageTaken`: a burnt-out mech now takes no damage at all.
+  - `npc_defias_watcher::Energizing`: on burning out, the mech drops every periodic damage aura on it
+    (`SPELL_AURA_PERIODIC_DAMAGE`, `_DAMAGE_PERCENT`, `PERIODIC_LEECH`). Energize is now cast as
+    triggered, so it lands at once and can't be interrupted.
+  - `boss_foe_reaper_5000AI::UpdateAI`: while he is asleep, he checks every second whether any
+    hostile Reaper or Watcher is still alive within 60 yards. If none is, he wakes up, even without a
+    last Energize.
+- **Combat:** the combat that held you came from the heroic Vanessa event spawns (see above), not
+  from the mechs.
+- **Status:** confirmed in game 2026-10-12. All mechs stayed disabled and Foe Reaper powered up.
+
+#### Foe Reaper reset right after waking on a stealthed player
+- **Found** (in game, rogue in stealth): Foe Reaper powered up, said "Target destroyed", summoned four
+  new Defias Reapers and went back to sleep a moment later. On waking he called `DoZoneInCombat()`,
+  which puts every player in the instance into combat with him. A stealthed player he can't see is
+  not a valid target, so he had nobody to attack, evaded and reset. Even without stealth, a solo
+  player was pulled the instant the last mech went down, with no time to recover.
+- **Changed** in `boss_foe_reaper_5000.cpp`, `boss_foe_reaper_5000AI`:
+  - `EVENT_START_2` (powering up) no longer calls `DoZoneInCombat()`. He becomes attackable and
+    aggressive and waits to be pulled: attack him, or walk into his aggro range. Once pulled,
+    `JustEngagedWith()` still puts the whole group in combat as before.
+  - New `_waitingForPull` / `_sleepTimer`, reset in `Reset()`. If nobody pulls him within 5 minutes
+    (`FOE_REAPER_WAIT_FOR_PULL`), he emotes "Foe Reaper 5000 powers down." and resets: asleep and
+    untouchable again, with four new Defias Reapers. The Defias Watchers stay disabled, as before.
+- **Not changed:** dying or vanishing during the fight still resets him as before.
+- **Status:** compiles; not tested in game yet.
+
+#### Mine Bunny Drunken Haze
+- **Found:** a Mine Bunny (48338, 48351) left you fully drunk after the fight, with no debuff and
+  nothing in `.list auras`. Her SmartAI casts Drunken Haze (91032) on her target every 7 to 10
+  seconds. Besides its 10-second debuff (50% slower movement, 30% slower attacks and casts), the
+  spell has an Inebriate effect that sets your character's drunk level to 100. That level is
+  stored on the character, not as an aura, and only drops by 1 every 9 seconds, so it lasted about
+  15 minutes. `.modify drunk 0` clears it.
+- **Changed:**
+  - `boss_vanessa_vancleef.cpp`: new spell script `spell_dm_drunken_haze` skips the Inebriate
+    effect and leaves the rest of the spell alone.
+  - `2026_10_12_00_deadmines_mine_bunny_drunken_haze.sql` adds one `spell_script_names` row:
+    91032 -> `spell_dm_drunken_haze`. Nothing was bound to 91032 before.
+- **Not changed:** the being stuck in combat and unable to log out wasn't reproduced. With a live
+  Mine Bunny still on you, that is normal combat. If it happens with nothing alive near you,
+  `.combatstop` clears it.
+- **Status:** not tested in game yet.
+
+### To pick up everything from 2026-10-12
+`ScriptMgr.h` changed, so this build recompiles nearly everything.
+```
+cd ~/bfa/source
+git checkout -- .
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
+git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
+git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
+git apply ../tools-repo/tools/bfa/dungeon-scale.patch
+cmake --build build -j"$(nproc)" && cmake --build build --target install
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_12_00_deadmines_mine_bunny_drunken_haze.sql
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_12_01_deadmines_heroic_vanessa_event_spawns.sql
+grep -q '^DungeonScale.Enable' ~/bfa/server/etc/worldserver.conf || sed -n '/^# DUNGEON SCALE$/,$p' ~/bfa/server/etc/worldserver.conf.dist >> ~/bfa/server/etc/worldserver.conf
+sed -i 's/^\(Solocraft\.Enable *= *\)1/\10/' ~/bfa/server/etc/worldserver.conf
+```
+Then restart `worldserver`. Its log shows `[DungeonScale] Loaded config: ENABLED`.
+
+## 2026-10-11
+
+### The Deadmines (map 36), Normal
+
+All of these were merged to `main` with PR #8 on 2026-10-12. Core changes are in `tools/bfa/deadmines-fixes.patch`, and world data
+changes are in `sql/fixes/world/2026_10_11_*.sql`. Each SQL file is safe to run twice and lists its own
+revert lines. Tested at level 16-17 on a rogue with SoloCraft on.
+
+#### Trash that never fought back
+- **Found:** about 40 spawns of 7 trash types entered combat but never attacked or chased. Goblin
+  Overseers also dropped you as soon as you left their room. Their scripts' `UpdateAI` never called
+  `UpdateVictim()`, so line-of-sight aggro only added threat and no target was ever picked.
+- **Changed** in `boss_vanessa_vancleef.cpp`. Each AI now starts `UpdateAI` with
+  `if (!UpdateVictim()) return;`. This covers:
+
+  | Creature | Entry | Spawns |
+  |---|---|---|
+  | Ogre Henchman | 48230 | 5 |
+  | Goblin Overseer | 48279 | 11 |
+  | Oaf Lackey | 48445 | 6 |
+  | Defias Shadowguard | 48505 | 5 |
+  | Defias Enforcer | 48502 | 6 |
+  | Defias Envoker | 48418 | 3 |
+  | Defias Blood Wizard | 48417 | 4 |
+- **Also changed:** the Oaf Lackey's Enrage (`below`) and the Goblin Overseer's Threatening (`threat`)
+  "already used" flags now reset to `false`. Both had started out as already used, so neither ability
+  ever fired.
+- **Status:** confirmed in game.
+
+#### Boss doors closed again behind dead bosses
+- **Found:** a door only opened at the moment its boss died. Kills are saved, but the doors are not,
+  so after a `worldserver` restart, or once an empty area unloaded (5 minutes), they were shut again.
+- **Changed** in `instance_deadmines.cpp`, `OnGameObjectCreate`. When a door is created, it opens if
+  its boss is already DONE:
+
+  | Door | Entry | Opens when |
+  |---|---|---|
+  | Factory Door | 13965 | Glubtok is dead |
+  | Mast Room Door | 16400 | Helix is dead |
+  | Foundry Door | 16399 | Foe Reaper 5000 is dead |
+  | Iron Clad Door | 16397 | Ripsnarl is dead (it gets the "alternative active" state) |
+- **Status:** not tested in game. It only shows after a restart or unload.
+
+#### Mine Bunny damage
+- **Found:** the two Mine Bunnies (48338, 48351) hit for about 1,700 at level 15. They had
+  `DamageModifier` 125, a raid-boss value. Every other elite here sits between 15 and 21.
+- **Changed:** `2026_10_11_00_deadmines_mine_bunny_damage.sql` sets `DamageModifier` from 125 to 15,
+  the same as the ogres around them.
+- **Status:** not confirmed separately in game.
+
+#### Helix Gearbreaker and the Lumbering Oaf
+- **Found:** the Oaf Helix rides (47297) ran the trash Oaf Lackey script, so it never grabbed or charged
+  anyone. Helix never learned it had died. The real Oaf script was attached to 40906, an unrelated level
+  28 Lumbering Oaf in Kalimdor.
+- **Changed** in `2026_10_11_01_deadmines_lumbering_oaf_helix.sql`:
+  - `creature_template.ScriptName` of 47297 changes from `npc_oaf_lackey` to `npc_lumbering_oaf`.
+  - 40906 changes from `npc_lumbering_oaf` to empty, so it runs its own SmartAI again.
+- **Found:** Helix swings every 0.5 s with `DamageModifier` 57.5. That was about 15 times the damage per
+  second of the other bosses, and he also meleed from the Oaf's back on top of the Oaf's own hits.
+- **Changed:**
+  - In the same SQL file, Helix (47296) `DamageModifier` goes from 57.5 to 12. ZRPandaria used 20, but
+    20 still killed a level 17 rogue here (100 to 200 per hit). 12 is about 60 per hit.
+  - `boss_helix_gearbreaker.cpp`: Helix only melees when he is not riding the Oaf.
+  - `boss_helix_gearbreaker.cpp`: if the Oaf's charge doesn't happen, it drops the player it grabbed,
+    instead of carrying them until the next grab.
+  - `boss_helix_gearbreaker.cpp`: the Oaf's `bunny` pointer now starts at `nullptr`.
+- **Found:** Helix threw no Sticky Bombs. His Throw Bomb spell (88264) was bound in `spell_script_names`
+  to `spell_throw_bomb`, a Winter Veil quest script that cancels the cast unless the caster is on a
+  flying mount.
+- **Changed:** `2026_10_11_03_deadmines_helix_sticky_bomb.sql` deletes that one row. Nothing else used it.
+- **Found:** after a wipe, Helix climbed onto a new Oaf in `Reset()` while still walking home. That cut
+  the walk short and could leave him stuck in evade mode.
+- **Changed** in `boss_helix_gearbreaker.cpp`: he now mounts in `JustReachedHome()`, once he is home.
+- **Status:** the Oaf fight and the Helix fight are confirmed good in game. The bombs were not confirmed
+  separately.
+
+#### Foe Reaper 5000
+- **Found:** a Defias Reaper that died to one big hit never energized him, so he could stay asleep
+  forever. The 10% health check subtracted the hit from the reaper's health as an unsigned number, which
+  wrapped around.
+- **Changed** in `boss_foe_reaper_5000.cpp`, `npc_defias_watcher::DamageTaken`. A hit at least as big as
+  the remaining health now also counts.
+- **Found:** he woke on the 4th Energize. The two Defias Watchers (47404) in his room energize him too,
+  so killing them first woke him with two Defias Reapers (47403) still attacking.
+- **Changed:** he now wakes when no living, hostile Reaper or Watcher is left within 60 yards.
+- **Found:** he only picked a target during his abilities and stood still in between.
+- **Changed:** `UpdateAI` calls `UpdateVictim()` every update, so he chases his top-threat target the
+  whole fight. He only melees when he has a target.
+- **Found:** Overdrive never ended. He kept switching to a random target every 1.5 s, at a fixed run
+  speed of 4 yards per second.
+- **Changed:** Overdrive now lasts 10 seconds. He stops attacking, goes passive and wanders within 15
+  yards while it spins, then removes the aura and attacks again. It still comes every 45 seconds.
+- **Found:** after Harvest his run speed was set to 2 yards per second for the rest of the fight.
+- **Changed:** he now goes back to his normal run speed from `creature_template` and chases again.
+- **Found** (in game, after the changes above): Defias Reapers came back mid-pull, and the burning
+  mechs kept you in combat. He was attackable, but passive, before waking, so a stray hit or AoE pulled
+  him. With the every-update target check above, he reset as soon as that combat ended, and his reset
+  despawns the Reapers and summons four fresh ones. A disabled Reaper or Watcher also kept its threat
+  and pulled every player in the instance into combat with itself.
+- **Changed:**
+  - `Reset()` now makes him non-attackable, immune to players and stunned until he wakes. The wake-up
+    clears those flags before pulling the room into combat. `InitializeAI()` no longer removes them on
+    spawn.
+  - `npc_defias_watcher::Energizing()` now clears the mech's threat and stops its combat when it
+    burns out, instead of calling `SetInCombatWithZone()`.
+- **Not a bug:** the rideable Prototype Reaper (49208) is Heroic-only, as on retail.
+- **Left as is:** burnt-out Reapers and Watchers show a vehicle cursor. `npc_spellclick_spells` gives
+  47403 and 47404 the click spells 58961 and 90102. Whether riding them does anything on Normal hasn't
+  been checked.
+- **Status:** not tested in game yet.
+
+#### Admiral Ripsnarl
+- **Found:** once the fog rolled in at 75%, he summoned a Vapor every 3.5 seconds for the rest of the
+  fight.
+- **Changed** in `boss_admiral_ripsnarl.cpp`. Vapors now come every 3.5 seconds while he is hidden, and
+  every 12 seconds once he is back. The fog itself still stays for the rest of the fight, as on retail.
+- **Found:** he came back out of the fog both after 25 seconds and after 4 Vapor kills. When both
+  happened, his Swipe timer was started twice and he swiped twice as often.
+- **Changed:** he now comes back once per vanish. Vapors killed while he is visible no longer count
+  toward bringing him back early.
+- **Status:** not tested in game yet.
+
+#### "Captain" Cookie
+- Reviewed his script, the food NPCs and his spell script bindings. Nothing changed.
+
+#### Boss yells
+- **Found:** `creature_text` had no rows for the Deadmines bosses, so every `Talk()` was silent.
+- **Changed:** `2026_10_11_02_deadmines_boss_texts.sql` adds the retail Cataclysm lines, with their
+  sound IDs and BroadcastText IDs, numbered to match HavenCore's script group IDs:
+  - Glubtok (47162): 8 lines.
+  - Helix (47296): 4 lines.
+  - Lumbering Oaf (47297): "OAF SMASH!!".
+  - Foe Reaper 5000 (43778): 5 lines.
+  - Admiral Ripsnarl (47626): 7 lines.
+
+#### Boss loot
+- **Found:** each boss item on Normal rolled on its own at 9 to 19%, so a kill often dropped only gold.
+  Glubtok dropped no item about 58% of the time, and Helix about 64%. Today's changes hadn't touched loot.
+  The rows matched the original dump.
+- **Changed:** `2026_10_11_04_deadmines_boss_loot.sql` moves each boss's usual Normal items into loot
+  group 1 with `Chance` 0. Exactly one of them now drops on every kill, picked evenly:
+
+  | Boss | Items (old chance %) |
+  |---|---|
+  | Glubtok 47162 | 2169 (15), 5195 (16), 5444 (18) |
+  | Helix 47296 | 5191 (9), 5199 (11), 5200 (9), 5443 (10) |
+  | Foe Reaper 43778 | 1937 (13), 5187 (13), 5201 (14) |
+  | Ripsnarl 47626 | 872 (15), 1156 (19), 5196 (14), 21524 (7) |
+  | Cookie 47739 | 5192 (9), 5193 (15), 5197 (10), 5198 (12), 5202 (10) |
+
+  Rare extras under 5% still roll on their own. The Cataclysm heroic items use loot mode 2, which this
+  core never turns on, so they never drop. They are left as they were.
+
+#### Core-wide: creatures reset after you die
+- **Found:** when the last player died next to a boss, the boss stayed "engaged" by the corpse and never
+  reset. Its encounter stayed in progress, which greyed out Release Spirit ("A member of your group is in
+  combat"). It also kept pulling anyone who came back. HavenCore only reset a creature with no one left
+  to fight if it had moved far from its spawn point.
+- **Changed** in `src/server/game/AI/CreatureAI.cpp`, `CreatureAI::UpdateVictim()`. A creature with no
+  target left now resets whether or not it is still in combat, the same as standard TrinityCore. This
+  affects every creature in the game, not just Deadmines.
+- **Status:** not confirmed separately in game. It needs a death next to a boss to show.
+
+#### To pick up everything above
+```
+cd ~/bfa/source
+git checkout -- .
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
+git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
+git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
+cmake --build build -j"$(nproc)" && cmake --build build --target install
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_11_00_deadmines_mine_bunny_damage.sql
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_11_01_deadmines_lumbering_oaf_helix.sql
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_11_02_deadmines_boss_texts.sql
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_11_03_deadmines_helix_sticky_bomb.sql
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_11_04_deadmines_boss_loot.sql
+```
+Then restart `worldserver`. `git checkout -- .` discards any edits in `~/bfa/source` that didn't come
+from these patches.

@@ -1,0 +1,578 @@
+diff --git a/src/server/game/AI/CreatureAI.cpp b/src/server/game/AI/CreatureAI.cpp
+index ea8b0cf..4271626 100644
+--- a/src/server/game/AI/CreatureAI.cpp
++++ b/src/server/game/AI/CreatureAI.cpp
+@@ -243,8 +243,12 @@ bool CreatureAI::UpdateVictim()
+             if (!me->IsFocusing(nullptr, true))
+                 AttackStart(victim);
+         }
+-        else if (me->IsInCombat())                          // <-- NEW  
+-            EnterEvadeMode(EVADE_REASON_NO_HOSTILES);        // <-- NEW  
++        // No target left: evade, also when combat already ended. When the last
++        // player dies, CombatStop() ends combat but leaves us engaged, and
++        // SelectVictim() only evades far from home, so a boss would otherwise
++        // stay IN_PROGRESS and block Release Spirit.
++        else
++            EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
+ 
+         return me->GetVictim() != nullptr;
+     }
+diff --git a/src/server/scripts/EasternKingdoms/Deadmines/boss_admiral_ripsnarl.cpp b/src/server/scripts/EasternKingdoms/Deadmines/boss_admiral_ripsnarl.cpp
+index 0da7ee6..f084796 100644
+--- a/src/server/scripts/EasternKingdoms/Deadmines/boss_admiral_ripsnarl.cpp
++++ b/src/server/scripts/EasternKingdoms/Deadmines/boss_admiral_ripsnarl.cpp
+@@ -234,6 +234,10 @@ public:
+ 
+         void VaporsKilled()
+         {
++            // Only vapors killed while he is hidden bring him back early.
++            if (me->IsVisible())
++                return;
++
+             vaporCount++;
+ 
+             if (vaporCount == 4)
+@@ -400,6 +404,12 @@ public:
+                         break;
+ 
+                     case EVENT_SHOW_UP:
++                        // Fires from the 25 s timer or after 4 vapor kills,
++                        // whichever comes first. Run it once per vanish, or
++                        // the second one stacks another Swipe timer.
++                        if (me->IsVisible())
++                            break;
++                        events.CancelEvent(EVENT_SHOW_UP);
+                         me->SetVisible(true);
+                         vaporCount = 0;
+                         me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_PACIFIED));
+@@ -412,7 +422,10 @@ public:
+                         if (phase == PHASE_FOG)
+                             if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
+                                 me->CastSpell(target, SPELL_SUMMON_VAPOR);
+-                        events.RescheduleEvent(EVENT_SUMMON_VAPOR, 3500);
++                        // The fog stays for the rest of the fight. Vapors come
++                        // every 3.5 s while he is hidden, then every 12 s
++                        // (was 3.5 s for the whole fight after 75%).
++                        events.RescheduleEvent(EVENT_SUMMON_VAPOR, me->IsVisible() ? 12000 : 3500);
+                         break;
+                 }
+             }
+diff --git a/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp b/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
+index be6fb03..b9de40b 100644
+--- a/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
++++ b/src/server/scripts/EasternKingdoms/Deadmines/boss_foe_reaper_5000.cpp
+@@ -85,6 +85,7 @@ enum Events
+     EVENT_SWITCH_TARGET,
+     EVENT_MOLTEN_SLAG,
+     EVENT_START_ATTACK,
++    EVENT_END_OVERDRIVE,
+ };
+ 
+ enum eSays
+@@ -101,6 +102,11 @@ enum eSays
+ 
+ #define MONSTER_START "A stray jolt from the Foe Reaper has distrupted the foundry controls!"
+ #define MONSTER_SLAG "The monster slag begins to bubble furiously!"
++#define MONSTER_POWER_DOWN "Foe Reaper 5000 powers down."
++
++// After waking he waits this long for someone to pull him before he goes
++// back to sleep and the Defias Reapers come back.
++uint32 const FOE_REAPER_WAIT_FOR_PULL = 5 * MINUTE * IN_MILLISECONDS;
+ 
+ 
+ Position const HarvestSpawn[] =
+@@ -133,12 +139,14 @@ public:
+             {
+                 BossAI::InitializeAI();
+                 me->RemoveAura(SPELL_OFF_LINE);
+-                me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_STUNNED));
+             }
+ 
+ 
+         uint32 eventId;
+         uint32 Step;
++        uint32 _wakeCheckTimer = 1000;
++        bool _waitingForPull = false;
++        uint32 _sleepTimer = 0;
+         ObjectGuid prototypeGUID;
+ 
+         bool Below;
+@@ -151,10 +159,19 @@ public:
+ 
+             _Reset();
+             me->SetReactState(REACT_PASSIVE);
++            // Untouchable until the reapers wake him (EVENT_START_2 clears
++            // these). Before, a stray hit or AoE pulled him while he was still
++            // passive, and when that combat ended he reset and summoned four
++            // fresh Defias Reapers in the middle of the pull.
++            if (instance->GetBossState(DATA_FOEREAPER) != DONE)
++                me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_STUNNED));
+             me->SetPower(POWER_ENERGY, 100);
+             me->SetMaxPower(POWER_ENERGY, 100);
+             me->SetPowerType(POWER_ENERGY);
+             Step = 0;
++            _wakeCheckTimer = 1000;
++            _waitingForPull = false;
++            _sleepTimer = 0;
+             Below = false;
+             _notQuiteThereOfferedTo.clear();
+ 
+@@ -238,6 +255,7 @@ public:
+ 
+         void JustEngagedWith(Unit* /*who*/) override
+         {
++            _waitingForPull = false;
+             _JustEngagedWith();
+             events.ScheduleEvent(EVENT_REAPER_STRIKE, 10000);
+             events.ScheduleEvent(EVENT_OVERDRIVE, 11000);
+@@ -297,6 +315,19 @@ public:
+             instance->SetBossState(DATA_FOEREAPER, FAIL);
+         }
+ 
++        bool ActiveMechsLeft() const
++        {
++            for (uint32 entry : { 47403u, 47404u })
++            {
++                std::list<Creature*> mechs;
++                me->GetCreatureListWithEntryInGrid(mechs, entry, 60.0f);
++                for (Creature* mech : mechs)
++                    if (mech->IsAlive() && mech->getFaction() != 35)
++                        return true;
++            }
++            return false;
++        }
++
+         void DespawnOldWatchers()
+         {
+             std::list<Creature*> reapers;
+@@ -327,11 +358,15 @@ public:
+ 
+             if (spell->Id == SPELL_ENERGIZE)
+             {
+-                if (Step == 3)
++                // Wake up once every Defias Reaper and Defias Watcher in the
++                // room is disabled. Both energize him, so counting four hits
++                // started the fight with two reapers still hostile once the
++                // two Watchers had been killed first.
++                if (Step < 4 && !ActiveMechsLeft())
+                 {
+                     events.ScheduleEvent(EVENT_START, 100);
++                    Step = 4;
+                 }
+-                Step++;
+             }
+         }
+ 
+@@ -363,7 +398,39 @@ public:
+             if (!me)
+                 return;
+ 
+-            DoMeleeAttackIfReady();
++            // Pick and chase the top threat target every update once he is
++            // active. The events below only did so now and then, so he stood
++            // still between them. The intro events still run before combat.
++            bool const hasVictim = UpdateVictim();
++
++            // Also wake him without a final Energize. A mech that died while
++            // casting it never reached him, and he slept for good.
++            if (Step < 4)
++            {
++                if (_wakeCheckTimer <= uiDiff)
++                {
++                    _wakeCheckTimer = 1000;
++                    if (!ActiveMechsLeft())
++                    {
++                        events.ScheduleEvent(EVENT_START, 100);
++                        Step = 4;
++                    }
++                }
++                else
++                    _wakeCheckTimer -= uiDiff;
++            }
++
++            // Awake but nobody has pulled him yet: wait, then go back to sleep.
++            if (_waitingForPull && !me->IsEngaged())
++            {
++                if (_sleepTimer <= uiDiff)
++                {
++                    me->TextEmote(MONSTER_POWER_DOWN, 0, true);
++                    Reset();
++                    return;
++                }
++                _sleepTimer -= uiDiff;
++            }
+ 
+             events.Update(uiDiff);
+ 
+@@ -381,27 +448,36 @@ public:
+                     case EVENT_START_2:
+                         me->TextEmote(MONSTER_SLAG, 0, true);
+                         me->SetHealth(me->GetMaxHealth());
+-                        DoZoneInCombat();
+-                        me->SetReactState(REACT_AGGRESSIVE);
++                        // Clear the flags first: players can't be pulled into
++                        // combat while he is still immune to them.
+                         me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+                         me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
+                         me->RemoveUnitFlag(UNIT_FLAG_STUNNED);
++                        me->SetReactState(REACT_AGGRESSIVE);
++                        // Wait to be pulled instead of DoZoneInCombat(). That
++                        // put everyone in the instance in combat at once; a
++                        // stealthed player was not a valid target, so he found
++                        // nobody, evaded, and respawned the Defias Reapers.
++                        // Waiting also lets a solo player recover first.
++                        // JustEngagedWith() still pulls the whole group.
++                        _waitingForPull = true;
++                        _sleepTimer = FOE_REAPER_WAIT_FOR_PULL;
+                         me->RemoveAurasDueToSpell(SPELL_ENERGIZED);
+                         events.ScheduleEvent(EVENT_SRO, 1000);
+                         break;
+ 
+                     case EVENT_SRO:
+                         me->RemoveAurasDueToSpell(SPELL_OFFLINE);
+-
+-                        if (Player* victim = me->SelectNearestPlayer(40.0f))
+-                            me->Attack(victim, false);
+                         break;
+ 
+                     case EVENT_START_ATTACK:
++                        // Back to normal speed and chase again after the
++                        // Harvest charge (SetSpeed takes yards per second, so
++                        // the old 2.0 left him crawling for the rest of the fight).
+                         me->RemoveAurasDueToSpell(SPELL_HARVEST_AURA);
+-                        me->SetSpeed(MOVE_RUN, 2.0f);
+-                        if (Player* victim = me->SelectNearestPlayer(40.0f))
+-                            me->Attack(victim, true);
++                        me->SetSpeedRate(MOVE_RUN, me->GetCreatureTemplate()->speed_run);
++                        if (Unit* victim = me->GetVictim())
++                            me->GetMotionMaster()->MoveChase(victim);
+                         break;
+ 
+                     case EVENT_OVERDRIVE:
+@@ -409,20 +485,22 @@ public:
+                             return;
+ 
+                         me->TextEmote("|TInterface\\Icons\\ability_whirlwind.blp:20|tFoe Reaper 5000 begins to activate |cFFFF0000|Hspell:91716|h[Overdrive]|h|r!", 0, true);
++                        // Overdrive: for 10 s he stops attacking and wanders
++                        // the room while the aura spins, then resumes. It used
++                        // to never end: he kept hopping targets at a fixed speed.
+                         me->AddAura(SPELL_OVERDRIVE, me);
+-                        me->SetSpeed(MOVE_RUN, 4.0f);
+-                        events.ScheduleEvent(EVENT_SWITCH_TARGET, 1500);
++                        me->AttackStop();
++                        me->SetReactState(REACT_PASSIVE);
++                        me->GetMotionMaster()->Clear();
++                        me->GetMotionMaster()->MoveRandom(15.0f);
++                        events.ScheduleEvent(EVENT_END_OVERDRIVE, 10000);
+                         events.ScheduleEvent(EVENT_OVERDRIVE, 45000);
+                         break;
+ 
+-                    case EVENT_SWITCH_TARGET:
+-                        if (Unit* victim = SelectTarget(SELECT_TARGET_RANDOM, 0, 150, true))
+-                            me->Attack(victim, true);
+-
+-                        if (me->HasAura(SPELL_OVERDRIVE))
+-                        {
+-                            events.ScheduleEvent(EVENT_SWITCH_TARGET, 1500);
+-                        }
++                    case EVENT_END_OVERDRIVE:
++                        me->RemoveAurasDueToSpell(SPELL_OVERDRIVE);
++                        me->GetMotionMaster()->Clear();
++                        me->SetReactState(REACT_AGGRESSIVE);
+                         break;
+ 
+                     case EVENT_HARVEST:
+@@ -477,6 +555,9 @@ public:
+                     Below = true;
+                 }
+             }
++
++            if (hasVictim)
++                DoMeleeAttackIfReady();
+         }
+     };
+ };
+@@ -535,23 +616,41 @@ public:
+             Status = true;
+             me->SetHealth(15);
+             me->setRegeneratingHealth(false);
++            // A disabled mech is out of the fight: drop its threat and combat
++            // so it doesn't keep players in combat. It used to pull the whole
++            // instance into combat with itself instead.
++            me->GetThreatManager().ClearAllThreat();
++            me->CombatStop(true);
++            // Players' DoTs and poisons keep ticking on a burnt-out mech and
++            // killed it, so its corpse despawned. It stays as a wreck instead.
++            me->RemoveAurasByType(SPELL_AURA_PERIODIC_DAMAGE);
++            me->RemoveAurasByType(SPELL_AURA_PERIODIC_DAMAGE_PERCENT);
++            me->RemoveAurasByType(SPELL_AURA_PERIODIC_LEECH);
+             me->SetFaction(35);
+             me->AddAura(SPELL_ON_FIRE, me);
+             me->CastSpell(me, SPELL_ON_FIRE);
+-            me->SetInCombatWithZone();
+ 
+             if (Creature* reaper = me->FindNearestCreature(NPC_FOE_REAPER_5000, 200.0f))
+             {
+-                me->CastSpell(reaper, SPELL_ENERGIZE);
++                me->CastSpell(reaper, SPELL_ENERGIZE, true);
+             }
+         }
+ 
+         void DamageTaken(Unit* /*attacker*/, uint32& damage) override
+         {
+-            if (!me || damage <= 0 || Status == true)
++            if (!me || damage <= 0)
++                return;
++
++            // A burnt-out mech takes no more damage, so nothing can kill it.
++            if (Status == true)
++            {
++                damage = 0;
+                 return;
++            }
+ 
+-            if (me->GetHealth() - damage <= me->GetMaxHealth()*0.10)
++            // Also catch hits bigger than the remaining health: the subtraction
++            // is unsigned, and a reaper that really dies can't energize Foe Reaper.
++            if (damage >= me->GetHealth() || me->GetHealth() - damage <= me->GetMaxHealth()*0.10)
+             {
+                 damage = 0;
+                 Energizing();
+diff --git a/src/server/scripts/EasternKingdoms/Deadmines/boss_helix_gearbreaker.cpp b/src/server/scripts/EasternKingdoms/Deadmines/boss_helix_gearbreaker.cpp
+index 909dede..26e0a28 100644
+--- a/src/server/scripts/EasternKingdoms/Deadmines/boss_helix_gearbreaker.cpp
++++ b/src/server/scripts/EasternKingdoms/Deadmines/boss_helix_gearbreaker.cpp
+@@ -133,7 +133,11 @@ public:
+             me->SetReactState(REACT_AGGRESSIVE);
+             me->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+             summons.DespawnAll();
+-            OafSupport();
++            // While evading Helix is still walking home; boarding an Oaf now
++            // would stop that walk and leave him evading for good. He mounts
++            // in JustReachedHome() instead.
++            if (!me->IsInEvadeMode())
++                OafSupport();
+ 
+             // Slinky Sharpshiv is Horde-only. Do not summon her from Reset(),
+             // because boss/grid reset can run before the first player enters the
+@@ -263,6 +267,7 @@ public:
+             _JustReachedHome();
+             Talk(1);
+             instance->SetBossState(DATA_HELIX, FAIL);
++            OafSupport();
+         }
+ 
+         void OafDead()
+@@ -281,7 +286,10 @@ public:
+             if (!me)
+                 return;
+ 
+-            DoMeleeAttackIfReady();
++            // Helix only throws bombs while he rides the Oaf; with his 0.5 s
++            // swing timer, meleeing from its back stacks on top of the Oaf's hits.
++            if (!me->GetVehicle())
++                DoMeleeAttackIfReady();
+ 
+             events.Update(uiDiff);
+ 
+@@ -337,7 +345,7 @@ public:
+ 
+     struct npc_lumbering_oafAI : public ScriptedAI
+     {
+-        npc_lumbering_oafAI(Creature* pCreature) : ScriptedAI(pCreature)
++        npc_lumbering_oafAI(Creature* pCreature) : ScriptedAI(pCreature), bunny(nullptr)
+         {
+             _vehicle = me->GetVehicleKit();
+         }
+@@ -442,6 +450,8 @@ public:
+                         break;
+ 
+                     case EVEMT_CHARGE:
++                    {
++                        bool charging = false;
+                         if (me->GetDistance(OafPos[0]) <= 2.0f)
+                         {
+                             me->GetMotionMaster()->Clear(true);
+@@ -450,10 +460,19 @@ public:
+                             {
+                                 me->GetMotionMaster()->MovePoint(1, bunny->GetPositionX(), bunny->GetPositionY(), bunny->GetPositionZ());
+                                 bunny->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
++                                charging = true;
+                             }
+                         }
++
++                        // No charge this time: let the grabbed player go instead
++                        // of carrying them until the next grab.
++                        if (!charging)
++                            if (Unit* passenger = _vehicle->GetPassenger(1))
++                                passenger->ExitVehicle();
++
+                         events.ScheduleEvent(EVENT_FINISH, 1500);
+                         break;
++                    }
+ 
+                     case EVENT_FINISH:
+                         events.ScheduleEvent(EVENT_OAFQUARD, 17000);
+diff --git a/src/server/scripts/EasternKingdoms/Deadmines/boss_vanessa_vancleef.cpp b/src/server/scripts/EasternKingdoms/Deadmines/boss_vanessa_vancleef.cpp
+index 4350fa5..994df49 100644
+--- a/src/server/scripts/EasternKingdoms/Deadmines/boss_vanessa_vancleef.cpp
++++ b/src/server/scripts/EasternKingdoms/Deadmines/boss_vanessa_vancleef.cpp
+@@ -601,6 +601,9 @@ public:
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!UpdateVictim())
++                return;
++
+             if (SinisterTimer <= diff)
+             {
+                 DoCastVictim(SPELL_SINISTER);
+@@ -661,6 +664,9 @@ public:
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!UpdateVictim())
++                return;
++
+             if (BloodBathTimer <= diff)
+             {
+                 DoCastVictim(SPELL_BLOODBATH);
+@@ -703,6 +709,9 @@ public:
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!UpdateVictim())
++                return;
++
+             if (HolyfireTimer <= diff)
+             {
+                 if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
+@@ -745,11 +754,14 @@ public:
+         void Reset() override
+         {
+             MotivateTimer = 4000;
+-            threat = true;
++            threat = false;
+         }
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!UpdateVictim())
++                return;
++
+             if (MotivateTimer <= diff)
+             {
+                 if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
+@@ -791,6 +803,9 @@ public:
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!UpdateVictim())
++                return;
++
+             if (UppercutTimer <= diff)
+             {
+                 DoCastVictim(SPELL_UPPERCUT);
+@@ -823,11 +838,14 @@ public:
+         void Reset() override
+         {
+             AxeHeadTimer = 4000;
+-            below = true;
++            below = false;
+         }
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!UpdateVictim())
++                return;
++
+             if (AxeHeadTimer <= diff)
+             {
+                 DoCastVictim(SPELL_AXE_HEAD);
+@@ -872,6 +890,9 @@ public:
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!UpdateVictim())
++                return;
++
+             if (BloodboltTimer <= diff)
+             {
+                 DoCastVictim(SPELL_BLOODBOLT);
+@@ -2041,6 +2062,36 @@ public:
+     };
+ };
+ 
++// 91032 - Drunken Haze (Mine Bunny)
++// The 10 s snare and slow stay. Its Inebriate effect set the player's drunk
++// value to 100, which is stored on the character and only sobers by 1 every
++// 9 s, so the player stayed smashed for about 15 minutes after the fight.
++class spell_dm_drunken_haze : public SpellScriptLoader
++{
++public:
++    spell_dm_drunken_haze() : SpellScriptLoader("spell_dm_drunken_haze") { }
++
++    class spell_dm_drunken_haze_SpellScript : public SpellScript
++    {
++        PrepareSpellScript(spell_dm_drunken_haze_SpellScript);
++
++        void PreventInebriate(SpellEffIndex effIndex)
++        {
++            PreventHitDefaultEffect(effIndex);
++        }
++
++        void Register() override
++        {
++            OnEffectHitTarget += SpellEffectFn(spell_dm_drunken_haze_SpellScript::PreventInebriate, EFFECT_ALL, SPELL_EFFECT_INEBRIATE);
++        }
++    };
++
++    SpellScript* GetSpellScript() const override
++    {
++        return new spell_dm_drunken_haze_SpellScript();
++    }
++};
++
+ void AddSC_boss_vanessa_vancleef()
+ {
+     new boss_vanessa_vancleef();
+@@ -2065,4 +2116,5 @@ void AddSC_boss_vanessa_vancleef()
+     new npc_ogre_henchman();
+     new npc_lightning_orbs();
+     new npc_vanessa_anchor_bunny();
++    new spell_dm_drunken_haze();
+ }
+diff --git a/src/server/scripts/EasternKingdoms/Deadmines/instance_deadmines.cpp b/src/server/scripts/EasternKingdoms/Deadmines/instance_deadmines.cpp
+index 90d70d1..0441a81 100644
+--- a/src/server/scripts/EasternKingdoms/Deadmines/instance_deadmines.cpp
++++ b/src/server/scripts/EasternKingdoms/Deadmines/instance_deadmines.cpp
+@@ -194,19 +194,29 @@ public:
+ 
+         void OnGameObjectCreate(GameObject* go) override
+         {
++            // Boss states survive a restart or grid unload, but doors are
++            // re-created closed. Open them again for bosses already killed.
+             switch (go->GetEntry())
+             {
+                 case GO_FACTORY_DOOR: // Door after first boss
+                     FactoryDoorGUID = go->GetGUID();
++                    if (GetBossState(DATA_GLUBTOK) == DONE)
++                        go->SetGoState(GO_STATE_ACTIVE);
+                     break;
+                 case GO_FOUNDRY_DOOR: // Door before ship
+                     FoundaryDoorGUID = go->GetGUID();
++                    if (GetBossState(DATA_FOEREAPER) == DONE)
++                        go->SetGoState(GO_STATE_ACTIVE);
+                     break;
+                 case GO_HEAVY_DOOR_HELIX:
+                     HeavyDoorGUID = go->GetGUID();
++                    if (GetBossState(DATA_HELIX) == DONE)
++                        go->SetGoState(GO_STATE_ACTIVE);
+                     break;
+                 case GO_IRONCLAD_DOOR:
+                     IroncladDoorGUID = go->GetGUID();
++                    if (GetBossState(DATA_RIPSNARL) == DONE)
++                        go->SetGoState(GO_STATE_ACTIVE_ALTERNATIVE);
+                     break;
+             }
+         }

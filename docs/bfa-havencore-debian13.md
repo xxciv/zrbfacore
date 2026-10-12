@@ -89,6 +89,8 @@ git clone -b main https://github.com/xxciv/zrbfacore.git tools-repo
 cd source
 git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
 git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
+git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
+git apply ../tools-repo/tools/bfa/dungeon-scale.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -114,6 +116,61 @@ refused ("Requires Herbalism 50" at Classic Herbalism 59). The patch updates the
 every skill-up too, in `Player::UpdateSkillPro` (`Player.cpp`). Verified in game: Herbalism now rises
 with Classic Herbalism. A character from before the patch catches up at its next skill-up, or at once
 with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning).
+
+`deadmines-fixes.patch` collects the fixes for The Deadmines (map 36):
+
+- Seven trash scripts in `boss_vanessa_vancleef.cpp` (Ogre Henchman, Defias Shadowguard, Defias
+  Enforcer, Defias Envoker, Goblin Overseer, Defias Blood Wizard, and Oaf Lackey, which also runs
+  Helix's Lumbering Oaf) never called `UpdateVictim()`. They went into combat but never picked a
+  target, so they stood still and took hits. The patch adds the call. It also lets the Oaf's
+  Enrage and the Overseer's Threatening fire at low health (both flags started out already used).
+- The boss doors (Glubtok, Helix, Foe Reaper, and the Iron Clad Door once Ripsnarl is dead) now
+  open again when they are re-created. Boss kills are saved, but upstream only opened a door at
+  the moment its boss died, so after a `worldserver` restart, or once an empty area had unloaded,
+  the doors were shut again behind dead bosses.
+- Foe Reaper 5000 wakes up even when a Defias Reaper is killed in one hit. Each reaper is meant
+  to stop at 10% health and energize him. The health check subtracted the hit from the reaper's
+  health as an unsigned number, so a hit bigger than the remaining health wrapped around and
+  killed the reaper outright, and Foe Reaper stayed asleep. He now wakes once every Defias Reaper
+  and Defias Watcher in the room is disabled, instead of after any four of the six, which could
+  start the fight with two reapers still attacking.
+  He can't be hit before he wakes, so a stray hit can't pull him early and reset the reapers, and a
+  burnt-out reaper or watcher drops out of combat instead of keeping players in it.
+  Once awake he waits up to 5 minutes to be pulled (attack him or walk into his aggro range), so a
+  solo player can recover first and a stealthed player doesn't make him reset on the spot. If nobody
+  pulls him, he powers down and the four Defias Reapers come back.
+- Foe Reaper 5000 chases his target the whole fight. He used to pick a target only during his
+  abilities and stand still in between. Overdrive now lasts 10 seconds, during which he stops
+  attacking and wanders the room spinning, as on retail. It used to never end. After Harvest he
+  returns to his normal speed instead of crawling at 2 yards per second for the rest of the fight.
+- Helix Gearbreaker no longer melees from the Lumbering Oaf's back (he swings every 0.5 s, on top
+  of the Oaf's own hits). The Oaf lets a grabbed player go if its charge doesn't happen, instead of
+  carrying them until the next grab. The Oaf only gets this script with
+  `2026_10_11_01_deadmines_lumbering_oaf_helix.sql` below. After a wipe Helix walks home before
+  he mounts a new Oaf, instead of mounting one halfway and never finishing his reset.
+- Admiral Ripsnarl summons Vapors every 3.5 seconds only while he is hidden in the fog, then every
+  12 seconds. Before, once the fog rolled in at 75% he summoned one every 3.5 seconds for the rest of
+  the fight. He also comes back out of the fog once per vanish: when both his timer and the
+  four-vapor count brought him back, his Swipe ran twice as often from then on.
+- The Mine Bunnies' Drunken Haze keeps its 10-second snare and slow but no longer sets the player's
+  drunk level to 100, which lasted about 15 minutes with no debuff shown. The script only takes
+  effect with `2026_10_12_00_deadmines_mine_bunny_drunken_haze.sql` below.
+- One fix is core-wide, in `CreatureAI.cpp`: a creature with no target left now resets even when
+  its combat has already ended. When the last player died, combat ended but the creature stayed
+  "engaged" next to the corpse. A boss then kept its encounter running, which greys out Release
+  Spirit ("A member of your group is in combat") and keeps the boss pulling anyone who comes back.
+  Upstream TrinityCore resets here too. HavenCore had narrowed it to creatures far from their spawn.
+
+`dungeon-scale.patch` scales 5-man dungeon creatures to the number of players inside, so one player can
+clear a dungeon built for five. Solo, trash has 30% of its health and deals 30% of its damage, bosses
+35% (the final boss 40% health), rising in a straight line to stock values at 5 players. No single hit
+from a scaled creature takes more than 35% of your max health. It is ZRPandaria's DungeonScale, ported
+without its honor rewards; set it up with "Solo dungeons" in step 9. Core files touched:
+`ScriptMgr.h` / `ScriptMgr.cpp` (a new `AllCreatureScript` hook type: creature added, removed, level
+set), `Creature.cpp` (calls the three hooks), `solocraft.cpp` (the scaling script, added at the end of
+the file so the patch creates no new files), `custom_script_loader.cpp` (registers it) and
+`worldserver.conf.dist` (the `DungeonScale.*` settings). `ScriptMgr.h` is in the precompiled headers,
+so applying it rebuilds nearly everything.
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
@@ -337,18 +394,40 @@ To let characters learn up to 4 primary professions, set `MaxPrimaryTradeSkill =
 are known, whatever the server allows, and its Professions tab only shows 2. The addon re-enables
 **Train** and adds a `/profs` panel listing every primary profession (verified in game 2026-10-10).
 
+### Solo dungeons (DungeonScale)
+
+`dungeon-scale.patch` (step 3) installs its settings into `~/bfa/server/etc/worldserver.conf.dist`. Copy
+them into `worldserver.conf` once, and turn Solocraft off, since it buffs players on top of mobs that are
+already scaled down:
+
+```sh
+grep -q '^DungeonScale.Enable' ~/bfa/server/etc/worldserver.conf || sed -n '/^# DUNGEON SCALE$/,$p' ~/bfa/server/etc/worldserver.conf.dist >> ~/bfa/server/etc/worldserver.conf
+sed -i 's/^\(Solocraft\.Enable *= *\)1/\10/' ~/bfa/server/etc/worldserver.conf
+```
+
+Then restart `worldserver`. Its log shows `[DungeonScale] Loaded config: ENABLED`. Inside a dungeon,
+`.dungeonscale info` shows the multipliers in use and `.dungeonscale creature` shows them for the
+selected creature. The settings are explained in the block itself. A dungeon of its own can be made
+easier or harder with lines like `DungeonScale.Map.36.Damage = 0.25` (36 is The Deadmines), then
+`.reload config`.
+
 ## 10. Updating
 
 ```sh
 cd ~/bfa/source
-git apply -R ../tools-repo/tools/bfa/profession-skill-sync.patch  # undo the patches before pulling
-git apply -R ../tools-repo/tools/bfa/bfa-linux-fixes.patch
+git checkout -- .  # undo the patches before pulling
 git pull
 git -C ../tools-repo pull
 git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
 git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
+git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
+git apply ../tools-repo/tools/bfa/dungeon-scale.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
+
+`git checkout -- .` throws away every change to upstream's files, so keep your own edits somewhere else.
+`git apply -R` would only work if the patch hadn't changed since it was applied, and the pull may have
+changed it.
 
 Restart `worldserver`; it applies the new `sql/updates` files itself.
 
@@ -365,6 +444,13 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 |---|---|
 | `2026_10_10_00_bandage_trainers.sql` | Alliance bandage trainers such as Byancie in Dolanaar offering the Engineering apprentice spell (verified in game 2026-10-10) |
 | `2026_10_10_01_fishing_trainers.sql` | Fishing trainers such as Astaia in Darnassus teaching Fishing without the skill, so it shows as known but can't be used (verified in game 2026-10-10) |
+| `2026_10_11_00_deadmines_mine_bunny_damage.sql` | The two Mine Bunnies in The Deadmines hitting for about 1,700 at level 15 (raid-boss damage modifier) |
+| `2026_10_11_01_deadmines_lumbering_oaf_helix.sql` | Helix's Lumbering Oaf running the trash Oaf Lackey AI, so it never grabs or charges (its script was on an unrelated Kalimdor Oaf, which now gets its own AI back), and Helix's melee lowered from 57.5 to 12 |
+| `2026_10_11_02_deadmines_boss_texts.sql` | The Deadmines bosses (Glubtok, Helix, the Lumbering Oaf, Foe Reaper 5000, Admiral Ripsnarl) saying nothing: their yells were missing |
+| `2026_10_11_03_deadmines_helix_sticky_bomb.sql` | Helix never throwing his Sticky Bombs: his Throw Bomb spell was bound to a Winter Veil quest script that cancels the cast |
+| `2026_10_11_04_deadmines_boss_loot.sql` | The Deadmines bosses often dropping only gold on Normal: each item rolled on its own at 9-19%. Now each boss drops one of its usual items every kill |
+| `2026_10_12_00_deadmines_mine_bunny_drunken_haze.sql` | The Mine Bunnies in The Deadmines leaving players fully drunk for about 15 minutes, with no debuff shown, after one Drunken Haze. Binds the spell script from `deadmines-fixes.patch` that keeps the 10-second snare and slow |
+| `2026_10_12_01_deadmines_heroic_vanessa_event_spawns.sql` | Vanessa VanCleef's Heroic-only nightmare event spawning on Normal too: its Vanessas kept players in combat (no logout) and a ghostly Ripsnarl stood outside the ship door. Its 21 spawns become Heroic-only |
 
 ## 11. Status
 
