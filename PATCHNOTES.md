@@ -5,6 +5,53 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-12
 
+### DungeonScale: dungeon mobs scale to your group
+
+- **Found:** a pack of one Defias Enforcer and two Defias Shadowguards after Foe Reaper killed a level 17
+  rogue in about 20 hits (235 to 508 each). Neither mob is out of line for the dungeon: the Enforcer
+  has `DamageModifier` 15, like the ogres, Goblin Overseers and Defias Pirates. The Shadowguard has
+  17.9, and the Squallshapers, Blood Wizards and Envokers have 20.8. Three elites built for a group of
+  five were all hitting one player. HavenCore's Solocraft only raises the player's stats. It has no way
+  to lower the damage you take.
+- **Changed:** new `tools/bfa/dungeon-scale.patch`, a port of ZRPandaria's DungeonScale:
+  - 5-man dungeon creatures get a share of their health and damage that depends on how many players
+    are inside:
+
+    | Rank | Health solo | Damage solo |
+    |---|---|---|
+    | Normal and elite trash | 30% | 30% |
+    | Bosses | 35% | 35% |
+    | Final boss | 40% | 35% |
+
+    Both rise in a straight line to 100% at 5 players. For trash: 1 player 30%, 2 players 47.5%,
+    3 players 65%, 4 players 82.5%, 5 players 100%.
+  - A boss is any creature in `instance_encounters`. The final boss is the one with
+    `lastEncounterDungeon` set: "Captain" Cookie on Normal and Vanessa VanCleef on Heroic. Adds a boss
+    summons are scaled like the boss.
+  - No single hit or DoT tick from a scaled creature takes more than 35% of your max health. The
+    combat log still shows the uncapped number.
+  - When someone joins or leaves, creatures out of combat are rescaled within a second. Creatures in
+    combat keep their values until the fight ends for them.
+  - Raids, scenarios and Mythic+ are not scaled unless turned on in the settings.
+  - GM commands: `.dungeonscale info` and `.dungeonscale creature`.
+  - Left out from the ZRPandaria version: the honor per kill.
+- **Files:**
+  - `ScriptMgr.h` / `ScriptMgr.cpp`: new `AllCreatureScript` hook type with `OnCreatureAddWorld`,
+    `OnCreatureRemoveWorld` and `OnCreatureSelectLevel`.
+  - `Creature.cpp`: `AddToWorld()`, `RemoveFromWorld()` and `UpdateLevelDependantStats()` call those
+    hooks.
+  - `solocraft.cpp`: the DungeonScale script, added at the end of the file so the patch creates no new
+    files and `git checkout -- .` still removes it cleanly.
+  - `custom_script_loader.cpp`: registers it.
+  - `worldserver.conf.dist`: a new `DUNGEON SCALE` block at the end, with every setting explained.
+- **Settings to change:** copy the `DungeonScale.*` block into `worldserver.conf` and set
+  `Solocraft.Enable = 0`. Solocraft's +400% stats on top of 30% mobs would make dungeons trivial. The
+  commands below do both.
+- **Watch for:** Helix's `DamageModifier` is still 12 from `2026_10_11_01`. Scaled to 35%, he hits for
+  about 21 instead of 60. If he's now too soft, his stock 57.5 scaled to 35% comes out at about 20, the
+  value ZRPandaria used. The revert line is in that SQL file.
+- **Status:** not tested in game yet.
+
 ### The Deadmines (map 36), Normal
 
 #### Mine Bunny Drunken Haze
@@ -24,7 +71,8 @@ to do to pick it up (rebuild, restart, run SQL).
   `.combatstop` clears it.
 - **Status:** not tested in game yet.
 
-#### To pick up this fix
+### To pick up everything from 2026-10-12
+`ScriptMgr.h` changed, so this build recompiles nearly everything.
 ```
 cd ~/bfa/source
 git checkout -- .
@@ -32,10 +80,13 @@ git -C ../tools-repo pull
 git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
 git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
 git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
+git apply ../tools-repo/tools/bfa/dungeon-scale.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_12_00_deadmines_mine_bunny_drunken_haze.sql
+grep -q '^DungeonScale.Enable' ~/bfa/server/etc/worldserver.conf || sed -n '/^# DUNGEON SCALE$/,$p' ~/bfa/server/etc/worldserver.conf.dist >> ~/bfa/server/etc/worldserver.conf
+sed -i 's/^\(Solocraft\.Enable *= *\)1/\10/' ~/bfa/server/etc/worldserver.conf
 ```
-Then restart `worldserver`.
+Then restart `worldserver`. Its log shows `[DungeonScale] Loaded config: ENABLED`.
 
 ## 2026-10-11
 

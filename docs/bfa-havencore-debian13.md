@@ -90,6 +90,7 @@ cd source
 git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
 git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
 git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
+git apply ../tools-repo/tools/bfa/dungeon-scale.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -156,6 +157,17 @@ with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning).
   "engaged" next to the corpse. A boss then kept its encounter running, which greys out Release
   Spirit ("A member of your group is in combat") and keeps the boss pulling anyone who comes back.
   Upstream TrinityCore resets here too. HavenCore had narrowed it to creatures far from their spawn.
+
+`dungeon-scale.patch` scales 5-man dungeon creatures to the number of players inside, so one player can
+clear a dungeon built for five. Solo, trash has 30% of its health and deals 30% of its damage, bosses
+35% (the final boss 40% health), rising in a straight line to stock values at 5 players. No single hit
+from a scaled creature takes more than 35% of your max health. It is ZRPandaria's DungeonScale, ported
+without its honor rewards; set it up with "Solo dungeons" in step 9. Core files touched:
+`ScriptMgr.h` / `ScriptMgr.cpp` (a new `AllCreatureScript` hook type: creature added, removed, level
+set), `Creature.cpp` (calls the three hooks), `solocraft.cpp` (the scaling script, added at the end of
+the file so the patch creates no new files), `custom_script_loader.cpp` (registers it) and
+`worldserver.conf.dist` (the `DungeonScale.*` settings). `ScriptMgr.h` is in the precompiled headers,
+so applying it rebuilds nearly everything.
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
@@ -379,20 +391,40 @@ To let characters learn up to 4 primary professions, set `MaxPrimaryTradeSkill =
 are known, whatever the server allows, and its Professions tab only shows 2. The addon re-enables
 **Train** and adds a `/profs` panel listing every primary profession (verified in game 2026-10-10).
 
+### Solo dungeons (DungeonScale)
+
+`dungeon-scale.patch` (step 3) installs its settings into `~/bfa/server/etc/worldserver.conf.dist`. Copy
+them into `worldserver.conf` once, and turn Solocraft off, since it buffs players on top of mobs that are
+already scaled down:
+
+```sh
+grep -q '^DungeonScale.Enable' ~/bfa/server/etc/worldserver.conf || sed -n '/^# DUNGEON SCALE$/,$p' ~/bfa/server/etc/worldserver.conf.dist >> ~/bfa/server/etc/worldserver.conf
+sed -i 's/^\(Solocraft\.Enable *= *\)1/\10/' ~/bfa/server/etc/worldserver.conf
+```
+
+Then restart `worldserver`. Its log shows `[DungeonScale] Loaded config: ENABLED`. Inside a dungeon,
+`.dungeonscale info` shows the multipliers in use and `.dungeonscale creature` shows them for the
+selected creature. The settings are explained in the block itself. A dungeon of its own can be made
+easier or harder with lines like `DungeonScale.Map.36.Damage = 0.25` (36 is The Deadmines), then
+`.reload config`.
+
 ## 10. Updating
 
 ```sh
 cd ~/bfa/source
-git apply -R ../tools-repo/tools/bfa/deadmines-fixes.patch  # undo the patches before pulling
-git apply -R ../tools-repo/tools/bfa/profession-skill-sync.patch
-git apply -R ../tools-repo/tools/bfa/bfa-linux-fixes.patch
+git checkout -- .  # undo the patches before pulling
 git pull
 git -C ../tools-repo pull
 git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
 git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
 git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
+git apply ../tools-repo/tools/bfa/dungeon-scale.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
+
+`git checkout -- .` throws away every change to upstream's files, so keep your own edits somewhere else.
+`git apply -R` would only work if the patch hadn't changed since it was applied, and the pull may have
+changed it.
 
 Restart `worldserver`; it applies the new `sql/updates` files itself.
 
