@@ -69,6 +69,11 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### The Deadmines (map 36), Normal
 
+Merged to `main` with PR #8 on 2026-10-12, together with the 2026-10-11 Deadmines fixes below.
+Still open, not fixed: a few old vanilla NPCs in the normal phase (Defias Miner 598 ×1, Defias Pirate
+657 ×3 near the ship, Squallshaper 1732 ×1), and heroic Cookie can leave up to three "A Note From
+Vanessa".
+
 #### Heroic Vanessa event spawned on Normal
 - **Found** (in game): a ghostly human Ripsnarl stood outside the door to the ship, and `.debug combat`
   showed the player stuck in combat with five Vanessa VanCleefs, also inside the Foe Reaper room.
@@ -92,8 +97,9 @@ to do to pick it up (rebuild, restart, run SQL).
   | 51624 | Vanessa Anchor Bunny JMF | 326763 |
 
   The two Vanessas without a spawn ID in `.debug combat` were summoned by these and go with them.
-- **Status:** not tested in game yet. This also probably explains the "stuck in combat" from the Foe
-  Reaper room below and from the Mine Bunny.
+- **Status:** the cause is confirmed in game (`.debug combat` listed these Vanessas). The fix itself
+  is not tested in game yet. It also probably explains the "stuck in combat" from the Foe Reaper room
+  below and from the Mine Bunny.
 
 #### Foe Reaper never woke, Defias Reapers vanished
 - **Found** (in game): burnt-out Defias Reapers disappeared, the player stayed in combat, and Foe
@@ -170,7 +176,7 @@ Then restart `worldserver`. Its log shows `[DungeonScale] Loaded config: ENABLED
 
 ### The Deadmines (map 36), Normal
 
-All of these are in PR #8. Core changes are in `tools/bfa/deadmines-fixes.patch`, and world data
+All of these were merged to `main` with PR #8 on 2026-10-12. Core changes are in `tools/bfa/deadmines-fixes.patch`, and world data
 changes are in `sql/fixes/world/2026_10_11_*.sql`. Each SQL file is safe to run twice and lists its own
 revert lines. Tested at level 16-17 on a rogue with SoloCraft on.
 

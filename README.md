@@ -13,6 +13,12 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   current x86-64 Linux, so data can be extracted on the machine with the client and copied to the server VM.
 - [`tools/bfa/bfa-linux-fixes.patch`](tools/bfa/bfa-linux-fixes.patch): the source fixes GCC 14 needs
   (upstream is built with MSVC), plus a CMake fix for building the extractors on their own.
+- [`tools/bfa/profession-skill-sync.patch`](tools/bfa/profession-skill-sync.patch): raises a profession's
+  parent skill along with its expansion tier, so gathering nodes check the right skill.
+- [`tools/bfa/deadmines-fixes.patch`](tools/bfa/deadmines-fixes.patch): The Deadmines fixes (trash AI,
+  boss doors, Foe Reaper, Helix, Ripsnarl, Mine Bunny), plus a core fix so bosses reset after a wipe.
+- [`sql/fixes/world`](sql/fixes/world): world database fixes, run in file-name order; the guide's step 10
+  table says what each one does.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.
