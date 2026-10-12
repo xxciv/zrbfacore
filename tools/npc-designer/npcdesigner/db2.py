@@ -68,6 +68,12 @@ def read_wdb2_itemsparse(data: bytes) -> Iterator[ItemInfo]:
 # ItemSparse.db2 fields in file order (BFA-HavenCore DB2Metadata.h ItemSparseMeta, 62 fields).
 WDC3_ITEMSPARSE_FIELDS = 62
 WDC3_NAME, WDC3_BUYPRICE, WDC3_BUYCOUNT, WDC3_QUALITY = 5, 17, 18, 61
+# Field types and array sizes in file order, for the sparse layout where fields are read one after another
+# (L long, S string, F float, I int, H short, B byte).
+WDC3_ITEMSPARSE_META = ([("L", 1)] + [("S", 1)] * 5 + [("F", 1), ("I", 1), ("F", 1), ("I", 1), ("F", 1),
+                        ("F", 10), ("I", 10)] + [("I", 1)] * 6 + [("F", 1), ("F", 1), ("I", 4), ("I", 1)] +
+                        [("H", 1)] * 8 + [("H", 2)] + [("H", 1)] * 11 + [("B", 1)] * 4 + [("B", 3)] +
+                        [("B", 1)] * 6 + [("B", 10)] + [("B", 1)] * 7)
 
 STORAGE_NONE, STORAGE_BITPACKED, STORAGE_COMMON, STORAGE_INDEXED, STORAGE_INDEXED_ARRAY, \
     STORAGE_SIGNED = range(6)
@@ -84,7 +90,7 @@ class Wdc3:
     SECTION = struct.Struct("<Q8I")
     STORAGE = struct.Struct("<HHIIIII")
 
-    def __init__(self, data: bytes):
+    def __init__(self, data: bytes, meta=None):
         if data[:4] != b"WDC3":
             raise Db2Error("not a WDC3 file")
         h = self.HEADER.unpack_from(data, 0)
@@ -96,7 +102,10 @@ class Wdc3:
         for _ in range(section_count):
             sections.append(self.SECTION.unpack_from(data, pos))
             pos += self.SECTION.size
-        pos += self.field_count * 4                       # field_structure (not needed)
+        # field_structure: bytes per value = 4 - unused_bits / 8 (only needed for sparse files)
+        self.field_bytes = [4 - struct.unpack_from("<h", data, pos + 4 * f)[0] // 8
+                            for f in range(self.field_count)]
+        pos += self.field_count * 4
         self.storage = []
         for _ in range(storage_size // self.STORAGE.size):
             self.storage.append(self.STORAGE.unpack_from(data, pos))
@@ -117,9 +126,14 @@ class Wdc3:
                 self.commons[f] = (a, dict(zip(pairs[0::2], pairs[1::2])))
                 c_off += extra
 
-        if self.flags & 1:
-            raise Db2Error("sparse (offset map) WDC3 files are not supported")
         self.records = []  # (id, record bytes, global index)
+        self.sparse = bool(self.flags & 1)
+        if self.sparse:
+            if meta is None or len(meta) != self.field_count:
+                raise Db2Error("sparse WDC3 file needs its field layout")
+            self.meta = meta
+            self._load_sparse(data, sections)
+            return
         strings = bytearray()
         global_index = 0
         for (_key, file_offset, n, s_size, _end, id_size, rel_size, _om, copy_count) in sections:
@@ -148,6 +162,67 @@ class Wdc3:
             global_index += n
         self.strings = bytes(strings)
 
+    def _load_sparse(self, data, sections):
+        """Records of varying size listed in an offset map; strings sit inline in the record.
+
+        Per section, at offset_records_end: record ids (uint32 x n), copy table (uint32 new, uint32 source
+        x copy_count), offset map (uint32 file offset, uint16 size x n). Same order as BFA-HavenCore's
+        DB2FileLoaderSparseImpl::LoadCatalogData.
+        """
+        for (_key, _file_offset, _n, _s, end, _id_size, _rel, count, copy_count) in sections:
+            p = end
+            if not count or p + count * 10 + copy_count * 8 > len(data):
+                continue
+            ids = struct.unpack_from(f"<{count}I", data, p)
+            p += count * 4
+            copies = struct.unpack_from(f"<{copy_count * 2}I", data, p)
+            p += copy_count * 8
+            by_id = {}
+            for n in range(count):
+                offset, size = struct.unpack_from("<IH", data, p + n * 6)
+                if not ids[n] or not size or offset + size > len(data):
+                    continue  # encrypted section left empty, or a hole in the id range
+                rec = data[offset:offset + size]
+                self.records.append((ids[n], rec, 0))
+                by_id[ids[n]] = rec
+            for new_id, old_id in zip(copies[0::2], copies[1::2]):
+                if old_id in by_id:
+                    self.records.append((new_id, by_id[old_id], 0))
+
+    def sparse_fields(self, rec: bytes, wanted) -> dict:
+        """Read the wanted fields of a sparse record: {field: int or str}.
+
+        Fields are packed one after another and strings are NUL-terminated, so only the strings move the
+        fields behind them. Fixed-size fields after the last string are looked up by a precomputed offset.
+        """
+        if not hasattr(self, "_tail"):
+            last_string = max((f for f, (k, _) in enumerate(self.meta) if k == "S"), default=-1)
+            self._tail_start = last_string + 1
+            self._tail, off = {}, 0
+            for f in range(self._tail_start, len(self.meta)):
+                kind, count = self.meta[f]
+                width = 4 if kind == "F" else self.field_bytes[f]
+                self._tail[f] = (off, width)
+                off += width * count
+        out, pos = {}, 0
+        for f in range(self._tail_start):
+            kind, count = self.meta[f]
+            for _ in range(count):
+                if kind == "S":
+                    end = rec.find(b"\0", pos)
+                    end = len(rec) if end < 0 else end
+                    value, pos = rec[pos:end].decode("utf-8", "replace"), end + 1
+                else:
+                    width = 4 if kind == "F" else self.field_bytes[f]
+                    value, pos = int.from_bytes(rec[pos:pos + width], "little"), pos + width
+                if f in wanted and f not in out:
+                    out[f] = value
+        for f in wanted:
+            if f >= self._tail_start:
+                off, width = self._tail[f]
+                out[f] = int.from_bytes(rec[pos + off:pos + off + width], "little")
+        return out
+
     def value(self, rid: int, rec: bytes, f: int) -> int:
         offset, size, _extra, stype, a, b, c = self.storage[f]
         if stype == STORAGE_NONE:
@@ -175,9 +250,17 @@ class Wdc3:
 
 
 def read_wdc3_itemsparse(data: bytes) -> Iterator[ItemInfo]:
-    db = Wdc3(data)
-    if db.field_count != WDC3_ITEMSPARSE_FIELDS:
-        raise Db2Error(f"unexpected ItemSparse layout ({db.field_count} fields, expected 62 for 8.3.7)")
+    fields = struct.unpack_from("<I", data, 8)[0] if data[:4] == b"WDC3" else 0
+    if fields != WDC3_ITEMSPARSE_FIELDS:
+        raise Db2Error(f"unexpected ItemSparse layout ({fields} fields, expected 62 for 8.3.7)")
+    db = Wdc3(data, WDC3_ITEMSPARSE_META)
+    if db.sparse:
+        want = (WDC3_NAME, WDC3_BUYPRICE, WDC3_BUYCOUNT, WDC3_QUALITY)
+        for rid, rec, _gi in db.records:
+            v = db.sparse_fields(rec, want)
+            yield ItemInfo(rid, v[WDC3_NAME], v[WDC3_QUALITY] & 0xFF, v[WDC3_BUYPRICE],
+                           max(v[WDC3_BUYCOUNT], 1))
+        return
     for rid, rec, gi in db.records:
         yield ItemInfo(rid, db.string(rec, gi, WDC3_NAME), db.value(rid, rec, WDC3_QUALITY) & 0xFF,
                        db.value(rid, rec, WDC3_BUYPRICE), max(db.value(rid, rec, WDC3_BUYCOUNT), 1))

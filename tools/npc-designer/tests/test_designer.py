@@ -176,6 +176,38 @@ def build_wdc3(sections):
     return header + b"".join(sec_headers) + field_struct + storage_blob + pallet + common + b"".join(blobs)
 
 
+def build_wdc3_sparse(rows, copy=None):
+    """ItemSparse in the sparse layout real 8.3.7 files use: records packed field after field, strings inline,
+    found through an offset map. rows: (id, name, quality, buy_count, buy_price)"""
+    meta = db2.WDC3_ITEMSPARSE_META
+    unused = {"L": -32, "S": 0, "F": 0, "I": 0, "H": 16, "B": 24}
+    field_struct = b"".join(struct.pack("<hH", unused[k], 0) for k, _ in meta)
+    storage = b"".join(struct.pack("<HHIIIII", 0, 0, 0, db2.STORAGE_NONE, 0, 0, 0) for _ in meta)
+    header_size = 72 + 40
+    start = header_size + len(field_struct) + len(storage)
+    records, catalog = b"", []
+    for ident, name, quality, count, price in rows:
+        rec = b""
+        for f, (kind, n) in enumerate(meta):
+            for _ in range(n):
+                if kind == "S":
+                    rec += (name if f == db2.WDC3_NAME else "desc %d" % ident).encode() + b"\0"
+                    continue
+                width = {"L": 8, "F": 4, "I": 4, "H": 2, "B": 1}[kind]
+                value = {db2.WDC3_BUYPRICE: price, db2.WDC3_BUYCOUNT: count, db2.WDC3_QUALITY: quality}.get(f, 0)
+                rec += value.to_bytes(width, "little")
+        catalog.append((start + len(records), len(rec)))
+        records += rec
+    end = start + len(records)
+    ids = struct.pack(f"<{len(rows)}I", *[r[0] for r in rows])
+    copies = struct.pack("<II", *copy) if copy else b""
+    offsets = b"".join(struct.pack("<IH", o, n) for o, n in catalog)
+    section = struct.pack("<Q8I", 0, start, len(rows), 0, end, len(ids), 0, len(rows), 1 if copy else 0)
+    header = struct.pack("<4s9IHH7I", b"WDC3", len(rows), len(meta), 0, 0, 0, 0, 0, 0, 0,
+                         1, -1 & 0xFFFF, len(meta), 0, 0, len(storage), 0, 0, 1)
+    return header + section + field_struct + storage + records + ids + copies + offsets + ids
+
+
 class Db2Test(unittest.TestCase):
     def test_wdb2(self):
         data = build_wdb2([(159, "Refreshing Spring Water", 1, 1, 25), (2901, "Mining Pick", 1, 1, 81),
@@ -198,6 +230,16 @@ class Db2Test(unittest.TestCase):
         self.assertEqual(items[4540].buy_count, 5)
         self.assertEqual(items[4540].buy_price, 125)
         self.assertEqual(items[90001].name, "Linen Cloth")   # copy table row
+
+    def test_wdc3_sparse(self):
+        data = build_wdc3_sparse([(159, "Refreshing Spring Water", 1, 1, 25), (19019, "Thunderfury", 5, 1, 0),
+                                  (4540, "Tough Hunk of Bread", 1, 5, 125)], copy=(90000, 4540))
+        items = {i.id: i for i in db2.read_wdc3_itemsparse(data)}
+        self.assertEqual(items[159].name, "Refreshing Spring Water")
+        self.assertEqual(items[19019].quality, 5)
+        self.assertEqual(items[4540].buy_count, 5)
+        self.assertEqual(items[4540].buy_price, 125)
+        self.assertEqual(items[90000].name, "Tough Hunk of Bread")
 
 
 if __name__ == "__main__":

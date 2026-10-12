@@ -114,5 +114,5 @@ display ID outside the game.
 python3 -m unittest discover -s ~/zrbfacore/tools/npc-designer/tests
 ```
 
-They cover the SQL for each target, validation, price and `.gps` parsing, and both item table readers.
+They cover the SQL for each target, validation, price and `.gps` parsing, and the item table readers (WDB2, WDC3 and sparse WDC3).
 The readers were tested on files built to the format spec, not on files from a real client yet.
