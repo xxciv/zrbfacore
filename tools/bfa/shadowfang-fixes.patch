@@ -91,10 +91,10 @@ index dfd461d..39b2a6b 100644
                  else
                      Talk(SAY_AGGRO_A);
 diff --git a/src/server/scripts/EasternKingdoms/ShadowfangKeep/instance_shadowfang_keep.cpp b/src/server/scripts/EasternKingdoms/ShadowfangKeep/instance_shadowfang_keep.cpp
-index 41df0af..7fc08ba 100644
+index 41df0af..f2a5676 100644
 --- a/src/server/scripts/EasternKingdoms/ShadowfangKeep/instance_shadowfang_keep.cpp
 +++ b/src/server/scripts/EasternKingdoms/ShadowfangKeep/instance_shadowfang_keep.cpp
-@@ -24,7 +24,52 @@ EndScriptData */
+@@ -24,7 +24,54 @@ EndScriptData */
  
  #include "ScriptMgr.h"
  #include "shadowfang_keep.h"
@@ -138,7 +138,9 @@ index 41df0af..7fc08ba 100644
 +};
 +
 +// Not a Phase.db2 phase: no player is ever in it, so creatures given it are not seen and do not interact.
-+uint32 const PHASE_SFK_HIDDEN_TROOPS = 1000000;
++// Set as the creature's database phase: PhasingHandler::AddPhase doesn't clear the "unphased" flag
++// of a creature spawned from the database, so it would stay visible to everyone.
++uint16 const PHASE_SFK_HIDDEN_TROOPS = 65535;
 +
 +// The Godfrey intro starts when a player reaches the landing outside Godfrey's room after Lord Walden.
 +Position const GodfreyIntroPos = { -165.0f, 2181.0f, 152.0f };
@@ -147,7 +149,7 @@ index 41df0af..7fc08ba 100644
  
  class instance_shadowfang_keep : public InstanceMapScript
  {
-@@ -33,7 +78,7 @@ public:
+@@ -33,7 +80,7 @@ public:
  
      struct instance_shadowfang_keep_InstanceMapScript: public InstanceScript
      {
@@ -156,7 +158,7 @@ index 41df0af..7fc08ba 100644
  
          void Initialize() override
          {
-@@ -42,6 +87,8 @@ public:
+@@ -42,6 +89,8 @@ public:
  
          void OnCreatureCreate(Creature* creature) override
          {
@@ -165,7 +167,7 @@ index 41df0af..7fc08ba 100644
              switch (creature->GetEntry())
              {
                  case BOSS_BARON_ASHBURY:
-@@ -75,7 +122,98 @@ public:
+@@ -75,7 +124,102 @@ public:
          void OnPlayerEnter(Player* player) override
          {
              if (!TeamInInstance)
@@ -248,13 +250,17 @@ index 41df0af..7fc08ba 100644
 +                return;
 +
 +            bool const hidden = creature->GetPhaseShift().HasPhase(PHASE_SFK_HIDDEN_TROOPS);
-+            if (IsSpawnGroupActive(groupId))
-+            {
-+                if (hidden)
-+                    PhasingHandler::RemovePhase(creature, PHASE_SFK_HIDDEN_TROOPS, updateVisibility);
-+            }
-+            else if (!hidden)
-+                PhasingHandler::AddPhase(creature, PHASE_SFK_HIDDEN_TROOPS, updateVisibility);
++            bool const active = IsSpawnGroupActive(groupId);
++            if (active == !hidden)
++                return;
++
++            if (active)
++                PhasingHandler::InitDbPhaseShift(creature->GetPhaseShift(), data->phaseUseFlags, data->phaseId, data->phaseGroup);
++            else
++                PhasingHandler::InitDbPhaseShift(creature->GetPhaseShift(), PHASE_USE_FLAGS_NONE, PHASE_SFK_HIDDEN_TROOPS, 0);
++
++            if (updateVisibility && creature->IsInWorld())
++                creature->UpdateObjectVisibility();
 +        }
 +
 +        void UpdateTroops()
@@ -264,7 +270,7 @@ index 41df0af..7fc08ba 100644
          }
  
          uint32 GetData(uint32 identifier) const override 
-@@ -115,6 +253,9 @@ public:
+@@ -115,6 +259,9 @@ public:
              if (!InstanceScript::SetBossState(type, state))
                  return false;
  
@@ -274,7 +280,7 @@ index 41df0af..7fc08ba 100644
              switch(type)
              {
                  case DATA_BARON_ASHBURY_EVENT:
-@@ -138,6 +279,8 @@ public:
+@@ -138,6 +285,8 @@ public:
  
          protected:
              uint32 TeamInInstance;

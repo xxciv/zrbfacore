@@ -8,8 +8,15 @@ to do to pick it up (rebuild, restart, run SQL).
 ### Shadowfang Keep (map 33)
 
 On PR #11, not merged yet. Core changes are in the new `tools/bfa/shadowfang-fixes.patch`, applied
-after the other five patches. Built here (the 8 Shadowfang Keep script files compile); not yet tested
-in game.
+after the other five patches. Built here (the 8 Shadowfang Keep script files compile).
+
+First version, tested by Four on 2026-10-15: the SQL worked (the Forsaken stood up, and the door room
+held exactly the 14 spawns of groups 412 and 413), but nothing was hidden. The script hid creatures with
+`PhasingHandler::AddPhase`, which for a creature spawned from the database adds the phase without
+clearing its "unphased" flag (`PhaseShift::ModifyPhasesReferences` skips the flag update when
+`IsDbPhaseShift` is set), so every player still saw it. The second version replaces the creature's
+database phase instead (below); a small test against `PhaseShift.cpp` shows the old way stays visible
+and the new way hides and shows again.
 
 #### Both factions' allies were spawned at once
 - **Found** (in game, Alliance): at the door stood Packleader Ivar Bloodfang (47006) with 6 Bloodfang
@@ -51,8 +58,9 @@ in game.
     in CPP). Revert lines are in the file.
   - `instance_shadowfang_keep.cpp`: each creature in groups 412-432 is shown only while its group is
     active for the team in the instance (the first player's) and the bosses killed so far, the same
-    stages as CPP's script. The others are put in a phase no player is in, so they are not seen and
-    do not fight or talk. This is checked when a creature spawns, when the first player enters, when a
+    stages as CPP's script. The others get phase 65535, which no player is in, as their database phase
+    (`PhasingHandler::InitDbPhaseShift`), so they are not seen and do not fight or talk; shown again,
+    they get their own database phase back. This is checked when a creature spawns, when the first player enters, when a
     boss dies, and once when the Godfrey intro starts. CPP starts the intro with areatrigger 6431; here
     it starts when a player reaches the landing outside Godfrey's room (within 30 yards of -165, 2181,
     above z 145) after Lord Walden, which swaps Ivar or Belmont from Walden's room to Godfrey's door.
@@ -64,7 +72,7 @@ in game.
   - `boss_lord_godfrey.cpp`: his aggro line checks the team against `HORDE` instead of `TEAM_HORDE`.
   - `shadowfang_keep.cpp`: the Haunted Stable Hand's teleports check the saved boss states (they
     never appeared before), and "Baron Silberlein" is now "Baron Silverlaine".
-- **Status:** not yet tested in game. Instances already open before the update keep their old boss
+- **Status:** second version not yet tested in game. Instances already open before the update keep their old boss
   states, so test in a fresh one.
 
 ### To pick up the Shadowfang Keep changes
@@ -77,6 +85,17 @@ git -C ../tools-repo pull
 git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_15_01_shadowfang_faction_troops.sql
+```
+Then restart `worldserver`.
+
+If you applied the first version, swap in the second one. No other patch touches the Shadowfang Keep
+folder, so resetting just that folder is enough, and the SQL doesn't need running again:
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+git checkout -- src/server/scripts/EasternKingdoms/ShadowfangKeep
+git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
+cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 Then restart `worldserver`.
 
