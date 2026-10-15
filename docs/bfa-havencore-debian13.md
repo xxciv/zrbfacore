@@ -94,6 +94,7 @@ git apply ../tools-repo/tools/bfa/dungeon-scale.patch
 git apply ../tools-repo/tools/bfa/ragefire-fixes.patch
 git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
 git apply ../tools-repo/tools/bfa/player-search.patch
+git apply ../tools-repo/tools/bfa/stealth-pull.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -194,6 +195,12 @@ never saved as killed, which this also fixes. It only takes effect with
 `player-search.patch` fixes `WorldObject::SelectNearestPlayer` and `SelectNearestPlayers` in `Object.cpp`.
 They searched only the part of the map grid that holds creatures and objects, so they never found a
 player; about 170 scripts use them. It now searches the player part, as upstream TrinityCore does.
+
+`stealth-pull.patch` builds on the `CreatureAI::UpdateVictim` change in `deadmines-fixes.patch`, so apply it
+after that one. A mob can't see a stealthed player behind it, so after an opener from stealth (with
+Subterfuge, stealth lasts 3 more seconds) it had no target it could attack and evaded at once. It now
+waits while a living player who has threat on it is only hidden from it. Vanish wipes that threat, so
+vanishing still resets the fight.
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
@@ -448,6 +455,7 @@ git apply ../tools-repo/tools/bfa/dungeon-scale.patch
 git apply ../tools-repo/tools/bfa/ragefire-fixes.patch
 git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
 git apply ../tools-repo/tools/bfa/player-search.patch
+git apply ../tools-repo/tools/bfa/stealth-pull.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

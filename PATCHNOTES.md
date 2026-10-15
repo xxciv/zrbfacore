@@ -105,6 +105,28 @@ New `tools/bfa/player-search.patch`, applied seventh, after `shadowfang-fixes.pa
   this; tell me if anything changes.
 - **Status:** builds here (`Object.cpp` compiles); not yet tested in game.
 
+### Core: mobs pulled from stealth evaded
+
+New `tools/bfa/stealth-pull.patch`, applied eighth, after `player-search.patch`. It changes the
+`CreatureAI::UpdateVictim` code that `deadmines-fixes.patch` added, so it needs that patch applied first.
+
+- **Found** (in game, Shadowfang Keep): Four, a rogue, opened on Baron Ashbury from stealth from right
+  behind. He yelled his aggro line ("Tally ho, the hunt begins"), went into evade mode (hits showed Evade), walked home
+  and despawned. After he respawned, a pull out of stealth worked normally.
+- **Cause:** a mob can't see a stealthed player standing behind it (`WorldObject::CanDetectStealthOf`
+  only detects behind within its combat reach). With Subterfuge, stealth lasts 3 more seconds after the
+  opener. While a player can't be seen, their threat entry is offline, so the mob has no target. HavenCore
+  already evaded in that case while in combat, and `deadmines-fixes.patch` made it evade in every case
+  (to fix Release Spirit after a wipe). So the mob evaded the moment it was pulled from stealth, and
+  Ashbury despawns on evade. Same cause as Foe Reaper evading on a stealthed rogue in The Deadmines.
+- **Changed:** in `src/server/game/AI/CreatureAI.cpp`, a mob with no target no longer evades while it
+  is in combat and a living player who has threat on it is only hidden from it. It waits, and attacks as
+  soon as it can see that player again. Vanish sets your threat to 0 in dungeons, so vanishing still
+  resets the fight. A wipe still resets it too: dead players don't count.
+- **Effect:** core-wide, for every mob and boss. A mob a hidden player has hit stands still until they
+  show up, instead of resetting.
+- **Status:** builds here (`CreatureAI.cpp` compiles); not yet tested in game.
+
 #### Stone Sleepers never came to life
 - **Found** (in game): on the wall walk the Lesser Gargoyles (3869) attack, but the Stone Sleepers (3870)
   sit there inactive.
@@ -157,6 +179,15 @@ Then restart `worldserver`.
 cd ~/bfa/source
 git -C ../tools-repo pull
 git apply ../tools-repo/tools/bfa/player-search.patch
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+Then restart `worldserver`.
+
+`stealth-pull.patch` is also new on its own and goes on top of the patches you already have:
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/stealth-pull.patch
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
 Then restart `worldserver`.

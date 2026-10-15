@@ -1,0 +1,40 @@
+diff --git a/src/server/game/AI/CreatureAI.cpp b/src/server/game/AI/CreatureAI.cpp
+--- a/src/server/game/AI/CreatureAI.cpp
++++ b/src/server/game/AI/CreatureAI.cpp
+@@ -231,6 +231,23 @@
+     return me->GetVictim() != nullptr;
+ }
+ 
++// True while a living attacker that still has threat on us is only hidden
++// from us (stealth or invisibility), so its threat entry is offline.
++static bool HasHiddenAttacker(Creature* me)
++{
++    if (!me->IsInCombat() || !me->CanHaveThreatList())
++        return false;
++
++    for (ThreatReference const* ref : me->GetThreatManager().GetUnsortedThreatList())
++    {
++        Unit* victim = ref->GetVictim();
++        if (ref->IsOffline() && ref->GetThreat() > 0.0f && victim->IsAlive() && !me->CanSeeOrDetect(victim))
++            return true;
++    }
++
++    return false;
++}
++
+ bool CreatureAI::UpdateVictim()
+ {
+     if (!me->IsEngaged())
+@@ -247,7 +264,11 @@
+         // player dies, CombatStop() ends combat but leaves us engaged, and
+         // SelectVictim() only evades far from home, so a boss would otherwise
+         // stay IN_PROGRESS and block Release Spirit.
+-        else
++        // Hold instead while a living attacker that still has threat on us is
++        // only hidden (a rogue opening from stealth behind us, Subterfuge):
++        // its threat entry is offline until we can see it again. Vanish wipes
++        // that threat, so vanishing still resets the fight.
++        else if (!HasHiddenAttacker(me))
+             EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
+ 
+         return me->GetVictim() != nullptr;
