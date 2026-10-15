@@ -1,0 +1,168 @@
+diff --git a/src/server/scripts/Kalimdor/RagefireChasm/ragefire_chasm.cpp b/src/server/scripts/Kalimdor/RagefireChasm/ragefire_chasm.cpp
+index 0c644d8..b36f8df 100644
+--- a/src/server/scripts/Kalimdor/RagefireChasm/ragefire_chasm.cpp
++++ b/src/server/scripts/Kalimdor/RagefireChasm/ragefire_chasm.cpp
+@@ -49,14 +49,14 @@ namespace RagefireChasm
+         return 0;
+     }
+ 
+-    bool RescuePrisoner(Player* player, WorldObject* source)
+-    {
+-        if (!player || !source)
+-            return false;
++    bool FreePrisoner(Player* player, Creature* prisoner, WorldObject* source);
+ 
++    // Returns the prisoner entry this player can still rescue, or 0.
++    uint32 GetNeededCreditEntry(Player* player)
++    {
+         uint32 creditEntry = GetRescueCreditEntry(player);
+         if (!creditEntry)
+-            return false;
++            return 0;
+ 
+         uint32 questId = creditEntry == NPC_SI7_RANGER
+             ? QUEST_NO_MAN_LEFT_BEHIND
+@@ -64,6 +64,18 @@ namespace RagefireChasm
+ 
+         // Do not give additional credit once the objective is already complete.
+         if (player->GetReqKillOrCastCurrentCount(questId, creditEntry) >= 5)
++            return 0;
++
++        return creditEntry;
++    }
++
++    bool RescuePrisoner(Player* player, WorldObject* source)
++    {
++        if (!player || !source)
++            return false;
++
++        uint32 creditEntry = GetNeededCreditEntry(player);
++        if (!creditEntry)
+             return false;
+ 
+         // Each rescue point already has the appropriate prisoner spawned
+@@ -72,8 +84,28 @@ namespace RagefireChasm
+         if (!prisoner)
+             return false;
+ 
++        return FreePrisoner(player, prisoner, source);
++    }
++
++    // Credits the player and sends the prisoner on its way. source is the
++    // rescue point used (hiding prop, cage, or the prisoner itself).
++    bool FreePrisoner(Player* player, Creature* prisoner, WorldObject* source)
++    {
++        // Every prisoner starts stunned (template unit_flags) and loses it
++        // once freed, so it can only be rescued once.
++        if (!prisoner->HasUnitFlag(UNIT_FLAG_STUNNED))
++            return false;
++
++        uint32 creditEntry = prisoner->GetEntry();
+         player->KilledMonsterCredit(creditEntry, prisoner->GetGUID());
+ 
++        // The template keeps every prisoner unselectable and stunned (hidden
++        // or caged). Let it stand up and walk away.
++        prisoner->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
++        prisoner->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
++        prisoner->RemoveUnitFlag(UNIT_FLAG_STUNNED);
++        prisoner->SetStandState(UNIT_STAND_STATE_STAND);
++
+         // Retail-like rescue presentation:
+         // prisoner acknowledges the rescue, becomes passive, follows a
+         // location-specific escape route, then despawns.
+@@ -182,6 +214,87 @@ public:
+ }
+ };
+ 
++// SI:7 Ranger / Kor'kron Scout.
++//
++// Only the two behind the Suspicious Rock and the Inconspicuous Crate are
++// rescued through their hiding place. Every other one (the three caged ones
++// beside Lava Guard Gordoth, and the ones lying around the cave) is rescued
++// by talking to it. Their template keeps them unselectable, so before this
++// only the rock and the crate could be used.
++class npc_rfc_prisoner : public CreatureScript
++{
++public:
++    npc_rfc_prisoner() : CreatureScript("npc_rfc_prisoner") { }
++
++    struct npc_rfc_prisonerAI : public ScriptedAI
++    {
++        npc_rfc_prisonerAI(Creature* creature) : ScriptedAI(creature) { }
++
++        void Reset() override
++        {
++            me->SetReactState(REACT_PASSIVE);
++            _checkTimer = 1000;
++        }
++
++        void UpdateAI(uint32 diff) override
++        {
++            // Wait a moment so the hiding props near us have been created.
++            if (!_checkTimer)
++                return;
++
++            if (_checkTimer > diff)
++            {
++                _checkTimer -= diff;
++                return;
++            }
++            _checkTimer = 0;
++
++            if (!me->HasUnitFlag(UNIT_FLAG_STUNNED)) // already rescued
++                return;
++
++            if (me->FindNearestCreature(RagefireChasm::NPC_SUSPICIOUS_ROCK, 3.0f, true) ||
++                me->FindNearestCreature(RagefireChasm::NPC_INCONSPICUOUS_CRATE, 3.0f, true))
++                return;
++
++            me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
++            me->AddNpcFlag(UNIT_NPC_FLAG_GOSSIP);
++        }
++
++    private:
++        uint32 _checkTimer = 1000;
++    };
++
++    CreatureAI* GetAI(Creature* creature) const override
++    {
++        return new npc_rfc_prisonerAI(creature);
++    }
++
++    bool OnGossipHello(Player* player, Creature* creature) override
++    {
++        CloseGossipMenuFor(player);
++
++        if (RagefireChasm::GetNeededCreditEntry(player) != creature->GetEntry())
++            return true;
++
++        // A caged prisoner opens its cage on the way out.
++        GameObject* cage = nullptr;
++        for (uint32 entry : { RagefireChasm::GO_RANGER_CAGE_1, RagefireChasm::GO_RANGER_CAGE_2, RagefireChasm::GO_RANGER_CAGE_3 })
++        {
++            if (GameObject* go = creature->FindNearestGameObject(entry, 3.0f))
++            {
++                cage = go;
++                break;
++            }
++        }
++
++        if (cage)
++            cage->UseDoorOrButton(0, false, player);
++
++        RagefireChasm::FreePrisoner(player, creature, cage ? static_cast<WorldObject*>(cage) : creature);
++        return true;
++    }
++};
++
+ // Final laboratory prisoner cages.
+ class go_rfc_prisoner_cage : public GameObjectScript
+ {
+@@ -199,5 +312,6 @@ public:
+ void AddSC_ragefire_chasm()
+ {
+     new npc_rfc_hidden_prisoner();
++    new npc_rfc_prisoner();
+     new go_rfc_prisoner_cage();
+ }
+\ No newline at end of file

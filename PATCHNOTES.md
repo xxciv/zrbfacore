@@ -3,6 +3,66 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-15
+
+### Ragefire Chasm (map 389)
+
+Core changes are in the new `tools/bfa/ragefire-fixes.patch`, applied after the other four patches.
+Tested on Normal by Four on 2026-10-14: all four bosses work, and so do The Dark Shaman and A New
+Enemy.
+
+#### No Man Left Behind could not be finished
+- **Found** (in game): only two SI:7 Rangers could be rescued, through the Suspicious Rock and the
+  Inconspicuous Crate. Another ranger stood by the lava near Slagmaw and could not be clicked. The
+  quest (30995, Alliance) needs 5 SI:7 Rangers (61788); the Horde version, No Orc Left Behind (30984),
+  needs 5 Kor'kron Scouts (61680) and is set up the same way. Each faction has 8 prisoners in the
+  instance (the other faction's are despawned by `instance_ragefire_chasm`):
+
+  | Where (x, y) | SI:7 Ranger guid | Kor'kron Scout guid | Rescued by, before |
+  |---|---|---|---|
+  | Suspicious Rock (-311, -24) | 10642793 | 10615969 | talking to the rock |
+  | Inconspicuous Crate (-89, 69) | 10642792 | 10615895 | talking to the crate |
+  | Cages beside Lava Guard Gordoth (-378, 188 / -377, 185 / -376, 182) | 10642794, 10642797, 10642796 | 10615981, 10615985, 10615984 | clicking the cage (cage objects 211883-211885) |
+  | By the lava near Slagmaw (-287, 135) | 10642795 | 10615970 | nothing |
+  | Lying near Adarogg (-257, -49) | 10642790 | 10615942 | nothing |
+  | Lying in the tunnel (-173, 2) | 10642791 | 10615916 | nothing |
+
+  Both prisoner templates have `unit_flags` 33850176, which includes `NOT_SELECTABLE` and `STUNNED`, so
+  none of them can be clicked. Their SmartAI only rescued on a spell click, and they have no
+  `npc_spellclick_spells` row or spell click flag, so it never ran. The cages are door objects with a
+  placeholder name ("Cage de l"); whether they can be clicked in the client isn't confirmed, and
+  none were seen there in game.
+- **Changed:**
+  - `ragefire_chasm.cpp`: new creature script `npc_rfc_prisoner` for both prisoners. One second after
+    spawning, a prisoner that is not within 3 yards of the rock or the crate becomes selectable and
+    gets a gossip flag. Talking to it while on the quest rescues it; a caged one opens its cage.
+  - `ragefire_chasm.cpp`: the credit and escape part of `RescuePrisoner()` is now `FreePrisoner()`,
+    shared by the rock, the crate, the cages and talking to a prisoner. A freed prisoner loses its
+    gossip flag and `STUNNED`, stands up, says its line, runs off and despawns. A prisoner without
+    `STUNNED` can't be rescued again, so a prop or cage clicked twice can't give two credits. The
+    5-credit cap moved into `GetNeededCreditEntry()`, used by every rescue.
+  - `2026_10_15_00_ragefire_rescue_prisoners.sql`: 61680 and 61788 go from `AIName` 'SmartAI',
+    `ScriptName` '' to `AIName` '', `ScriptName` 'npc_rfc_prisoner', and their 3 `smart_scripts` rows
+    each are deleted. Revert lines are in the file.
+- **Status:** compiles, and the SQL and its revert ran against the database with all upstream updates;
+  not tested in game yet. That gives 8 rescuable prisoners for the 5 the quest needs.
+
+### To pick up the 2026-10-15 changes
+```
+cd ~/bfa/source
+git checkout -- .
+git -C ../tools-repo checkout main
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
+git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
+git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
+git apply ../tools-repo/tools/bfa/dungeon-scale.patch
+git apply ../tools-repo/tools/bfa/ragefire-fixes.patch
+cmake --build build -j"$(nproc)" && cmake --build build --target install
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_15_00_ragefire_rescue_prisoners.sql
+```
+Then restart `worldserver`.
+
 ## 2026-10-12
 
 ### NPC Designer, vendor module
@@ -70,6 +130,8 @@ to do to pick it up (rebuild, restart, run SQL).
 ### The Deadmines (map 36), Normal
 
 Merged to `main` with PR #8 on 2026-10-12, together with the 2026-10-11 Deadmines fixes below.
+Four ran the whole dungeon on 2026-10-14 with all of these in and reported it ran great; the
+entries below were not checked one by one.
 Still open, not fixed: a few old vanilla NPCs in the normal phase (Defias Miner 598 ×1, Defias Pirate
 657 ×3 near the ship, Squallshaper 1732 ×1), and heroic Cookie can leave up to three "A Note From
 Vanessa".

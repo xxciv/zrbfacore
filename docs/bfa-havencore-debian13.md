@@ -91,6 +91,7 @@ git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
 git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
 git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale.patch
+git apply ../tools-repo/tools/bfa/ragefire-fixes.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -171,6 +172,14 @@ set), `Creature.cpp` (calls the three hooks), `solocraft.cpp` (the scaling scrip
 the file so the patch creates no new files), `custom_script_loader.cpp` (registers it) and
 `worldserver.conf.dist` (the `DungeonScale.*` settings). `ScriptMgr.h` is in the precompiled headers,
 so applying it rebuilds nearly everything.
+
+`ragefire-fixes.patch` collects the fixes for Ragefire Chasm (map 389). For No Man Left Behind and No
+Orc Left Behind, only the prisoners behind the Suspicious Rock and in the Inconspicuous Crate could be
+rescued, plus the three caged beside Lava Guard Gordoth if their cage could be clicked. The others
+couldn't be selected at all, so the quest could stop short of 5. Every SI:7 Ranger and Kor'kron Scout
+that isn't hidden behind the rock or the crate can now be rescued by talking to it, and a caged one
+opens its cage on the way out. It only takes effect with
+`2026_10_15_00_ragefire_rescue_prisoners.sql` below.
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
@@ -422,6 +431,7 @@ git apply ../tools-repo/tools/bfa/bfa-linux-fixes.patch
 git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
 git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale.patch
+git apply ../tools-repo/tools/bfa/ragefire-fixes.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -451,6 +461,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_10_11_04_deadmines_boss_loot.sql` | The Deadmines bosses often dropping only gold on Normal: each item rolled on its own at 9-19%. Now each boss drops one of its usual items every kill |
 | `2026_10_12_00_deadmines_mine_bunny_drunken_haze.sql` | The Mine Bunnies in The Deadmines leaving players fully drunk for about 15 minutes, with no debuff shown, after one Drunken Haze. Binds the spell script from `deadmines-fixes.patch` that keeps the 10-second snare and slow |
 | `2026_10_12_01_deadmines_heroic_vanessa_event_spawns.sql` | Vanessa VanCleef's Heroic-only nightmare event spawning on Normal too: its Vanessas kept players in combat (no logout) and a ghostly Ripsnarl stood outside the ship door. Its 21 spawns become Heroic-only |
+| `2026_10_15_00_ragefire_rescue_prisoners.sql` | Ragefire Chasm's No Man Left Behind / No Orc Left Behind stopping short of 5: binds `npc_rfc_prisoner` from `ragefire-fixes.patch` to the SI:7 Rangers and Kor'kron Scouts and removes their unused SmartAI |
 
 ## 11. Status
 
