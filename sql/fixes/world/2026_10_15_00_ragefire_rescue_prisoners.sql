@@ -1,0 +1,31 @@
+-- No Man Left Behind (30995) / No Orc Left Behind (30984), Ragefire Chasm.
+-- Both need 5 rescued prisoners: SI:7 Ranger (61788) or Kor'kron Scout (61680).
+-- Each faction has 8 spawned in the instance, but only 5 could be rescued: the
+-- one behind the Suspicious Rock, the one in the Inconspicuous Crate, and the
+-- three in the cages beside Lava Guard Gordoth (if the cage can be clicked).
+-- The others (by the lava near Slagmaw, and two lying in the tunnels) were
+-- unselectable, and their SmartAI rescue only ran on a spell click they never
+-- had (no npc_spellclick_spells row, no spellclick npcflag).
+--
+-- ragefire-fixes.patch adds npc_rfc_prisoner: every prisoner that isn't hidden
+-- behind the rock or the crate can be rescued by talking to it, and a caged one
+-- opens its cage. This binds it and removes the unused SmartAI.
+--
+-- Needs ragefire-fixes.patch built in, or worldserver logs the script name as
+-- unknown and the prisoners can't be talked to.
+--
+-- Revert:
+--   UPDATE creature_template SET AIName = 'SmartAI', ScriptName = '' WHERE entry IN (61680, 61788);
+--   INSERT INTO smart_scripts (entryorguid, source_type, id, link, event_type, event_phase_mask, event_chance, event_flags, event_param1, event_param2, event_param3, event_param4, event_param5, event_param_string, action_type, action_param1, action_param2, action_param3, action_param4, action_param5, action_param6, target_type, target_param1, target_param2, target_param3, target_x, target_y, target_z, target_o, comment) VALUES
+--   (61680, 0, 0, 1, 73, 0, 100, 1, 0, 0, 0, 0, 0, '', 33, 61680, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 'on spellclick - give credit'),
+--   (61680, 0, 1, 2, 61, 0, 100, 0, 0, 0, 0, 0, 0, '', 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'link - say 0'),
+--   (61680, 0, 2, 0, 61, 0, 100, 0, 0, 0, 0, 0, 0, '', 41, 5000, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'link - despawn'),
+--   (61788, 0, 0, 1, 73, 0, 100, 1, 0, 0, 0, 0, 0, '', 33, 61788, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 'on spellclick - give credit'),
+--   (61788, 0, 1, 2, 61, 0, 100, 0, 0, 0, 0, 0, 0, '', 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'link - say 0'),
+--   (61788, 0, 2, 0, 61, 0, 100, 0, 0, 0, 0, 0, 0, '', 41, 5000, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'link - despawn');
+--
+-- Safe to run twice. worldserver reads creature scripts only at startup: restart
+-- it after running this.
+
+UPDATE `creature_template` SET `AIName` = '', `ScriptName` = 'npc_rfc_prisoner' WHERE `entry` IN (61680, 61788);
+DELETE FROM `smart_scripts` WHERE `entryorguid` IN (61680, 61788) AND `source_type` = 0;
