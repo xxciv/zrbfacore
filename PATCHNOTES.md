@@ -52,14 +52,13 @@ after the other patches. It applies to a stock core on its own too, so the order
   learned on a mage shows up on a plate wearer.
 
 ### To pick up the transmog collection change
-This only adds a new patch, so the patches already applied stay as they are. `World.h` is in the
-precompiled headers, so this is a near full rebuild.
+This only adds a new patch, so the patches already applied stay as they are. The patch is read straight
+from the PR branch, so `tools-repo` stays on whatever branch it is on. `World.h` is in the precompiled
+headers, so this is a near full rebuild.
 ```
 cd ~/bfa/source
-git -C ../tools-repo fetch origin
-git -C ../tools-repo checkout claude/transmog-collection-0qdzrj
-git -C ../tools-repo pull
-git apply ../tools-repo/tools/bfa/transmog-collection.patch
+git -C ../tools-repo fetch origin claude/transmog-collection-0qdzrj
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/transmog-collection.patch | git apply
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 grep -q '^Transmog.CollectOnPickup' ~/bfa/server/etc/worldserver.conf || sed -n '/^# TRANSMOG COLLECTION$/,/^####/p' ~/bfa/server/etc/worldserver.conf.dist >> ~/bfa/server/etc/worldserver.conf
 ```
