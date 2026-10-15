@@ -78,9 +78,13 @@ and the new way hides and shows again.
 #### Lord Walden evaded as soon as he was hit
 - **Found** (in game): hitting Lord Walden put him straight into evade mode, and Lord Godfrey did the
   same.
-- **Cause:** `boss_lord_walden.cpp` only started the fight if a player was within 10 yards of him when he
-  was pulled, and otherwise evaded. A pull from range (a spell, a shot, a pet) is further than that.
-  Lord Godfrey had the same check (`boss_lord_godfrey.cpp`).
+- **Cause:** `boss_lord_walden.cpp` only started the fight if `SelectNearestPlayer(10.0f)` found a player,
+  and otherwise evaded. Lord Godfrey had the same check (`boss_lord_godfrey.cpp`). Four pulled with
+  Ambush from right behind, so distance wasn't it: HavenCore's `WorldObject::SelectNearestPlayer` and
+  `SelectNearestPlayers` (`Object.cpp`) search with `Cell::VisitGridObjects`, which only visits
+  creatures and objects, never players (upstream TrinityCore uses `VisitWorldObjects`). So the check
+  never found anyone and both bosses always evaded. About 170 other scripts call these two; a core-wide
+  fix is waiting on Four's decision.
 - **Changed:** both bosses now start the fight on any pull; the 10-yard check is removed.
 - **Status:** built here, not yet tested in game.
 
