@@ -7,7 +7,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### Ragefire Chasm (map 389)
 
-Core changes are in the new `tools/bfa/ragefire-fixes.patch`, applied after the other four patches.
+Merged to `main` with PR #10 on 2026-10-15. Core changes are in the new
+`tools/bfa/ragefire-fixes.patch`, applied after the other four patches.
 Tested on Normal by Four on 2026-10-14: all four bosses work, and so do The Dark Shaman and A New
 Enemy.
 
@@ -44,8 +45,8 @@ Enemy.
   - `2026_10_15_00_ragefire_rescue_prisoners.sql`: 61680 and 61788 go from `AIName` 'SmartAI',
     `ScriptName` '' to `AIName` '', `ScriptName` 'npc_rfc_prisoner', and their 3 `smart_scripts` rows
     each are deleted. Revert lines are in the file.
-- **Status:** compiles, and the SQL and its revert ran against the database with all upstream updates;
-  not tested in game yet. That gives 8 rescuable prisoners for the 5 the quest needs.
+- **Status:** confirmed in game by Four on 2026-10-15: No Man Left Behind completes. That gives 8
+  rescuable prisoners for the 5 the quest needs.
 
 ### To pick up the 2026-10-15 changes
 ```
