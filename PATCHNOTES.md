@@ -5,6 +5,81 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-15
 
+### Shadowfang Keep (map 33)
+
+On PR #11, not merged yet. Core changes are in the new `tools/bfa/shadowfang-fixes.patch`, applied
+after the other five patches. Built here (the 8 Shadowfang Keep script files compile); not yet tested
+in game.
+
+#### Both factions' allies were spawned at once
+- **Found** (in game, Alliance): at the door stood Packleader Ivar Bloodfang (47006) with 6 Bloodfang
+  Berserkers (47027), and next to them Deathstalker Commander Belmont (47293, guid 325993), 8 Veteran
+  Forsaken Troopers (47030) and Forsaken Blightspreaders (47031, e.g. guid 325984). The Forsaken lay on
+  the floor like corpses, were hostile to Alliance and could be attacked but not looted.
+
+  The keep has an Alliance version of its allies (Ivar's worgen) and a Horde version (Belmont, High
+  Warlord Cromush and the Forsaken). Each has one copy per stage of the run (at the door, after
+  Ashbury, after Silverlaine, after Springvale, after Walden, outside Godfrey's room), and the Horde
+  version adds 162 disease-cloud bunnies (ELM General Purpose Bunny 23837 with aura 88198) that appear
+  boss by boss. HavenCore spawns every copy of both versions from the start. The Cataclysm Preservation
+  Project (TrinityCore 4.3.4) shows only the right one with spawn groups 412-432 that its instance
+  script switches on and off.
+
+  The Forsaken were corpses because the 47030 and 47031 templates carry Permanent Feign Death (29266),
+  and 47031 also has the feign death unit flag (`unit_flags2` 33556481). Only the dead troops outside
+  Godfrey's room should be corpses, and their spawns have the aura themselves. The 47293 template has
+  Stealth (58506) and the 47294 template kneels (`bytes1` 8); in both cases only one spawn should.
+
+  Baron Silverlaine and Commander Springvale were never saved as killed: their scripts used their
+  creature entries (3887, 4278) as encounter ids, which are out of range, and Springvale never called
+  the engage or death handlers. Also, the team in the instance was read before it was ever set, and
+  Lord Godfrey compared it against the wrong constant, so he always used his Alliance line.
+- **Changed:**
+  - `2026_10_15_01_shadowfang_faction_troops.sql`: 19 new spawn groups, 412-432 (no 423 or 426, see
+    below), with flags 0, so they spawn exactly as before and nothing changes without the patch. The
+    237 spawns are matched to the CPP groups by entry and position (all within 2.4 yards), except 14
+    that CPP places elsewhere, which were placed by their guid order (HavenCore's guids run stage by
+    stage) and position:
+    - 421, Alliance after Ashbury: 327332-327338.
+    - 425, Alliance after Springvale: 327339-327345. CPP splits this stage into 425 and 426 (the
+      second spawned by an areatrigger when you go outside); HavenCore has one group of 7.
+    - 424, Horde after Silverlaine: Cromush 326104. 429, Horde after Springvale: Belmont 326105.
+    - HavenCore has no copy of CPP's Alliance group after Silverlaine (423), so the worgen are not
+      seen between Silverlaine and Springvale.
+  - The same file sets `auras` to '' on the 47030, 47031 and 47293 template addons, `bytes1` 0 on the
+    47294 template addon, and 47031 `unit_flags` 512 to 768 and `unit_flags2` 33556481 to 33556480 (as
+    in CPP). Revert lines are in the file.
+  - `instance_shadowfang_keep.cpp`: each creature in groups 412-432 is shown only while its group is
+    active for the team in the instance (the first player's) and the bosses killed so far, the same
+    stages as CPP's script. The others are put in a phase no player is in, so they are not seen and
+    do not fight or talk. This is checked when a creature spawns, when the first player enters, when a
+    boss dies, and once when the Godfrey intro starts. CPP starts the intro with areatrigger 6431; here
+    it starts when a player reaches the landing outside Godfrey's room (within 30 yards of -165, 2181,
+    above z 145) after Lord Walden, which swaps Ivar or Belmont from Walden's room to Godfrey's door.
+  - `instance_shadowfang_keep.cpp`: the team in the instance starts at 0 instead of an unset value.
+  - `boss_baron_silverlaine.cpp`, `boss_commander_springvale.cpp`: encounter ids are now
+    `DATA_BARON_SILVERLAINE_EVENT` and `DATA_COMMANDER_SPRINGVALE_EVENT`. Springvale now calls
+    `_JustEngagedWith()` and `_JustDied()` like the other bosses. Silverlaine's calls to the
+    instance's `SetData`, which did nothing, are removed.
+  - `boss_lord_godfrey.cpp`: his aggro line checks the team against `HORDE` instead of `TEAM_HORDE`.
+  - `shadowfang_keep.cpp`: the Haunted Stable Hand's teleports check the saved boss states (they
+    never appeared before), and "Baron Silberlein" is now "Baron Silverlaine".
+- **Status:** not yet tested in game. Instances already open before the update keep their old boss
+  states, so test in a fresh one.
+
+### To pick up the Shadowfang Keep changes
+Only a new patch is added, so the patches you already applied stay as they are:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo checkout claude/project-thread-g6xhsv
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
+cmake --build build -j"$(nproc)" && cmake --build build --target install
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_15_01_shadowfang_faction_troops.sql
+```
+Then restart `worldserver`.
+
 ### Ragefire Chasm (map 389)
 
 Merged to `main` with PR #10 on 2026-10-15. Core changes are in the new

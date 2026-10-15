@@ -92,6 +92,7 @@ git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
 git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale.patch
 git apply ../tools-repo/tools/bfa/ragefire-fixes.patch
+git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -180,6 +181,14 @@ couldn't be selected at all, so the quest could stop short of 5. Every SI:7 Rang
 that isn't hidden behind the rock or the crate can now be rescued by talking to it, and a caged one
 opens its cage on the way out. It only takes effect with
 `2026_10_15_00_ragefire_rescue_prisoners.sql` below.
+
+`shadowfang-fixes.patch` collects the fixes for Shadowfang Keep (map 33). The keep has an Alliance
+version of its allies (Packleader Ivar Bloodfang and his worgen) and a Horde version (Deathstalker
+Commander Belmont and the Forsaken), with one copy for every stage of the run, and the database spawns
+all of them at once. The instance script now shows only the copies for the team in the instance and the
+bosses already killed, and keeps the rest out of sight. Baron Silverlaine and Commander Springvale were
+never saved as killed, which this also fixes. It only takes effect with
+`2026_10_15_01_shadowfang_faction_troops.sql` below.
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
@@ -432,6 +441,7 @@ git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
 git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale.patch
 git apply ../tools-repo/tools/bfa/ragefire-fixes.patch
+git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -462,6 +472,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_10_12_00_deadmines_mine_bunny_drunken_haze.sql` | The Mine Bunnies in The Deadmines leaving players fully drunk for about 15 minutes, with no debuff shown, after one Drunken Haze. Binds the spell script from `deadmines-fixes.patch` that keeps the 10-second snare and slow |
 | `2026_10_12_01_deadmines_heroic_vanessa_event_spawns.sql` | Vanessa VanCleef's Heroic-only nightmare event spawning on Normal too: its Vanessas kept players in combat (no logout) and a ghostly Ripsnarl stood outside the ship door. Its 21 spawns become Heroic-only |
 | `2026_10_15_00_ragefire_rescue_prisoners.sql` | Ragefire Chasm's No Man Left Behind / No Orc Left Behind stopping short of 5: binds `npc_rfc_prisoner` from `ragefire-fixes.patch` to the SI:7 Rangers and Kor'kron Scouts and removes their unused SmartAI |
+| `2026_10_15_01_shadowfang_faction_troops.sql` | Shadowfang Keep showing both factions' allies at once (Belmont and Forsaken corpses hostile to Alliance players at the door): puts the 237 Alliance, Horde and disease-cloud spawns in spawn groups 412-432 that `shadowfang-fixes.patch` shows by team and boss progress, and stops every Forsaken lying dead and every Belmont being stealthed |
 
 ## 11. Status
 

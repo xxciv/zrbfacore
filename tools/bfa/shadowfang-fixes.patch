@@ -1,0 +1,305 @@
+diff --git a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_baron_silverlaine.cpp b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_baron_silverlaine.cpp
+index 4f38d52..da3eccb 100644
+--- a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_baron_silverlaine.cpp
++++ b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_baron_silverlaine.cpp
+@@ -54,32 +54,17 @@ class boss_baron_silverlaine : public CreatureScript
+ {
+     struct boss_baron_silverlaineAI : public BossAI
+     {
+-        boss_baron_silverlaineAI(Creature * creature) : BossAI(creature, BOSS_BARON_SILVERLAINE)
+-        {
+-            instance = creature->GetInstanceScript();
+-        }
+-
+-       InstanceScript* instance;
++        boss_baron_silverlaineAI(Creature * creature) : BossAI(creature, DATA_BARON_SILVERLAINE_EVENT) { }
+ 
+         void Reset() override
+         {
+             _Reset();
+-
+-            if (instance)
+-            {
+-                instance->SetData(DATA_BARON_SILVERLAINE_EVENT, NOT_STARTED);
+-            }
+         }
+ 
+         void JustEngagedWith(Unit* /*who*/) override
+         {
+             Talk(SAY_AGGRO);
+ 
+-            if (instance)
+-            {
+-                instance->SetData(DATA_BARON_SILVERLAINE_EVENT, IN_PROGRESS);
+-            }
+-
+             events.ScheduleEvent(EVENT_SUMMON_WORGEN_SPIRIT, 20000);
+             events.ScheduleEvent(EVENT_VEIL_OF_SHADOW, 15000);
+             events.ScheduleEvent(EVENT_CURSED_VEIL, 10000);
+@@ -90,11 +75,6 @@ class boss_baron_silverlaine : public CreatureScript
+         {
+             Talk(SAY_DEATH);
+             _JustDied();
+-
+-            if (instance)
+-            {
+-                instance->SetData(DATA_BARON_SILVERLAINE_EVENT, DONE);
+-            }
+         }
+ 
+         void KilledUnit(Unit* /*victim*/) override
+diff --git a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_commander_springvale.cpp b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_commander_springvale.cpp
+index 3809383..dce44e7 100644
+--- a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_commander_springvale.cpp
++++ b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_commander_springvale.cpp
+@@ -70,7 +70,7 @@ class boss_commander_springvale : public CreatureScript
+ {
+     struct boss_commander_springvaleAI : public BossAI
+     {
+-        boss_commander_springvaleAI(Creature * creature) : BossAI(creature, BOSS_COMMANDER_SPRINGVALE) { }
++        boss_commander_springvaleAI(Creature * creature) : BossAI(creature, DATA_COMMANDER_SPRINGVALE_EVENT) { }
+ 
+         std::list<ObjectGuid> SummonList;
+ 
+@@ -104,6 +104,7 @@ class boss_commander_springvale : public CreatureScript
+         void JustEngagedWith(Unit* /*who*/) override
+         {
+             Talk(SAY_AGGRO);
++            _JustEngagedWith();
+ 
+             events.ScheduleEvent(EVENT_DESECRATION, 10000);
+             events.ScheduleEvent(EVENT_MALEFIX_STRIKE, 15000);
+@@ -137,6 +138,7 @@ class boss_commander_springvale : public CreatureScript
+         {
+             Talk(SAY_DEATH);
+             RemoveSummons();
++            _JustDied();
+ 
+             instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_WORD_OF_SHAME);
+             if (Achievement && IsHeroic())
+diff --git a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_godfrey.cpp b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_godfrey.cpp
+index dfd461d..39b2a6b 100644
+--- a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_godfrey.cpp
++++ b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_godfrey.cpp
+@@ -76,7 +76,7 @@ class boss_lord_godfrey : public CreatureScript
+             {
+                 _JustEngagedWith();
+ 
+-                if (instance->GetData(TEAM_IN_INSTANCE) == TEAM_HORDE)
++                if (instance->GetData(TEAM_IN_INSTANCE) == HORDE)
+                     Talk(SAY_AGGRO_H);
+                 else
+                     Talk(SAY_AGGRO_A);
+diff --git a/src/server/scripts/EasternKingdoms/ShadowfangKeep/instance_shadowfang_keep.cpp b/src/server/scripts/EasternKingdoms/ShadowfangKeep/instance_shadowfang_keep.cpp
+index 41df0af..7fc08ba 100644
+--- a/src/server/scripts/EasternKingdoms/ShadowfangKeep/instance_shadowfang_keep.cpp
++++ b/src/server/scripts/EasternKingdoms/ShadowfangKeep/instance_shadowfang_keep.cpp
+@@ -24,7 +24,52 @@ EndScriptData */
+ 
+ #include "ScriptMgr.h"
+ #include "shadowfang_keep.h"
++#include "Creature.h"
+ #include "GameObject.h"
++#include "Map.h"
++#include "PhasingHandler.h"
++#include "Player.h"
++#include "SpawnData.h"
++
++// The Alliance (Ivar Bloodfang's worgen) and Horde (Belmont's Forsaken) allies are both
++// spawned from the database, one copy for every stage of the run. The SQL fix puts each
++// copy in a spawn group (ids follow the Cataclysm Preservation Project); this script only
++// shows the groups that match the team in the instance and the bosses already killed,
++// and keeps every other copy in a phase no player is in.
++enum ShadowfangSpawnGroups
++{
++    SPAWN_GROUP_ENTRANCE_ALLIANCE                       = 412, // until Baron Ashbury is defeated
++    SPAWN_GROUP_ENTRANCE_HORDE                          = 413,
++    SPAWN_GROUP_DISEASE_CLOUDS_ENTRANCE                 = 414, // Horde only
++    SPAWN_GROUP_DISEASE_CLOUDS_BARON_ASHBURY            = 415,
++    SPAWN_GROUP_DISEASE_CLOUDS_BARON_SILVERLAINE        = 416,
++    SPAWN_GROUP_DISEASE_CLOUDS_COMMANDER_SPRINGVALE     = 417,
++    SPAWN_GROUP_DISEASE_CLOUDS_LORD_WALDEN              = 418,
++    SPAWN_GROUP_LORD_GODFREY_DEAD_TROUPS_ALLIANCE       = 419, // after Lord Walden
++    SPAWN_GROUP_LORD_GODFREY_DEAD_TROUPS_HORDE          = 420,
++    SPAWN_GROUP_BARON_ASHBURY_TROUPS_ALLIANCE           = 421, // after Baron Ashbury, until the next boss
++    SPAWN_GROUP_BARON_ASHBURY_TROUPS_HORDE              = 422,
++    SPAWN_GROUP_BARON_SILVERLAINE_TROUPS_ALLIANCE       = 423, // after Baron Silverlaine, until the next boss
++    SPAWN_GROUP_BARON_SILVERLAINE_TROUPS_HORDE          = 424,
++    SPAWN_GROUP_COMMANDER_SPRINGVALE_TROUPS_ALLIANCE    = 425, // after Commander Springvale, until Lord Walden
++    SPAWN_GROUP_LORD_WALDEN_TROUPS_ALLIANCE             = 427, // after Lord Walden, until the Godfrey intro
++    SPAWN_GROUP_COMMANDER_SPRINGVALE_TROUPS_HORDE       = 428, // after Springvale or Walden, until the Godfrey intro
++    SPAWN_GROUP_COMMANDER_SPRINGVALE_BELMONT            = 429, // after Commander Springvale, until Lord Walden
++    SPAWN_GROUP_LORD_WALDEN_BELMONT                     = 430, // after Lord Walden, until the Godfrey intro
++    SPAWN_GROUP_LORD_GODFREY_IVAR_BLOODFANG             = 431, // Godfrey intro
++    SPAWN_GROUP_LORD_GODFREY_BELMONT                    = 432,
++
++    SPAWN_GROUP_SFK_FIRST                               = SPAWN_GROUP_ENTRANCE_ALLIANCE,
++    SPAWN_GROUP_SFK_LAST                                = SPAWN_GROUP_LORD_GODFREY_BELMONT
++};
++
++// Not a Phase.db2 phase: no player is ever in it, so creatures given it are not seen and do not interact.
++uint32 const PHASE_SFK_HIDDEN_TROOPS = 1000000;
++
++// The Godfrey intro starts when a player reaches the landing outside Godfrey's room after Lord Walden.
++Position const GodfreyIntroPos = { -165.0f, 2181.0f, 152.0f };
++float const GodfreyIntroRange = 30.0f;
++float const GodfreyIntroMinZ = 145.0f;
+ 
+ class instance_shadowfang_keep : public InstanceMapScript
+ {
+@@ -33,7 +78,7 @@ public:
+ 
+     struct instance_shadowfang_keep_InstanceMapScript: public InstanceScript
+     {
+-        instance_shadowfang_keep_InstanceMapScript(InstanceMap* map): InstanceScript(map)  { }
++        instance_shadowfang_keep_InstanceMapScript(InstanceMap* map): InstanceScript(map), TeamInInstance(0), _godfreyIntro(false), _introCheckTimer(1000) { }
+ 
+         void Initialize() override
+         {
+@@ -42,6 +87,8 @@ public:
+ 
+         void OnCreatureCreate(Creature* creature) override
+         {
++            UpdateTroopVisibility(creature, false);
++
+             switch (creature->GetEntry())
+             {
+                 case BOSS_BARON_ASHBURY:
+@@ -75,7 +122,98 @@ public:
+         void OnPlayerEnter(Player* player) override
+         {
+             if (!TeamInInstance)
++            {
+                 TeamInInstance = player->GetTeam();
++                UpdateTroops();
++            }
++        }
++
++        void Update(uint32 diff) override
++        {
++            if (_godfreyIntro || !TeamInInstance || GetBossState(DATA_LORD_WALDEN_EVENT) != DONE)
++                return;
++
++            if (_introCheckTimer > diff)
++            {
++                _introCheckTimer -= diff;
++                return;
++            }
++            _introCheckTimer = 1000;
++
++            Map::PlayerList const& players = instance->GetPlayers();
++            for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++            {
++                Player* player = itr->GetSource();
++                if (player && player->IsAlive() && player->GetPositionZ() > GodfreyIntroMinZ && player->GetExactDist2d(&GodfreyIntroPos) < GodfreyIntroRange)
++                {
++                    _godfreyIntro = true;
++                    UpdateTroops();
++                    break;
++                }
++            }
++        }
++
++        bool IsSpawnGroupActive(uint32 groupId) const
++        {
++            if (!TeamInInstance)
++                return false;
++
++            bool const alliance = TeamInInstance == ALLIANCE;
++            bool const ashbury = GetBossState(DATA_BARON_ASHBURY_EVENT) == DONE;
++            bool const silverlaine = GetBossState(DATA_BARON_SILVERLAINE_EVENT) == DONE;
++            bool const springvale = GetBossState(DATA_COMMANDER_SPRINGVALE_EVENT) == DONE;
++            bool const walden = GetBossState(DATA_LORD_WALDEN_EVENT) == DONE;
++
++            switch (groupId)
++            {
++                case SPAWN_GROUP_ENTRANCE_ALLIANCE:                    return alliance && !ashbury;
++                case SPAWN_GROUP_ENTRANCE_HORDE:                       return !alliance && !ashbury;
++                case SPAWN_GROUP_DISEASE_CLOUDS_ENTRANCE:              return !alliance;
++                case SPAWN_GROUP_DISEASE_CLOUDS_BARON_ASHBURY:         return !alliance && ashbury;
++                case SPAWN_GROUP_DISEASE_CLOUDS_BARON_SILVERLAINE:     return !alliance && silverlaine;
++                case SPAWN_GROUP_DISEASE_CLOUDS_COMMANDER_SPRINGVALE:  return !alliance && springvale;
++                case SPAWN_GROUP_DISEASE_CLOUDS_LORD_WALDEN:           return !alliance && walden;
++                case SPAWN_GROUP_LORD_GODFREY_DEAD_TROUPS_ALLIANCE:    return alliance && walden;
++                case SPAWN_GROUP_LORD_GODFREY_DEAD_TROUPS_HORDE:       return !alliance && walden;
++                case SPAWN_GROUP_BARON_ASHBURY_TROUPS_ALLIANCE:        return alliance && ashbury && !silverlaine && !springvale && !walden;
++                case SPAWN_GROUP_BARON_ASHBURY_TROUPS_HORDE:           return !alliance && ashbury && !silverlaine && !springvale && !walden;
++                case SPAWN_GROUP_BARON_SILVERLAINE_TROUPS_ALLIANCE:    return alliance && silverlaine && !springvale && !walden;
++                case SPAWN_GROUP_BARON_SILVERLAINE_TROUPS_HORDE:       return !alliance && silverlaine && !springvale && !walden;
++                case SPAWN_GROUP_COMMANDER_SPRINGVALE_TROUPS_ALLIANCE: return alliance && springvale && !walden;
++                case SPAWN_GROUP_COMMANDER_SPRINGVALE_BELMONT:         return !alliance && springvale && !walden;
++                case SPAWN_GROUP_LORD_WALDEN_TROUPS_ALLIANCE:          return alliance && walden && !_godfreyIntro;
++                case SPAWN_GROUP_COMMANDER_SPRINGVALE_TROUPS_HORDE:    return !alliance && (springvale || walden) && !_godfreyIntro;
++                case SPAWN_GROUP_LORD_WALDEN_BELMONT:                  return !alliance && walden && !_godfreyIntro;
++                case SPAWN_GROUP_LORD_GODFREY_IVAR_BLOODFANG:          return alliance && _godfreyIntro;
++                case SPAWN_GROUP_LORD_GODFREY_BELMONT:                 return !alliance && _godfreyIntro;
++                default:                                               return false;
++            }
++        }
++
++        void UpdateTroopVisibility(Creature* creature, bool updateVisibility)
++        {
++            CreatureData const* data = creature->GetCreatureData();
++            if (!data || !data->spawnGroupData)
++                return;
++
++            uint32 groupId = data->spawnGroupData->groupId;
++            if (groupId < SPAWN_GROUP_SFK_FIRST || groupId > SPAWN_GROUP_SFK_LAST)
++                return;
++
++            bool const hidden = creature->GetPhaseShift().HasPhase(PHASE_SFK_HIDDEN_TROOPS);
++            if (IsSpawnGroupActive(groupId))
++            {
++                if (hidden)
++                    PhasingHandler::RemovePhase(creature, PHASE_SFK_HIDDEN_TROOPS, updateVisibility);
++            }
++            else if (!hidden)
++                PhasingHandler::AddPhase(creature, PHASE_SFK_HIDDEN_TROOPS, updateVisibility);
++        }
++
++        void UpdateTroops()
++        {
++            for (auto const& pair : instance->GetCreatureBySpawnIdStore())
++                UpdateTroopVisibility(pair.second, true);
+         }
+ 
+         uint32 GetData(uint32 identifier) const override 
+@@ -115,6 +253,9 @@ public:
+             if (!InstanceScript::SetBossState(type, state))
+                 return false;
+ 
++            if (state == DONE)
++                UpdateTroops();
++
+             switch(type)
+             {
+                 case DATA_BARON_ASHBURY_EVENT:
+@@ -138,6 +279,8 @@ public:
+ 
+         protected:
+             uint32 TeamInInstance;
++            bool _godfreyIntro;
++            uint32 _introCheckTimer;
+ 
+             ObjectGuid BaronAshburyGUID;
+             ObjectGuid BaronSilverlaineGUID;
+diff --git a/src/server/scripts/EasternKingdoms/ShadowfangKeep/shadowfang_keep.cpp b/src/server/scripts/EasternKingdoms/ShadowfangKeep/shadowfang_keep.cpp
+index 7acf7b0..944a1bf 100644
+--- a/src/server/scripts/EasternKingdoms/ShadowfangKeep/shadowfang_keep.cpp
++++ b/src/server/scripts/EasternKingdoms/ShadowfangKeep/shadowfang_keep.cpp
+@@ -67,11 +67,11 @@ public:
+     {
+         InstanceScript* instance = creature->GetInstanceScript();
+ 
+-        if (instance && instance->GetData(DATA_BARON_SILVERLAINE_EVENT)==DONE)
+-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Teleport me to Baron Silberlein", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+-        if (instance && instance->GetData(DATA_COMMANDER_SPRINGVALE_EVENT)==DONE)
++        if (instance && instance->GetBossState(DATA_BARON_SILVERLAINE_EVENT) == DONE)
++            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Teleport me to Baron Silverlaine", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
++        if (instance && instance->GetBossState(DATA_COMMANDER_SPRINGVALE_EVENT) == DONE)
+             AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Teleport me to Commander Springvale", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
+-        if (instance && instance->GetData(DATA_LORD_WALDEN_EVENT)==DONE)
++        if (instance && instance->GetBossState(DATA_LORD_WALDEN_EVENT) == DONE)
+             AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Teleport me to Lord Walden", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+3);
+ 
+         SendGossipMenuFor(player, 2475, creature->GetGUID());
