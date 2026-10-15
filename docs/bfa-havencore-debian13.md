@@ -93,6 +93,7 @@ git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale.patch
 git apply ../tools-repo/tools/bfa/ragefire-fixes.patch
 git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
+git apply ../tools-repo/tools/bfa/player-search.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -189,6 +190,10 @@ all of them at once. The instance script now shows only the copies for the team 
 bosses already killed, and keeps the rest out of sight. Baron Silverlaine and Commander Springvale were
 never saved as killed, which this also fixes. It only takes effect with
 `2026_10_15_01_shadowfang_faction_troops.sql` below.
+
+`player-search.patch` fixes `WorldObject::SelectNearestPlayer` and `SelectNearestPlayers` in `Object.cpp`.
+They searched only the part of the map grid that holds creatures and objects, so they never found a
+player; about 170 scripts use them. It now searches the player part, as upstream TrinityCore does.
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
@@ -442,6 +447,7 @@ git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale.patch
 git apply ../tools-repo/tools/bfa/ragefire-fixes.patch
 git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
+git apply ../tools-repo/tools/bfa/player-search.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

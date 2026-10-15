@@ -83,10 +83,27 @@ and the new way hides and shows again.
   Ambush from right behind, so distance wasn't it: HavenCore's `WorldObject::SelectNearestPlayer` and
   `SelectNearestPlayers` (`Object.cpp`) search with `Cell::VisitGridObjects`, which only visits
   creatures and objects, never players (upstream TrinityCore uses `VisitWorldObjects`). So the check
-  never found anyone and both bosses always evaded. About 170 other scripts call these two; a core-wide
-  fix is waiting on Four's decision.
+  never found anyone and both bosses always evaded. About 170 other scripts call these two, so Four chose
+  to fix them core-wide (next entry).
 - **Changed:** both bosses now start the fight on any pull; the 10-yard check is removed.
 - **Status:** built here, not yet tested in game.
+
+### Core: scripts never found the nearest player
+
+New `tools/bfa/player-search.patch`, applied seventh, after `shadowfang-fixes.patch`. Chosen by Four on
+2026-10-15 over fixing only Shadowfang Keep.
+
+- **Found:** while looking into Walden and Godfrey (above). `WorldObject::SelectNearestPlayer` and
+  `WorldObject::SelectNearestPlayers` (`src/server/game/Entities/Object/Object.cpp`) search with
+  `Cell::VisitGridObjects`. That visits the grid container (game objects, creatures that aren't pets,
+  area triggers and so on). Players live in the world container, so both always returned nothing.
+  `SelectRandomPlayerInRange` uses `SelectNearestPlayers` and was empty too.
+- **Changed:** both use `Cell::VisitWorldObjects`, as upstream TrinityCore does. Two lines.
+- **Effect:** every script that looks for the nearest player, or picks players in range, now finds
+  them. That is about 170 calls across dungeon, raid and world scripts, and SmartAI's closest-player
+  target. Content tested before this, such as The Deadmines, may behave differently where it relied on
+  this; tell me if anything changes.
+- **Status:** builds here (`Object.cpp` compiles); not yet tested in game.
 
 #### Stone Sleepers never came to life
 - **Found** (in game): on the wall walk the Lesser Gargoyles (3869) attack, but the Stone Sleepers (3870)
@@ -132,6 +149,15 @@ git checkout -- src/server/scripts/EasternKingdoms/ShadowfangKeep
 git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_15_02_shadowfang_stone_sleepers.sql
+```
+Then restart `worldserver`.
+
+`player-search.patch` is a new patch on its own, so it only needs applying once:
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/player-search.patch
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
 Then restart `worldserver`.
 

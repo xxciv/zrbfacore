@@ -24,6 +24,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/shadowfang-fixes.patch`](tools/bfa/shadowfang-fixes.patch): Shadowfang Keep fixes (only
   your own faction's allies are shown, and they move forward as bosses die; Silverlaine and Springvale
   are saved as killed).
+- [`tools/bfa/player-search.patch`](tools/bfa/player-search.patch): core fix so scripts that look for the
+  nearest player (bosses, SmartAI "closest player" targets) actually find one.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.
