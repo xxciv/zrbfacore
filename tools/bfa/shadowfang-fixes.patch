@@ -117,7 +117,7 @@ index dfd461d..e78c661 100644
  
          void JustDied(Unit* /*killer*/) override
 diff --git a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_walden.cpp b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_walden.cpp
-index 2e82e23..ca0d66a 100644
+index 2e82e23..68016da 100644
 --- a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_walden.cpp
 +++ b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_walden.cpp
 @@ -67,16 +67,11 @@ class boss_lord_walden : public CreatureScript
@@ -142,6 +142,19 @@ index 2e82e23..ca0d66a 100644
              }
  
              void JustDied(Unit* /*killer*/) override
+@@ -142,10 +137,8 @@ class boss_lord_walden : public CreatureScript
+                     events.ScheduleEvent(EVENT_ICE_SHARDS, 10000);
+                     break;
+                     case EVENT_CONJURE_FROST_MIXTURE:
+-                    if (IsHeroic())
+-                    {
+-                        DoCastRandom(SPELL_CONJURE_FROST_MIXTURE, 50);
+-                    }
++                    // Normal and Heroic both use it
++                    DoCastRandom(SPELL_CONJURE_FROST_MIXTURE, 50);
+                     events.ScheduleEvent(EVENT_CONJURE_FROST_MIXTURE, urand(10000, 20000));
+                         break;
+                     case EVENT_CONJURE_POISONOUS_MIXTURE:
 diff --git a/src/server/scripts/EasternKingdoms/ShadowfangKeep/instance_shadowfang_keep.cpp b/src/server/scripts/EasternKingdoms/ShadowfangKeep/instance_shadowfang_keep.cpp
 index 41df0af..f2a5676 100644
 --- a/src/server/scripts/EasternKingdoms/ShadowfangKeep/instance_shadowfang_keep.cpp

@@ -86,7 +86,17 @@ and the new way hides and shows again.
   never found anyone and both bosses always evaded. About 170 other scripts call these two, so Four chose
   to fix them core-wide (next entry).
 - **Changed:** both bosses now start the fight on any pull; the 10-yard check is removed.
-- **Status:** built here, not yet tested in game.
+- **Status:** Lord Walden pulls and dies normally in game (Four, 2026-10-15).
+
+#### Lord Walden never threw Frost Mixture on Normal
+- **Found** (in game): Four found Walden's Normal fight "tank and spank".
+- **Cause:** on Normal he has three abilities: Conjure Frost Mixture (93505), Conjure Poisonous Mixture
+  (93697) and Ice Shards (93527). Conjure Mystery Toxin (Toxic Coagulant / Catalyst) is Heroic only.
+  CPP's script, which follows retail, casts Frost Mixture on both difficulties. HavenCore's
+  `boss_lord_walden.cpp` only cast it on Heroic, though it kept rescheduling it on Normal.
+- **Changed:** Frost Mixture is cast on Normal too, at a random player within 50 yards, every 10 to 20
+  seconds (HavenCore's timer, unchanged). Poisonous Mixture and Ice Shards were already used on Normal.
+- **Status:** built here (`boss_lord_walden.cpp` compiles); not yet tested in game.
 
 ### Core: scripts never found the nearest player
 
