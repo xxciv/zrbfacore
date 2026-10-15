@@ -78,18 +78,70 @@ index 3809383..dce44e7 100644
              instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_WORD_OF_SHAME);
              if (Achievement && IsHeroic())
 diff --git a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_godfrey.cpp b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_godfrey.cpp
-index dfd461d..39b2a6b 100644
+index dfd461d..e78c661 100644
 --- a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_godfrey.cpp
 +++ b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_godfrey.cpp
-@@ -76,7 +76,7 @@ class boss_lord_godfrey : public CreatureScript
-             {
-                 _JustEngagedWith();
+@@ -72,24 +72,19 @@ class boss_lord_godfrey : public CreatureScript
+ 
+         void JustEngagedWith(Unit* /*who*/) override
+         {
+-            if (me->SelectNearestPlayer(10.0f))
+-            {
+-                _JustEngagedWith();
++            _JustEngagedWith();
  
 -                if (instance->GetData(TEAM_IN_INSTANCE) == TEAM_HORDE)
-+                if (instance->GetData(TEAM_IN_INSTANCE) == HORDE)
-                     Talk(SAY_AGGRO_H);
-                 else
-                     Talk(SAY_AGGRO_A);
+-                    Talk(SAY_AGGRO_H);
+-                else
+-                    Talk(SAY_AGGRO_A);
++            if (instance->GetData(TEAM_IN_INSTANCE) == HORDE)
++                Talk(SAY_AGGRO_H);
++            else
++                Talk(SAY_AGGRO_A);
+ 
+-                instance->HandleGameObject(instance->GetGuidData(GO_LORD_GODFREY_DOOR), false);
++            instance->HandleGameObject(instance->GetGuidData(GO_LORD_GODFREY_DOOR), false);
+ 
+-                events.ScheduleEvent(EVENT_SUMMON_BLOODTHIRSTY_GHOULS, 10000);
+-                events.ScheduleEvent(EVENT_MORTAL_WOUND, 25000);
+-                events.ScheduleEvent(EVENT_PISTOL_BARRAGE, 55000);
+-                events.ScheduleEvent(EVENT_CURSED_BULLETS, 15000);
+-            }
+-            else
+-                EnterEvadeMode();
++            events.ScheduleEvent(EVENT_SUMMON_BLOODTHIRSTY_GHOULS, 10000);
++            events.ScheduleEvent(EVENT_MORTAL_WOUND, 25000);
++            events.ScheduleEvent(EVENT_PISTOL_BARRAGE, 55000);
++            events.ScheduleEvent(EVENT_CURSED_BULLETS, 15000);
+         }
+ 
+         void JustDied(Unit* /*killer*/) override
+diff --git a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_walden.cpp b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_walden.cpp
+index 2e82e23..ca0d66a 100644
+--- a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_walden.cpp
++++ b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_walden.cpp
+@@ -67,16 +67,11 @@ class boss_lord_walden : public CreatureScript
+ 
+             void JustEngagedWith(Unit* /*who*/) override
+             {
+-                if (me->SelectNearestPlayer(10.0f))
+-                {
+-                    _JustEngagedWith();
+-                    Talk(SAY_AGGRO);
+-                    events.ScheduleEvent(EVENT_CONJURE_POISONOUS_MIXTURE, 5000);
+-                    events.ScheduleEvent(EVENT_CONJURE_FROST_MIXTURE, urand(10000, 20000));
+-                    events.ScheduleEvent(EVENT_CONJURE_MYSTERY_TOXIN, 25000);
+-                }
+-                else
+-                    EnterEvadeMode();
++                _JustEngagedWith();
++                Talk(SAY_AGGRO);
++                events.ScheduleEvent(EVENT_CONJURE_POISONOUS_MIXTURE, 5000);
++                events.ScheduleEvent(EVENT_CONJURE_FROST_MIXTURE, urand(10000, 20000));
++                events.ScheduleEvent(EVENT_CONJURE_MYSTERY_TOXIN, 25000);
+             }
+ 
+             void JustDied(Unit* /*killer*/) override
 diff --git a/src/server/scripts/EasternKingdoms/ShadowfangKeep/instance_shadowfang_keep.cpp b/src/server/scripts/EasternKingdoms/ShadowfangKeep/instance_shadowfang_keep.cpp
 index 41df0af..f2a5676 100644
 --- a/src/server/scripts/EasternKingdoms/ShadowfangKeep/instance_shadowfang_keep.cpp

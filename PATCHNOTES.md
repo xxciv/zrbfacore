@@ -72,8 +72,38 @@ and the new way hides and shows again.
   - `boss_lord_godfrey.cpp`: his aggro line checks the team against `HORDE` instead of `TEAM_HORDE`.
   - `shadowfang_keep.cpp`: the Haunted Stable Hand's teleports check the saved boss states (they
     never appeared before), and "Baron Silberlein" is now "Baron Silverlaine".
-- **Status:** second version not yet tested in game. Instances already open before the update keep their old boss
-  states, so test in a fresh one.
+- **Status:** second version in game since 2026-10-15; Four reported "so far so good" and played on to
+  Godfrey with it. Instances already open before the update keep their old boss states, so test in a fresh one.
+
+#### Lord Walden evaded as soon as he was hit
+- **Found** (in game): hitting Lord Walden put him straight into evade mode, and Lord Godfrey did the
+  same.
+- **Cause:** `boss_lord_walden.cpp` only started the fight if a player was within 10 yards of him when he
+  was pulled, and otherwise evaded. A pull from range (a spell, a shot, a pet) is further than that.
+  Lord Godfrey had the same check (`boss_lord_godfrey.cpp`).
+- **Changed:** both bosses now start the fight on any pull; the 10-yard check is removed.
+- **Status:** built here, not yet tested in game.
+
+#### Stone Sleepers never came to life
+- **Found** (in game): on the wall walk the Lesser Gargoyles (3869) attack, but the Stone Sleepers (3870)
+  sit there inactive.
+- **Cause:** Stone Sleepers are gargoyles that sit as stone and wake when someone walks past ("A nearby
+  Gargoyle comes to life!", broadcast text 47423). Their SmartAI set every unit flag (16777215, including
+  `NOT_SELECTABLE` and `IMMUNE_TO_PC`) on spawn and only cleared them on aggro, which those flags make
+  impossible.
+- **Changed:** `2026_10_15_02_shadowfang_stone_sleepers.sql` replaces the 3870 SmartAI. While asleep a
+  Stone Sleeper is only `NOT_SELECTABLE | IMMUNE_TO_PC` (33554688). A hostile unit within 15 yards in
+  line of sight wakes it: it clears those flags, emotes the line above (new `creature_text` row) and
+  attacks that unit. After a reset it sleeps again. The Normal and Heroic fear casts are unchanged.
+  Revert lines are in the file.
+- **Status:** SQL ran cleanly twice here; not yet tested in game.
+
+#### Overlapping Frantic Geists: checked, left as is
+- **Found** (in game): many spawns overlap, for example Frantic Geists standing almost inside each other.
+- **Checked:** no two spawns in the keep share a spot (the closest pairs of the same creature are 0.5 to
+  1 yard apart: Plagued Rats, Maggots and Geists). Frantic Geists come in tight packs: the Cataclysm sniff
+  CPP imported (`2015_09_02_06_world.sql`) has 25 of them in packs of 4 to 5, 1 to 2 yards apart.
+  HavenCore has 18 in packs of 2 to 3. Not changed.
 
 ### To pick up the Shadowfang Keep changes
 Only a new patch is added, so the patches you already applied stay as they are:
@@ -88,14 +118,16 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_15_01_shadowf
 ```
 Then restart `worldserver`.
 
-If you applied the first version, swap in the second one. No other patch touches the Shadowfang Keep
-folder, so resetting just that folder is enough, and the SQL doesn't need running again:
+If you applied an earlier version of `shadowfang-fixes.patch`, swap in the current one. No other patch
+touches the Shadowfang Keep folder, so resetting just that folder is enough. Run each SQL file you
+haven't run yet (each is safe to run twice):
 ```
 cd ~/bfa/source
 git -C ../tools-repo pull
 git checkout -- src/server/scripts/EasternKingdoms/ShadowfangKeep
 git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
-cmake --build build -j"$(nproc)" && cmake --build build --target install
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_15_02_shadowfang_stone_sleepers.sql
 ```
 Then restart `worldserver`.
 
