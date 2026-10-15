@@ -5,6 +5,67 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-15
 
+### Transmog collection
+
+On PR #12 (not merged yet). Core changes are in the new `tools/bfa/transmog-collection.patch`, applied
+after the other patches. It applies to a stock core on its own too, so the order doesn't matter.
+
+#### Appearances were not learned for items in the bags
+- **Found** (reported by Four): picking items up didn't add their appearances to the collection. The
+  core's collection code is TrinityCore's 8.3.7 version, unchanged, and it follows the 8.3.7 retail
+  rules, which skip most of what lands in the bags while levelling:
+  - `CollectionMgr::AddItemAppearance(Item*)` returns unless the item is soulbound. Bind on Equip items
+    are only learned when equipped (`Player::VisualizeItem`); Bind on Pickup and quest items are learned
+    on pickup.
+  - `CollectionMgr::CanAddAppearance` returns false when `Player::CanUseItem` fails, which includes the
+    item's required level being above yours, and when the character's class can't wear the armor type
+    (`PlayerClassByArmorSubclass`) or doesn't have the weapon skill. A plate drop on a mage, or a
+    level 20 blue on a level 18 character, was never learned, even though it was soulbound.
+  - Items received by mail, trade, guild bank or buyback go through `Player::MoveItemToInventory`,
+    which never calls the collection code, so a soulbound item received that way was never learned
+    either (except later, by equipping or at login).
+  Nothing was wrong with storage: appearances are saved account wide in `bfa_auth.battlenet_item_appearances`
+  and loaded at login.
+- **Changed:**
+  - `CollectionMgr.cpp`, `AddItemAppearance(Item*)`: the soulbound check is skipped when
+    `Transmog.CollectOnPickup` is 1, so any item that reaches the bags or bank is learned. Items already
+    in the bags and bank are learned at the next login, because `Player::_LoadInventory` already passes
+    every item through this function. Refundable vendor items and Bind on Pickup items that can still
+    be traded to group members get the existing temporary appearance until the refund or trade window
+    ends, as before.
+  - `CollectionMgr.cpp`, `CanAddAppearance`: with `Transmog.CollectAnyClass` 1, the `CanUseItem`, weapon
+    skill and armor type checks are skipped (TrinityCore did the same on its current branch in 2025).
+    With it 0, `Transmog.CollectIgnoreLevel` 1 still skips the required level check
+    (`CanUseItem(itemTemplate, true)`). Unchanged: only armor and weapons count, poor and common quality
+    items are still not collectable (as in 8.3.7), and already known appearances are skipped.
+  - `Player.cpp`, `MoveItemToInventory`: calls `AddItemAppearance` on the stored item when
+    `Transmog.CollectOnPickup` is 1, for mail, trade, guild bank and buyback.
+  - `World.h` / `World.cpp`: new settings `CONFIG_TRANSMOG_COLLECT_ON_PICKUP` (`Transmog.CollectOnPickup`),
+    `CONFIG_TRANSMOG_COLLECT_ANY_CLASS` (`Transmog.CollectAnyClass`) and
+    `CONFIG_TRANSMOG_COLLECT_IGNORE_LEVEL` (`Transmog.CollectIgnoreLevel`), all default 1, so the change
+    is on without editing `worldserver.conf`. `.reload config` picks up changes.
+  - `worldserver.conf.dist`: new `TRANSMOG COLLECTION` section with the three settings. Set one to 0 for
+    the stock 8.3.7 behavior.
+  - No SQL.
+- **Status:** compiled (the three changed files built cleanly against all the other patches); not yet
+  tested in game. The appearances tab for armor only lists your own class's armor type, so a plate piece
+  learned on a mage shows up on a plate wearer.
+
+### To pick up the transmog collection change
+This only adds a new patch, so the patches already applied stay as they are. `World.h` is in the
+precompiled headers, so this is a near full rebuild.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin
+git -C ../tools-repo checkout claude/transmog-collection-0qdzrj
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/transmog-collection.patch
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+grep -q '^Transmog.CollectOnPickup' ~/bfa/server/etc/worldserver.conf || sed -n '/^# TRANSMOG COLLECTION$/,/^####/p' ~/bfa/server/etc/worldserver.conf.dist >> ~/bfa/server/etc/worldserver.conf
+```
+Then type `server shutdown 1` in the worldserver console and start it again with
+`cd ~/bfa/server/bin && ./worldserver`. Log out and back in to learn what is already in your bags and bank.
+
 ### Ragefire Chasm (map 389)
 
 Merged to `main` with PR #10 on 2026-10-15. Core changes are in the new

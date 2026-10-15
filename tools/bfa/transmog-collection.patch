@@ -1,0 +1,149 @@
+diff --git a/src/server/game/Entities/Player/CollectionMgr.cpp b/src/server/game/Entities/Player/CollectionMgr.cpp
+index 48a6c80..40d3b02 100644
+--- a/src/server/game/Entities/Player/CollectionMgr.cpp
++++ b/src/server/game/Entities/Player/CollectionMgr.cpp
+@@ -25,6 +25,7 @@
+ #include "Player.h"
+ #include "Timer.h"
+ #include "TransmogrificationPackets.h"
++#include "World.h"
+ #include "WorldSession.h"
+ #include <boost/dynamic_bitset.hpp>
+ 
+@@ -625,7 +626,8 @@ uint32 const PlayerClassByArmorSubclass[MAX_ITEM_SUBCLASS_ARMOR] =
+ 
+ void CollectionMgr::AddItemAppearance(Item* item)
+ {
+-    if (!item->IsSoulBound())
++    // Retail 8.3.7 only learns an appearance once the item binds; CollectOnPickup learns it as soon as the item reaches the player.
++    if (!item->IsSoulBound() && !sWorld->getBoolConfig(CONFIG_TRANSMOG_COLLECT_ON_PICKUP))
+         return;
+ 
+     ItemModifiedAppearanceEntry const* itemModifiedAppearance = item->GetItemModifiedAppearance();
+@@ -715,7 +717,9 @@ bool CollectionMgr::CanAddAppearance(ItemModifiedAppearanceEntry const* itemModi
+     if (!_owner->GetPlayer())
+         return false;
+ 
+-    if (_owner->GetPlayer()->CanUseItem(itemTemplate) != EQUIP_ERR_OK)
++    // Retail 8.3.7 only collects what the current character could wear; CollectAnyClass collects every armor type and weapon for the account.
++    bool const anyClass = sWorld->getBoolConfig(CONFIG_TRANSMOG_COLLECT_ANY_CLASS);
++    if (!anyClass && _owner->GetPlayer()->CanUseItem(itemTemplate, sWorld->getBoolConfig(CONFIG_TRANSMOG_COLLECT_IGNORE_LEVEL)) != EQUIP_ERR_OK)
+         return false;
+ 
+     if (itemTemplate->GetFlags2() & ITEM_FLAG2_NO_SOURCE_FOR_ITEM_VISUAL || itemTemplate->GetQuality() == ITEM_QUALITY_ARTIFACT)
+@@ -725,7 +729,7 @@ bool CollectionMgr::CanAddAppearance(ItemModifiedAppearanceEntry const* itemModi
+     {
+         case ITEM_CLASS_WEAPON:
+         {
+-            if (!(_owner->GetPlayer()->GetWeaponProficiency() & (1 << itemTemplate->GetSubClass())))
++            if (!anyClass && !(_owner->GetPlayer()->GetWeaponProficiency() & (1 << itemTemplate->GetSubClass())))
+                 return false;
+             if (itemTemplate->GetSubClass() == ITEM_SUBCLASS_WEAPON_EXOTIC ||
+                 itemTemplate->GetSubClass() == ITEM_SUBCLASS_WEAPON_EXOTIC2 ||
+@@ -761,7 +765,7 @@ bool CollectionMgr::CanAddAppearance(ItemModifiedAppearanceEntry const* itemModi
+                 default:
+                     return false;
+             }
+-            if (itemTemplate->GetInventoryType() != INVTYPE_CLOAK)
++            if (!anyClass && itemTemplate->GetInventoryType() != INVTYPE_CLOAK)
+                 if (!(PlayerClassByArmorSubclass[itemTemplate->GetSubClass()] & _owner->GetPlayer()->getClassMask()))
+                     return false;
+             break;
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index 232ecdd..23e3ffd 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -13479,6 +13479,10 @@ void Player::MoveItemToInventory(ItemPosCountVec const& dest, Item* pItem, bool
+         if (pLastItem->HasItemFlag(ITEM_FIELD_FLAG_BOP_TRADEABLE))
+             AddTradeableItem(pLastItem);
+     }
++
++    // Mail, trade, guild bank and buyback hand over existing items without StoreNewItem, so they never reach OnItemAdded.
++    if (sWorld->getBoolConfig(CONFIG_TRANSMOG_COLLECT_ON_PICKUP))
++        GetSession()->GetCollectionMgr()->AddItemAppearance(pLastItem);
+ }
+ 
+ void Player::DestroyItem(uint8 bag, uint8 slot, bool update)
+diff --git a/src/server/game/World/World.cpp b/src/server/game/World/World.cpp
+index 645553c..cd0f301 100644
+--- a/src/server/game/World/World.cpp
++++ b/src/server/game/World/World.cpp
+@@ -1364,6 +1364,10 @@ void World::LoadConfigSettings(bool reload)
+         m_int_configs[CONFIG_RESPAWN_DYNAMICMODE] = 0;
+     }
+     m_bool_configs[CONFIG_RESPAWN_DYNAMIC_ESCORTNPC] = sConfigMgr->GetBoolDefault("Respawn.DynamicEscortNPC", true);
++
++    m_bool_configs[CONFIG_TRANSMOG_COLLECT_ON_PICKUP] = sConfigMgr->GetBoolDefault("Transmog.CollectOnPickup", true);
++    m_bool_configs[CONFIG_TRANSMOG_COLLECT_ANY_CLASS] = sConfigMgr->GetBoolDefault("Transmog.CollectAnyClass", true);
++    m_bool_configs[CONFIG_TRANSMOG_COLLECT_IGNORE_LEVEL] = sConfigMgr->GetBoolDefault("Transmog.CollectIgnoreLevel", true);
+     m_int_configs[CONFIG_RESPAWN_GUIDWARNLEVEL] = sConfigMgr->GetIntDefault("Respawn.GuidWarnLevel", 12000000);
+     if (m_int_configs[CONFIG_RESPAWN_GUIDWARNLEVEL] > 16777215)
+     {
+diff --git a/src/server/game/World/World.h b/src/server/game/World/World.h
+index 45aa080..1545d1d 100644
+--- a/src/server/game/World/World.h
++++ b/src/server/game/World/World.h
+@@ -201,6 +201,9 @@ enum WorldBoolConfigs
+ 	CONFIG_ARGUSWOW_ENABLE,
+     CONFIG_PET_BATTLES,
+     CONFIG_RESPAWN_DYNAMIC_ESCORTNPC,
++    CONFIG_TRANSMOG_COLLECT_ON_PICKUP,
++    CONFIG_TRANSMOG_COLLECT_ANY_CLASS,
++    CONFIG_TRANSMOG_COLLECT_IGNORE_LEVEL,
+     BOOL_CONFIG_VALUE_COUNT
+ };
+ 
+diff --git a/src/server/worldserver/worldserver.conf.dist b/src/server/worldserver/worldserver.conf.dist
+index 4a458f9..5ac16f0 100644
+--- a/src/server/worldserver/worldserver.conf.dist
++++ b/src/server/worldserver/worldserver.conf.dist
+@@ -15,6 +15,7 @@
+ #    UPDATE SETTINGS
+ #    HOTSWAP SETTINGS
+ #    WARDEN SETTINGS
++#    TRANSMOG COLLECTION
+ #    PLAYER INTERACTION
+ #    CREATURE SETTINGS
+ #    SPAWN/RESPAWN SETTINGS
+@@ -1527,6 +1528,41 @@ Warden.BanDuration = 86400
+ #
+ ###################################################################################################
+ 
++###################################################################################################
++# TRANSMOG COLLECTION
++#
++#    Transmog.CollectOnPickup
++#        Description: Learn an item's appearance as soon as it reaches the bags or bank
++#                     (loot, quest reward, vendor, mail, trade, guild bank), and for items
++#                     already there at the next login. Off follows retail 8.3.7, where an
++#                     appearance is only learned once the item is soulbound, so a
++#                     Bind on Equip item has to be equipped first.
++#        Default:     1 - (Enabled)
++#                     0 - (Disabled, retail 8.3.7)
++
++Transmog.CollectOnPickup = 1
++
++#    Transmog.CollectAnyClass
++#        Description: Learn appearances of every armor type and weapon type, not only the
++#                     ones the current character can wear. Appearances are account wide,
++#                     so an alt of the right class can then use them. Also ignores the
++#                     item's level, class, race and faction requirements.
++#        Default:     1 - (Enabled)
++#                     0 - (Disabled, retail 8.3.7)
++
++Transmog.CollectAnyClass = 1
++
++#    Transmog.CollectIgnoreLevel
++#        Description: With Transmog.CollectAnyClass = 0, still learn appearances of items
++#                     the character is too low level to wear.
++#        Default:     1 - (Enabled)
++#                     0 - (Disabled, retail 8.3.7)
++
++Transmog.CollectIgnoreLevel = 1
++
++#
++###################################################################################################
++
+ ###################################################################################################
+ # PLAYER INTERACTION
+ #

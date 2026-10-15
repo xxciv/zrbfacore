@@ -21,6 +21,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   table says what each one does.
 - [`tools/bfa/ragefire-fixes.patch`](tools/bfa/ragefire-fixes.patch): Ragefire Chasm fixes (rescuing
   the prisoners for No Man Left Behind / No Orc Left Behind).
+- [`tools/bfa/transmog-collection.patch`](tools/bfa/transmog-collection.patch): learns transmog
+  appearances as soon as items reach your bags, for every armor and weapon type (`Transmog.*` settings).
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.
