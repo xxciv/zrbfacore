@@ -46,7 +46,19 @@ after the other patches. It applies to a stock core on its own too, so the order
     is on without editing `worldserver.conf`. `.reload config` picks up changes.
   - `worldserver.conf.dist`: new `TRANSMOG COLLECTION` section with the three settings. Set one to 0 for
     the stock 8.3.7 behavior.
+  - `CollectionMgr.cpp` / `.h`: `CanAddAppearance` now calls the new public
+    `GetAppearanceRejectReason`, which runs the same checks and returns the reason an appearance is
+    refused (or none). `AddItemAppearance(ItemModifiedAppearanceEntry const*)` is now public, and
+    `GetKnownAppearanceCount` is new.
+  - `cs_debug.cpp`: new GM command `.debug transmog <item id or link> [learn]` (debug permission). It prints
+    the item's ItemModifiedAppearance, whether the server knows it and whether it was sent to the client,
+    the reason it can't be collected, and how many appearances the account knows. With `learn` it adds
+    the appearance without the checks, to test whether the client shows it.
   - No SQL.
+- **2026-10-16, in game:** with the patch, nothing was collected up to level 23, and Cape of the
+  Brotherhood (5193) and the equipped Wolfmaster Cape both still said "You haven't collected this
+  appearance". Cloaks pass every class rule, so something else refuses them; the debug command was added
+  to find out what.
 - **Status:** compiled (the three changed files built cleanly against all the other patches); not yet
   tested in game. The appearances tab for armor only lists your own class's armor type, so a plate piece
   learned on a mage shows up on a plate wearer.
