@@ -92,6 +92,10 @@ git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
 git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale.patch
 git apply ../tools-repo/tools/bfa/ragefire-fixes.patch
+git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
+git apply ../tools-repo/tools/bfa/player-search.patch
+git apply ../tools-repo/tools/bfa/stealth-pull.patch
+git apply ../tools-repo/tools/bfa/random-target.patch
 git apply ../tools-repo/tools/bfa/transmog-collection.patch
 ```
 
@@ -181,6 +185,28 @@ couldn't be selected at all, so the quest could stop short of 5. Every SI:7 Rang
 that isn't hidden behind the rock or the crate can now be rescued by talking to it, and a caged one
 opens its cage on the way out. It only takes effect with
 `2026_10_15_00_ragefire_rescue_prisoners.sql` below.
+
+`shadowfang-fixes.patch` collects the fixes for Shadowfang Keep (map 33). The keep has an Alliance
+version of its allies (Packleader Ivar Bloodfang and his worgen) and a Horde version (Deathstalker
+Commander Belmont and the Forsaken), with one copy for every stage of the run, and the database spawns
+all of them at once. The instance script now shows only the copies for the team in the instance and the
+bosses already killed, and keeps the rest out of sight. Baron Silverlaine and Commander Springvale were
+never saved as killed, which this also fixes. It only takes effect with
+`2026_10_15_01_shadowfang_faction_troops.sql` below.
+
+`player-search.patch` fixes `WorldObject::SelectNearestPlayer` and `SelectNearestPlayers` in `Object.cpp`.
+They searched only the part of the map grid that holds creatures and objects, so they never found a
+player; about 170 scripts use them. It now searches the player part, as upstream TrinityCore does.
+
+`stealth-pull.patch` builds on the `CreatureAI::UpdateVictim` change in `deadmines-fixes.patch`, so apply it
+after that one. A mob can't see a stealthed player behind it, so after an opener from stealth (with
+Subterfuge, stealth lasts 3 more seconds) it had no target it could attack and evaded at once. It now
+waits while a living player who has threat on it is only hidden from it. Vanish wipes that threat, so
+vanishing still resets the fight.
+
+`random-target.patch` fixes `UnitAI::DoCastRandom`, which scripts use to cast at a random player. It
+passed its aura filter where `SelectTarget` expects "include the tank", so the player a boss was fighting
+was never picked. Solo, that means those spells were never cast.
 
 `transmog-collection.patch` makes transmog appearances collectable at all: upstream refuses every
 item that has no row in `ItemSearchName.db2`, and with this client's data that is every item. It also
@@ -458,6 +484,10 @@ git apply ../tools-repo/tools/bfa/profession-skill-sync.patch
 git apply ../tools-repo/tools/bfa/deadmines-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale.patch
 git apply ../tools-repo/tools/bfa/ragefire-fixes.patch
+git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
+git apply ../tools-repo/tools/bfa/player-search.patch
+git apply ../tools-repo/tools/bfa/stealth-pull.patch
+git apply ../tools-repo/tools/bfa/random-target.patch
 git apply ../tools-repo/tools/bfa/transmog-collection.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
@@ -489,6 +519,10 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_10_12_00_deadmines_mine_bunny_drunken_haze.sql` | The Mine Bunnies in The Deadmines leaving players fully drunk for about 15 minutes, with no debuff shown, after one Drunken Haze. Binds the spell script from `deadmines-fixes.patch` that keeps the 10-second snare and slow |
 | `2026_10_12_01_deadmines_heroic_vanessa_event_spawns.sql` | Vanessa VanCleef's Heroic-only nightmare event spawning on Normal too: its Vanessas kept players in combat (no logout) and a ghostly Ripsnarl stood outside the ship door. Its 21 spawns become Heroic-only |
 | `2026_10_15_00_ragefire_rescue_prisoners.sql` | Ragefire Chasm's No Man Left Behind / No Orc Left Behind stopping short of 5: binds `npc_rfc_prisoner` from `ragefire-fixes.patch` to the SI:7 Rangers and Kor'kron Scouts and removes their unused SmartAI |
+| `2026_10_15_01_shadowfang_faction_troops.sql` | Shadowfang Keep showing both factions' allies at once (Belmont and Forsaken corpses hostile to Alliance players at the door): puts the 237 Alliance, Horde and disease-cloud spawns in spawn groups 412-432 that `shadowfang-fixes.patch` shows by team and boss progress, and stops every Forsaken lying dead and every Belmont being stealthed |
+| `2026_10_15_02_shadowfang_stone_sleepers.sql` | Shadowfang Keep's Stone Sleepers on the wall walk never waking: they now wake and attack when a player comes within 15 yards |
+| `2026_10_16_01_shadowfang_lesser_gargoyles.sql` | Shadowfang Keep's Lesser Gargoyles on the wall walk never attacking: they were flagged as civilians |
+| `2026_10_16_02_shadowfang_godfrey_text.sql` | Typos in Lord Godfrey's aggro and death yells |
 
 ## 11. Status
 

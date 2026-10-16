@@ -1,0 +1,15 @@
+diff --git a/src/server/game/AI/CoreAI/UnitAI.cpp b/src/server/game/AI/CoreAI/UnitAI.cpp
+index 5f14162..36554c8 100644
+--- a/src/server/game/AI/CoreAI/UnitAI.cpp
++++ b/src/server/game/AI/CoreAI/UnitAI.cpp
+@@ -188,7 +188,9 @@ void UnitAI::DoCastRandom(uint32 spellId, float dist, bool triggered, int32 aura
+     if (me->HasUnitState(UNIT_STATE_CASTING) && !triggered)
+         return;
+ 
+-    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, position, dist, true, aura))
++    // pass withTank explicitly: aura used to land in withTank, so the tank (a
++    // solo player) was never picked and the spell was never cast
++    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, position, dist, true, true, aura))
+         me->CastSpell(target, spellId, triggered);
+ }
+ 

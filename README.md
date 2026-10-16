@@ -21,6 +21,15 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   table says what each one does.
 - [`tools/bfa/ragefire-fixes.patch`](tools/bfa/ragefire-fixes.patch): Ragefire Chasm fixes (rescuing
   the prisoners for No Man Left Behind / No Orc Left Behind).
+- [`tools/bfa/shadowfang-fixes.patch`](tools/bfa/shadowfang-fixes.patch): Shadowfang Keep fixes (only
+  your own faction's allies are shown, and they move forward as bosses die; Silverlaine and Springvale
+  are saved as killed).
+- [`tools/bfa/player-search.patch`](tools/bfa/player-search.patch): core fix so scripts that look for the
+  nearest player (bosses, SmartAI "closest player" targets) actually find one.
+- [`tools/bfa/stealth-pull.patch`](tools/bfa/stealth-pull.patch): core fix so a mob or boss pulled from
+  stealth waits for you to reappear instead of evading.
+- [`tools/bfa/random-target.patch`](tools/bfa/random-target.patch): core fix so bosses that cast at a
+  random player (Lord Walden's mixtures, for one) can pick the player they are fighting.
 - [`tools/bfa/transmog-collection.patch`](tools/bfa/transmog-collection.patch): learns transmog
   appearances as soon as items reach your bags, for every armor and weapon type (`Transmog.*` settings).
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
