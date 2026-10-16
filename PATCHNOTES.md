@@ -74,6 +74,8 @@ and the new way hides and shows again.
     never appeared before), and "Baron Silberlein" is now "Baron Silverlaine".
 - **Status:** second version in game since 2026-10-15; Four reported "so far so good" and played on to
   Godfrey with it. Instances already open before the update keep their old boss states, so test in a fresh one.
+  Full Alliance run confirmed by Four on 2026-10-16. The Horde side (Belmont and the Forsaken) has not
+  been played yet.
 
 #### Lord Walden evaded as soon as he was hit
 - **Found** (in game): hitting Lord Walden put him straight into evade mode, and Lord Godfrey did the
