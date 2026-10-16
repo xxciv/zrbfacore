@@ -47,8 +47,8 @@ New `tools/bfa/loot-fixes.patch`, applied after `transmog-collection.patch`. On 
   the real bug.
 
 ### To pick up the loot fixes
-A new patch on its own, so the patches you already applied stay as they are. It rebuilds about 20 files
-that include `LootMgr.h`, not the whole core:
+A new patch on its own, so the patches you already applied stay as they are. `LootMgr.h` is not in the
+precompiled headers, so this should not be a full rebuild:
 ```
 cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
@@ -59,6 +59,39 @@ sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target insta
 ```
 Both `grep` lines should print 1. Then restart `worldserver`. Once PR #14 is merged, `git -C ../tools-repo pull`
 on `main` brings the file in as usual.
+
+### Wailing Caverns (map 43)
+
+Reported by Four on 2026-10-16 after a full run on the Alliance rogue: everything but the loot and the
+final event worked. On PR #14, not merged yet.
+
+#### Muyoh's escort never started, and Mutanus could be pulled early
+- **Found** (in game): Muyoh (Disciple of Naralex, 3678) offered nothing to start the awakening of
+  Naralex, and Mutanus the Devourer (3654) already stood "shadowed" in Naralex's pool, where he could be
+  pulled and killed.
+- **Cause:** `npc_disciple_of_naralex` (`wailing_caverns.cpp`) only adds "Let the event begin!" once
+  instance data 1 to 4 (Lord Cobrahn, Lord Pythas, Lady Anacondra, Lord Serpentis) are DONE. The lords
+  run SmartAI, and the world dump has no "on death, set instance data" row for any of them, so the four
+  were never counted (TrinityCore has one per lord). The script's ending also waits for data 9 (Mutanus)
+  to be DONE, which had no row either. Mutanus is meant to be summoned by Muyoh at the end of the ritual,
+  at the same spot, but the dump also spawns him there (guid 326392).
+- **Changed:** `2026_10_16_05_wailing_caverns_naralex_event.sql`:
+  - `smart_scripts` id 100 for 3669, 3670, 3671, 3673 and 3654: On Just Died, Set Instance Data 1, 2, 3,
+    4 and 9 to 3 (DONE).
+  - Deletes the static Mutanus spawn (guid 326392), so he only appears when Muyoh summons him.
+  - The revert lines, including the full Mutanus row, are at the top of the file. Safe to run twice.
+- **Status:** run here against the dump; not yet tested in game. Lords killed before the SQL ran aren't
+  counted, so it needs a fresh instance.
+
+### To pick up the Wailing Caverns fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_16_05_wailing_caverns_naralex_event.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver` and reset the instance (leave it, then Reset All Instances from your portrait
+menu) before running it again.
 
 ### Transmog collection
 
