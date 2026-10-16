@@ -136,7 +136,7 @@ New `tools/bfa/player-search.patch`, applied seventh, after `shadowfang-fixes.pa
   them. That is about 170 calls across dungeon, raid and world scripts, and SmartAI's closest-player
   target. Content tested before this, such as The Deadmines, may behave differently where it relied on
   this; tell me if anything changes.
-- **Status:** builds here (`Object.cpp` compiles); not yet tested in game.
+- **Status:** confirmed in game by Four on 2026-10-16 through Lord Walden, who now pulls normally. Content tested before it (The Deadmines, Ragefire Chasm) not re-run yet.
 
 ### Core: mobs pulled from stealth evaded
 
