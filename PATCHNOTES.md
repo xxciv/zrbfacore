@@ -158,7 +158,7 @@ New `tools/bfa/stealth-pull.patch`, applied eighth, after `player-search.patch`.
   resets the fight. A wipe still resets it too: dead players don't count.
 - **Effect:** core-wide, for every mob and boss. A mob a hidden player has hit stands still until they
   show up, instead of resetting.
-- **Status:** builds here (`CreatureAI.cpp` compiles); not yet tested in game.
+- **Status:** confirmed in game by Four on 2026-10-16: Baron Ashbury fights normally when pulled from stealth.
 
 ### Core: spells cast at a random player never went off
 
