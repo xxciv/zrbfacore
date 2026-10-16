@@ -96,9 +96,9 @@ and the new way hides and shows again.
   `boss_lord_walden.cpp` only cast it on Heroic, though it kept rescheduling it on Normal.
 - **Changed:** Frost Mixture is cast on Normal too, at a random player within 50 yards, every 10 to 20
   seconds (HavenCore's timer, unchanged). Poisonous Mixture and Ice Shards were already used on Normal.
-- **Status:** built here (`boss_lord_walden.cpp` compiles). In game (2026-10-16) he still only meleed,
-  because neither mixture ever found a target; fixed by the core entry "Spells cast at a random player
-  never went off" below.
+- **Status:** confirmed in game by Four on 2026-10-16, together with `random-target.patch`: he casts
+  Conjure Poisonous Mixture, Conjure Frost Mixture and Ice Shards. (Before that core fix he still only
+  meleed, because neither mixture ever found a target.)
 
 #### Typos in Lord Godfrey's yells
 - **Found** (in game): Four spotted typos in Lord Godfrey's (46964) lines and fixed them in the database
@@ -174,7 +174,7 @@ New `tools/bfa/random-target.patch`, applied ninth, after `stealth-pull.patch`.
 - **Effect:** 57 calls use it. In content tested before: Lord Walden's Conjure Poisonous Mixture and
   Conjure Frost Mixture, and Gordoth's Ground Rupture in Ragefire Chasm. Baron Ashbury's Pain and
   Suffering skips the top-threat player on purpose, so solo it still isn't cast.
-- **Status:** builds here (`UnitAI.cpp` compiles); not yet tested in game.
+- **Status:** confirmed in game by Four on 2026-10-16 on Lord Walden. Gordoth not re-tested yet.
 
 #### Stone Sleepers never came to life
 - **Found** (in game): on the wall walk the Lesser Gargoyles (3869) attack, but the Stone Sleepers (3870)
