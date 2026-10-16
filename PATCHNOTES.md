@@ -116,7 +116,7 @@ and the new way hides and shows again.
     (first after 15 seconds, as before).
   - Pistol Barrage is only scheduled on Heroic.
   - Summon Bloodthirsty Ghouls is unchanged.
-- **Status:** built here (`boss_lord_godfrey.cpp` compiles); not yet tested in game.
+- **Status:** in game (Four, 2026-10-16): Cursed Bullets now fires reliably. Mortal Wound was not seen yet; being checked.
 
 #### Typos in Lord Godfrey's yells
 - **Found** (in game): Four spotted typos in Lord Godfrey's (46964) lines and fixed them in the database
