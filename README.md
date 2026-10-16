@@ -28,6 +28,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   nearest player (bosses, SmartAI "closest player" targets) actually find one.
 - [`tools/bfa/stealth-pull.patch`](tools/bfa/stealth-pull.patch): core fix so a mob or boss pulled from
   stealth waits for you to reappear instead of evading.
+- [`tools/bfa/random-target.patch`](tools/bfa/random-target.patch): core fix so bosses that cast at a
+  random player (Lord Walden's mixtures, for one) can pick the player they are fighting.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.

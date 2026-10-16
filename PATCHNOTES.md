@@ -96,7 +96,18 @@ and the new way hides and shows again.
   `boss_lord_walden.cpp` only cast it on Heroic, though it kept rescheduling it on Normal.
 - **Changed:** Frost Mixture is cast on Normal too, at a random player within 50 yards, every 10 to 20
   seconds (HavenCore's timer, unchanged). Poisonous Mixture and Ice Shards were already used on Normal.
-- **Status:** built here (`boss_lord_walden.cpp` compiles); not yet tested in game.
+- **Status:** built here (`boss_lord_walden.cpp` compiles). In game (2026-10-16) he still only meleed,
+  because neither mixture ever found a target; fixed by the core entry "Spells cast at a random player
+  never went off" below.
+
+#### Lesser Gargoyles never attacked
+- **Found** (in game): on the wall walk the Lesser Gargoyles (3869) never aggro, in or out of stealth.
+- **Cause:** the world dump flags them `CREATURE_FLAG_EXTRA_CIVILIAN` (`flags_extra` 2). A civilian never
+  starts a fight (`Creature::CanStartAttack`), although these are hostile (faction 16) and have loot and
+  gold like other trash.
+- **Changed:** `2026_10_16_01_shadowfang_lesser_gargoyles.sql` clears that one bit. Revert line is in the file.
+- **Status:** SQL ran cleanly twice here; not yet tested in game. The Stone Sleepers also stayed asleep in
+  the same test; still being looked into.
 
 ### Core: scripts never found the nearest player
 
@@ -136,6 +147,22 @@ New `tools/bfa/stealth-pull.patch`, applied eighth, after `player-search.patch`.
 - **Effect:** core-wide, for every mob and boss. A mob a hidden player has hit stands still until they
   show up, instead of resetting.
 - **Status:** builds here (`CreatureAI.cpp` compiles); not yet tested in game.
+
+### Core: spells cast at a random player never went off
+
+New `tools/bfa/random-target.patch`, applied ninth, after `stealth-pull.patch`.
+
+- **Found** (in game, Shadowfang Keep): Lord Walden only meleed, even after Frost Mixture was turned on
+  for Normal.
+- **Cause:** `UnitAI::DoCastRandom` (`src/server/game/AI/CoreAI/UnitAI.cpp`) calls
+  `SelectTarget(SELECT_TARGET_RANDOM, position, dist, true, aura)`. `SelectTarget`'s fifth parameter is
+  `withTank`, not the aura, so the aura filter (almost always 0) turned into `withTank = false`. The player
+  a boss is fighting was never a candidate. Solo, that leaves nobody, so the spell was never cast.
+- **Changed:** `withTank` is passed as `true` and the aura goes in its own slot. One line.
+- **Effect:** 57 calls use it. In content tested before: Lord Walden's Conjure Poisonous Mixture and
+  Conjure Frost Mixture, and Gordoth's Ground Rupture in Ragefire Chasm. Baron Ashbury's Pain and
+  Suffering skips the top-threat player on purpose, so solo it still isn't cast.
+- **Status:** builds here (`UnitAI.cpp` compiles); not yet tested in game.
 
 #### Stone Sleepers never came to life
 - **Found** (in game): on the wall walk the Lesser Gargoyles (3869) attack, but the Stone Sleepers (3870)
@@ -190,6 +217,16 @@ cd ~/bfa/source
 git -C ../tools-repo pull
 git apply ../tools-repo/tools/bfa/player-search.patch
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+Then restart `worldserver`.
+
+`random-target.patch` is new too and touches nothing the other patches touch:
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/random-target.patch
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_16_01_shadowfang_lesser_gargoyles.sql
 ```
 Then restart `worldserver`.
 
