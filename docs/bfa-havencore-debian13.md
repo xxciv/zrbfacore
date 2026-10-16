@@ -182,7 +182,9 @@ that isn't hidden behind the rock or the crate can now be rescued by talking to 
 opens its cage on the way out. It only takes effect with
 `2026_10_15_00_ragefire_rescue_prisoners.sql` below.
 
-`transmog-collection.patch` changes when transmog appearances are learned. Stock 8.3.7 rules only
+`transmog-collection.patch` makes transmog appearances collectable at all: upstream refuses every
+item that has no row in `ItemSearchName.db2`, and with this client's data that is every item. It also
+changes when appearances are learned. Stock 8.3.7 rules only
 learn an appearance once the item is soulbound (so a Bind on Equip item has to be equipped first) and
 only for armor and weapons the current character can wear at its current level. With the patch, an
 appearance is learned as soon as the item reaches your bags or bank, from any source, for every armor
@@ -190,7 +192,8 @@ and weapon type. Items already in your bags and bank are learned at the next log
 account wide, so an alt of the right class can use what another character picked up. Each part can be
 switched back to stock with the `Transmog.*` settings (step 9, "Transmog collection"). Core files
 touched: `CollectionMgr.cpp`, `Player.cpp` (`MoveItemToInventory`, for mail, trade, guild bank and
-buyback), `World.h` / `World.cpp` (the three settings) and `worldserver.conf.dist`. `World.h` is in the
+buyback), `World.h` / `World.cpp` (the three settings), `cs_debug.cpp` (`.debug transmog <item> [learn]`, which
+says why an item isn't collected) and `worldserver.conf.dist`. `World.h` is in the
 precompiled headers, so applying it rebuilds nearly everything.
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check

@@ -59,6 +59,16 @@ after the other patches. It applies to a stock core on its own too, so the order
   Brotherhood (5193) and the equipped Wolfmaster Cape both still said "You haven't collected this
   appearance". Cloaks pass every class rule, so something else refuses them; the debug command was added
   to find out what.
+- **Found** (2026-10-16, with `.debug transmog`): the real reason nothing was collected.
+  `CanAddAppearance` refuses any item that has no row in `ItemSearchName.db2`, and every item failed it.
+  Cape of the Brotherhood (5193, ItemModifiedAppearance 1985) and Wolfmaster Cape (6314, 2340) both
+  answered "item missing from ItemSearchName.db2". After `.debug transmog <id> learn` the client said
+  "has been added to your appearance collection" and showed both cloaks in Appearances > Back, so the
+  client side and the update field work. The lookup is TrinityCore's, but it finds nothing with the
+  client data extracted from this 8.3.7 client, so it blocked every appearance under any rules.
+- **Changed:** `CollectionMgr.cpp`, `GetAppearanceRejectReason`: the `sItemSearchNameStore.LookupEntry`
+  check is removed. The item still has to have an ItemModifiedAppearance, an item template, a
+  collectable source type and pass the rest of the checks.
 - **Status:** compiled (the three changed files built cleanly against all the other patches); not yet
   tested in game. The appearances tab for armor only lists your own class's armor type, so a plate piece
   learned on a mage shows up on a plate wearer.

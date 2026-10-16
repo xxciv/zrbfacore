@@ -1,5 +1,5 @@
 diff --git a/src/server/game/Entities/Player/CollectionMgr.cpp b/src/server/game/Entities/Player/CollectionMgr.cpp
-index 48a6c80..95624b2 100644
+index 48a6c80..1a7e059 100644
 --- a/src/server/game/Entities/Player/CollectionMgr.cpp
 +++ b/src/server/game/Entities/Player/CollectionMgr.cpp
 @@ -25,6 +25,7 @@
@@ -20,7 +20,7 @@ index 48a6c80..95624b2 100644
          return;
  
      ItemModifiedAppearanceEntry const* itemModifiedAppearance = item->GetItemModifiedAppearance();
-@@ -698,42 +700,49 @@ bool CollectionMgr::IsSetCompleted(uint32 transmogSetId) const
+@@ -698,42 +700,46 @@ bool CollectionMgr::IsSetCompleted(uint32 transmogSetId) const
  }
  
  bool CollectionMgr::CanAddAppearance(ItemModifiedAppearanceEntry const* itemModifiedAppearance) const
@@ -36,11 +36,10 @@ index 48a6c80..95624b2 100644
  
      if (itemModifiedAppearance->TransmogSourceTypeEnum == 6 || itemModifiedAppearance->TransmogSourceTypeEnum == 9)
 -        return false;
-+        return "appearance source type is not collectable";
- 
-     if (!sItemSearchNameStore.LookupEntry(itemModifiedAppearance->ItemID))
+-
+-    if (!sItemSearchNameStore.LookupEntry(itemModifiedAppearance->ItemID))
 -        return false;
-+        return "item missing from ItemSearchName.db2";
++        return "appearance source type is not collectable";
  
      ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(itemModifiedAppearance->ItemID);
      if (!itemTemplate)
@@ -81,7 +80,7 @@ index 48a6c80..95624b2 100644
              break;
          }
          case ITEM_CLASS_ARMOR:
-@@ -756,28 +765,28 @@ bool CollectionMgr::CanAddAppearance(ItemModifiedAppearanceEntry const* itemModi
+@@ -756,28 +762,28 @@ bool CollectionMgr::CanAddAppearance(ItemModifiedAppearanceEntry const* itemModi
                  case INVTYPE_HANDS:
                  case INVTYPE_ROBE:
                      if (itemTemplate->GetSubClass() == ITEM_SUBCLASS_ARMOR_MISCELLANEOUS)
@@ -118,7 +117,7 @@ index 48a6c80..95624b2 100644
  }
  
  void CollectionMgr::AddItemAppearance(ItemModifiedAppearanceEntry const* itemModifiedAppearance)
-@@ -863,6 +872,11 @@ std::unordered_set<ObjectGuid> CollectionMgr::GetItemsProvidingTemporaryAppearan
+@@ -863,6 +869,11 @@ std::unordered_set<ObjectGuid> CollectionMgr::GetItemsProvidingTemporaryAppearan
      return std::unordered_set<ObjectGuid>();
  }
  
