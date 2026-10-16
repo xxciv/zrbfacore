@@ -100,6 +100,17 @@ and the new way hides and shows again.
   because neither mixture ever found a target; fixed by the core entry "Spells cast at a random player
   never went off" below.
 
+#### Typos in Lord Godfrey's yells
+- **Found** (in game): Four spotted typos in Lord Godfrey's (46964) lines and fixed them in the database
+  on 2026-10-16.
+- **Changed:** `2026_10_16_02_shadowfang_godfrey_text.sql` makes the same fix in `creature_text`:
+  - group 0 (aggro): "That bitch Sylvanas sent you too,did she?No matter,your journey ends in agony." is now
+    "That bitch Sylvanas sent you too, did she? No matter, your journey ends in agony."
+  - group 2 (death): "I thank you for the clearn death.I would not of done the same..." is now
+    "I thank you for the clean death. I would not have done the same..."
+  Revert lines are in the file.
+- **Status:** Four's own fix is live on their server. The file ran cleanly twice here; Four doesn't need to run it.
+
 #### Lesser Gargoyles never attacked
 - **Found** (in game): on the wall walk the Lesser Gargoyles (3869) never aggro, in or out of stealth.
 - **Cause:** the world dump flags them `CREATURE_FLAG_EXTRA_CIVILIAN` (`flags_extra` 2). A civilian never

@@ -495,6 +495,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_10_15_01_shadowfang_faction_troops.sql` | Shadowfang Keep showing both factions' allies at once (Belmont and Forsaken corpses hostile to Alliance players at the door): puts the 237 Alliance, Horde and disease-cloud spawns in spawn groups 412-432 that `shadowfang-fixes.patch` shows by team and boss progress, and stops every Forsaken lying dead and every Belmont being stealthed |
 | `2026_10_15_02_shadowfang_stone_sleepers.sql` | Shadowfang Keep's Stone Sleepers on the wall walk never waking: they now wake and attack when a player comes within 15 yards |
 | `2026_10_16_01_shadowfang_lesser_gargoyles.sql` | Shadowfang Keep's Lesser Gargoyles on the wall walk never attacking: they were flagged as civilians |
+| `2026_10_16_02_shadowfang_godfrey_text.sql` | Typos in Lord Godfrey's aggro and death yells |
 
 ## 11. Status
 
