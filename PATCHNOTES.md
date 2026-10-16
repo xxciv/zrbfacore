@@ -105,7 +105,7 @@ and the new way hides and shows again.
   on 2026-10-16.
 - **Changed:** `2026_10_16_02_shadowfang_godfrey_text.sql` makes the same fix in `creature_text`:
   - group 0 (aggro): "That bitch Sylvanas sent you too,did she?No matter,your journey ends in agony." is now
-    "That bitch Sylvanas sent you too, did she? No matter, your journey ends in agony."
+    "That bitch Sylvanas sent you too, did she? No matter - your journey ends in agony."
   - group 2 (death): "I thank you for the clearn death.I would not of done the same..." is now
     "I thank you for the clean death. I would not have done the same..."
   Revert lines are in the file.

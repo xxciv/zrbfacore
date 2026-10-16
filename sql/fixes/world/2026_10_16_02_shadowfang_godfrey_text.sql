@@ -4,5 +4,5 @@
 -- Revert:
 -- UPDATE `creature_text` SET `Text` = 'That bitch Sylvanas sent you too,did she?No matter,your journey ends in agony.' WHERE `CreatureID` = 46964 AND `GroupID` = 0 AND `ID` = 0;
 -- UPDATE `creature_text` SET `Text` = 'I thank you for the clearn death.I would not of done the same...' WHERE `CreatureID` = 46964 AND `GroupID` = 2 AND `ID` = 0;
-UPDATE `creature_text` SET `Text` = 'That bitch Sylvanas sent you too, did she? No matter, your journey ends in agony.' WHERE `CreatureID` = 46964 AND `GroupID` = 0 AND `ID` = 0;
+UPDATE `creature_text` SET `Text` = 'That bitch Sylvanas sent you too, did she? No matter - your journey ends in agony.' WHERE `CreatureID` = 46964 AND `GroupID` = 0 AND `ID` = 0;
 UPDATE `creature_text` SET `Text` = 'I thank you for the clean death. I would not have done the same...' WHERE `CreatureID` = 46964 AND `GroupID` = 2 AND `ID` = 0;
