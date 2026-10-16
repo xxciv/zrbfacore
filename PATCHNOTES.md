@@ -100,6 +100,24 @@ and the new way hides and shows again.
   Conjure Poisonous Mixture, Conjure Frost Mixture and Ice Shards. (Before that core fix he still only
   meleed, because neither mixture ever found a target.)
 
+#### Lord Godfrey only summoned ghouls
+- **Found** (in game): Lord Godfrey pulled and fought, but the only ability he used was Summon Bloodthirsty
+  Ghouls. On Normal he also has Cursed Bullets and Mortal Wound.
+- **Cause** (`boss_lord_godfrey.cpp`):
+  - Mortal Wound (93675, Heroic 93771) was cast with `DoCast(spellId)`, which picks the target from the
+    spell's range. A melee-range spell has no fixed range, so it was aimed at Godfrey himself and never
+    landed. It was also only tried every 25 seconds, for a debuff that stacks up to 10 times.
+  - Cursed Bullets (93629, Heroic 93761) went to any random unit on his threat list at any range, cast
+    instantly (triggered).
+  - Pistol Barrage was scheduled on both difficulties; it is a Heroic-only ability.
+- **Changed**, following CPP's script:
+  - Mortal Wound is cast on his current target 3 to 4 seconds into the fight, then every 5 seconds.
+  - Cursed Bullets goes to a random player within 50 yards, with its normal cast time, every 12 seconds
+    (first after 15 seconds, as before).
+  - Pistol Barrage is only scheduled on Heroic.
+  - Summon Bloodthirsty Ghouls is unchanged.
+- **Status:** built here (`boss_lord_godfrey.cpp` compiles); not yet tested in game.
+
 #### Typos in Lord Godfrey's yells
 - **Found** (in game): Four spotted typos in Lord Godfrey's (46964) lines and fixed them in the database
   on 2026-10-16.

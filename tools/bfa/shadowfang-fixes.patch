@@ -78,10 +78,10 @@ index 3809383..dce44e7 100644
              instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_WORD_OF_SHAME);
              if (Achievement && IsHeroic())
 diff --git a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_godfrey.cpp b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_godfrey.cpp
-index dfd461d..e78c661 100644
+index dfd461d..ed5354a 100644
 --- a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_godfrey.cpp
 +++ b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_godfrey.cpp
-@@ -72,24 +72,19 @@ class boss_lord_godfrey : public CreatureScript
+@@ -72,24 +72,21 @@ class boss_lord_godfrey : public CreatureScript
  
          void JustEngagedWith(Unit* /*who*/) override
          {
@@ -104,18 +104,43 @@ index dfd461d..e78c661 100644
  
 -                events.ScheduleEvent(EVENT_SUMMON_BLOODTHIRSTY_GHOULS, 10000);
 -                events.ScheduleEvent(EVENT_MORTAL_WOUND, 25000);
--                events.ScheduleEvent(EVENT_PISTOL_BARRAGE, 55000);
++            events.ScheduleEvent(EVENT_SUMMON_BLOODTHIRSTY_GHOULS, 10000);
++            events.ScheduleEvent(EVENT_MORTAL_WOUND, urand(3000, 4000));
++            // Pistol Barrage is Heroic only
++            if (IsHeroic())
+                 events.ScheduleEvent(EVENT_PISTOL_BARRAGE, 55000);
 -                events.ScheduleEvent(EVENT_CURSED_BULLETS, 15000);
 -            }
 -            else
 -                EnterEvadeMode();
-+            events.ScheduleEvent(EVENT_SUMMON_BLOODTHIRSTY_GHOULS, 10000);
-+            events.ScheduleEvent(EVENT_MORTAL_WOUND, 25000);
-+            events.ScheduleEvent(EVENT_PISTOL_BARRAGE, 55000);
 +            events.ScheduleEvent(EVENT_CURSED_BULLETS, 15000);
          }
  
          void JustDied(Unit* /*killer*/) override
+@@ -129,8 +126,9 @@ class boss_lord_godfrey : public CreatureScript
+                     events.ScheduleEvent(EVENT_SUMMON_BLOODTHIRSTY_GHOULS, 30000);
+                     break;
+                case EVENT_MORTAL_WOUND:
+-                    DoCast(DUNGEON_MODE(SPELL_MORTAL_WOUND,SPELL_MORTAL_WOUND_H));
+-                    events.ScheduleEvent(EVENT_MORTAL_WOUND, 25000);
++                    // a melee-range spell: DoCast(spellId) aimed it at himself, so it never landed
++                    DoCastVictim(DUNGEON_MODE(SPELL_MORTAL_WOUND,SPELL_MORTAL_WOUND_H));
++                    events.ScheduleEvent(EVENT_MORTAL_WOUND, 5000);
+                     break;
+                case EVENT_PISTOL_BARRAGE:
+                     DoCast(SPELL_PISTOL_BARRAGE_TARGETS);
+@@ -138,8 +136,9 @@ class boss_lord_godfrey : public CreatureScript
+                     events.ScheduleEvent(EVENT_PISTOL_BARRAGE, 30000);
+                     break;
+                case EVENT_CURSED_BULLETS:
+-                    DoCast(SelectTarget(SELECT_TARGET_RANDOM, 0), DUNGEON_MODE(SPELL_CURSED_BULLETS,SPELL_CURSED_BULLETS_H), true);
+-                    events.ScheduleEvent(EVENT_CURSED_BULLETS, 20000);
++                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 50.0f, true))
++                        DoCast(target, DUNGEON_MODE(SPELL_CURSED_BULLETS,SPELL_CURSED_BULLETS_H));
++                    events.ScheduleEvent(EVENT_CURSED_BULLETS, 12000);
+                     break;
+                 }
+             }
 diff --git a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_walden.cpp b/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_walden.cpp
 index 2e82e23..68016da 100644
 --- a/src/server/scripts/EasternKingdoms/ShadowfangKeep/boss_lord_walden.cpp
