@@ -7,8 +7,10 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### Shadowfang Keep (map 33)
 
-On PR #11, not merged yet. Core changes are in the new `tools/bfa/shadowfang-fixes.patch`, applied
-after the other five patches. Built here (the 8 Shadowfang Keep script files compile).
+Merged to `main` with PR #11 on 2026-10-16 (work from 2026-10-15 and 2026-10-16). Script changes are in
+the new `tools/bfa/shadowfang-fixes.patch`, applied after the other five patches; three core fixes found
+along the way have their own patches (below). A full Alliance run was confirmed in game by Four on
+2026-10-16; the Horde side has not been played yet.
 
 First version, tested by Four on 2026-10-15: the SQL worked (the Forsaken stood up, and the door room
 held exactly the 14 spawns of groups 412 and 413), but nothing was hidden. The script hid creatures with
@@ -218,58 +220,31 @@ New `tools/bfa/random-target.patch`, applied ninth, after `stealth-pull.patch`.
   HavenCore has 18 in packs of 2 to 3. Not changed.
 
 ### To pick up the Shadowfang Keep changes
-Only a new patch is added, so the patches you already applied stay as they are:
+Everything is on `main` now. If your `tools-repo` is still on the Shadowfang branch, put it back on `main`.
+The patch files there are the same, so nothing needs rebuilding:
+```
+git -C ~/bfa/tools-repo checkout main
+git -C ~/bfa/tools-repo pull
+```
+
+Coming from the 2026-10-15 Ragefire update with none of this applied, add the four new patches in order
+and run the four SQL files (each is safe to run twice):
 ```
 cd ~/bfa/source
-git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
-git -C ../tools-repo checkout claude/project-thread-g6xhsv
+git -C ../tools-repo checkout main
 git -C ../tools-repo pull
 git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
-cmake --build build -j"$(nproc)" && cmake --build build --target install
-mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_15_01_shadowfang_faction_troops.sql
-```
-Then restart `worldserver`.
-
-If you applied an earlier version of `shadowfang-fixes.patch`, swap in the current one. No other patch
-touches the Shadowfang Keep folder, so resetting just that folder is enough. Run each SQL file you
-haven't run yet (each is safe to run twice):
-```
-cd ~/bfa/source
-git -C ../tools-repo pull
-git checkout -- src/server/scripts/EasternKingdoms/ShadowfangKeep
-git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
-sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
-mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_15_02_shadowfang_stone_sleepers.sql
-```
-Then restart `worldserver`.
-
-`player-search.patch` is a new patch on its own, so it only needs applying once:
-```
-cd ~/bfa/source
-git -C ../tools-repo pull
 git apply ../tools-repo/tools/bfa/player-search.patch
-sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
-```
-Then restart `worldserver`.
-
-`random-target.patch` is new too and touches nothing the other patches touch:
-```
-cd ~/bfa/source
-git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/stealth-pull.patch
 git apply ../tools-repo/tools/bfa/random-target.patch
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_15_01_shadowfang_faction_troops.sql
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_15_02_shadowfang_stone_sleepers.sql
 mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_16_01_shadowfang_lesser_gargoyles.sql
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_16_02_shadowfang_godfrey_text.sql
 ```
-Then restart `worldserver`.
-
-`stealth-pull.patch` is also new on its own and goes on top of the patches you already have:
-```
-cd ~/bfa/source
-git -C ../tools-repo pull
-git apply ../tools-repo/tools/bfa/stealth-pull.patch
-sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
-```
-Then restart `worldserver`.
+Then restart `worldserver` and use a fresh instance. If any `git apply` line prints an error, stop and
+check it before building: a patch that didn't apply leaves that fix out silently.
 
 ### Ragefire Chasm (map 389)
 
