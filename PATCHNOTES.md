@@ -29,7 +29,7 @@ to do to pick it up (rebuild, restart, run SQL).
   - new id 9: out of combat, only in phase 1, every 30 s, add aura 17743 again.
   Waking, quest credit, the walk to the lumber pile, chopping for 60 to 180 s and going back to sleep
   (rows 0 to 6 and action list 1055600 from the core update) are unchanged.
-- **Status:** not yet tested in game.
+- **Status:** confirmed in game by Four on 2026-10-16: the blackjack wakes the peons again.
 
 ### To pick up the Lazy Peon fix
 SQL only, no rebuild:
@@ -63,7 +63,7 @@ Then restart worldserver.
   - id 2: when the target is within 8 yards, cast Fan of Knives (79584) every 15 to 22 s (was within
     10 yards).
   Melee and chasing are left to SmartAI's defaults, so it auto-attacks in melee range.
-- **Status:** not yet tested in game.
+- **Status:** confirmed in game by Four on 2026-10-16.
 
 ### To pick up the Northwatch Scout fix
 SQL only, no rebuild:
