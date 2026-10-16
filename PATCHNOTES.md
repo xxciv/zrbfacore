@@ -117,8 +117,9 @@ and the new way hides and shows again.
   starts a fight (`Creature::CanStartAttack`), although these are hostile (faction 16) and have loot and
   gold like other trash.
 - **Changed:** `2026_10_16_01_shadowfang_lesser_gargoyles.sql` clears that one bit. Revert line is in the file.
-- **Status:** SQL ran cleanly twice here; not yet tested in game. The Stone Sleepers also stayed asleep in
-  the same test; still being looked into.
+- **Status:** confirmed in game by Four on 2026-10-16: they aggro once you leave stealth. The Stone
+  Sleepers stayed asleep in the same test because `2026_10_15_02_shadowfang_stone_sleepers.sql` had not been
+  run on that database yet (the Stone Sleeper still had the old unit flags, 16777215).
 
 ### Core: scripts never found the nearest player
 
