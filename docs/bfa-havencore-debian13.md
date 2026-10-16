@@ -96,6 +96,7 @@ git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
 git apply ../tools-repo/tools/bfa/player-search.patch
 git apply ../tools-repo/tools/bfa/stealth-pull.patch
 git apply ../tools-repo/tools/bfa/random-target.patch
+git apply ../tools-repo/tools/bfa/transmog-collection.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -206,6 +207,20 @@ vanishing still resets the fight.
 `random-target.patch` fixes `UnitAI::DoCastRandom`, which scripts use to cast at a random player. It
 passed its aura filter where `SelectTarget` expects "include the tank", so the player a boss was fighting
 was never picked. Solo, that means those spells were never cast.
+
+`transmog-collection.patch` makes transmog appearances collectable at all: upstream refuses every
+item that has no row in `ItemSearchName.db2`, and with this client's data that is every item. It also
+changes when appearances are learned. Stock 8.3.7 rules only
+learn an appearance once the item is soulbound (so a Bind on Equip item has to be equipped first) and
+only for armor and weapons the current character can wear at its current level. With the patch, an
+appearance is learned as soon as the item reaches your bags or bank, from any source, for every armor
+and weapon type. Items already in your bags and bank are learned at the next login. Appearances are
+account wide, so an alt of the right class can use what another character picked up. Each part can be
+switched back to stock with the `Transmog.*` settings (step 9, "Transmog collection"). Core files
+touched: `CollectionMgr.cpp`, `Player.cpp` (`MoveItemToInventory`, for mail, trade, guild bank and
+buyback), `World.h` / `World.cpp` (the three settings), `cs_debug.cpp` (`.debug transmog <item> [learn]`, which
+says why an item isn't collected) and `worldserver.conf.dist`. `World.h` is in the
+precompiled headers, so applying it rebuilds nearly everything.
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
@@ -446,6 +461,17 @@ selected creature. The settings are explained in the block itself. A dungeon of 
 easier or harder with lines like `DungeonScale.Map.36.Damage = 0.25` (36 is The Deadmines), then
 `.reload config`.
 
+### Transmog collection
+
+`transmog-collection.patch` (step 3) is on without any settings. To see or change them, copy its block
+from `worldserver.conf.dist` into `worldserver.conf` once:
+
+```sh
+grep -q '^Transmog.CollectOnPickup' ~/bfa/server/etc/worldserver.conf || sed -n '/^# TRANSMOG COLLECTION$/,/^####/p' ~/bfa/server/etc/worldserver.conf.dist >> ~/bfa/server/etc/worldserver.conf
+```
+
+Set a value to 0 for stock 8.3.7 behavior, then `.reload config` or restart `worldserver`.
+
 ## 10. Updating
 
 ```sh
@@ -462,6 +488,7 @@ git apply ../tools-repo/tools/bfa/shadowfang-fixes.patch
 git apply ../tools-repo/tools/bfa/player-search.patch
 git apply ../tools-repo/tools/bfa/stealth-pull.patch
 git apply ../tools-repo/tools/bfa/random-target.patch
+git apply ../tools-repo/tools/bfa/transmog-collection.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

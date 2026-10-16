@@ -3,6 +3,98 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-16
+
+### Transmog collection
+
+Merged to `main` with PR #12 on 2026-10-16 (reported 2026-10-15). Core changes are in the new
+`tools/bfa/transmog-collection.patch`, applied after the other nine patches. It applies to a stock core
+on its own too, so the order doesn't matter.
+
+#### Appearances were not learned for items in the bags
+- **Found** (reported by Four): picking items up didn't add their appearances to the collection. The
+  core's collection code is TrinityCore's 8.3.7 version, unchanged, and it follows the 8.3.7 retail
+  rules, which skip most of what lands in the bags while levelling:
+  - `CollectionMgr::AddItemAppearance(Item*)` returns unless the item is soulbound. Bind on Equip items
+    are only learned when equipped (`Player::VisualizeItem`); Bind on Pickup and quest items are learned
+    on pickup.
+  - `CollectionMgr::CanAddAppearance` returns false when `Player::CanUseItem` fails, which includes the
+    item's required level being above yours, and when the character's class can't wear the armor type
+    (`PlayerClassByArmorSubclass`) or doesn't have the weapon skill. A plate drop on a mage, or a
+    level 20 blue on a level 18 character, was never learned, even though it was soulbound.
+  - Items received by mail, trade, guild bank or buyback go through `Player::MoveItemToInventory`,
+    which never calls the collection code, so a soulbound item received that way was never learned
+    either (except later, by equipping or at login).
+  Nothing was wrong with storage: appearances are saved account wide in `bfa_auth.battlenet_item_appearances`
+  and loaded at login.
+- **Changed:**
+  - `CollectionMgr.cpp`, `AddItemAppearance(Item*)`: the soulbound check is skipped when
+    `Transmog.CollectOnPickup` is 1, so any item that reaches the bags or bank is learned. Items already
+    in the bags and bank are learned at the next login, because `Player::_LoadInventory` already passes
+    every item through this function. Refundable vendor items and Bind on Pickup items that can still
+    be traded to group members get the existing temporary appearance until the refund or trade window
+    ends, as before.
+  - `CollectionMgr.cpp`, `CanAddAppearance`: with `Transmog.CollectAnyClass` 1, the `CanUseItem`, weapon
+    skill and armor type checks are skipped (TrinityCore did the same on its current branch in 2025).
+    With it 0, `Transmog.CollectIgnoreLevel` 1 still skips the required level check
+    (`CanUseItem(itemTemplate, true)`). Unchanged: only armor and weapons count, poor and common quality
+    items are still not collectable (as in 8.3.7), and already known appearances are skipped.
+  - `Player.cpp`, `MoveItemToInventory`: calls `AddItemAppearance` on the stored item when
+    `Transmog.CollectOnPickup` is 1, for mail, trade, guild bank and buyback.
+  - `World.h` / `World.cpp`: new settings `CONFIG_TRANSMOG_COLLECT_ON_PICKUP` (`Transmog.CollectOnPickup`),
+    `CONFIG_TRANSMOG_COLLECT_ANY_CLASS` (`Transmog.CollectAnyClass`) and
+    `CONFIG_TRANSMOG_COLLECT_IGNORE_LEVEL` (`Transmog.CollectIgnoreLevel`), all default 1, so the change
+    is on without editing `worldserver.conf`. `.reload config` picks up changes.
+  - `worldserver.conf.dist`: new `TRANSMOG COLLECTION` section with the three settings. Set one to 0 for
+    the stock 8.3.7 behavior.
+  - `CollectionMgr.cpp` / `.h`: `CanAddAppearance` now calls the new public
+    `GetAppearanceRejectReason`, which runs the same checks and returns the reason an appearance is
+    refused (or none). `AddItemAppearance(ItemModifiedAppearanceEntry const*)` is now public, and
+    `GetKnownAppearanceCount` is new.
+  - `cs_debug.cpp`: new GM command `.debug transmog <item id or link> [learn]` (debug permission). It prints
+    the item's ItemModifiedAppearance, whether the server knows it and whether it was sent to the client,
+    the reason it can't be collected, and how many appearances the account knows. With `learn` it adds
+    the appearance without the checks, to test whether the client shows it.
+  - No SQL.
+- **2026-10-16, in game:** with the patch, nothing was collected up to level 23, and Cape of the
+  Brotherhood (5193) and the equipped Wolfmaster Cape both still said "You haven't collected this
+  appearance". Cloaks pass every class rule, so something else refuses them; the debug command was added
+  to find out what.
+- **Found** (2026-10-16, with `.debug transmog`): the real reason nothing was collected.
+  `CanAddAppearance` refuses any item that has no row in `ItemSearchName.db2`, and every item failed it.
+  Cape of the Brotherhood (5193, ItemModifiedAppearance 1985) and Wolfmaster Cape (6314, 2340) both
+  answered "item missing from ItemSearchName.db2". After `.debug transmog <id> learn` the client said
+  "has been added to your appearance collection" and showed both cloaks in Appearances > Back, so the
+  client side and the update field work. The lookup is TrinityCore's, but it finds nothing with the
+  client data extracted from this 8.3.7 client, so it blocked every appearance under any rules.
+- **Changed:** `CollectionMgr.cpp`, `GetAppearanceRejectReason`: the `sItemSearchNameStore.LookupEntry`
+  check is removed. The item still has to have an ItemModifiedAppearance, an item template, a
+  collectable source type and pass the rest of the checks.
+- **Status:** confirmed in game by Four on 2026-10-16: appearances are collected again. The appearances
+  tab for armor only lists your own class's armor type, so a plate piece learned on a mage shows up on a
+  plate wearer.
+
+### To pick up the transmog collection change
+Everything is on `main` now. If you applied the patch from the PR branch, `tools-repo` only needs to be on
+`main`. The patch file there is the same one, so nothing needs rebuilding:
+```
+git -C ~/bfa/tools-repo checkout main
+git -C ~/bfa/tools-repo pull
+```
+
+Coming from the Shadowfang Keep update without it, add the new patch. `World.h` is in the precompiled
+headers, so this is a near full rebuild. There's no SQL:
+```
+cd ~/bfa/source
+git -C ../tools-repo checkout main
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/transmog-collection.patch
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+grep -q '^Transmog.CollectOnPickup' ~/bfa/server/etc/worldserver.conf || sed -n '/^# TRANSMOG COLLECTION$/,/^####/p' ~/bfa/server/etc/worldserver.conf.dist >> ~/bfa/server/etc/worldserver.conf
+```
+Then type `server shutdown 1` in the worldserver console and start it again with
+`cd ~/bfa/server/bin && ./worldserver`. Log out and back in to learn what is already in your bags and bank.
+
 ## 2026-10-15
 
 ### Shadowfang Keep (map 33)

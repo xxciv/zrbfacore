@@ -1,0 +1,332 @@
+diff --git a/src/server/game/Entities/Player/CollectionMgr.cpp b/src/server/game/Entities/Player/CollectionMgr.cpp
+index 48a6c80..1a7e059 100644
+--- a/src/server/game/Entities/Player/CollectionMgr.cpp
++++ b/src/server/game/Entities/Player/CollectionMgr.cpp
+@@ -25,6 +25,7 @@
+ #include "Player.h"
+ #include "Timer.h"
+ #include "TransmogrificationPackets.h"
++#include "World.h"
+ #include "WorldSession.h"
+ #include <boost/dynamic_bitset.hpp>
+ 
+@@ -625,7 +626,8 @@ uint32 const PlayerClassByArmorSubclass[MAX_ITEM_SUBCLASS_ARMOR] =
+ 
+ void CollectionMgr::AddItemAppearance(Item* item)
+ {
+-    if (!item->IsSoulBound())
++    // Retail 8.3.7 only learns an appearance once the item binds; CollectOnPickup learns it as soon as the item reaches the player.
++    if (!item->IsSoulBound() && !sWorld->getBoolConfig(CONFIG_TRANSMOG_COLLECT_ON_PICKUP))
+         return;
+ 
+     ItemModifiedAppearanceEntry const* itemModifiedAppearance = item->GetItemModifiedAppearance();
+@@ -698,42 +700,46 @@ bool CollectionMgr::IsSetCompleted(uint32 transmogSetId) const
+ }
+ 
+ bool CollectionMgr::CanAddAppearance(ItemModifiedAppearanceEntry const* itemModifiedAppearance) const
++{
++    return !GetAppearanceRejectReason(itemModifiedAppearance);
++}
++
++char const* CollectionMgr::GetAppearanceRejectReason(ItemModifiedAppearanceEntry const* itemModifiedAppearance) const
+ {
+     if (!itemModifiedAppearance)
+-        return false;
++        return "no ItemModifiedAppearance for this item";
+ 
+     if (itemModifiedAppearance->TransmogSourceTypeEnum == 6 || itemModifiedAppearance->TransmogSourceTypeEnum == 9)
+-        return false;
+-
+-    if (!sItemSearchNameStore.LookupEntry(itemModifiedAppearance->ItemID))
+-        return false;
++        return "appearance source type is not collectable";
+ 
+     ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(itemModifiedAppearance->ItemID);
+     if (!itemTemplate)
+-        return false;
++        return "no item template";
+ 
+     if (!_owner->GetPlayer())
+-        return false;
++        return "no player";
+ 
+-    if (_owner->GetPlayer()->CanUseItem(itemTemplate) != EQUIP_ERR_OK)
+-        return false;
++    // Retail 8.3.7 only collects what the current character could wear; CollectAnyClass collects every armor type and weapon for the account.
++    bool const anyClass = sWorld->getBoolConfig(CONFIG_TRANSMOG_COLLECT_ANY_CLASS);
++    if (!anyClass && _owner->GetPlayer()->CanUseItem(itemTemplate, sWorld->getBoolConfig(CONFIG_TRANSMOG_COLLECT_IGNORE_LEVEL)) != EQUIP_ERR_OK)
++        return "character can't use the item";
+ 
+     if (itemTemplate->GetFlags2() & ITEM_FLAG2_NO_SOURCE_FOR_ITEM_VISUAL || itemTemplate->GetQuality() == ITEM_QUALITY_ARTIFACT)
+-        return false;
++        return "item flagged with no appearance source, or artifact";
+ 
+     switch (itemTemplate->GetClass())
+     {
+         case ITEM_CLASS_WEAPON:
+         {
+-            if (!(_owner->GetPlayer()->GetWeaponProficiency() & (1 << itemTemplate->GetSubClass())))
+-                return false;
++            if (!anyClass && !(_owner->GetPlayer()->GetWeaponProficiency() & (1 << itemTemplate->GetSubClass())))
++                return "character lacks the weapon skill";
+             if (itemTemplate->GetSubClass() == ITEM_SUBCLASS_WEAPON_EXOTIC ||
+                 itemTemplate->GetSubClass() == ITEM_SUBCLASS_WEAPON_EXOTIC2 ||
+                 itemTemplate->GetSubClass() == ITEM_SUBCLASS_WEAPON_MISCELLANEOUS ||
+                 itemTemplate->GetSubClass() == ITEM_SUBCLASS_WEAPON_THROWN ||
+                 itemTemplate->GetSubClass() == ITEM_SUBCLASS_WEAPON_SPEAR ||
+                 itemTemplate->GetSubClass() == ITEM_SUBCLASS_WEAPON_FISHING_POLE)
+-                return false;
++                return "weapon type has no appearances";
+             break;
+         }
+         case ITEM_CLASS_ARMOR:
+@@ -756,28 +762,28 @@ bool CollectionMgr::CanAddAppearance(ItemModifiedAppearanceEntry const* itemModi
+                 case INVTYPE_HANDS:
+                 case INVTYPE_ROBE:
+                     if (itemTemplate->GetSubClass() == ITEM_SUBCLASS_ARMOR_MISCELLANEOUS)
+-                        return false;
++                        return "miscellaneous armor has no appearances";
+                     break;
+                 default:
+-                    return false;
++                    return "armor slot has no appearances";
+             }
+-            if (itemTemplate->GetInventoryType() != INVTYPE_CLOAK)
++            if (!anyClass && itemTemplate->GetInventoryType() != INVTYPE_CLOAK)
+                 if (!(PlayerClassByArmorSubclass[itemTemplate->GetSubClass()] & _owner->GetPlayer()->getClassMask()))
+-                    return false;
++                    return "character's class can't wear this armor type";
+             break;
+         }
+         default:
+-            return false;
++            return "not armor or a weapon";
+     }
+ 
+     if (itemTemplate->GetQuality() < ITEM_QUALITY_UNCOMMON)
+         if (!(itemTemplate->GetFlags2() & ITEM_FLAG2_IGNORE_QUALITY_FOR_ITEM_VISUAL_SOURCE) || !(itemTemplate->GetFlags3() & ITEM_FLAG3_ACTS_AS_TRANSMOG_HIDDEN_VISUAL_OPTION))
+-            return false;
++            return "poor or common quality";
+ 
+     if (itemModifiedAppearance->ID < _appearances->size() && _appearances->test(itemModifiedAppearance->ID))
+-        return false;
++        return "already collected";
+ 
+-    return true;
++    return nullptr;
+ }
+ 
+ void CollectionMgr::AddItemAppearance(ItemModifiedAppearanceEntry const* itemModifiedAppearance)
+@@ -863,6 +869,11 @@ std::unordered_set<ObjectGuid> CollectionMgr::GetItemsProvidingTemporaryAppearan
+     return std::unordered_set<ObjectGuid>();
+ }
+ 
++std::size_t CollectionMgr::GetKnownAppearanceCount() const
++{
++    return _appearances->count();
++}
++
+ std::unordered_set<uint32> CollectionMgr::GetAppearanceIds() const
+ {
+     std::unordered_set<uint32> appearances;
+diff --git a/src/server/game/Entities/Player/CollectionMgr.h b/src/server/game/Entities/Player/CollectionMgr.h
+index 7098387..193b0c8 100644
+--- a/src/server/game/Entities/Player/CollectionMgr.h
++++ b/src/server/game/Entities/Player/CollectionMgr.h
+@@ -147,9 +147,13 @@ public:
+     void SetAppearanceIsFavorite(uint32 itemModifiedAppearanceId, bool apply);
+     void SendFavoriteAppearances() const;
+ 
++    // nullptr when the appearance can be added, otherwise why not (shown by .debug transmog)
++    char const* GetAppearanceRejectReason(ItemModifiedAppearanceEntry const* itemModifiedAppearance) const;
++    void AddItemAppearance(ItemModifiedAppearanceEntry const* itemModifiedAppearance);
++    std::size_t GetKnownAppearanceCount() const;
++
+ private:
+     bool CanAddAppearance(ItemModifiedAppearanceEntry const* itemModifiedAppearance) const;
+-    void AddItemAppearance(ItemModifiedAppearanceEntry const* itemModifiedAppearance);
+     void AddTemporaryAppearance(ObjectGuid const& itemGuid, ItemModifiedAppearanceEntry const* itemModifiedAppearance);
+ 
+     WorldSession* _owner;
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index 232ecdd..23e3ffd 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -13479,6 +13479,10 @@ void Player::MoveItemToInventory(ItemPosCountVec const& dest, Item* pItem, bool
+         if (pLastItem->HasItemFlag(ITEM_FIELD_FLAG_BOP_TRADEABLE))
+             AddTradeableItem(pLastItem);
+     }
++
++    // Mail, trade, guild bank and buyback hand over existing items without StoreNewItem, so they never reach OnItemAdded.
++    if (sWorld->getBoolConfig(CONFIG_TRANSMOG_COLLECT_ON_PICKUP))
++        GetSession()->GetCollectionMgr()->AddItemAppearance(pLastItem);
+ }
+ 
+ void Player::DestroyItem(uint8 bag, uint8 slot, bool update)
+diff --git a/src/server/game/World/World.cpp b/src/server/game/World/World.cpp
+index 645553c..cd0f301 100644
+--- a/src/server/game/World/World.cpp
++++ b/src/server/game/World/World.cpp
+@@ -1364,6 +1364,10 @@ void World::LoadConfigSettings(bool reload)
+         m_int_configs[CONFIG_RESPAWN_DYNAMICMODE] = 0;
+     }
+     m_bool_configs[CONFIG_RESPAWN_DYNAMIC_ESCORTNPC] = sConfigMgr->GetBoolDefault("Respawn.DynamicEscortNPC", true);
++
++    m_bool_configs[CONFIG_TRANSMOG_COLLECT_ON_PICKUP] = sConfigMgr->GetBoolDefault("Transmog.CollectOnPickup", true);
++    m_bool_configs[CONFIG_TRANSMOG_COLLECT_ANY_CLASS] = sConfigMgr->GetBoolDefault("Transmog.CollectAnyClass", true);
++    m_bool_configs[CONFIG_TRANSMOG_COLLECT_IGNORE_LEVEL] = sConfigMgr->GetBoolDefault("Transmog.CollectIgnoreLevel", true);
+     m_int_configs[CONFIG_RESPAWN_GUIDWARNLEVEL] = sConfigMgr->GetIntDefault("Respawn.GuidWarnLevel", 12000000);
+     if (m_int_configs[CONFIG_RESPAWN_GUIDWARNLEVEL] > 16777215)
+     {
+diff --git a/src/server/game/World/World.h b/src/server/game/World/World.h
+index 45aa080..1545d1d 100644
+--- a/src/server/game/World/World.h
++++ b/src/server/game/World/World.h
+@@ -201,6 +201,9 @@ enum WorldBoolConfigs
+ 	CONFIG_ARGUSWOW_ENABLE,
+     CONFIG_PET_BATTLES,
+     CONFIG_RESPAWN_DYNAMIC_ESCORTNPC,
++    CONFIG_TRANSMOG_COLLECT_ON_PICKUP,
++    CONFIG_TRANSMOG_COLLECT_ANY_CLASS,
++    CONFIG_TRANSMOG_COLLECT_IGNORE_LEVEL,
+     BOOL_CONFIG_VALUE_COUNT
+ };
+ 
+diff --git a/src/server/scripts/Commands/cs_debug.cpp b/src/server/scripts/Commands/cs_debug.cpp
+index 3209a87..2d243ab 100644
+--- a/src/server/scripts/Commands/cs_debug.cpp
++++ b/src/server/scripts/Commands/cs_debug.cpp
+@@ -30,9 +30,11 @@ EndScriptData */
+ #include "ChannelPackets.h"
+ #include "Chat.h"
+ #include "ChatPackets.h"
++#include "CollectionMgr.h"
+ #include "Conversation.h"
+ #include "GossipDef.h"
+ #include "GridNotifiersImpl.h"
++#include "Item.h"
+ #include "Language.h"
+ #include "Log.h"
+ #include "M2Stores.h"
+@@ -117,6 +119,7 @@ public:
+             { "transportState", rbac::RBAC_PERM_COMMAND_DEBUG,              false, &HandleDebugTransportStateCommand,   "" },
+             { "worldstate" ,   rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugWorldStateCommand,       "" },
+             { "wsexpression" , rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugWSExpressionCommand,     "" },
++            { "transmog",      rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugTransmogCommand,         "" },
+         };
+         static std::vector<ChatCommand> commandTable =
+         {
+@@ -1500,6 +1503,59 @@ public:
+         return true;
+     }
+ 
++    // .debug transmog <item id or link> [learn]
++    static bool HandleDebugTransmogCommand(ChatHandler* handler, char const* args)
++    {
++        if (!*args)
++            return false;
++
++        char* idStr = handler->extractKeyFromLink((char*)args, "Hitem");
++        if (!idStr)
++            return false;
++
++        uint32 itemId = uint32(atoul(idStr));
++        char const* option = strtok(nullptr, " ");
++        bool const learn = option && std::string(option) == "learn";
++
++        Player* player = handler->GetSession()->GetPlayer();
++        CollectionMgr* collection = handler->GetSession()->GetCollectionMgr();
++
++        ItemModifiedAppearanceEntry const* appearance = nullptr;
++        if (Item* item = player->GetItemByEntry(itemId, ITEM_SEARCH_EVERYWHERE))
++        {
++            appearance = item->GetItemModifiedAppearance();
++            handler->PSendSysMessage("Item %u is in your bags: soulbound %u, appearance modifier %u.", itemId, uint32(item->IsSoulBound()), item->GetBonus()->AppearanceModID);
++        }
++        else
++        {
++            appearance = sDB2Manager.GetItemModifiedAppearance(itemId, 0);
++            handler->PSendSysMessage("Item %u is not in your bags, checking its default appearance.", itemId);
++        }
++
++        if (appearance)
++        {
++            std::pair<bool, bool> known = collection->HasItemAppearance(appearance->ID);
++            uint32 block = appearance->ID / 32;
++            bool const inUpdateField = block < player->m_activePlayerData->Transmog.size() && (player->m_activePlayerData->Transmog[block] & (1u << (appearance->ID % 32)));
++            handler->PSendSysMessage("ItemModifiedAppearance %u (appearance %u, modifier %u, source type %d). Known by server: %u, temporary: %u, sent to client: %u.",
++                appearance->ID, uint32(appearance->ItemAppearanceID), uint32(appearance->ItemAppearanceModifierID), int32(appearance->TransmogSourceTypeEnum),
++                uint32(known.first), uint32(known.second), uint32(inUpdateField));
++        }
++
++        char const* reason = collection->GetAppearanceRejectReason(appearance);
++        handler->PSendSysMessage("Can collect: %s.", reason ? reason : "yes");
++        handler->PSendSysMessage("Account knows %u appearances; client update field has %u blocks.",
++            uint32(collection->GetKnownAppearanceCount()), uint32(player->m_activePlayerData->Transmog.size()));
++
++        if (learn && appearance)
++        {
++            collection->AddItemAppearance(appearance);
++            handler->PSendSysMessage("Learned ItemModifiedAppearance %u without the checks.", appearance->ID);
++        }
++
++        return true;
++    }
++
+     static bool HandleDebugTransportStateCommand(ChatHandler* handler, char const* args)
+     {
+         CommandArgs commandArgs = CommandArgs(handler, args, { CommandArgs::ARG_UINT, CommandArgs::ARG_UINT });
+diff --git a/src/server/worldserver/worldserver.conf.dist b/src/server/worldserver/worldserver.conf.dist
+index 4a458f9..5ac16f0 100644
+--- a/src/server/worldserver/worldserver.conf.dist
++++ b/src/server/worldserver/worldserver.conf.dist
+@@ -15,6 +15,7 @@
+ #    UPDATE SETTINGS
+ #    HOTSWAP SETTINGS
+ #    WARDEN SETTINGS
++#    TRANSMOG COLLECTION
+ #    PLAYER INTERACTION
+ #    CREATURE SETTINGS
+ #    SPAWN/RESPAWN SETTINGS
+@@ -1527,6 +1528,41 @@ Warden.BanDuration = 86400
+ #
+ ###################################################################################################
+ 
++###################################################################################################
++# TRANSMOG COLLECTION
++#
++#    Transmog.CollectOnPickup
++#        Description: Learn an item's appearance as soon as it reaches the bags or bank
++#                     (loot, quest reward, vendor, mail, trade, guild bank), and for items
++#                     already there at the next login. Off follows retail 8.3.7, where an
++#                     appearance is only learned once the item is soulbound, so a
++#                     Bind on Equip item has to be equipped first.
++#        Default:     1 - (Enabled)
++#                     0 - (Disabled, retail 8.3.7)
++
++Transmog.CollectOnPickup = 1
++
++#    Transmog.CollectAnyClass
++#        Description: Learn appearances of every armor type and weapon type, not only the
++#                     ones the current character can wear. Appearances are account wide,
++#                     so an alt of the right class can then use them. Also ignores the
++#                     item's level, class, race and faction requirements.
++#        Default:     1 - (Enabled)
++#                     0 - (Disabled, retail 8.3.7)
++
++Transmog.CollectAnyClass = 1
++
++#    Transmog.CollectIgnoreLevel
++#        Description: With Transmog.CollectAnyClass = 0, still learn appearances of items
++#                     the character is too low level to wear.
++#        Default:     1 - (Enabled)
++#                     0 - (Disabled, retail 8.3.7)
++
++Transmog.CollectIgnoreLevel = 1
++
++#
++###################################################################################################
++
+ ###################################################################################################
+ # PLAYER INTERACTION
+ #
