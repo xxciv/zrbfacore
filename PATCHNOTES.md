@@ -188,7 +188,7 @@ New `tools/bfa/random-target.patch`, applied ninth, after `stealth-pull.patch`.
   line of sight wakes it: it clears those flags, emotes the line above (new `creature_text` row) and
   attacks that unit. After a reset it sleeps again. The Normal and Heroic fear casts are unchanged.
   Revert lines are in the file.
-- **Status:** SQL ran cleanly twice here; not yet tested in game.
+- **Status:** confirmed in game by Four on 2026-10-16: the Stone Sleepers wake and attack.
 
 #### Overlapping Frantic Geists: checked, left as is
 - **Found** (in game): many spawns overlap, for example Frantic Geists standing almost inside each other.
