@@ -1,0 +1,13 @@
+diff --git a/src/server/game/Loot/LootMgr.cpp b/src/server/game/Loot/LootMgr.cpp
+index 0e32c37..32f6569 100644
+--- a/src/server/game/Loot/LootMgr.cpp
++++ b/src/server/game/Loot/LootMgr.cpp
+@@ -616,7 +616,7 @@ void LootTemplate::Process(Loot& loot, bool rate, uint16 lootMode, uint8 groupId
+ 
+             uint32 maxcount = uint32(float(item->maxcount) * sWorld->getRate(RATE_DROP_ITEM_REFERENCED_AMOUNT));
+             for (uint32 loop = 0; loop < maxcount; ++loop)      // Ref multiplicator
+-                Referenced->Process(loot, rate, lootMode, item->groupid);
++                Referenced->Process(loot, rate, lootMode, item->groupid, player, specOnly); // pass the looter on, or AddItem drops every referenced item
+         }
+         else                                                    // Plain entries (not a reference, not grouped)
+             loot.AddItem(*item, player, specOnly);              // Chance is already checked, just add

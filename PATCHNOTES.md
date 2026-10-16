@@ -5,6 +5,36 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-16
 
+### Core: items from reference loot tables never dropped
+
+New `tools/bfa/loot-references.patch`, applied after `transmog-collection.patch`. On PR #13, not merged yet.
+
+- **Found** (in game, Wailing Caverns, on a new Horde character): Druids of the Fang, Lady Anacondra and
+  Skum dropped money but no items.
+- **Cause:** a loot row with `Reference` set points to a shared table in `reference_loot_template` (world
+  drops, most green items, many boss and chest tables). `LootTemplate::Process`
+  (`src/server/game/Loot/LootMgr.cpp`) processed that table without passing the looter on, and
+  `Loot::AddItem` throws away any item that has no looter. So nothing from a reference ever dropped,
+  anywhere. 37,088 rows in 2,740 creature loot tables use a reference, plus 122 gameobject and 106 item
+  loot tables. Upstream TrinityCore passes the looter.
+- **Changed:** the looter (and the spec filter) are passed on to the referenced table. One line.
+- **Not explained by this:** Lady Anacondra's and Skum's own items are plain rows, not references
+  (Anacondra 25%, 22%, 20%..., Skum 43%, 42%, 32%...), so they could drop before this fix too. Coming up
+  empty on both is unlucky but possible; watch them after the update.
+- **Status:** builds here (`LootMgr.cpp` compiles); not yet tested in game.
+
+### To pick up the reference loot fix
+A new patch on its own, so the patches you already applied stay as they are:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/loot-references.patch | git apply
+grep -c "item->groupid, player, specOnly" src/server/game/Loot/LootMgr.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The `grep` should print 1. Then restart `worldserver`. Once PR #13 is merged, `git -C ../tools-repo pull`
+on `main` brings the file in as usual.
+
 ### Transmog collection
 
 Merged to `main` with PR #12 on 2026-10-16 (reported 2026-10-15). Core changes are in the new

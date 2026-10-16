@@ -97,6 +97,7 @@ git apply ../tools-repo/tools/bfa/player-search.patch
 git apply ../tools-repo/tools/bfa/stealth-pull.patch
 git apply ../tools-repo/tools/bfa/random-target.patch
 git apply ../tools-repo/tools/bfa/transmog-collection.patch
+git apply ../tools-repo/tools/bfa/loot-references.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -207,6 +208,11 @@ vanishing still resets the fight.
 `random-target.patch` fixes `UnitAI::DoCastRandom`, which scripts use to cast at a random player. It
 passed its aura filter where `SelectTarget` expects "include the tank", so the player a boss was fighting
 was never picked. Solo, that means those spells were never cast.
+
+`loot-references.patch` fixes loot tables that point to a shared reference table (world drops, most
+green items, many boss and chest tables). `LootTemplate::Process` handed the referenced table on without
+the looter, and `Loot::AddItem` throws away an item with no looter, so nothing from a reference ever
+dropped. About 2,740 creature loot tables use one.
 
 `transmog-collection.patch` makes transmog appearances collectable at all: upstream refuses every
 item that has no row in `ItemSearchName.db2`, and with this client's data that is every item. It also
@@ -489,6 +495,7 @@ git apply ../tools-repo/tools/bfa/player-search.patch
 git apply ../tools-repo/tools/bfa/stealth-pull.patch
 git apply ../tools-repo/tools/bfa/random-target.patch
 git apply ../tools-repo/tools/bfa/transmog-collection.patch
+git apply ../tools-repo/tools/bfa/loot-references.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
