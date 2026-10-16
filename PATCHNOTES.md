@@ -5,6 +5,41 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-16
 
+### World: Lazy Peons (Durotar)
+
+#### The Foreman's Blackjack says "Invalid target" on every Lazy Peon
+- **Found** (reported by Four): every Lazy Peon (10556) in the Valley of Trials lay asleep, and the
+  Foreman's Blackjack said "Invalid target" on all of them, so quest 37446 "Lazy Peons" couldn't be
+  done. Lying asleep at spawn is intended (on retail the peons nap by the lumber piles until you wake
+  them). The blackjack's spell, Awaken Peon (19938), only accepts a target that has the aura Peon
+  Sleeping (17743): `Spell::CheckCast` in `Spell.cpp` checks it, and so does the spell condition
+  (`conditions` source 17, entry 19938). Since the core's world update
+  `2026_09_20_valley_of_trials_cosmetic_improvements.sql`, the peon's SmartAI adds 17743 once, on reset
+  (spawn and after evading), and sets stand state 3 (asleep). The old C++ script `npc_lazy_peon`
+  (removed from the peon by update `2026_08_06_00_Quest37446_Lazy_Peons_Fix.sql`) recast 17743 every
+  5 minutes, because the aura runs out. After it runs out the peon keeps lying down, since the stand
+  state doesn't change, but it can't be targeted. That the aura expiring is the cause is inferred from
+  the old script and the error; it wasn't checked in game.
+- **Changed:** new `sql/fixes/world/2026_10_16_04_durotar_lazy_peon_sleep_aura.sql`, on
+  `smart_scripts` for 10556 (`source_type` 0):
+  - id 1 (on reset, add aura 17743): `link` 0 -> 7.
+  - id 6 (on wake, start the work action list 1055600): `link` 0 -> 8.
+  - new id 7: linked from id 1, set event phase 1 (asleep).
+  - new id 8: linked from id 6, set event phase 2 (working).
+  - new id 9: out of combat, only in phase 1, every 30 s, add aura 17743 again.
+  Waking, quest credit, the walk to the lumber pile, chopping for 60 to 180 s and going back to sleep
+  (rows 0 to 6 and action list 1055600 from the core update) are unchanged.
+- **Status:** not yet tested in game.
+
+### To pick up the Lazy Peon fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_16_04_durotar_lazy_peon_sleep_aura.sql
+```
+Then restart worldserver.
+
 ### World: Northwatch Scout (Durotar)
 
 #### Northwatch Scout never melees, only casts Fan of Knives
