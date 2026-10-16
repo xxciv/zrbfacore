@@ -5,6 +5,75 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-16
 
+### World: Lazy Peons (Durotar)
+
+#### The Foreman's Blackjack says "Invalid target" on every Lazy Peon
+- **Found** (reported by Four): every Lazy Peon (10556) in the Valley of Trials lay asleep, and the
+  Foreman's Blackjack said "Invalid target" on all of them, so quest 37446 "Lazy Peons" couldn't be
+  done. Lying asleep at spawn is intended (on retail the peons nap by the lumber piles until you wake
+  them). The blackjack's spell, Awaken Peon (19938), only accepts a target that has the aura Peon
+  Sleeping (17743): `Spell::CheckCast` in `Spell.cpp` checks it, and so does the spell condition
+  (`conditions` source 17, entry 19938). Since the core's world update
+  `2026_09_20_valley_of_trials_cosmetic_improvements.sql`, the peon's SmartAI adds 17743 once, on reset
+  (spawn and after evading), and sets stand state 3 (asleep). The old C++ script `npc_lazy_peon`
+  (removed from the peon by update `2026_08_06_00_Quest37446_Lazy_Peons_Fix.sql`) recast 17743 every
+  5 minutes, because the aura runs out. After it runs out the peon keeps lying down, since the stand
+  state doesn't change, but it can't be targeted. That the aura expiring is the cause is inferred from
+  the old script and the error; it wasn't checked in game.
+- **Changed:** new `sql/fixes/world/2026_10_16_04_durotar_lazy_peon_sleep_aura.sql`, on
+  `smart_scripts` for 10556 (`source_type` 0):
+  - id 1 (on reset, add aura 17743): `link` 0 -> 7.
+  - id 6 (on wake, start the work action list 1055600): `link` 0 -> 8.
+  - new id 7: linked from id 1, set event phase 1 (asleep).
+  - new id 8: linked from id 6, set event phase 2 (working).
+  - new id 9: out of combat, only in phase 1, every 30 s, add aura 17743 again.
+  Waking, quest credit, the walk to the lumber pile, chopping for 60 to 180 s and going back to sleep
+  (rows 0 to 6 and action list 1055600 from the core update) are unchanged.
+- **Status:** confirmed in game by Four on 2026-10-16: the blackjack wakes the peons again.
+
+### To pick up the Lazy Peon fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_16_04_durotar_lazy_peon_sleep_aura.sql
+```
+Then restart worldserver.
+
+### World: Northwatch Scout (Durotar)
+
+#### Northwatch Scout never melees, only casts Fan of Knives
+- **Found** (reported by Four): Northwatch Scout (39317) in the Valley of Trials, Durotar, only ever
+  cast Fan of Knives and never auto-attacked. The dump has 23 `smart_scripts` rows for 39317 from two
+  different script versions mixed together (none of the core's `sql/updates/world` files touch them).
+  On aggro, the old link chain (ids 0, 1, 2) cast Shoot once, then ran action 20
+  (`SMART_ACTION_AUTO_ATTACK`) with 0, which turns melee off for the rest of the fight. The newer rows
+  that turn it back on and switch between Shoot and melee (ids 4 to 15, 18) all have
+  `event_phase_mask` 1, and nothing sets phase 1, so they never ran. Shoot (6660) has a minimum range,
+  so next to the player only Fan of Knives (id 3) still worked. Id 16 (a talk on combat) did nothing
+  either, because 39317 has no `creature_text`.
+- **Faction:** unchanged. The scout's faction 190 shows as neutral (yellow). That value is sniffed data
+  from build 35662, and every other mob in the Valley of Trials is neutral too (Mottled Boar, Scorpid
+  Worker, Vile Familiar and Sarkoth are faction 7), so neutral is expected. It only fights back when
+  attacked.
+- **Changed:** new `sql/fixes/world/2026_10_16_03_durotar_northwatch_scout.sql` deletes every
+  `smart_scripts` row for 39317 (`source_type` 0) and inserts three:
+  - id 0: on reset (spawn and after evade), cast Stealth (58506) on itself if it isn't stealthed.
+  - id 1: when the target is 5 to 30 yards away, cast Shoot (6660) on it every 2.3 to 3.9 s.
+  - id 2: when the target is within 8 yards, cast Fan of Knives (79584) every 15 to 22 s (was within
+    10 yards).
+  Melee and chasing are left to SmartAI's defaults, so it auto-attacks in melee range.
+- **Status:** confirmed in game by Four on 2026-10-16.
+
+### To pick up the Northwatch Scout fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_16_03_durotar_northwatch_scout.sql
+```
+Then restart worldserver.
+
 ### Transmog collection
 
 Merged to `main` with PR #12 on 2026-10-16 (reported 2026-10-15). Core changes are in the new
