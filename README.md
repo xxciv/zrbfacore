@@ -32,8 +32,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   random player (Lord Walden's mixtures, for one) can pick the player they are fighting.
 - [`tools/bfa/transmog-collection.patch`](tools/bfa/transmog-collection.patch): learns transmog
   appearances as soon as items reach your bags, for every armor and weapon type (`Transmog.*` settings).
-- [`tools/bfa/loot-references.patch`](tools/bfa/loot-references.patch): core fix so items from shared
-  loot tables (world drops, most greens) drop at all.
+- [`tools/bfa/loot-fixes.patch`](tools/bfa/loot-fixes.patch): core fixes so items from shared
+  loot tables (world drops, most greens) drop at all, and every dungeon boss drops at least one item.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.

@@ -5,12 +5,13 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-16
 
-### Core: items from reference loot tables never dropped
+### Loot: reference loot tables never dropped, and bosses now always drop an item
 
-New `tools/bfa/loot-references.patch`, applied after `transmog-collection.patch`. On PR #14, not merged yet.
+New `tools/bfa/loot-fixes.patch`, applied after `transmog-collection.patch`. On PR #14, not merged yet.
 
-- **Found** (in game, Wailing Caverns, on a new Horde character): Druids of the Fang, Lady Anacondra and
-  Skum dropped money but no items.
+#### Items from reference loot tables never dropped
+- **Found** (in game, Wailing Caverns, on the Alliance rogue): Druids of the Fang, Lady Anacondra, Skum,
+  Verdan the Everliving and Lord Pythas dropped money but no items. Trash elsewhere dropped items.
 - **Cause:** a loot row with `Reference` set points to a shared table in `reference_loot_template` (world
   drops, most green items, many boss and chest tables). `LootTemplate::Process`
   (`src/server/game/Loot/LootMgr.cpp`) processed that table without passing the looter on, and
@@ -18,21 +19,45 @@ New `tools/bfa/loot-references.patch`, applied after `transmog-collection.patch`
   anywhere. 37,088 rows in 2,740 creature loot tables use a reference, plus 122 gameobject and 106 item
   loot tables. Upstream TrinityCore passes the looter.
 - **Changed:** the looter (and the spec filter) are passed on to the referenced table. One line.
-- **Not explained by this:** Lady Anacondra's and Skum's own items are plain rows, not references
-  (Anacondra 25%, 22%, 20%..., Skum 43%, 42%, 32%...), so they could drop before this fix too. Coming up
-  empty on both is unlucky but possible; watch them after the update.
-- **Status:** builds here (`LootMgr.cpp` compiles); not yet tested in game.
+- **Status:** builds here; not yet tested in game.
 
-### To pick up the reference loot fix
-A new patch on its own, so the patches you already applied stay as they are:
+#### Dungeon bosses dropped only gold
+- **Found:** the four Wailing Caverns bosses above use plain rows, not references, so the fix above
+  doesn't touch them. By their tables each kill drops no item 13 to 27% of the time (Skum 13%, Anacondra
+  23%, Pythas 24%, Verdan 27%), so four empty kills in a row is about 1 in 500. Four's loot tables load
+  (1,805,426 rows, none of the skipped ones are these bosses') and all `Rate.Drop.*` settings are 1.
+  I found nothing in the core that treats a boss's loot differently from trash, so the cause is still
+  unknown. Four asked for every boss to always drop loot, as on retail.
+- **Changed:**
+  - `LootMgr.cpp` / `LootMgr.h`: new `LootTemplate::AddItemIfNoneDropped`. It looks at the boss's own
+    plain and grouped rows that the player could be shown (no references, quest items, currencies, rows
+    with conditions or of the wrong loot mode). If any of them is uncommon or better, the player must have
+    at least one uncommon-or-better item; otherwise any item counts. If the normal rolls gave none, one
+    is added, picked by drop chance (`Chance` as the weight, 1 for equal-chanced group rows), so a rare
+    item stays rare.
+  - `Unit.cpp`, `Unit::Kill`: after the normal loot is filled for each looter, calls it for creatures that
+    are dungeon or raid bosses (`IsDungeonBoss`: the kill credit of an `instance_encounters` row) on a
+    dungeon or raid map.
+  - The normal rolls are unchanged, so a boss can still drop more than one item. Bosses in the open world
+    are not affected. The Deadmines boss items grouped by `2026_10_11_04_deadmines_boss_loot.sql` already
+    always drop one, so nothing changes there.
+  - No SQL and no config setting. To undo it, `git apply -R` the patch.
+- **Status:** builds here (`LootMgr.cpp` and `Unit.cpp` compile); not yet tested in game. If a boss
+  still drops only gold after this, the item is being lost after the loot is built, which would point to
+  the real bug.
+
+### To pick up the loot fixes
+A new patch on its own, so the patches you already applied stay as they are. It rebuilds about 20 files
+that include `LootMgr.h`, not the whole core:
 ```
 cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
-git -C ../tools-repo show FETCH_HEAD:tools/bfa/loot-references.patch | git apply
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/loot-fixes.patch | git apply
 grep -c "item->groupid, player, specOnly" src/server/game/Loot/LootMgr.cpp
+grep -c "AddItemIfNoneDropped" src/server/game/Entities/Unit/Unit.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
-The `grep` should print 1. Then restart `worldserver`. Once PR #14 is merged, `git -C ../tools-repo pull`
+Both `grep` lines should print 1. Then restart `worldserver`. Once PR #14 is merged, `git -C ../tools-repo pull`
 on `main` brings the file in as usual.
 
 ### Transmog collection
