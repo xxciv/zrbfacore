@@ -7,7 +7,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### Core: items from reference loot tables never dropped
 
-New `tools/bfa/loot-references.patch`, applied after `transmog-collection.patch`. On PR #13, not merged yet.
+New `tools/bfa/loot-references.patch`, applied after `transmog-collection.patch`. On PR #14, not merged yet.
 
 - **Found** (in game, Wailing Caverns, on a new Horde character): Druids of the Fang, Lady Anacondra and
   Skum dropped money but no items.
@@ -32,7 +32,7 @@ git -C ../tools-repo show FETCH_HEAD:tools/bfa/loot-references.patch | git apply
 grep -c "item->groupid, player, specOnly" src/server/game/Loot/LootMgr.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
-The `grep` should print 1. Then restart `worldserver`. Once PR #13 is merged, `git -C ../tools-repo pull`
+The `grep` should print 1. Then restart `worldserver`. Once PR #14 is merged, `git -C ../tools-repo pull`
 on `main` brings the file in as usual.
 
 ### Transmog collection
