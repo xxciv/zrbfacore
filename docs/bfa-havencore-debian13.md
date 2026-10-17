@@ -99,6 +99,7 @@ git apply ../tools-repo/tools/bfa/random-target.patch
 git apply ../tools-repo/tools/bfa/transmog-collection.patch
 git apply ../tools-repo/tools/bfa/loot-fixes.patch
 git apply ../tools-repo/tools/bfa/scenario-debug.patch
+git apply ../tools-repo/tools/bfa/wailing-caverns-fixes.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -224,6 +225,10 @@ the objective list on the right of the screen (Wailing Caverns has "Muyoh escort
 and criteria live in the client's db2 files, not the world database. Typed inside a dungeon, the command
 lists each step, its criteria, what each one waits for (criteria type and the creature, event or spell
 id) and the group's progress, so a missing credit can be traced. It changes nothing in game.
+
+`wailing-caverns-fixes.patch` makes Muyoh's escort send the scenario event (582) behind the "Muyoh
+escorted" objective when she reaches Naralex. The rest of the Wailing Caverns fixes are SQL, under
+`sql/fixes/world` (see PATCHNOTES.md).
 
 `transmog-collection.patch` makes transmog appearances collectable at all: upstream refuses every
 item that has no row in `ItemSearchName.db2`, and with this client's data that is every item. It also
@@ -508,6 +513,7 @@ git apply ../tools-repo/tools/bfa/random-target.patch
 git apply ../tools-repo/tools/bfa/transmog-collection.patch
 git apply ../tools-repo/tools/bfa/loot-fixes.patch
 git apply ../tools-repo/tools/bfa/scenario-debug.patch
+git apply ../tools-repo/tools/bfa/wailing-caverns-fixes.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

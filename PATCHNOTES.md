@@ -134,21 +134,28 @@ final event worked. On PR #14, not merged yet.
 #### No credit for "Muyoh escorted"
 - **Found** (in game, 2026-10-17): the event finished, but the dungeon's objective "Muyoh escorted" was
   never ticked.
-- **Cause:** not found yet. In BFA, Wailing Caverns runs scenario 515 (`scenarios` table, map 43), and
-  "Muyoh escorted" is one of its criteria. Those live in the client's `Criteria`, `CriteriaTree` and
-  `ScenarioStep` db2 files, which aren't in the world database, so I can't see what the criteria waits
-  for (killing a creature, a scenario event, a spell). `npc_disciple_of_naralex` gives no scenario credit
-  of any kind when the escort ends.
-- **Changed:** new `tools/bfa/scenario-debug.patch` (applied after `loot-fixes.patch`) adds a GM command,
-  `.debug scenario`. Inside a dungeon, it lists every step of the scenario with its state, and under each
-  step every criteria tree and criteria: description, criteria type and asset (creature, event or spell
-  id), and the group's progress. It changes nothing in game. Files: `Scenario.h` / `Scenario.cpp`
-  (two read-only accessors) and `cs_debug.cpp` (the command).
-- **Status:** compiles here; waiting on its output from inside Wailing Caverns to write the actual fix.
+- **Cause:** in BFA, Wailing Caverns runs scenario 515 (`scenarios` table, map 43). Its steps and
+  criteria live in the client's db2 files, not the world database, so I added a GM command to read them
+  (below). Four's output: step 948 ("Disciples of Naralex", after the four Fanglords) needs criteria
+  24776 "Muyoh escorted", type SEND_EVENT_SCENARIO (92) with scenario event 582, and criteria 34405
+  "Mutanus the Devourer defeated" (kill 3654). `npc_disciple_of_naralex` never sends event 582, so the
+  step can't complete.
+- **Changed:**
+  - New `tools/bfa/scenario-debug.patch` (applied after `loot-fixes.patch`) adds `.debug scenario`.
+    Inside a dungeon, it lists every step of the scenario with its state, and under each step every
+    criteria tree and criteria: description, criteria type and asset (creature, event or spell id), and
+    the group's progress. It changes nothing in game. Files: `Scenario.h` / `Scenario.cpp` (two
+    read-only accessors) and `cs_debug.cpp` (the command).
+  - New `tools/bfa/wailing-caverns-fixes.patch` (applied after `scenario-debug.patch`):
+    `npc_disciple_of_naralex::WaypointReached` (`wailing_caverns.cpp`) sends scenario event 582 when
+    Muyoh reaches Naralex (escort point 24, where the awakening ritual starts). Mutanus is killed during
+    the ritual, which then completes the step.
+- **Status:** `.debug scenario` confirmed working in game by Four on 2026-10-17. The escort credit
+  compiles here; not yet tested in game.
 
 ### To pick up the Wailing Caverns fixes
 All three SQL files are safe to run again, so this runs them all. The debug command is a rebuild of
-about 30 files:
+about 30 files. If you already applied `scenario-debug.patch`, skip its line:
 ```
 cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
@@ -156,10 +163,12 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_16_05_wailing_caver
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_17_00_wailing_caverns_muyoh_gossip.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_17_01_wailing_caverns_muyoh_spawn.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:tools/bfa/scenario-debug.patch | git apply
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/wailing-caverns-fixes.patch | git apply
 grep -c "HandleDebugScenarioCommand" src/server/scripts/Commands/cs_debug.cpp
+grep -c "SCENARIO_EVENT_MUYOH_ESCORTED" src/server/scripts/Kalimdor/WailingCaverns/wailing_caverns.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
-The `grep` line should print 2. Then restart `worldserver`. If the Fanglords were killed before the
+Both `grep` lines should print 2. Then restart `worldserver`. If the Fanglords were killed before the
 first file ran, reset the instance (leave it, then Reset All Instances from your portrait menu) and kill
 them again.
 
