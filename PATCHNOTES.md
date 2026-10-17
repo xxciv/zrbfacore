@@ -19,7 +19,7 @@ New `tools/bfa/loot-fixes.patch`, applied after `transmog-collection.patch`. On 
   anywhere. 37,088 rows in 2,740 creature loot tables use a reference, plus 122 gameobject and 106 item
   loot tables. Upstream TrinityCore passes the looter.
 - **Changed:** the looter (and the spec filter) are passed on to the referenced table. One line.
-- **Status:** builds here; not yet tested in game.
+- **Status:** confirmed in game by Four on 2026-10-17.
 
 #### Dungeon bosses dropped only gold
 - **Found:** the four Wailing Caverns bosses above use plain rows, not references, so the fix above
@@ -42,9 +42,7 @@ New `tools/bfa/loot-fixes.patch`, applied after `transmog-collection.patch`. On 
     are not affected. The Deadmines boss items grouped by `2026_10_11_04_deadmines_boss_loot.sql` already
     always drop one, so nothing changes there.
   - No SQL and no config setting. To undo it, `git apply -R` the patch.
-- **Status:** builds here (`LootMgr.cpp` and `Unit.cpp` compile); not yet tested in game. If a boss
-  still drops only gold after this, the item is being lost after the loot is built, which would point to
-  the real bug.
+- **Status:** confirmed in game by Four on 2026-10-17: bosses drop loot.
 
 ### To pick up the loot fixes
 A new patch on its own, so the patches you already applied stay as they are. `LootMgr.h` is not in the
