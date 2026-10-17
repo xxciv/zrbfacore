@@ -102,6 +102,7 @@ git apply ../tools-repo/tools/bfa/scenario-debug.patch
 git apply ../tools-repo/tools/bfa/wailing-caverns-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale-xp.patch
 git apply ../tools-repo/tools/bfa/dungeon-boss-loot.patch
+git apply ../tools-repo/tools/bfa/blackfathom-layouts.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -226,6 +227,14 @@ keep the corpse from ever counting as looted.
 bosses (`instance_encounters`; Blackfathom Deeps and Ragefire Chasm have none), so a creature also
 counts when the dungeon's scenario has an objective to kill it once ("Lady Anacondra defeated", and
 optional bosses such as Kresh).
+
+`blackfathom-layouts.patch` gives Blackfathom Deeps both of its layouts. The world database spawns the
+classic one (Lady Sarevess, Gelihast, Twilight Lord Kelris...), while the client's Adventure Guide and
+dungeon objectives describe the 6.0.2 redesign (Domina, Thruk, Twilight Lord Bathiel...). With
+`sql/fixes/world/2026_10_17_03_blackfathom_redesign_layout.sql` both are spawned, and the instance shows
+one: `Blackfathom.Layout` in `worldserver.conf` picks it for new instances (1, the redesign, by default),
+and the Blackfathom Chronicler just inside the entrance switches it until the first boss of the run dies.
+Either way, the bosses count for the dungeon's objectives.
 
 `scenario-debug.patch` adds a GM command, `.debug scenario`. Dungeons in this client run a scenario:
 the objective list on the right of the screen (Wailing Caverns has "Muyoh escorted", for one). Its steps
@@ -530,6 +539,7 @@ git apply ../tools-repo/tools/bfa/scenario-debug.patch
 git apply ../tools-repo/tools/bfa/wailing-caverns-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale-xp.patch
 git apply ../tools-repo/tools/bfa/dungeon-boss-loot.patch
+git apply ../tools-repo/tools/bfa/blackfathom-layouts.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

@@ -5,6 +5,89 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-17
 
+### Blackfathom Deeps: the redesigned layout, next to the classic one
+
+New `tools/bfa/blackfathom-layouts.patch`, applied after `dungeon-boss-loot.patch`, and
+`sql/fixes/world/2026_10_17_03_blackfathom_redesign_layout.sql`. Asked for by Four on 2026-10-17 after
+fighting Lady Sarevess where the Adventure Guide shows Domina: keep both layouts, with an NPC at the entrance
+to pick one per run. On PR #14, not merged yet.
+
+- **Found:**
+  - HavenCore spawns the classic Blackfathom Deeps: Ghamoo-Ra, Lady Sarevess, Gelihast, Lorgus Jett,
+    Baron Aquanis, Twilight Lord Kelris, Old Serra'kis and Aku'mai. Its boss scripts and the quests
+    Deep in the Deeps (26892) and Nightmare of the Deeps (26888) are built around them.
+  - The 8.3.7 client shows the 6.0.2 redesign. The Adventure Guide lists Ghamoo-Ra, Domina, Subjugator
+    Kor'ul, Thruk, Guardian of the Deep, Executioner Gore, Twilight Lord Bathiel and Aku'mai. The dungeon
+    objectives come from scenario 333, which `.debug scenario` showed wants Ghamoo-Ra 74446, Thruk,
+    Executioner Gore, Twilight Lord Bathiel and Aku'mai the Devourer 75155, with Domina, Kor'ul and the
+    Guardian as bonus objectives. None of these was spawned, so the objectives could never complete with
+    the classic bosses.
+  - The database already had the redesign's creature templates, SmartAI, loot and quests (The Rise of
+    Aku'mai 34672/34673), but no spawns. TrinityCore master has the redesign's spawns, sniffed from
+    retail (`sql/old/11.x/world/25031_2025_05_31/2025_04_22_00_world.sql`).
+- **Changed (SQL, `2026_10_17_03`):**
+  - The redesign's spawns are converted from that file to this schema: 280 creatures and 74 gameobjects
+    (guids 4800000-4800999), 2 patrol paths (`waypoint_data` 48001110, 48001450), and template addons for
+    the redesign-only creatures. All of them are in spawn groups 433-440. 434-437 are the Alliance and
+    Horde quest givers at the entrance and at Aku'mai. 438/439 are Domina and Kor'ul over Bathiel's
+    altar. 440 is the Spoils of Blackfathom chest.
+  - New creature 4800000, the Blackfathom Chronicler <Dungeon Layouts>, just inside the entrance (spawn
+    4800999, group 441, shown in both layouts, using Lorekeeper Amberwind's model).
+  - `instance_encounters` rows for the redesign bosses, using the DungeonEncounter ids from the client's
+    JournalEncounter.db2: 1667 Ghamoo-Ra, 1668 Domina, 1669 Kor'ul, 1675 Thruk, 1676 Guardian of the Deep,
+    1670 Executioner Gore, 1671 Bathiel, and 1672 Aku'mai the Devourer (last encounter of dungeon 10).
+  - Aku'mai the Devourer had no loot (`lootid` 0) and now uses classic Aku'mai's table (4829). Also:
+    weapons for the entrance quest givers, the Frightened Prisoner's gossip menu (16166), Rope Ladder
+    Post 224747 not clickable, and the Spoils chest's world effect.
+- **Changed (patch):**
+  - `instance_blackfathom_deeps.cpp` loads both layouts and hides the one not in use. The hidden spawns go
+    to a database phase no player is in, the same way as Shadowfang Keep's faction troops. Spawns in
+    other spawn groups (gathering nodes) show in both. Faction quest givers show only for the team in the
+    instance. The redesign's Aku'mai quest givers and chest appear after Aku'mai the Devourer dies.
+  - The layout is saved with the instance. An instance saved before this patch stays classic.
+  - Redesign touches: creatures sniffed as stationary (tentacles, heads, bunnies, channelers) are rooted,
+    the ones sniffed in mid-air hover, and the bodies of Lady Sarevess, Gelihast and the Slain Hero
+    look dead. The redesign's Portal of Aku'mai opens when Twilight Lord Bathiel dies. The redesign bosses
+    run their existing SmartAI, and their deaths save the run's progress.
+  - Each classic boss stands where a redesign boss does. In the classic layout, its kill counts for that
+    boss's objective: Ghamoo-Ra for Ghamoo-Ra, Lorgus Jett for Thruk, Baron Aquanis for Executioner Gore,
+    Kelris for Bathiel and Aku'mai for Aku'mai the Devourer. The bonus objectives map the same way:
+    Sarevess for Domina, Gelihast for Kor'ul and Old Serra'kis for the Guardian. In the redesign layout,
+    a redesign boss's kill credits the classic boss for the quests that ask for it (Deep in the Deeps,
+    Nightmare of the Deeps).
+  - Core: new `InstanceScript::GetScenarioKillCredit` (by default the creature's own entry), used for the
+    scenario's kill credit in `KillRewarder.cpp` and for the boss loot guarantee in `Unit.cpp`.
+  - `blackfathom_deeps.cpp`: `npc_blackfathom_chronicler`. Its gossip tells you which layout the
+    instance has and switches to the other one. Switching is refused once any boss of the run is dead,
+    or while you are in combat.
+  - `worldserver.conf.dist`: `Blackfathom.Layout` (default 1, the redesign; 0 is classic) picks the
+    layout of a new instance. A new DUNGEON LAYOUTS block at the end.
+- **Not done yet:** the redesign bosses only use the two or three abilities their SmartAI already had,
+  which are the ones in the Adventure Guide. Their events aren't scripted yet: Aku'mai's heads and
+  tentacles, the Deep Terror vehicles, the Coiled Rope, Gore's executions, the Guardian's eggs and
+  Ghamoo-Ra's cultists. The classic quests that need classic drops (Knowledge in the Deeps, Researching
+  Corruption, Twilight Falls) aren't mapped to the redesign yet. The Spoils of Blackfathom chest has no
+  loot of its own.
+- **Status:** compiles here; the SQL ran twice against the dump. Not yet tested in game.
+
+#### To pick up the two Blackfathom layouts
+Two patches and one SQL file. The second line applies `dungeon-boss-loot.patch` first, but only if it isn't
+in your tree yet.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+grep -q "HasKillCriteria" src/server/game/Entities/Unit/Unit.cpp || git -C ../tools-repo show FETCH_HEAD:tools/bfa/dungeon-boss-loot.patch | git apply
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/blackfathom-layouts.patch | git apply
+grep -c "GetScenarioKillCredit" src/server/game/Entities/Unit/Unit.cpp
+grep -c "npc_blackfathom_chronicler" src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.cpp
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_17_03_blackfathom_redesign_layout.sql | mysql -u root -p bfa_world
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The `grep` lines should print 1 and 3. The build recompiles every script because `InstanceScript.h`
+changed. Then restart `worldserver` and reset Blackfathom Deeps (an instance saved before this stays
+classic). `Blackfathom.Layout` doesn't have to be in `worldserver.conf`; without it new instances get the
+redesign.
+
 ### Loot: every dungeon boss gets the boss loot guarantee
 
 New `tools/bfa/dungeon-boss-loot.patch`, applied after `dungeon-scale-xp.patch`. Asked for by Four on
