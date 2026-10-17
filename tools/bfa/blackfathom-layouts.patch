@@ -15,7 +15,7 @@ diff --git a/src/server/game/Instances/InstanceScript.h b/src/server/game/Instan
 diff --git a/src/server/game/Instances/InstanceScript.cpp b/src/server/game/Instances/InstanceScript.cpp
 --- a/src/server/game/Instances/InstanceScript.cpp
 +++ b/src/server/game/Instances/InstanceScript.cpp
-@@ -848,6 +848,11 @@
+@@ -847,6 +847,11 @@
  }
  
  // Update Achievement Criteria for all players in instance
