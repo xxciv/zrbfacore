@@ -89,7 +89,9 @@ to pick one per run. On PR #14, not merged yet.
     instance has and switches to the other one. Switching is refused once any boss of the run is dead,
     or while you are in combat.
   - `worldserver.conf.dist`: `Blackfathom.Layout` (default 1, the redesign; 0 is classic) picks the
-    layout of a new instance. A new DUNGEON LAYOUTS block at the end.
+    layout of a new instance. A new DUNGEON LAYOUTS block at the end. The install step only updates
+    `worldserver.conf.dist`, so until you add `Blackfathom.Layout = 1` to your own `worldserver.conf`, the
+    server warns "Missing name Blackfathom.Layout" and uses the default.
 - **Not done yet:** the redesign bosses only use the two or three abilities their SmartAI already had,
   which are the ones in the Adventure Guide. Their events aren't scripted yet: Aku'mai's heads and
   tentacles, the Deep Terror vehicles, the Coiled Rope, Gore's executions, the Guardian's eggs and
