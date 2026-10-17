@@ -44,6 +44,23 @@ New `tools/bfa/loot-fixes.patch`, applied after `transmog-collection.patch`. On 
   - No SQL and no config setting. To undo it, `git apply -R` the patch.
 - **Status:** confirmed in game by Four on 2026-10-17: bosses drop loot.
 
+#### Corpses holding a quest item you can't see could never be skinned
+- **Found** (in game, Wailing Caverns, 2026-10-17): Deviate Ravagers (raptors) showed no skinning cursor
+  after being looted, at any Skinning level.
+- **Cause:** a loot item you aren't shown still sits in the corpse's loot. Every Wailing Caverns beast
+  (Deviate Ravager, Guardian, Crocolisk, Python, Viper, Adder, Dreadfang, Moccasin, Venomwing) drops
+  Deviate Hide (6443) 100% of the time for the quest Deviate Hides (26872); once you don't have that
+  quest, the hide is hidden from you and can't be taken. The corpse only turns skinnable when its loot
+  is empty, and `Loot::GetUnlootedCount` (`src/server/game/Loot/Loot.cpp`), asked without a player,
+  counted every item, hidden ones included, so the corpse never emptied. The same goes for any mob with
+  a quest item, a recipe you can't use or an other-faction item. Before the reference fix above fewer
+  corpses held such items, but the quest hide is a plain row, so these were affected before too.
+- **Changed:** in `loot-fixes.patch`, `GetUnlootedCount` without a player counts each looter's items
+  by what that looter is shown (same rule as with a player: not looted, no conditions,
+  `AllowedForPlayer`). If the looter is offline, their items still count, as before. This is also the
+  check the Skinning spell uses ("you must loot it first").
+- **Status:** compiles here; not yet tested in game.
+
 ### To pick up the loot fixes
 A new patch on its own, so the patches you already applied stay as they are. `LootMgr.h` is not in the
 precompiled headers, so this should not be a full rebuild:
@@ -53,9 +70,16 @@ git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
 git -C ../tools-repo show FETCH_HEAD:tools/bfa/loot-fixes.patch | git apply
 grep -c "item->groupid, player, specOnly" src/server/game/Loot/LootMgr.cpp
 grep -c "AddItemIfNoneDropped" src/server/game/Entities/Unit/Unit.cpp
+grep -c "FindConnectedPlayer(itemItr.first)" src/server/game/Loot/Loot.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
-Both `grep` lines should print 1. Then restart `worldserver`. Once PR #14 is merged, `git -C ../tools-repo pull`
+All three `grep` lines should print 1. Then restart `worldserver`.
+
+If you applied the earlier version of the patch (before the skinning fix), take it out first, then
+apply the new one as above:
+```
+git -C ../tools-repo show b21c5cc:tools/bfa/loot-fixes.patch | git apply -R
+``` Once PR #14 is merged, `git -C ../tools-repo pull`
 on `main` brings the file in as usual.
 
 ### Wailing Caverns (map 43)

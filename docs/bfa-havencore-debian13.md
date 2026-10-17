@@ -215,7 +215,9 @@ green items, many boss and chest tables). `LootTemplate::Process` handed the ref
 the looter, and `Loot::AddItem` throws away an item with no looter, so nothing from a reference ever
 dropped. About 2,740 creature loot tables use one. The same patch makes every dungeon and raid boss drop
 at least one item: when the normal rolls leave a boss with only gold (or only cloth and junk), one item
-from its own table is added, picked by drop chance.
+from its own table is added, picked by drop chance. It also lets a corpse be skinned once you've
+taken everything you can see: an item hidden from you (a quest item for a quest you don't have) used to
+keep the corpse from ever counting as looted.
 
 `scenario-debug.patch` adds a GM command, `.debug scenario`. Dungeons in this client run a scenario:
 the objective list on the right of the screen (Wailing Caverns has "Muyoh escorted", for one). Its steps

@@ -33,7 +33,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/transmog-collection.patch`](tools/bfa/transmog-collection.patch): learns transmog
   appearances as soon as items reach your bags, for every armor and weapon type (`Transmog.*` settings).
 - [`tools/bfa/loot-fixes.patch`](tools/bfa/loot-fixes.patch): core fixes so items from shared
-  loot tables (world drops, most greens) drop at all, and every dungeon boss drops at least one item.
+  loot tables (world drops, most greens) drop at all, every dungeon boss drops at least one item, and
+  corpses can be skinned when they still hold a quest item you can't see.
 - [`tools/bfa/scenario-debug.patch`](tools/bfa/scenario-debug.patch): adds the GM command
   `.debug scenario`, which lists the dungeon's scenario objectives, what each one waits for, and progress.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the

@@ -15,6 +15,31 @@ index 58a63e7..33ccb22 100644
              }
  
              loot->GenerateMoneyLoot(creature->GetCreatureTemplate()->mingold, creature->GetCreatureTemplate()->maxgold);
+diff --git a/src/server/game/Loot/Loot.cpp b/src/server/game/Loot/Loot.cpp
+index 86db8dd..fc3bdee 100644
+--- a/src/server/game/Loot/Loot.cpp
++++ b/src/server/game/Loot/Loot.cpp
+@@ -147,12 +147,17 @@ uint32 Loot::GetUnlootedCount(Player const* player /*= nullptr*/) const
+     }
+     else
+     {
+-        // Preserve the original global behavior for callers that do not
+-        // request a player-specific loot state.
++        // Count each looter's items by what that looter is shown. An item they
++        // can't see (a quest item for a quest they don't have, a recipe they
++        // can't use) is never looted, and would keep the corpse unlooted and
++        // unskinnable for good.
+         for (auto const& itemItr : items)
++        {
++            Player const* looter = ObjectAccessor::FindConnectedPlayer(itemItr.first);
+             for (LootItem const& item : itemItr.second)
+-                if (!item.is_looted)
++                if (!item.is_looted && (!looter || (item.conditions.empty() && item.AllowedForPlayer(looter))))
+                     ++unlootedCount;
++        }
+     }
+ 
+     return unlootedCount;
 diff --git a/src/server/game/Loot/LootMgr.cpp b/src/server/game/Loot/LootMgr.cpp
 index 0e32c37..de4db5a 100644
 --- a/src/server/game/Loot/LootMgr.cpp
