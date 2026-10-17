@@ -3,6 +3,33 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-17
+
+### Blackfathom Deeps (map 48)
+
+Started by Four on 2026-10-17 on the night elf rogue. On PR #14 with the Wailing Caverns fixes, not merged
+yet.
+
+#### Je'neu Sancrea was hostile to the Alliance
+- **Found** (in game): Je'neu Sancrea <The Earthen Ring> (12736), at the entrance with the Alliance quest
+  givers, showed a red name and attacked when talked to.
+- **Cause:** his quests are open to every race (Blackfathom Deeps 26894, Nightmare of the Deeps 26888,
+  Amongst the Ruins 26891, The Essence of Aku'Mai 6563), and he takes the Alliance breadcrumb
+  "Adventurers Wanted: Blackfathom Deeps" (28010). But `creature_template` gives him faction 126, a
+  Horde faction. No `sql/updates` file changes him.
+- **Changed:** `2026_10_17_02_blackfathom_jeneu_faction.sql`: faction 126 -> 35 (friendly to everyone,
+  as Zeya next to him has). Revert line in the file. Safe to run twice.
+- **Status:** run here against the dump; not yet tested in game.
+
+### To pick up the Blackfathom Deeps fixes
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_17_02_blackfathom_jeneu_faction.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
 ## 2026-10-16
 
 ### Loot: reference loot tables never dropped, and bosses now always drop an item
