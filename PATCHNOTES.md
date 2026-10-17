@@ -90,18 +90,54 @@ final event worked. On PR #14, not merged yet.
   and SmartAI gossip row ("Orgus - On Gossip - Kill Credit") belong to an unrelated NPC.
 - **Changed:** `2026_10_17_00_wailing_caverns_muyoh_gossip.sql`: Muyoh `npcflag` 2 -> 3 (adds gossip),
   Naralex `npcflag` 1 -> 0. Revert lines in the file. Safe to run twice.
+- **Status:** confirmed in game by Four on 2026-10-17: Muyoh offered the gossip, and the whole event ran
+  through to Naralex waking, once she was moved down to the floor (next entry).
+
+#### Muyoh started halfway down the first chamber, hovering out of reach
+- **Found** (in game, 2026-10-17): with the gossip flag added, Muyoh still couldn't be talked to. She
+  floated in owl form above the floor halfway down the first chamber; once Four moved her down with
+  `.npc move`, she talked and the event ran. She should wait just inside the entrance.
+- **Cause:** the dump spawns her (creature guid 326242) at (-84.2, 225.6, -83.8) with aura 8153 (owl form)
+  in `creature_addon`. Owl form lifts her off the floor, and the server only lets you talk to an NPC
+  within 5 yards (height included), even when the client shows the speech cursor. Her escort
+  (`script_waypoint` 3678) starts at point 0 just inside the entrance (-120.864, 132.825, -79.2972), so
+  she walked back there first anyway. The script gives her flight form itself at the end of the event.
+- **Changed:** `2026_10_17_01_wailing_caverns_muyoh_spawn.sql`: moves guid 326242 to escort point 0,
+  facing the entrance (orientation 3.17), and clears its `creature_addon` aura (8153 -> none). It also
+  overwrites the spot `.npc move` saved. Revert lines in the file. Safe to run twice.
 - **Status:** run here against the dump; not yet tested in game.
 
+#### No credit for "Muyoh escorted"
+- **Found** (in game, 2026-10-17): the event finished, but the dungeon's objective "Muyoh escorted" was
+  never ticked.
+- **Cause:** not found yet. In BFA, Wailing Caverns runs scenario 515 (`scenarios` table, map 43), and
+  "Muyoh escorted" is one of its criteria. Those live in the client's `Criteria`, `CriteriaTree` and
+  `ScenarioStep` db2 files, which aren't in the world database, so I can't see what the criteria waits
+  for (killing a creature, a scenario event, a spell). `npc_disciple_of_naralex` gives no scenario credit
+  of any kind when the escort ends.
+- **Changed:** new `tools/bfa/scenario-debug.patch` (applied after `loot-fixes.patch`) adds a GM command,
+  `.debug scenario`. Inside a dungeon, it lists every step of the scenario with its state, and under each
+  step every criteria tree and criteria: description, criteria type and asset (creature, event or spell
+  id), and the group's progress. It changes nothing in game. Files: `Scenario.h` / `Scenario.cpp`
+  (two read-only accessors) and `cs_debug.cpp` (the command).
+- **Status:** compiles here; waiting on its output from inside Wailing Caverns to write the actual fix.
+
 ### To pick up the Wailing Caverns fixes
-SQL only, no rebuild:
+All three SQL files are safe to run again, so this runs them all. The debug command is a rebuild of
+about 30 files:
 ```
 cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_16_05_wailing_caverns_naralex_event.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_17_00_wailing_caverns_muyoh_gossip.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_17_01_wailing_caverns_muyoh_spawn.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/scenario-debug.patch | git apply
+grep -c "HandleDebugScenarioCommand" src/server/scripts/Commands/cs_debug.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
-Then restart `worldserver`. If the Fanglords were killed before the first file ran, reset the instance
-(leave it, then Reset All Instances from your portrait menu) and kill them again.
+The `grep` line should print 2. Then restart `worldserver`. If the Fanglords were killed before the
+first file ran, reset the instance (leave it, then Reset All Instances from your portrait menu) and kill
+them again.
 
 ### Transmog collection
 
