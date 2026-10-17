@@ -12,8 +12,8 @@ New `tools/bfa/dungeon-boss-loot.patch`, applied after `dungeon-scale-xp.patch`.
 
 - **Found:** the "bosses always drop an item" rule from `loot-fixes.patch` only knows a boss through
   `IsDungeonBoss`, which is set from `instance_encounters`. Blackfathom Deeps and Ragefire Chasm have no
-  rows there at all, and other dungeons only list some bosses (Wailing Caverns lists 9 rows; Kresh,
-  Skum and Verdan count as bonus bosses in its scenario).
+  rows there at all, so their bosses never got it. Wailing Caverns, The Deadmines and Shadowfang Keep do
+  have theirs listed.
 - **Changed:**
   - `Scenario.h` / `Scenario.cpp`: new `Scenario::HasKillCriteria(entry)`: true when a step of the
     scenario has a kill criteria for that creature needed once ("Lady Anacondra defeated"). Kill counts
