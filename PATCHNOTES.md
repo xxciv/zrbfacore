@@ -59,7 +59,7 @@ New `tools/bfa/loot-fixes.patch`, applied after `transmog-collection.patch`. On 
   by what that looter is shown (same rule as with a player: not looted, no conditions,
   `AllowedForPlayer`). If the looter is offline, their items still count, as before. This is also the
   check the Skinning spell uses ("you must loot it first").
-- **Status:** compiles here; not yet tested in game.
+- **Status:** Four reported Wailing Caverns good to go in game on 2026-10-17 after this update.
 
 ### To pick up the loot fixes
 A new patch on its own, so the patches you already applied stay as they are. `LootMgr.h` is not in the
@@ -129,7 +129,7 @@ final event worked. On PR #14, not merged yet.
 - **Changed:** `2026_10_17_01_wailing_caverns_muyoh_spawn.sql`: moves guid 326242 to escort point 0,
   facing the entrance (orientation 3.17), and clears its `creature_addon` aura (8153 -> none). It also
   overwrites the spot `.npc move` saved. Revert lines in the file. Safe to run twice.
-- **Status:** run here against the dump; not yet tested in game.
+- **Status:** Four reported Wailing Caverns good to go in game on 2026-10-17 after this update.
 
 #### No credit for "Muyoh escorted"
 - **Found** (in game, 2026-10-17): the event finished, but the dungeon's objective "Muyoh escorted" was
@@ -150,8 +150,8 @@ final event worked. On PR #14, not merged yet.
     `npc_disciple_of_naralex::WaypointReached` (`wailing_caverns.cpp`) sends scenario event 582 when
     Muyoh reaches Naralex (escort point 24, where the awakening ritual starts). Mutanus is killed during
     the ritual, which then completes the step.
-- **Status:** `.debug scenario` confirmed working in game by Four on 2026-10-17. The escort credit
-  compiles here; not yet tested in game.
+- **Status:** `.debug scenario` confirmed working in game by Four on 2026-10-17. Four reported Wailing
+  Caverns good to go after the escort credit fix, the same day.
 
 ### To pick up the Wailing Caverns fixes
 All three SQL files are safe to run again, so this runs them all. The debug command is a rebuild of
