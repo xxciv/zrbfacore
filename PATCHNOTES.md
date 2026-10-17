@@ -3,7 +3,384 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-17
+
+### Blackfathom Deeps (redesign): Executioner Gore at the prisoners can't be fought
+
+`sql/fixes/world/2026_10_17_04_blackfathom_gore_executioner.sql`. On PR #14, not merged yet.
+
+- **Found:** Four fought Executioner Gore in the redesign's first prisoner room. The kill didn't count
+  for the "Executioner Gore" objective and he dropped no loot. There are two Executioner Gores. 74988
+  stands with the prisoners on the way in (spawns 4800069 and 4800113). His lines are "Intruders?! Move
+  the prisoners!", "Come along, heroes! The water is fine." and "The intruders are still alive?! Stop
+  them!". The boss the objective asks for is 74518 (spawn 4800174), near Twilight Lord Bathiel ("I was
+  hoping you would make it to me."). 74988 was a hostile elite with 20% drop chances. Nothing stopped
+  players from fighting him, and his kill gives no credit.
+- **Changed:** creature 74988 gets `unit_flags` 0x300 (immune to players and creatures), so he can't
+  be attacked. His SmartAI is replaced by one script per spawn. At the first prisoners, he says "Intruders?!
+  Move the prisoners!" when a player comes within 40 yards. Six seconds later he says "Come along,
+  heroes! The water is fine." and he despawns 4 seconds after that. At the second prisoners, he says
+  "The intruders are still alive?! Stop them!" and despawns 5 seconds later. The old entry SmartAI rows
+  are deleted.
+- **Not done yet:** on retail, Gore executes prisoners in these rooms; that part isn't scripted.
+- **Status:** the SQL ran twice against the dump. Not yet tested in game.
+
+#### To pick up the Gore fix
+SQL only. Run it, then restart worldserver.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_17_04_blackfathom_gore_executioner.sql | mysql -u root -p bfa_world
+```
+
+### Blackfathom Deeps: the redesigned layout, next to the classic one
+
+New `tools/bfa/blackfathom-layouts.patch`, applied after `dungeon-boss-loot.patch`, and
+`sql/fixes/world/2026_10_17_03_blackfathom_redesign_layout.sql`. Asked for by Four on 2026-10-17 after
+fighting Lady Sarevess where the Adventure Guide shows Domina: keep both layouts, with an NPC at the entrance
+to pick one per run. On PR #14, not merged yet.
+
+- **Found:**
+  - HavenCore spawns the classic Blackfathom Deeps: Ghamoo-Ra, Lady Sarevess, Gelihast, Lorgus Jett,
+    Baron Aquanis, Twilight Lord Kelris, Old Serra'kis and Aku'mai. Its boss scripts and the quests
+    Deep in the Deeps (26892) and Nightmare of the Deeps (26888) are built around them.
+  - The 8.3.7 client shows the 6.0.2 redesign. The Adventure Guide lists Ghamoo-Ra, Domina, Subjugator
+    Kor'ul, Thruk, Guardian of the Deep, Executioner Gore, Twilight Lord Bathiel and Aku'mai. The dungeon
+    objectives come from scenario 333, which `.debug scenario` showed wants Ghamoo-Ra 74446, Thruk,
+    Executioner Gore, Twilight Lord Bathiel and Aku'mai the Devourer 75155, with Domina, Kor'ul and the
+    Guardian as bonus objectives. None of these was spawned, so the objectives could never complete with
+    the classic bosses.
+  - The database already had the redesign's creature templates, SmartAI, loot and quests (The Rise of
+    Aku'mai 34672/34673), but no spawns. TrinityCore master has the redesign's spawns, sniffed from
+    retail (`sql/old/11.x/world/25031_2025_05_31/2025_04_22_00_world.sql`).
+- **Changed (SQL, `2026_10_17_03`):**
+  - The redesign's spawns are converted from that file to this schema: 280 creatures and 74 gameobjects
+    (guids 4800000-4800999), 2 patrol paths (`waypoint_data` 48001110, 48001450), and template addons for
+    the redesign-only creatures. All of them are in spawn groups 433-440. 434-437 are the Alliance and
+    Horde quest givers at the entrance and at Aku'mai. 438/439 are Domina and Kor'ul over Bathiel's
+    altar. 440 is the Spoils of Blackfathom chest.
+  - New creature 4800000, the Blackfathom Chronicler <Dungeon Layouts>, just inside the entrance (spawn
+    4800999, group 441, shown in both layouts, using Lorekeeper Amberwind's model).
+  - `instance_encounters` rows for the redesign bosses, using the DungeonEncounter ids from the client's
+    JournalEncounter.db2: 1667 Ghamoo-Ra, 1668 Domina, 1669 Kor'ul, 1675 Thruk, 1676 Guardian of the Deep,
+    1670 Executioner Gore, 1671 Bathiel, and 1672 Aku'mai the Devourer (last encounter of dungeon 10).
+  - Aku'mai the Devourer had no loot (`lootid` 0) and now uses classic Aku'mai's table (4829). Also:
+    weapons for the entrance quest givers, the Frightened Prisoner's gossip menu (16166), Rope Ladder
+    Post 224747 not clickable, and the Spoils chest's world effect.
+- **Changed (patch):**
+  - `instance_blackfathom_deeps.cpp` loads both layouts and hides the one not in use. The hidden spawns go
+    to a database phase no player is in, the same way as Shadowfang Keep's faction troops. Spawns in
+    other spawn groups (gathering nodes) show in both. Faction quest givers show only for the team in the
+    instance. The redesign's Aku'mai quest givers and chest appear after Aku'mai the Devourer dies.
+  - The layout is saved with the instance. An instance saved before this patch stays classic.
+  - Redesign touches: creatures sniffed as stationary (tentacles, heads, bunnies, channelers) are rooted,
+    the ones sniffed in mid-air hover, and the bodies of Lady Sarevess, Gelihast and the Slain Hero
+    look dead. The redesign's Portal of Aku'mai opens when Twilight Lord Bathiel dies. The redesign bosses
+    run their existing SmartAI, and their deaths save the run's progress.
+  - Each classic boss stands where a redesign boss does. In the classic layout, its kill counts for that
+    boss's objective: Ghamoo-Ra for Ghamoo-Ra, Lorgus Jett for Thruk, Baron Aquanis for Executioner Gore,
+    Kelris for Bathiel and Aku'mai for Aku'mai the Devourer. The bonus objectives map the same way:
+    Sarevess for Domina, Gelihast for Kor'ul and Old Serra'kis for the Guardian. In the redesign layout,
+    a redesign boss's kill credits the classic boss for the quests that ask for it (Deep in the Deeps,
+    Nightmare of the Deeps).
+  - Core: new `InstanceScript::GetScenarioKillCredit` (by default the creature's own entry), used for the
+    scenario's kill credit in `KillRewarder.cpp` and for the boss loot guarantee in `Unit.cpp`.
+  - `blackfathom_deeps.cpp`: `npc_blackfathom_chronicler`. Its gossip tells you which layout the
+    instance has and switches to the other one. Switching is refused once any boss of the run is dead,
+    or while you are in combat.
+  - `worldserver.conf.dist`: `Blackfathom.Layout` (default 1, the redesign; 0 is classic) picks the
+    layout of a new instance. A new DUNGEON LAYOUTS block at the end. The install step only updates
+    `worldserver.conf.dist`, so until you add `Blackfathom.Layout = 1` to your own `worldserver.conf`, the
+    server warns "Missing name Blackfathom.Layout" and uses the default.
+- **Not done yet:** the redesign bosses only use the two or three abilities their SmartAI already had,
+  which are the ones in the Adventure Guide. Their events aren't scripted yet: Aku'mai's heads and
+  tentacles, the Deep Terror vehicles, the Coiled Rope, Gore's executions, the Guardian's eggs and
+  Ghamoo-Ra's cultists. The classic quests that need classic drops (Knowledge in the Deeps, Researching
+  Corruption, Twilight Falls) aren't mapped to the redesign yet. The Spoils of Blackfathom chest has no
+  loot of its own.
+- **Status:** compiles here; the SQL ran twice against the dump. Not yet tested in game.
+
+#### To pick up the two Blackfathom layouts
+Two patches and one SQL file. The second line applies `dungeon-boss-loot.patch` first, but only if it isn't
+in your tree yet.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+grep -q "HasKillCriteria" src/server/game/Entities/Unit/Unit.cpp || git -C ../tools-repo show FETCH_HEAD:tools/bfa/dungeon-boss-loot.patch | git apply
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/blackfathom-layouts.patch | git apply
+grep -c "GetScenarioKillCredit" src/server/game/Entities/Unit/Unit.cpp
+grep -c "npc_blackfathom_chronicler" src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.cpp
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_17_03_blackfathom_redesign_layout.sql | mysql -u root -p bfa_world
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The `grep` lines should print 1 and 3. The build recompiles every script because `InstanceScript.h`
+changed. Then restart `worldserver` and reset Blackfathom Deeps (an instance saved before this stays
+classic). `Blackfathom.Layout` doesn't have to be in `worldserver.conf`; without it new instances get the
+redesign.
+
+### Loot: every dungeon boss gets the boss loot guarantee
+
+New `tools/bfa/dungeon-boss-loot.patch`, applied after `dungeon-scale-xp.patch`. Asked for by Four on
+2026-10-17 ("all bosses"). On PR #14, not merged yet.
+
+- **Found:** the "bosses always drop an item" rule from `loot-fixes.patch` only knows a boss through
+  `IsDungeonBoss`, which is set from `instance_encounters`. Blackfathom Deeps and Ragefire Chasm have no
+  rows there at all, so their bosses never got it. Wailing Caverns, The Deadmines and Shadowfang Keep do
+  have theirs listed.
+- **Changed:**
+  - `Scenario.h` / `Scenario.cpp`: new `Scenario::HasKillCriteria(entry)`: true when a step of the
+    scenario has a kill criteria for that creature needed once ("Lady Anacondra defeated"). Kill counts
+    above 1 ("Defeat 20 ...") are left out, so trash doesn't qualify.
+  - `Unit.cpp`, `Unit::Kill`: on a dungeon or raid map, a creature gets the boss loot guarantee when it is
+    an `instance_encounters` credit (as before) or the instance's scenario has such a kill criteria for
+    it. Everything else about the guarantee is unchanged.
+  - No SQL and no setting. Use `.debug scenario` in a dungeon to see which creatures its objectives name.
+- **Status:** compiles here; not yet tested in game.
+
+#### To pick up the boss loot change
+A new patch on its own:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/dungeon-boss-loot.patch | git apply
+grep -c "HasKillCriteria" src/server/game/Entities/Unit/Unit.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The `grep` line should print 1. Then restart `worldserver`.
+
+### DungeonScale: XP settings
+
+New `tools/bfa/dungeon-scale-xp.patch`, applied after `wailing-caverns-fixes.patch`. Asked for by Four on
+2026-10-17: XP inside dungeons was too high, and a dungeon already completed should give none. On PR #14,
+not merged yet.
+
+- **Changed:**
+  - `DungeonScale.XP.StopAfterCompletion` (default 1): inside a scaled dungeon, no XP at all (kills and
+    quest turn-ins) once you have the dungeon's achievement for the mode you are in, even inside its
+    level range. "The dungeon's achievement" is any achievement, not a statistic, with a criteria that
+    kills a creature and is made for that map (`Achievement.InstanceID`), or that kills the final boss
+    (`instance_encounters` row with `lastEncounterDungeon`). An achievement whose criteria has extra
+    requirements (Heroic ones require Heroic difficulty) only counts where they hold, so a Heroic
+    achievement doesn't stop XP on Normal. Built once per map and difficulty.
+  - `DungeonScale.XP.Enable` (default 1): 0 gives no XP inside any scaled instance, for testing.
+  - Both only apply where DungeonScale scales the map (`.dungeonscale info` says so). XP outside is
+    untouched.
+  - `.dungeonscale info` now says whether you get XP there, why not, and which achievements complete the
+    map (`*` = only counts when its requirements hold).
+  - Files: `solocraft.cpp` (DungeonScale: settings, `GetXPBlock`, `GetCompletionAchievements`, an
+    `OnGiveXP` player hook, the info lines), `worldserver.conf.dist` (two keys, in the DUNGEON SCALE
+    block), `Player.cpp` (`Player::GiveXP` stops when a script has taken all the XP, so no
+    "You gain 0 experience" line is shown).
+- **Status:** compiles here; not yet tested in game.
+
+#### To pick up the XP settings
+A new patch on its own. Neither key has to be in `worldserver.conf`: completion stopping XP is on, and XP
+is on otherwise.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/dungeon-scale-xp.patch | git apply
+grep -c "DungeonScale.XP.StopAfterCompletion" src/server/scripts/Custom/solocraft.cpp
+grep -c "a script took all of it" src/server/game/Entities/Player/Player.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The `grep` lines should print 2 and 1. Then restart `worldserver`. To switch XP off for testing, add
+`DungeonScale.XP.Enable = 0` to `~/bfa/server/etc/worldserver.conf` and type `.reload config`.
+
+### Blackfathom Deeps (map 48)
+
+Started by Four on 2026-10-17 on the night elf rogue. On PR #14 with the Wailing Caverns fixes, not merged
+yet.
+
+#### Je'neu Sancrea was hostile to the Alliance
+- **Found** (in game): Je'neu Sancrea <The Earthen Ring> (12736), at the entrance with the Alliance quest
+  givers, showed a red name and attacked when talked to.
+- **Cause:** his quests are open to every race (Blackfathom Deeps 26894, Nightmare of the Deeps 26888,
+  Amongst the Ruins 26891, The Essence of Aku'Mai 6563), and he takes the Alliance breadcrumb
+  "Adventurers Wanted: Blackfathom Deeps" (28010). But `creature_template` gives him faction 126, a
+  Horde faction. No `sql/updates` file changes him.
+- **Changed:** `2026_10_17_02_blackfathom_jeneu_faction.sql`: faction 126 -> 35 (friendly to everyone,
+  as Zeya next to him has). Revert line in the file. Safe to run twice.
+- **Status:** run here against the dump; not yet tested in game.
+
+### To pick up the Blackfathom Deeps fixes
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_17_02_blackfathom_jeneu_faction.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
 ## 2026-10-16
+
+### Loot: reference loot tables never dropped, and bosses now always drop an item
+
+New `tools/bfa/loot-fixes.patch`, applied after `transmog-collection.patch`. On PR #14, not merged yet.
+
+#### Items from reference loot tables never dropped
+- **Found** (in game, Wailing Caverns, on the Alliance rogue): Druids of the Fang, Lady Anacondra, Skum,
+  Verdan the Everliving and Lord Pythas dropped money but no items. Trash elsewhere dropped items.
+- **Cause:** a loot row with `Reference` set points to a shared table in `reference_loot_template` (world
+  drops, most green items, many boss and chest tables). `LootTemplate::Process`
+  (`src/server/game/Loot/LootMgr.cpp`) processed that table without passing the looter on, and
+  `Loot::AddItem` throws away any item that has no looter. So nothing from a reference ever dropped,
+  anywhere. 37,088 rows in 2,740 creature loot tables use a reference, plus 122 gameobject and 106 item
+  loot tables. Upstream TrinityCore passes the looter.
+- **Changed:** the looter (and the spec filter) are passed on to the referenced table. One line.
+- **Status:** confirmed in game by Four on 2026-10-17.
+
+#### Dungeon bosses dropped only gold
+- **Found:** the four Wailing Caverns bosses above use plain rows, not references, so the fix above
+  doesn't touch them. By their tables each kill drops no item 13 to 27% of the time (Skum 13%, Anacondra
+  23%, Pythas 24%, Verdan 27%), so four empty kills in a row is about 1 in 500. Four's loot tables load
+  (1,805,426 rows, none of the skipped ones are these bosses') and all `Rate.Drop.*` settings are 1.
+  I found nothing in the core that treats a boss's loot differently from trash, so the cause is still
+  unknown. Four asked for every boss to always drop loot, as on retail.
+- **Changed:**
+  - `LootMgr.cpp` / `LootMgr.h`: new `LootTemplate::AddItemIfNoneDropped`. It looks at the boss's own
+    plain and grouped rows that the player could be shown (no references, quest items, currencies, rows
+    with conditions or of the wrong loot mode). If any of them is uncommon or better, the player must have
+    at least one uncommon-or-better item; otherwise any item counts. If the normal rolls gave none, one
+    is added, picked by drop chance (`Chance` as the weight, 1 for equal-chanced group rows), so a rare
+    item stays rare.
+  - `Unit.cpp`, `Unit::Kill`: after the normal loot is filled for each looter, calls it for creatures that
+    are dungeon or raid bosses (`IsDungeonBoss`: the kill credit of an `instance_encounters` row) on a
+    dungeon or raid map.
+  - The normal rolls are unchanged, so a boss can still drop more than one item. Bosses in the open world
+    are not affected. The Deadmines boss items grouped by `2026_10_11_04_deadmines_boss_loot.sql` already
+    always drop one, so nothing changes there.
+  - No SQL and no config setting. To undo it, `git apply -R` the patch.
+- **Status:** confirmed in game by Four on 2026-10-17: bosses drop loot.
+
+#### Corpses holding a quest item you can't see could never be skinned
+- **Found** (in game, Wailing Caverns, 2026-10-17): Deviate Ravagers (raptors) showed no skinning cursor
+  after being looted, at any Skinning level.
+- **Cause:** a loot item you aren't shown still sits in the corpse's loot. Every Wailing Caverns beast
+  (Deviate Ravager, Guardian, Crocolisk, Python, Viper, Adder, Dreadfang, Moccasin, Venomwing) drops
+  Deviate Hide (6443) 100% of the time for the quest Deviate Hides (26872); once you don't have that
+  quest, the hide is hidden from you and can't be taken. The corpse only turns skinnable when its loot
+  is empty, and `Loot::GetUnlootedCount` (`src/server/game/Loot/Loot.cpp`), asked without a player,
+  counted every item, hidden ones included, so the corpse never emptied. The same goes for any mob with
+  a quest item, a recipe you can't use or an other-faction item. Before the reference fix above fewer
+  corpses held such items, but the quest hide is a plain row, so these were affected before too. The
+  fix is in the core loot code, so it applies to every mob and every map, not just Wailing Caverns.
+- **Changed:** in `loot-fixes.patch`, `GetUnlootedCount` without a player counts each looter's items
+  by what that looter is shown (same rule as with a player: not looted, no conditions,
+  `AllowedForPlayer`). If the looter is offline, their items still count, as before. This is also the
+  check the Skinning spell uses ("you must loot it first").
+- **Status:** Four reported Wailing Caverns good to go in game on 2026-10-17 after this update.
+
+### To pick up the loot fixes
+A new patch on its own, so the patches you already applied stay as they are. `LootMgr.h` is not in the
+precompiled headers, so this should not be a full rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/loot-fixes.patch | git apply
+grep -c "item->groupid, player, specOnly" src/server/game/Loot/LootMgr.cpp
+grep -c "AddItemIfNoneDropped" src/server/game/Entities/Unit/Unit.cpp
+grep -c "FindConnectedPlayer(itemItr.first)" src/server/game/Loot/Loot.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+All three `grep` lines should print 1. Then restart `worldserver`.
+
+If you applied the earlier version of the patch (before the skinning fix), take it out first, then
+apply the new one as above:
+```
+git -C ../tools-repo show b21c5cc:tools/bfa/loot-fixes.patch | git apply -R
+``` Once PR #14 is merged, `git -C ../tools-repo pull`
+on `main` brings the file in as usual.
+
+### Wailing Caverns (map 43)
+
+Reported by Four on 2026-10-16 after a full run on the Alliance rogue: everything but the loot and the
+final event worked. On PR #14, not merged yet.
+
+#### Muyoh's escort never started, and Mutanus could be pulled early
+- **Found** (in game): Muyoh (Disciple of Naralex, 3678) offered nothing to start the awakening of
+  Naralex, and Mutanus the Devourer (3654) already stood "shadowed" in Naralex's pool, where he could be
+  pulled and killed.
+- **Cause:** `npc_disciple_of_naralex` (`wailing_caverns.cpp`) only adds "Let the event begin!" once
+  instance data 1 to 4 (Lord Cobrahn, Lord Pythas, Lady Anacondra, Lord Serpentis) are DONE. The lords
+  run SmartAI, and the world dump has no "on death, set instance data" row for any of them, so the four
+  were never counted (TrinityCore has one per lord). The script's ending also waits for data 9 (Mutanus)
+  to be DONE, which had no row either. Mutanus is meant to be summoned by Muyoh at the end of the ritual,
+  at the same spot, but the dump also spawns him there (guid 326392).
+- **Changed:** `2026_10_16_05_wailing_caverns_naralex_event.sql`:
+  - `smart_scripts` id 100 for 3669, 3670, 3671, 3673 and 3654: On Just Died, Set Instance Data 1, 2, 3,
+    4 and 9 to 3 (DONE).
+  - Deletes the static Mutanus spawn (guid 326392), so he only appears when Muyoh summons him.
+  - The revert lines, including the full Mutanus row, are at the top of the file. Safe to run twice.
+- **Status:** confirmed in game by Four on 2026-10-17 that Mutanus is no longer in the pool. Lords
+  killed before the SQL ran aren't counted, so it needs a fresh instance.
+
+#### Muyoh couldn't be clicked, and Naralex had a dead "Lets Go!" dialog
+- **Found** (in game, 2026-10-17, after the fix above with all four Fanglords dead): Muyoh still
+  couldn't be interacted with. Naralex opened a dialog with "Lets Go!" that did nothing.
+- **Cause:** Muyoh starts the event through gossip (`npc_disciple_of_naralex`, gossip menu 201), but
+  `creature_template` 3678 has `npcflag` 2 (quest giver) only and she has no quests, so the client offers
+  nothing to click. Naralex (3679) has `npcflag` 1 with gossip menu 3679, whose only option ("Lets Go!")
+  and SmartAI gossip row ("Orgus - On Gossip - Kill Credit") belong to an unrelated NPC.
+- **Changed:** `2026_10_17_00_wailing_caverns_muyoh_gossip.sql`: Muyoh `npcflag` 2 -> 3 (adds gossip),
+  Naralex `npcflag` 1 -> 0. Revert lines in the file. Safe to run twice.
+- **Status:** confirmed in game by Four on 2026-10-17: Muyoh offered the gossip, and the whole event ran
+  through to Naralex waking, once she was moved down to the floor (next entry).
+
+#### Muyoh started halfway down the first chamber, hovering out of reach
+- **Found** (in game, 2026-10-17): with the gossip flag added, Muyoh still couldn't be talked to. She
+  floated in owl form above the floor halfway down the first chamber; once Four moved her down with
+  `.npc move`, she talked and the event ran. She should wait just inside the entrance.
+- **Cause:** the dump spawns her (creature guid 326242) at (-84.2, 225.6, -83.8) with aura 8153 (owl form)
+  in `creature_addon`. Owl form lifts her off the floor, and the server only lets you talk to an NPC
+  within 5 yards (height included), even when the client shows the speech cursor. Her escort
+  (`script_waypoint` 3678) starts at point 0 just inside the entrance (-120.864, 132.825, -79.2972), so
+  she walked back there first anyway. The script gives her flight form itself at the end of the event.
+- **Changed:** `2026_10_17_01_wailing_caverns_muyoh_spawn.sql`: moves guid 326242 to escort point 0,
+  facing the entrance (orientation 3.17), and clears its `creature_addon` aura (8153 -> none). It also
+  overwrites the spot `.npc move` saved. Revert lines in the file. Safe to run twice.
+- **Status:** Four reported Wailing Caverns good to go in game on 2026-10-17 after this update.
+
+#### No credit for "Muyoh escorted"
+- **Found** (in game, 2026-10-17): the event finished, but the dungeon's objective "Muyoh escorted" was
+  never ticked.
+- **Cause:** in BFA, Wailing Caverns runs scenario 515 (`scenarios` table, map 43). Its steps and
+  criteria live in the client's db2 files, not the world database, so I added a GM command to read them
+  (below). Four's output: step 948 ("Disciples of Naralex", after the four Fanglords) needs criteria
+  24776 "Muyoh escorted", type SEND_EVENT_SCENARIO (92) with scenario event 582, and criteria 34405
+  "Mutanus the Devourer defeated" (kill 3654). `npc_disciple_of_naralex` never sends event 582, so the
+  step can't complete.
+- **Changed:**
+  - New `tools/bfa/scenario-debug.patch` (applied after `loot-fixes.patch`) adds `.debug scenario`.
+    Inside a dungeon, it lists every step of the scenario with its state, and under each step every
+    criteria tree and criteria: description, criteria type and asset (creature, event or spell id), and
+    the group's progress. It changes nothing in game. Files: `Scenario.h` / `Scenario.cpp` (two
+    read-only accessors) and `cs_debug.cpp` (the command).
+  - New `tools/bfa/wailing-caverns-fixes.patch` (applied after `scenario-debug.patch`):
+    `npc_disciple_of_naralex::WaypointReached` (`wailing_caverns.cpp`) sends scenario event 582 when
+    Muyoh reaches Naralex (escort point 24, where the awakening ritual starts). Mutanus is killed during
+    the ritual, which then completes the step.
+- **Status:** `.debug scenario` confirmed working in game by Four on 2026-10-17. Four reported Wailing
+  Caverns good to go after the escort credit fix, the same day.
+
+### To pick up the Wailing Caverns fixes
+All three SQL files are safe to run again, so this runs them all. The debug command is a rebuild of
+about 30 files. If you already applied `scenario-debug.patch`, skip its line:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_16_05_wailing_caverns_naralex_event.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_17_00_wailing_caverns_muyoh_gossip.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_17_01_wailing_caverns_muyoh_spawn.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/scenario-debug.patch | git apply
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/wailing-caverns-fixes.patch | git apply
+grep -c "HandleDebugScenarioCommand" src/server/scripts/Commands/cs_debug.cpp
+grep -c "SCENARIO_EVENT_MUYOH_ESCORTED" src/server/scripts/Kalimdor/WailingCaverns/wailing_caverns.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+Both `grep` lines should print 2. Then restart `worldserver`. If the Fanglords were killed before the
+first file ran, reset the instance (leave it, then Reset All Instances from your portrait menu) and kill
+them again.
 
 ### Transmog collection
 

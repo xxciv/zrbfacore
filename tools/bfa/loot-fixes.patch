@@ -1,0 +1,145 @@
+diff --git a/src/server/game/Entities/Unit/Unit.cpp b/src/server/game/Entities/Unit/Unit.cpp
+index 58a63e7..33ccb22 100644
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -11535,6 +11535,12 @@ void Unit::Kill(Unit* victim, bool durabilityLoss)
+                             loot->AddItem(LootStoreItem(item->ItemID, LOOT_ITEM_TYPE_ITEM, 0, 10, 0, LOOT_MODE_DEFAULT, 0, 1, 1), looter);
+                     }
+                 }
++
++                // Dungeon and raid bosses always drop at least one item from their own loot table
++                if (creature->IsDungeonBoss() && GetMap()->IsDungeon())
++                    if (uint32 lootid = creature->GetCreatureTemplate()->lootid)
++                        if (LootTemplate const* lootTemplate = LootTemplates_Creature.GetLootFor(lootid))
++                            lootTemplate->AddItemIfNoneDropped(*loot, creature->GetLootMode(), looter);
+             }
+ 
+             loot->GenerateMoneyLoot(creature->GetCreatureTemplate()->mingold, creature->GetCreatureTemplate()->maxgold);
+diff --git a/src/server/game/Loot/Loot.cpp b/src/server/game/Loot/Loot.cpp
+index 86db8dd..fc3bdee 100644
+--- a/src/server/game/Loot/Loot.cpp
++++ b/src/server/game/Loot/Loot.cpp
+@@ -147,12 +147,17 @@ uint32 Loot::GetUnlootedCount(Player const* player /*= nullptr*/) const
+     }
+     else
+     {
+-        // Preserve the original global behavior for callers that do not
+-        // request a player-specific loot state.
++        // Count each looter's items by what that looter is shown. An item they
++        // can't see (a quest item for a quest they don't have, a recipe they
++        // can't use) is never looted, and would keep the corpse unlooted and
++        // unskinnable for good.
+         for (auto const& itemItr : items)
++        {
++            Player const* looter = ObjectAccessor::FindConnectedPlayer(itemItr.first);
+             for (LootItem const& item : itemItr.second)
+-                if (!item.is_looted)
++                if (!item.is_looted && (!looter || (item.conditions.empty() && item.AllowedForPlayer(looter))))
+                     ++unlootedCount;
++        }
+     }
+ 
+     return unlootedCount;
+diff --git a/src/server/game/Loot/LootMgr.cpp b/src/server/game/Loot/LootMgr.cpp
+index 0e32c37..de4db5a 100644
+--- a/src/server/game/Loot/LootMgr.cpp
++++ b/src/server/game/Loot/LootMgr.cpp
+@@ -616,7 +616,7 @@ void LootTemplate::Process(Loot& loot, bool rate, uint16 lootMode, uint8 groupId
+ 
+             uint32 maxcount = uint32(float(item->maxcount) * sWorld->getRate(RATE_DROP_ITEM_REFERENCED_AMOUNT));
+             for (uint32 loop = 0; loop < maxcount; ++loop)      // Ref multiplicator
+-                Referenced->Process(loot, rate, lootMode, item->groupid);
++                Referenced->Process(loot, rate, lootMode, item->groupid, player, specOnly); // pass the looter on, or AddItem drops every referenced item
+         }
+         else                                                    // Plain entries (not a reference, not grouped)
+             loot.AddItem(*item, player, specOnly);              // Chance is already checked, just add
+@@ -628,6 +628,76 @@ void LootTemplate::Process(Loot& loot, bool rate, uint16 lootMode, uint8 groupId
+             group->Process(loot, lootMode, player, specOnly);
+ }
+ 
++void LootTemplate::AddItemIfNoneDropped(Loot& loot, uint16 lootMode, Player const* player) const
++{
++    if (!player)
++        return;
++
++    // Plain and grouped items the player could be shown; references, currencies and quest items don't count
++    std::vector<LootStoreItem const*> candidates;
++    auto addCandidate = [&](LootStoreItem const* item)
++    {
++        if (item->reference || item->type != LOOT_ITEM_TYPE_ITEM || item->needs_quest || !(item->lootmode & lootMode) || !item->conditions.empty())
++            return;
++
++        if (LootItem(*item).AllowedForPlayer(player))
++            candidates.push_back(item);
++    };
++
++    for (LootStoreItem const* item : Entries)
++        addCandidate(item);
++
++    for (LootGroup* group : Groups)
++    {
++        if (!group)
++            continue;
++
++        for (LootStoreItem const* item : *group->GetExplicitlyChancedItemList())
++            addCandidate(item);
++        for (LootStoreItem const* item : *group->GetEqualChancedItemList())
++            addCandidate(item);
++    }
++
++    if (candidates.empty())
++        return;
++
++    auto qualityOf = [](uint32 itemId) -> uint32
++    {
++        ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
++        return proto ? proto->GetQuality() : uint32(ITEM_QUALITY_POOR);
++    };
++
++    // Prefer the boss's own gear (uncommon or better) over cloth and junk when the table has any
++    uint32 minQuality = ITEM_QUALITY_POOR;
++    for (LootStoreItem const* item : candidates)
++    {
++        if (qualityOf(item->itemid) >= ITEM_QUALITY_UNCOMMON)
++        {
++            minQuality = ITEM_QUALITY_UNCOMMON;
++            break;
++        }
++    }
++
++    auto itr = loot.items.find(player->GetGUID());
++    if (itr != loot.items.end())
++        for (LootItem const& item : itr->second)
++            if (!item.currency && !item.needs_quest && qualityOf(item.itemid) >= minQuality)
++                return;                                     // the normal rolls already dropped one
++
++    candidates.erase(std::remove_if(candidates.begin(), candidates.end(), [&](LootStoreItem const* item)
++    {
++        return qualityOf(item->itemid) < minQuality;
++    }), candidates.end());
++
++    // Pick by drop chance, so a rare item stays rare; equal-chanced group entries weigh 1%
++    LootStoreItem const* item = *Trinity::Containers::SelectRandomWeightedContainerElement(candidates, [](LootStoreItem const* candidate)
++    {
++        return candidate->chance > 0.0f ? double(candidate->chance) : 1.0;
++    });
++
++    loot.AddItem(*item, player);
++}
++
+ // True if template includes at least 1 quest drop entry
+ bool LootTemplate::HasQuestDrop(LootTemplateMap const& store, uint8 groupId) const
+ {
+diff --git a/src/server/game/Loot/LootMgr.h b/src/server/game/Loot/LootMgr.h
+index 8202a14..69c66f4 100644
+--- a/src/server/game/Loot/LootMgr.h
++++ b/src/server/game/Loot/LootMgr.h
+@@ -115,6 +115,8 @@ class TC_GAME_API LootTemplate
+         // Rolls for every item in the template and adds the rolled items the the loot
+        // void ProcessOploteChest(Loot& loot) const;
+         void Process(Loot& loot, bool rate, uint16 lootMode, uint8 groupId = 0, Player const* player = nullptr, bool specOnly = false) const;
++        // Adds one item from this template if the player's loot has none of the best quality it can drop (used for dungeon bosses)
++        void AddItemIfNoneDropped(Loot& loot, uint16 lootMode, Player const* player) const;
+       //  void ProcessChallengeChest(Loot& loot, uint32 lootId, ChallengeModeMgr* _challenge) const;
+         void CopyConditions(const ConditionContainer& conditions);
+         void CopyConditions(LootItem* li) const;

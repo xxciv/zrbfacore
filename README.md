@@ -32,6 +32,21 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   random player (Lord Walden's mixtures, for one) can pick the player they are fighting.
 - [`tools/bfa/transmog-collection.patch`](tools/bfa/transmog-collection.patch): learns transmog
   appearances as soon as items reach your bags, for every armor and weapon type (`Transmog.*` settings).
+- [`tools/bfa/loot-fixes.patch`](tools/bfa/loot-fixes.patch): core fixes so items from shared
+  loot tables (world drops, most greens) drop at all, every dungeon boss drops at least one item, and
+  corpses can be skinned when they still hold a quest item you can't see.
+- [`tools/bfa/scenario-debug.patch`](tools/bfa/scenario-debug.patch): adds the GM command
+  `.debug scenario`, which lists the dungeon's scenario objectives, what each one waits for, and progress.
+- [`tools/bfa/wailing-caverns-fixes.patch`](tools/bfa/wailing-caverns-fixes.patch): Wailing Caverns
+  script fixes (Muyoh's escort credits the "Muyoh escorted" objective).
+- [`tools/bfa/dungeon-scale-xp.patch`](tools/bfa/dungeon-scale-xp.patch): DungeonScale XP settings: no XP
+  in a dungeon you've already completed in that mode, and an XP off switch for testing.
+- [`tools/bfa/dungeon-boss-loot.patch`](tools/bfa/dungeon-boss-loot.patch): every boss a dungeon's
+  objectives name gets the boss loot guarantee, not only the ones the world database lists.
+- [`tools/bfa/blackfathom-layouts.patch`](tools/bfa/blackfathom-layouts.patch): Blackfathom Deeps in
+  both layouts, the classic one and the redesign the Adventure Guide shows, picked per run by the
+  Blackfathom Chronicler at the entrance (`Blackfathom.Layout` for the default). Needs
+  `sql/fixes/world/2026_10_17_03_blackfathom_redesign_layout.sql`.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.

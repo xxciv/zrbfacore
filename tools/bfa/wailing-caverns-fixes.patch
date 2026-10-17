@@ -1,0 +1,21 @@
+diff --git a/src/server/scripts/Kalimdor/WailingCaverns/wailing_caverns.cpp b/src/server/scripts/Kalimdor/WailingCaverns/wailing_caverns.cpp
+index 576bcb8..6e1f3b4 100644
+--- a/src/server/scripts/Kalimdor/WailingCaverns/wailing_caverns.cpp
++++ b/src/server/scripts/Kalimdor/WailingCaverns/wailing_caverns.cpp
+@@ -73,6 +73,8 @@ enum Enums
+     NPC_DEVIATE_MOCCASIN          = 5762,
+     NPC_NIGHTMARE_ECTOPLASM       = 5763,
+     NPC_MUTANUS_THE_DEVOURER      = 3654,
++
++    SCENARIO_EVENT_MUYOH_ESCORTED = 582,  // scenario 515, criteria 24776 "Muyoh escorted"
+ };
+ 
+ class npc_disciple_of_naralex : public CreatureScript
+@@ -176,6 +178,7 @@ public:
+                     eventProgress = 1;
+                     currentEvent = TYPE_NARALEX_PART3;
+                     instance->SetData(TYPE_NARALEX_PART3, IN_PROGRESS);
++                    instance->DoSendEventScenario(SCENARIO_EVENT_MUYOH_ESCORTED); // reached Naralex
+                     break;
+             }
+         }
