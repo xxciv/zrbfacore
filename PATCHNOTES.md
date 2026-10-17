@@ -5,6 +5,45 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-17
 
+### DungeonScale: XP settings
+
+New `tools/bfa/dungeon-scale-xp.patch`, applied after `wailing-caverns-fixes.patch`. Asked for by Four on
+2026-10-17: XP inside dungeons was too high, and a dungeon already completed should give none. On PR #14,
+not merged yet.
+
+- **Changed:**
+  - `DungeonScale.XP.StopAfterCompletion` (default 1): inside a scaled dungeon, no XP at all (kills and
+    quest turn-ins) once you have the dungeon's achievement for the mode you are in, even inside its
+    level range. "The dungeon's achievement" is any achievement, not a statistic, with a criteria that
+    kills a creature and is made for that map (`Achievement.InstanceID`), or that kills the final boss
+    (`instance_encounters` row with `lastEncounterDungeon`). An achievement whose criteria has extra
+    requirements (Heroic ones require Heroic difficulty) only counts where they hold, so a Heroic
+    achievement doesn't stop XP on Normal. Built once per map and difficulty.
+  - `DungeonScale.XP.Enable` (default 1): 0 gives no XP inside any scaled instance, for testing.
+  - Both only apply where DungeonScale scales the map (`.dungeonscale info` says so). XP outside is
+    untouched.
+  - `.dungeonscale info` now says whether you get XP there, why not, and which achievements complete the
+    map (`*` = only counts when its requirements hold).
+  - Files: `solocraft.cpp` (DungeonScale: settings, `GetXPBlock`, `GetCompletionAchievements`, an
+    `OnGiveXP` player hook, the info lines), `worldserver.conf.dist` (two keys, in the DUNGEON SCALE
+    block), `Player.cpp` (`Player::GiveXP` stops when a script has taken all the XP, so no
+    "You gain 0 experience" line is shown).
+- **Status:** compiles here; not yet tested in game.
+
+#### To pick up the XP settings
+A new patch on its own. Neither key has to be in `worldserver.conf`: completion stopping XP is on, and XP
+is on otherwise.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/dungeon-scale-xp.patch | git apply
+grep -c "DungeonScale.XP.StopAfterCompletion" src/server/scripts/Custom/solocraft.cpp
+grep -c "a script took all of it" src/server/game/Entities/Player/Player.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The `grep` lines should print 2 and 1. Then restart `worldserver`. To switch XP off for testing, add
+`DungeonScale.XP.Enable = 0` to `~/bfa/server/etc/worldserver.conf` and type `.reload config`.
+
 ### Blackfathom Deeps (map 48)
 
 Started by Four on 2026-10-17 on the night elf rogue. On PR #14 with the Wailing Caverns fixes, not merged

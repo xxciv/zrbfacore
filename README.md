@@ -39,6 +39,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   `.debug scenario`, which lists the dungeon's scenario objectives, what each one waits for, and progress.
 - [`tools/bfa/wailing-caverns-fixes.patch`](tools/bfa/wailing-caverns-fixes.patch): Wailing Caverns
   script fixes (Muyoh's escort credits the "Muyoh escorted" objective).
+- [`tools/bfa/dungeon-scale-xp.patch`](tools/bfa/dungeon-scale-xp.patch): DungeonScale XP settings: no XP
+  in a dungeon you've already completed in that mode, and an XP off switch for testing.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.

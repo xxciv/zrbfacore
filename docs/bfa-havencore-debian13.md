@@ -100,6 +100,7 @@ git apply ../tools-repo/tools/bfa/transmog-collection.patch
 git apply ../tools-repo/tools/bfa/loot-fixes.patch
 git apply ../tools-repo/tools/bfa/scenario-debug.patch
 git apply ../tools-repo/tools/bfa/wailing-caverns-fixes.patch
+git apply ../tools-repo/tools/bfa/dungeon-scale-xp.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -483,6 +484,13 @@ selected creature. The settings are explained in the block itself. A dungeon of 
 easier or harder with lines like `DungeonScale.Map.36.Damage = 0.25` (36 is The Deadmines), then
 `.reload config`.
 
+`dungeon-scale-xp.patch` adds two XP settings. `DungeonScale.XP.StopAfterCompletion` (on unless set to
+0) stops all XP inside a scaled dungeon, kills and quests alike, once you have that dungeon's achievement
+for the mode you are in ("The Deadmines" for Normal), even while you are still in its level range.
+`DungeonScale.XP.Enable = 0` stops XP inside every scaled instance, for testing. Neither key needs to be
+in `worldserver.conf`; add a line only to change one, then `.reload config`. `.dungeonscale info` says
+whether you get XP there, and which achievements count as completing the dungeon.
+
 ### Transmog collection
 
 `transmog-collection.patch` (step 3) is on without any settings. To see or change them, copy its block
@@ -514,6 +522,7 @@ git apply ../tools-repo/tools/bfa/transmog-collection.patch
 git apply ../tools-repo/tools/bfa/loot-fixes.patch
 git apply ../tools-repo/tools/bfa/scenario-debug.patch
 git apply ../tools-repo/tools/bfa/wailing-caverns-fixes.patch
+git apply ../tools-repo/tools/bfa/dungeon-scale-xp.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
