@@ -78,18 +78,30 @@ final event worked. On PR #14, not merged yet.
     4 and 9 to 3 (DONE).
   - Deletes the static Mutanus spawn (guid 326392), so he only appears when Muyoh summons him.
   - The revert lines, including the full Mutanus row, are at the top of the file. Safe to run twice.
-- **Status:** run here against the dump; not yet tested in game. Lords killed before the SQL ran aren't
-  counted, so it needs a fresh instance.
+- **Status:** confirmed in game by Four on 2026-10-17 that Mutanus is no longer in the pool. Lords
+  killed before the SQL ran aren't counted, so it needs a fresh instance.
 
-### To pick up the Wailing Caverns fix
+#### Muyoh couldn't be clicked, and Naralex had a dead "Lets Go!" dialog
+- **Found** (in game, 2026-10-17, after the fix above with all four Fanglords dead): Muyoh still
+  couldn't be interacted with. Naralex opened a dialog with "Lets Go!" that did nothing.
+- **Cause:** Muyoh starts the event through gossip (`npc_disciple_of_naralex`, gossip menu 201), but
+  `creature_template` 3678 has `npcflag` 2 (quest giver) only and she has no quests, so the client offers
+  nothing to click. Naralex (3679) has `npcflag` 1 with gossip menu 3679, whose only option ("Lets Go!")
+  and SmartAI gossip row ("Orgus - On Gossip - Kill Credit") belong to an unrelated NPC.
+- **Changed:** `2026_10_17_00_wailing_caverns_muyoh_gossip.sql`: Muyoh `npcflag` 2 -> 3 (adds gossip),
+  Naralex `npcflag` 1 -> 0. Revert lines in the file. Safe to run twice.
+- **Status:** run here against the dump; not yet tested in game.
+
+### To pick up the Wailing Caverns fixes
 SQL only, no rebuild:
 ```
 cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_16_05_wailing_caverns_naralex_event.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_17_00_wailing_caverns_muyoh_gossip.sql | mysql -u root -p bfa_world
 ```
-Then restart `worldserver` and reset the instance (leave it, then Reset All Instances from your portrait
-menu) before running it again.
+Then restart `worldserver`. If the Fanglords were killed before the first file ran, reset the instance
+(leave it, then Reset All Instances from your portrait menu) and kill them again.
 
 ### Transmog collection
 
