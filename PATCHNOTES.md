@@ -5,6 +5,36 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-17
 
+### Loot: every dungeon boss gets the boss loot guarantee
+
+New `tools/bfa/dungeon-boss-loot.patch`, applied after `dungeon-scale-xp.patch`. Asked for by Four on
+2026-10-17 ("all bosses"). On PR #14, not merged yet.
+
+- **Found:** the "bosses always drop an item" rule from `loot-fixes.patch` only knows a boss through
+  `IsDungeonBoss`, which is set from `instance_encounters`. Blackfathom Deeps and Ragefire Chasm have no
+  rows there at all, and other dungeons only list some bosses (Wailing Caverns lists 9 rows; Kresh,
+  Skum and Verdan count as bonus bosses in its scenario).
+- **Changed:**
+  - `Scenario.h` / `Scenario.cpp`: new `Scenario::HasKillCriteria(entry)`: true when a step of the
+    scenario has a kill criteria for that creature needed once ("Lady Anacondra defeated"). Kill counts
+    above 1 ("Defeat 20 ...") are left out, so trash doesn't qualify.
+  - `Unit.cpp`, `Unit::Kill`: on a dungeon or raid map, a creature gets the boss loot guarantee when it is
+    an `instance_encounters` credit (as before) or the instance's scenario has such a kill criteria for
+    it. Everything else about the guarantee is unchanged.
+  - No SQL and no setting. Use `.debug scenario` in a dungeon to see which creatures its objectives name.
+- **Status:** compiles here; not yet tested in game.
+
+#### To pick up the boss loot change
+A new patch on its own:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/dungeon-boss-loot.patch | git apply
+grep -c "HasKillCriteria" src/server/game/Entities/Unit/Unit.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The `grep` line should print 1. Then restart `worldserver`.
+
 ### DungeonScale: XP settings
 
 New `tools/bfa/dungeon-scale-xp.patch`, applied after `wailing-caverns-fixes.patch`. Asked for by Four on
@@ -120,7 +150,8 @@ New `tools/bfa/loot-fixes.patch`, applied after `transmog-collection.patch`. On 
   is empty, and `Loot::GetUnlootedCount` (`src/server/game/Loot/Loot.cpp`), asked without a player,
   counted every item, hidden ones included, so the corpse never emptied. The same goes for any mob with
   a quest item, a recipe you can't use or an other-faction item. Before the reference fix above fewer
-  corpses held such items, but the quest hide is a plain row, so these were affected before too.
+  corpses held such items, but the quest hide is a plain row, so these were affected before too. The
+  fix is in the core loot code, so it applies to every mob and every map, not just Wailing Caverns.
 - **Changed:** in `loot-fixes.patch`, `GetUnlootedCount` without a player counts each looter's items
   by what that looter is shown (same rule as with a player: not looted, no conditions,
   `AllowedForPlayer`). If the looter is offline, their items still count, as before. This is also the

@@ -41,6 +41,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   script fixes (Muyoh's escort credits the "Muyoh escorted" objective).
 - [`tools/bfa/dungeon-scale-xp.patch`](tools/bfa/dungeon-scale-xp.patch): DungeonScale XP settings: no XP
   in a dungeon you've already completed in that mode, and an XP off switch for testing.
+- [`tools/bfa/dungeon-boss-loot.patch`](tools/bfa/dungeon-boss-loot.patch): every boss a dungeon's
+  objectives name gets the boss loot guarantee, not only the ones the world database lists.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.

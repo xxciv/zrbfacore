@@ -101,6 +101,7 @@ git apply ../tools-repo/tools/bfa/loot-fixes.patch
 git apply ../tools-repo/tools/bfa/scenario-debug.patch
 git apply ../tools-repo/tools/bfa/wailing-caverns-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale-xp.patch
+git apply ../tools-repo/tools/bfa/dungeon-boss-loot.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -220,6 +221,11 @@ at least one item: when the normal rolls leave a boss with only gold (or only cl
 from its own table is added, picked by drop chance. It also lets a corpse be skinned once you've
 taken everything you can see: an item hidden from you (a quest item for a quest you don't have) used to
 keep the corpse from ever counting as looted.
+
+`dungeon-boss-loot.patch` widens "boss" for that guarantee. The world database only lists some dungeons'
+bosses (`instance_encounters`; Blackfathom Deeps and Ragefire Chasm have none), so a creature also
+counts when the dungeon's scenario has an objective to kill it once ("Lady Anacondra defeated", and
+optional bosses such as Kresh).
 
 `scenario-debug.patch` adds a GM command, `.debug scenario`. Dungeons in this client run a scenario:
 the objective list on the right of the screen (Wailing Caverns has "Muyoh escorted", for one). Its steps
@@ -523,6 +529,7 @@ git apply ../tools-repo/tools/bfa/loot-fixes.patch
 git apply ../tools-repo/tools/bfa/scenario-debug.patch
 git apply ../tools-repo/tools/bfa/wailing-caverns-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale-xp.patch
+git apply ../tools-repo/tools/bfa/dungeon-boss-loot.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

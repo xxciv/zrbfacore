@@ -1,0 +1,72 @@
+diff --git a/src/server/game/Entities/Unit/Unit.cpp b/src/server/game/Entities/Unit/Unit.cpp
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -63,6 +63,7 @@
+ #include "PlayerAI.h"
+ #include "QuestDef.h"
+ #include "ReputationMgr.h"
++#include "Scenario.h"
+ #include "Spell.h"
+ #include "SpellAuraEffects.h"
+ #include "SpellAuras.h"
+@@ -11536,8 +11537,10 @@
+                     }
+                 }
+ 
+-                // Dungeon and raid bosses always drop at least one item from their own loot table
+-                if (creature->IsDungeonBoss() && GetMap()->IsDungeon())
++                // Dungeon and raid bosses always drop at least one item from their own loot table. A boss is an
++                // instance_encounters credit, or a creature the dungeon's scenario asks to kill once
++                Scenario const* scenario = creature->GetScenario();
++                if (GetMap()->IsDungeon() && (creature->IsDungeonBoss() || (scenario && scenario->HasKillCriteria(creature->GetEntry()))))
+                     if (uint32 lootid = creature->GetCreatureTemplate()->lootid)
+                         if (LootTemplate const* lootTemplate = LootTemplates_Creature.GetLootFor(lootid))
+                             lootTemplate->AddItemIfNoneDropped(*loot, creature->GetLootMode(), looter);
+diff --git a/src/server/game/Scenarios/Scenario.cpp b/src/server/game/Scenarios/Scenario.cpp
+--- a/src/server/game/Scenarios/Scenario.cpp
++++ b/src/server/game/Scenarios/Scenario.cpp
+@@ -345,6 +345,33 @@
+     return progress ? progress->Counter : 0;
+ }
+ 
++bool Scenario::HasKillCriteria(uint32 creatureEntry) const
++{
++    if (!_data)
++        return false;
++
++    bool found = false;
++    for (auto const& stepPair : _data->Steps)
++    {
++        CriteriaTree const* stepTree = sCriteriaMgr->GetCriteriaTree(stepPair.second->Criteriatreeid);
++        if (!stepTree)
++            continue;
++
++        // "Lady Anacondra defeated": a kill criteria needed once. Counted kills ("Defeat 20 ...") are trash.
++        CriteriaMgr::WalkCriteriaTree(stepTree, [&](CriteriaTree const* tree)
++        {
++            if (tree->Criteria && tree->Criteria->Entry->Type == CRITERIA_TYPE_KILL_CREATURE &&
++                uint32(tree->Criteria->Entry->Asset.CreatureID) == creatureEntry && tree->Entry->Amount <= 1)
++                found = true;
++        });
++
++        if (found)
++            return true;
++    }
++
++    return false;
++}
++
+ void Scenario::SendScenarioEvent(Player* player, uint32 eventId)
+ {
+     UpdateCriteria(CRITERIA_TYPE_SEND_EVENT_SCENARIO, eventId, 0, 0, nullptr, player);
+diff --git a/src/server/game/Scenarios/Scenario.h b/src/server/game/Scenarios/Scenario.h
+--- a/src/server/game/Scenarios/Scenario.h
++++ b/src/server/game/Scenarios/Scenario.h
+@@ -80,6 +80,7 @@
+         void CompleteCurrStep();
+         ScenarioData const* GetData() const { return _data; }
+         uint64 GetCriteriaCounter(Criteria const* criteria);  // for .debug scenario
++        bool HasKillCriteria(uint32 creatureEntry) const;     // an objective asks to kill this creature once (a boss)
+ 
+         void SendScenarioState(Player* player);
+         void SendBootPlayer(Player* player);
