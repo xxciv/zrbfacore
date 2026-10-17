@@ -5,6 +5,34 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-17
 
+### Blackfathom Deeps (redesign): Executioner Gore at the prisoners can't be fought
+
+`sql/fixes/world/2026_10_17_04_blackfathom_gore_executioner.sql`. On PR #14, not merged yet.
+
+- **Found:** Four fought Executioner Gore in the redesign's first prisoner room. The kill didn't count
+  for the "Executioner Gore" objective and he dropped no loot. There are two Executioner Gores. 74988
+  stands with the prisoners on the way in (spawns 4800069 and 4800113). His lines are "Intruders?! Move
+  the prisoners!", "Come along, heroes! The water is fine." and "The intruders are still alive?! Stop
+  them!". The boss the objective asks for is 74518 (spawn 4800174), near Twilight Lord Bathiel ("I was
+  hoping you would make it to me."). 74988 was a hostile elite with 20% drop chances. Nothing stopped
+  players from fighting him, and his kill gives no credit.
+- **Changed:** creature 74988 gets `unit_flags` 0x300 (immune to players and creatures), so he can't
+  be attacked. His SmartAI is replaced by one script per spawn. At the first prisoners, he says "Intruders?!
+  Move the prisoners!" when a player comes within 40 yards. Six seconds later he says "Come along,
+  heroes! The water is fine." and he despawns 4 seconds after that. At the second prisoners, he says
+  "The intruders are still alive?! Stop them!" and despawns 5 seconds later. The old entry SmartAI rows
+  are deleted.
+- **Not done yet:** on retail, Gore executes prisoners in these rooms; that part isn't scripted.
+- **Status:** the SQL ran twice against the dump. Not yet tested in game.
+
+#### To pick up the Gore fix
+SQL only. Run it, then restart worldserver.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_17_04_blackfathom_gore_executioner.sql | mysql -u root -p bfa_world
+```
+
 ### Blackfathom Deeps: the redesigned layout, next to the classic one
 
 New `tools/bfa/blackfathom-layouts.patch`, applied after `dungeon-boss-loot.patch`, and
