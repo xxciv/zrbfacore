@@ -5,6 +5,54 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-18
 
+### Creature spells that did nothing, and the Coiled Rope shortcut
+
+New `tools/bfa/dungeon-spell-fixes.patch`, applied after `blackfathom-layouts.patch`, and
+`sql/fixes/world/2026_10_18_01_blackfathom_redesign_spells.sql`. Found from the client's SpellName,
+SpellEffect and SpellMisc.db2, which Four sent on 2026-10-18. On PR #14, not merged yet.
+
+- **Found:**
+  - Spells aimed with target 110 (a cone that selects by creature entry) never hit anything. HavenCore
+    maps 110 to line selection, and `Spell::SelectImplicitLineTargets` is commented out. 213 client spells
+    use it, among them Domina's Maw of Death (149894), the Blindlight Rotmouth's Corpse Spew (150453) and
+    Executioner Gore's Executioner's Strike (149943).
+  - Other redesign boss spells end in a dummy effect whose base points name the spell that does the work.
+    Retail casts those from its own server scripts, and HavenCore has none, so the spell stops at the
+    dummy. Examples: Piercing Rain 151814 names 152884, Foul Tempest 149887 names 152799, and Restorative
+    Waters 150020 names 150022, which summons the Restorative Waters. 12 such spells are cast by
+    Blackfathom Deeps creatures.
+  - The Coiled Rope (224627) wasn't selectable (flags 0x10; TrinityCore's sniff has 0), and nothing made
+    the Rope Ladder Post (224747) usable. The post casts Rope Ladder Climb (150851), a jump to the
+    nearest creature of an entry the spell's conditions name, and there were no conditions.
+- **Changed (patch):**
+  - `SpellInfo.cpp`: target 110 uses cone selection (`TARGET_UNIT_CONE_ENTRY_110`).
+  - `Spell.cpp`: a cone that selects by entry and has no conditions takes the caster's enemies, as the
+    enemy cone (104) does. Without that it would hit the caster's allies too.
+  - `spell_generic.cpp`: new `spell_gen_dummy_cast_base_points`. On each dummy effect hit, the caster
+    casts the spell the effect's base points name at that target (triggered).
+- **Changed (SQL, `2026_10_18_01`):**
+  - `spell_script_names` for the 12 spells: Foul Tempest 149887, Catch of the Day 149908 and 149910,
+    Restorative Waters 150020, Darkness Calls 151159, Tearing the Void 151303 and 151304, Grip of
+    Darkness 151313, Static Shock 151683, Piercing Rain 151814, Spore Cloud 152753 and Falling Debris
+    152965.
+  - Coiled Rope 224627: `flags` 0. Its SmartAI makes the Rope Ladder Post within 40 yards selectable
+    when used, then makes itself unselectable. A `conditions` row points Rope Ladder Climb at the
+    Invisible Man 75000 beside the Coiled Rope, so the post jumps you back up to it.
+- **Status:** the three changed files compile here and the patch applies on the full chain; the SQL ran
+  twice against the dump. Not yet tested in game.
+
+#### To pick up the spell fixes
+A new patch on top of the others, the SQL, the build and a restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/dungeon-spell-fixes.patch | git apply
+grep -c "spell_gen_dummy_cast_base_points" src/server/scripts/Spells/spell_generic.cpp
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_18_01_blackfathom_redesign_spells.sql | mysql -u root -p bfa_world
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 4.
+
 ### Blackfathom Deeps (redesign): fixes from the first full run
 
 `tools/bfa/blackfathom-layouts.patch` (changed) and `sql/fixes/world/2026_10_18_00_blackfathom_redesign_fixes.sql`.

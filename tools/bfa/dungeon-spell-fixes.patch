@@ -1,0 +1,73 @@
+diff --git a/src/server/game/Spells/Spell.cpp b/src/server/game/Spells/Spell.cpp
+--- a/src/server/game/Spells/Spell.cpp
++++ b/src/server/game/Spells/Spell.cpp
+@@ -8316,6 +8316,14 @@ bool WorldObjectSpellConeTargetCheck::operator()(WorldObject* target)
+             if (_caster->HasInArc(_coneAngle, target) != G3D::fuzzyGe(_coneAngle, 0.f))
+                 return false;
+     }
++
++    // A cone that selects by entry (target 110) and has no conditions takes the caster's enemies, like
++    // the enemy cone (104). Without conditions an entry check passes every unit, the caster's allies too.
++    if (_targetSelectionType == TARGET_CHECK_ENTRY && !_condSrcInfo)
++        if (Unit* unitTarget = target->ToUnit())
++            if (unitTarget->IsTotem() || !_caster->_IsValidAttackTarget(unitTarget, _spellInfo))
++                return false;
++
+     return WorldObjectSpellAreaTargetCheck::operator ()(target);
+ }
+ 
+diff --git a/src/server/game/Spells/SpellInfo.cpp b/src/server/game/Spells/SpellInfo.cpp
+--- a/src/server/game/Spells/SpellInfo.cpp
++++ b/src/server/game/Spells/SpellInfo.cpp
+@@ -383,7 +383,7 @@ SpellImplicitTargetInfo::StaticData  SpellImplicitTargetInfo::_data[TOTAL_SPELL_
+     {TARGET_OBJECT_TYPE_NONE, TARGET_REFERENCE_TYPE_DEST,   TARGET_SELECT_CATEGORY_NYI,     TARGET_CHECK_DEFAULT,  TARGET_DIR_NONE},        // 107 TARGET_UNK_DEST_AREA_UNK_107
+     {TARGET_OBJECT_TYPE_GOBJ, TARGET_REFERENCE_TYPE_CASTER, TARGET_SELECT_CATEGORY_CONE,    TARGET_CHECK_DEFAULT,  TARGET_DIR_FRONT},       // 108 TARGET_GAMEOBJECT_CONE_108
+     {TARGET_OBJECT_TYPE_GOBJ, TARGET_REFERENCE_TYPE_CASTER, TARGET_SELECT_CATEGORY_CONE,    TARGET_CHECK_DEFAULT,  TARGET_DIR_FRONT},       // 109 TARGET_GAMEOBJECT_CONE_109
+-    {TARGET_OBJECT_TYPE_UNIT, TARGET_REFERENCE_TYPE_CASTER, TARGET_SELECT_CATEGORY_LINE,    TARGET_CHECK_ENTRY,    TARGET_DIR_FRONT},       // 110 TARGET_DEST_UNK_110
++    {TARGET_OBJECT_TYPE_UNIT, TARGET_REFERENCE_TYPE_CASTER, TARGET_SELECT_CATEGORY_CONE,    TARGET_CHECK_ENTRY,    TARGET_DIR_FRONT},       // 110 TARGET_UNIT_CONE_ENTRY_110
+     {TARGET_OBJECT_TYPE_NONE, TARGET_REFERENCE_TYPE_NONE,   TARGET_SELECT_CATEGORY_NYI,     TARGET_CHECK_DEFAULT,  TARGET_DIR_NONE},        // 111
+     {TARGET_OBJECT_TYPE_DEST, TARGET_REFERENCE_TYPE_CASTER, TARGET_SELECT_CATEGORY_DEFAULT, TARGET_CHECK_DEFAULT,  TARGET_DIR_NONE},        // 112
+     {TARGET_OBJECT_TYPE_NONE, TARGET_REFERENCE_TYPE_NONE,   TARGET_SELECT_CATEGORY_NYI,     TARGET_CHECK_DEFAULT,  TARGET_DIR_NONE},        // 113
+diff --git a/src/server/scripts/Spells/spell_generic.cpp b/src/server/scripts/Spells/spell_generic.cpp
+--- a/src/server/scripts/Spells/spell_generic.cpp
++++ b/src/server/scripts/Spells/spell_generic.cpp
+@@ -6107,6 +6107,33 @@ class spell_gen_love_seat : public SpellScript
+     }
+ };
+ 
++// Server-side dummy effects whose base points hold the spell to cast on each target hit. Retail casts
++// these from its own scripts, so without this the spell does nothing.
++// 149887 Foul Tempest, 149908 Catch of the Day, 149910 Catch of the Day, 150020 Restorative Waters,
++// 151159 Darkness Calls, 151303 Tearing the Void, 151304 Tearing the Void, 151313 Grip of Darkness,
++// 151683 Static Shock, 151814 Piercing Rain, 152753 Spore Cloud, 152965 Falling Debris (Blackfathom Deeps)
++class spell_gen_dummy_cast_base_points : public SpellScript
++{
++    PrepareSpellScript(spell_gen_dummy_cast_base_points);
++
++    void HandleDummy(SpellEffIndex effIndex)
++    {
++        Unit* caster = GetCaster();
++        Unit* target = GetHitUnit();
++        SpellEffectInfo const* effect = GetSpellInfo()->GetEffect(effIndex);
++        if (!caster || !target || !effect || effect->BasePoints <= 0)
++            return;
++
++        if (sSpellMgr->GetSpellInfo(uint32(effect->BasePoints)))
++            caster->CastSpell(target, uint32(effect->BasePoints), true);
++    }
++
++    void Register() override
++    {
++        OnEffectHitTarget += SpellEffectFn(spell_gen_dummy_cast_base_points::HandleDummy, EFFECT_ALL, SPELL_EFFECT_DUMMY);
++    }
++};
++
+ class spell_gen_dream_funnel : public SpellScriptLoader
+ {
+ public:
+@@ -8308,4 +8335,5 @@ void AddSC_generic_spell_scripts()
+     RegisterSpellScript(spell_make_camp);
+     RegisterSpellScript(spell_back_camp);
+     RegisterSpellScript(spell_maghar_orc_racial_ancestors_call);
++    RegisterSpellScript(spell_gen_dummy_cast_base_points);
+ }

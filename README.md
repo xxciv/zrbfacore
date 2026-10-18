@@ -47,6 +47,10 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   both layouts, the classic one and the redesign the Adventure Guide shows, picked per run by the
   Blackfathom Chronicler at the entrance (`Blackfathom.Layout` for the default). Needs
   `sql/fixes/world/2026_10_17_03_blackfathom_redesign_layout.sql`.
+- [`tools/bfa/dungeon-spell-fixes.patch`](tools/bfa/dungeon-spell-fixes.patch): creature spells that did
+  nothing: cone-by-entry targets (110) now select targets, and a generic script casts the spell a dummy
+  effect names. Needs `sql/fixes/world/2026_10_18_01_blackfathom_redesign_spells.sql` for the
+  Blackfathom Deeps spells.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.

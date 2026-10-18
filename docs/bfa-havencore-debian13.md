@@ -103,6 +103,7 @@ git apply ../tools-repo/tools/bfa/wailing-caverns-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale-xp.patch
 git apply ../tools-repo/tools/bfa/dungeon-boss-loot.patch
 git apply ../tools-repo/tools/bfa/blackfathom-layouts.patch
+git apply ../tools-repo/tools/bfa/dungeon-spell-fixes.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -235,6 +236,13 @@ dungeon objectives describe the 6.0.2 redesign (Domina, Thruk, Twilight Lord Bat
 one: `Blackfathom.Layout` in `worldserver.conf` picks it for new instances (1, the redesign, by default),
 and the Blackfathom Chronicler just inside the entrance switches it until the first boss of the run dies.
 Either way, the bosses count for the dungeon's objectives.
+
+`dungeon-spell-fixes.patch` makes two kinds of creature spells work that did nothing. Spells aimed with a
+cone by entry (target 110) never picked a target, because the core's selection for them was commented
+out; they now pick the caster's enemies in a cone, or what the spell's conditions name. And spells
+whose dummy effect names the spell to cast (Piercing Rain, Foul Tempest and others in Blackfathom Deeps)
+get `spell_gen_dummy_cast_base_points`, through
+`sql/fixes/world/2026_10_18_01_blackfathom_redesign_spells.sql`.
 
 `scenario-debug.patch` adds a GM command, `.debug scenario`. Dungeons in this client run a scenario:
 the objective list on the right of the screen (Wailing Caverns has "Muyoh escorted", for one). Its steps
@@ -540,6 +548,7 @@ git apply ../tools-repo/tools/bfa/wailing-caverns-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale-xp.patch
 git apply ../tools-repo/tools/bfa/dungeon-boss-loot.patch
 git apply ../tools-repo/tools/bfa/blackfathom-layouts.patch
+git apply ../tools-repo/tools/bfa/dungeon-spell-fixes.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
