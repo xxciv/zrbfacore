@@ -3,6 +3,69 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-18
+
+### Blackfathom Deeps (redesign): fixes from the first full run
+
+`tools/bfa/blackfathom-layouts.patch` (changed) and `sql/fixes/world/2026_10_18_00_blackfathom_redesign_fixes.sql`.
+Four ran the redesign from the entrance to Twilight Lord Bathiel on 2026-10-18 and reported 28 findings.
+On PR #14, not merged yet.
+
+- **Found:**
+  - After Bathiel died, the Portal of Aku'mai stayed shut, so Aku'mai the Devourer couldn't be reached.
+    In HavenCore, a new instance's bosses start as TO_BE_DECIDED. `InstanceScript::SetBossState` from that
+    state only records the new state and returns false. The redesign bosses have no boss scripts, so
+    their first state change is DONE, and the instance script's door and spawn updates never ran. The same
+    bug kept Domina and Kor'ul from appearing over Bathiel's altar, and would have kept the quest givers and
+    the Spoils chest from appearing after Aku'mai. Their kills weren't saved either.
+  - Twilight Disciples (74989, 75012), a Twilight Storm Mender (75011), Subjugator Kor'ul (74565) and three
+    murlocs in his room (75641-75643) were friendly and level 1: placeholder templates (faction 35,
+    level 1, no loot). Kor'ul couldn't be attacked.
+  - A second Guardian of the Deep (75410, spawn 4800176), friendly, stood on the ledge by Thruk.
+  - Executioner Gore played his yell but no text appeared. The redesign's lines use text range 1 (area),
+    which only reaches players in the speaker's area id, and in Blackfathom Deeps players have no valid
+    area id (worldserver logged "Area: 1575977184 (Unknown)").
+  - The classic quests had no source in the redesign: no Twilight Pendants (Twilight Falls) and no
+    Corrupted Brain Stems (Researching the Corruption). The Head of Kelris and the Strange Water Globe
+    had no source either, and the Fathom Stone and the Pitted Iron Chest were classic-only spawns.
+- **Changed (patch):** `instance_blackfathom_deeps.cpp` sets a redesign boss to NOT_STARTED before DONE
+  when its state is still TO_BE_DECIDED. Its death now saves the run, opens the Portal of Aku'mai (Bathiel)
+  and shows the spawns that wait for it.
+- **Changed (SQL, `2026_10_18_00`):**
+  - The placeholder templates copy the hostile creature of the same name. Twilight Disciples 74989 and
+    75012 copy 75286 (faction 14, level 23), Storm Mender 75011 copies 74980 (level 24), Kor'ul copies
+    Domina (faction 14, level 25), the Bilefins 75641/75642 copy 74721 and the murloc 75643 copies 74720.
+    The copies cover level, gold, loot and pickpocket tables. The murloc 75640 gets 74720's loot table.
+  - Guardian of the Deep spawn 4800176 is deleted.
+  - `creature_text` range 1 becomes 0 (normal say/yell distance) for Executioner Gore 74988 and 74518,
+    Sentinel Aluwyn, Zeya and the Frightened Prisoner 75428.
+  - Quest items, all quest-only drops at 100%: Twilight Pendant 5879 from every redesign Twilight's
+    Hammer creature (16 loot tables; Twilight Tormentor 75034 gets its own). Corrupted Brain Stem 5952
+    from the Blindlight murlocs (74719, 74720, 74721, 74984, 75658). Head of Kelris 5881 from Bathiel.
+    Strange Water Globe 16782 from Executioner Gore 74518, which starts Baron Aquanis, so it drops
+    without a quest, as it did from Aquanis.
+  - The Fathom Stone (188159) and the Pitted Iron Chest (188182) are in new spawn group 442, which shows
+    in both layouts.
+- **Not done yet:** the Coiled Rope shortcut, the boss spells that do nothing (Piercing Rain, Restorative
+  Waters, Spore Cloud, the Rotmouth's vomit), the executions and the Ghamoo-Ra and tentacle events, and
+  weapons for the Twilight's Hammer creatures (no equipment data).
+- **Status:** the patch compiles here and applies on the full chain; the SQL ran twice against the dump.
+  Not yet tested in game.
+
+#### To pick up the redesign fixes
+The patch changed, so the old version comes out first (commit 1c47a4c is the last one with it), then the
+new one goes in. Then the SQL, the build, and a restart. Start a new instance afterwards.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show 1c47a4c:tools/bfa/blackfathom-layouts.patch | git apply -R
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/blackfathom-layouts.patch | git apply
+grep -c "TO_BE_DECIDED" src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_deeps.cpp
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_18_00_blackfathom_redesign_fixes.sql | mysql -u root -p bfa_world
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 2.
+
 ## 2026-10-17
 
 ### Blackfathom Deeps (redesign): Executioner Gore at the prisoners can't be fought

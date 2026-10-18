@@ -1,36 +1,7 @@
-diff --git a/src/server/game/Instances/InstanceScript.h b/src/server/game/Instances/InstanceScript.h
---- a/src/server/game/Instances/InstanceScript.h
-+++ b/src/server/game/Instances/InstanceScript.h
-@@ -387,6 +387,10 @@
- 
-         // Checks encounter state at kill/spellcast
-         void UpdateEncounterStateForKilledCreature(uint32 creatureId, Unit* source);
-+
-+        // The creature entry a kill of this creature counts as for the instance's scenario
-+        // (dungeon objectives). Lets a dungeon map its own bosses onto the client's objectives.
-+        virtual uint32 GetScenarioKillCredit(Creature const* creature) const;
-         void UpdateEncounterStateForSpellCast(uint32 spellId, Unit* source);
- 
-         // Used only during loading
-diff --git a/src/server/game/Instances/InstanceScript.cpp b/src/server/game/Instances/InstanceScript.cpp
---- a/src/server/game/Instances/InstanceScript.cpp
-+++ b/src/server/game/Instances/InstanceScript.cpp
-@@ -847,6 +847,11 @@
- }
- 
- // Update Achievement Criteria for all players in instance
-+uint32 InstanceScript::GetScenarioKillCredit(Creature const* creature) const
-+{
-+    return creature->GetEntry();
-+}
-+
- void InstanceScript::DoUpdateCriteria(CriteriaTypes type, uint32 miscValue1 /*= 0*/, uint32 miscValue2 /*= 0*/, Unit* unit /*= nullptr*/)
- {
-     if (!instance)
 diff --git a/src/server/game/Entities/Player/KillRewarder.cpp b/src/server/game/Entities/Player/KillRewarder.cpp
 --- a/src/server/game/Entities/Player/KillRewarder.cpp
 +++ b/src/server/game/Entities/Player/KillRewarder.cpp
-@@ -291,7 +291,10 @@
+@@ -291,7 +291,10 @@ void KillRewarder::Reward()
                  guild->UpdateCriteria(CRITERIA_TYPE_KILL_CREATURE, victim->GetEntry(), 1, 0, victim, _killer);
  
          if (Scenario* scenario = victim->GetScenario())
@@ -45,7 +16,7 @@ diff --git a/src/server/game/Entities/Player/KillRewarder.cpp b/src/server/game/
 diff --git a/src/server/game/Entities/Unit/Unit.cpp b/src/server/game/Entities/Unit/Unit.cpp
 --- a/src/server/game/Entities/Unit/Unit.cpp
 +++ b/src/server/game/Entities/Unit/Unit.cpp
-@@ -11540,7 +11540,9 @@
+@@ -11540,7 +11540,9 @@ void Unit::Kill(Unit* victim, bool durabilityLoss)
                  // Dungeon and raid bosses always drop at least one item from their own loot table. A boss is an
                  // instance_encounters credit, or a creature the dungeon's scenario asks to kill once
                  Scenario const* scenario = creature->GetScenario();
@@ -56,6 +27,133 @@ diff --git a/src/server/game/Entities/Unit/Unit.cpp b/src/server/game/Entities/U
                      if (uint32 lootid = creature->GetCreatureTemplate()->lootid)
                          if (LootTemplate const* lootTemplate = LootTemplates_Creature.GetLootFor(lootid))
                              lootTemplate->AddItemIfNoneDropped(*loot, creature->GetLootMode(), looter);
+diff --git a/src/server/game/Instances/InstanceScript.cpp b/src/server/game/Instances/InstanceScript.cpp
+--- a/src/server/game/Instances/InstanceScript.cpp
++++ b/src/server/game/Instances/InstanceScript.cpp
+@@ -847,6 +847,11 @@ void InstanceScript::DoResurrectPlayers(float restore_percent)
+ }
+ 
+ // Update Achievement Criteria for all players in instance
++uint32 InstanceScript::GetScenarioKillCredit(Creature const* creature) const
++{
++    return creature->GetEntry();
++}
++
+ void InstanceScript::DoUpdateCriteria(CriteriaTypes type, uint32 miscValue1 /*= 0*/, uint32 miscValue2 /*= 0*/, Unit* unit /*= nullptr*/)
+ {
+     if (!instance)
+diff --git a/src/server/game/Instances/InstanceScript.h b/src/server/game/Instances/InstanceScript.h
+--- a/src/server/game/Instances/InstanceScript.h
++++ b/src/server/game/Instances/InstanceScript.h
+@@ -387,6 +387,10 @@ class TC_GAME_API InstanceScript : public ZoneScript
+ 
+         // Checks encounter state at kill/spellcast
+         void UpdateEncounterStateForKilledCreature(uint32 creatureId, Unit* source);
++
++        // The creature entry a kill of this creature counts as for the instance's scenario
++        // (dungeon objectives). Lets a dungeon map its own bosses onto the client's objectives.
++        virtual uint32 GetScenarioKillCredit(Creature const* creature) const;
+         void UpdateEncounterStateForSpellCast(uint32 spellId, Unit* source);
+ 
+         // Used only during loading
+diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.cpp b/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.cpp
+--- a/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.cpp
++++ b/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.cpp
+@@ -17,6 +17,7 @@
+ 
+ #include "ScriptMgr.h"
+ #include "blackfathom_deeps.h"
++#include "Chat.h"
+ #include "GameObject.h"
+ #include "InstanceScript.h"
+ #include "Player.h"
+@@ -218,6 +219,79 @@ public:
+     }
+ };
+ 
++enum ChroniclerGossip
++{
++    GOSSIP_ACTION_LAYOUT_INFO                               = GOSSIP_ACTION_INFO_DEF + 1,
++    GOSSIP_ACTION_LAYOUT_CHANGE                             = GOSSIP_ACTION_INFO_DEF + 2
++};
++
++// 4800000 - Blackfathom Chronicler (custom): shows which layout the instance has and changes it
++// until the first boss of the run is defeated
++class npc_blackfathom_chronicler : public CreatureScript
++{
++public:
++    npc_blackfathom_chronicler() : CreatureScript("npc_blackfathom_chronicler") { }
++
++    static char const* LayoutName(uint32 layout)
++    {
++        return layout == LAYOUT_CLASSIC ? "classic" : "redesigned";
++    }
++
++    bool OnGossipHello(Player* player, Creature* creature) override
++    {
++        InstanceScript* instance = creature->GetInstanceScript();
++        if (!instance)
++            return false;
++
++        uint32 const layout = instance->GetData(DATA_LAYOUT);
++        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Which Blackfathom Deeps is this?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_LAYOUT_INFO);
++        AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, layout == LAYOUT_CLASSIC
++            ? "Show me the redesigned Blackfathom Deeps (Domina, Thruk, Twilight Lord Bathiel...)."
++            : "Show me the classic Blackfathom Deeps (Lady Sarevess, Gelihast, Twilight Lord Kelris...).", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_LAYOUT_CHANGE);
++        SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
++        return true;
++    }
++
++    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
++    {
++        CloseGossipMenuFor(player);
++
++        InstanceScript* instance = creature->GetInstanceScript();
++        if (!instance)
++            return true;
++
++        ChatHandler handler(player->GetSession());
++        uint32 const layout = instance->GetData(DATA_LAYOUT);
++        switch (action)
++        {
++            case GOSSIP_ACTION_LAYOUT_INFO:
++                handler.PSendSysMessage("This is the %s Blackfathom Deeps. Its bosses count for the dungeon's objectives either way.", LayoutName(layout));
++                if (instance->GetData(DATA_LAYOUT_LOCKED))
++                    handler.PSendSysMessage("A boss has fallen here, so the layout is set until the instance resets.");
++                else
++                    handler.PSendSysMessage("Until the first boss falls, I can show you the other one.");
++                break;
++            case GOSSIP_ACTION_LAYOUT_CHANGE:
++                if (instance->GetData(DATA_LAYOUT_LOCKED))
++                {
++                    handler.PSendSysMessage("A boss has fallen here, so the layout is set until the instance resets.");
++                    break;
++                }
++                if (player->IsInCombat())
++                {
++                    handler.PSendSysMessage("Not while you are fighting.");
++                    break;
++                }
++                instance->SetData(DATA_LAYOUT, layout == LAYOUT_CLASSIC ? LAYOUT_REDESIGN : LAYOUT_CLASSIC);
++                handler.PSendSysMessage("The deeps shift. This is now the %s Blackfathom Deeps.", LayoutName(instance->GetData(DATA_LAYOUT)));
++                break;
++            default:
++                break;
++        }
++        return true;
++    }
++};
++
+ // 151159 - Darkness Calls
+ class spell_subjugator_korul_darkness_calls : public SpellScriptLoader
+ {
+@@ -253,5 +327,6 @@ void AddSC_blackfathom_deeps()
+     new go_blackfathom_fire();
+     new npc_blackfathom_deeps_event();
+     new npc_morridune();
++    new npc_blackfathom_chronicler();
+     new spell_subjugator_korul_darkness_calls();
+ }
 diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.h b/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.h
 --- a/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.h
 +++ b/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.h
@@ -97,7 +195,7 @@ diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.h b/
  
  enum BFDData64
  {
-@@ -42,8 +71,20 @@
+@@ -42,8 +71,20 @@ enum BFDData
      DATA_GELIHAST,
      DATA_KELRIS,
      DATA_AKU_MAI,
@@ -120,7 +218,7 @@ diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.h b/
  };
  
  enum BFDCreatureIds
-@@ -56,7 +97,26 @@
+@@ -56,7 +97,26 @@ enum BFDCreatureIds
      NPC_AKU_MAI_SERVANT                                    = 4978,
      NPC_BARBED_CRUSTACEAN                                  = 4823,
  
@@ -148,7 +246,7 @@ diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.h b/
  };
  
  enum BFDGameObjectIds
-@@ -67,7 +127,8 @@
+@@ -67,7 +127,8 @@ enum BFDGameObjectIds
      GO_FIRE_OF_AKU_MAI_3                                   = 21120,
      GO_FIRE_OF_AKU_MAI_4                                   = 21121,
      GO_AKU_MAI_DOOR                                        = 21117,
@@ -161,7 +259,7 @@ diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.h b/
 diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_deeps.cpp b/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_deeps.cpp
 --- a/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_deeps.cpp
 +++ b/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_deeps.cpp
-@@ -24,10 +24,15 @@
+@@ -24,10 +24,15 @@ EndScriptData */
  
  #include "ScriptMgr.h"
  #include "blackfathom_deeps.h"
@@ -177,7 +275,7 @@ diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_d
  
  const Position LorgusPosition[4] =
  {
-@@ -46,6 +51,54 @@
+@@ -46,6 +51,54 @@ const Position SpawnsLocation[] =
      {-863.895f, -458.899f, -33.891f, 5.637f}
  };
  
@@ -232,7 +330,7 @@ diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_d
  class instance_blackfathom_deeps : public InstanceMapScript
  {
  public:
-@@ -65,10 +118,128 @@
+@@ -65,10 +118,128 @@ public:
  
              countFires = 0;
              deathTimes = 0;
@@ -361,7 +459,7 @@ diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_d
              switch (creature->GetEntry())
              {
                  case NPC_TWILIGHT_LORD_KELRIS:
-@@ -82,6 +253,10 @@
+@@ -82,6 +253,10 @@ public:
  
          void OnGameObjectCreate(GameObject* go) override
          {
@@ -372,7 +470,7 @@ diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_d
              switch (go->GetEntry())
              {
                  case GO_FIRE_OF_AKU_MAI_1:
-@@ -107,6 +282,15 @@
+@@ -107,6 +282,15 @@ public:
                          go->AddFlag(GO_FLAG_NOT_SELECTABLE);
                      break;
                  case GO_AKU_MAI_DOOR:
@@ -388,7 +486,7 @@ diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_d
                      if (GetBossState(DATA_AKU_MAI) == DONE)
                          HandleGameObject(ObjectGuid::Empty, true, go);
                      mainDoorGUID = go->GetGUID();
-@@ -118,6 +302,14 @@
+@@ -118,6 +302,14 @@ public:
          {
              switch (type)
              {
@@ -403,7 +501,7 @@ diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_d
                  case DATA_FIRE:
                      countFires = data;
                      switch (countFires)
-@@ -170,8 +362,15 @@
+@@ -170,8 +362,15 @@ public:
              if (!InstanceScript::SetBossState(type, state))
                  return false;
  
@@ -419,7 +517,7 @@ diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_d
                  case DATA_GELIHAST:
                      if (state == DONE)
                          if (GameObject* go = instance->GetGameObject(shrineOfGelihastGUID))
-@@ -192,10 +391,47 @@
+@@ -192,10 +391,52 @@ public:
              return true;
          }
  
@@ -444,7 +542,12 @@ diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_d
 +                if (credit.redesignEntry != creature->GetEntry())
 +                    continue;
 +
-+                // The redesign bosses have no boss scripts yet; their deaths save the run's progress
++                // The redesign bosses have no boss scripts yet; their deaths save the run's progress.
++                // A new instance's bosses start as TO_BE_DECIDED, and SetBossState from that state only
++                // records the new state and returns false: nothing is saved, and the door and spawn
++                // updates below don't run. A boss no boss script has engaged is set NOT_STARTED first.
++                if (GetBossState(credit.redesignBossId) == TO_BE_DECIDED)
++                    SetBossState(credit.redesignBossId, NOT_STARTED);
 +                if (GetBossState(credit.redesignBossId) != DONE)
 +                    SetBossState(credit.redesignBossId, DONE);
 +
@@ -467,7 +570,7 @@ diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_d
                  case DATA_FIRE:
                      return countFires;
                  case DATA_EVENT:
-@@ -237,8 +473,11 @@
+@@ -237,8 +478,11 @@ public:
          ObjectGuid shrineOfGelihastGUID;
          ObjectGuid altarOfTheDeepsGUID;
          ObjectGuid mainDoorGUID;
@@ -479,108 +582,10 @@ diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_d
      };
  };
  
-diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.cpp b/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.cpp
---- a/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.cpp
-+++ b/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.cpp
-@@ -17,6 +17,7 @@
- 
- #include "ScriptMgr.h"
- #include "blackfathom_deeps.h"
-+#include "Chat.h"
- #include "GameObject.h"
- #include "InstanceScript.h"
- #include "Player.h"
-@@ -218,6 +219,79 @@
-     }
- };
- 
-+enum ChroniclerGossip
-+{
-+    GOSSIP_ACTION_LAYOUT_INFO                               = GOSSIP_ACTION_INFO_DEF + 1,
-+    GOSSIP_ACTION_LAYOUT_CHANGE                             = GOSSIP_ACTION_INFO_DEF + 2
-+};
-+
-+// 4800000 - Blackfathom Chronicler (custom): shows which layout the instance has and changes it
-+// until the first boss of the run is defeated
-+class npc_blackfathom_chronicler : public CreatureScript
-+{
-+public:
-+    npc_blackfathom_chronicler() : CreatureScript("npc_blackfathom_chronicler") { }
-+
-+    static char const* LayoutName(uint32 layout)
-+    {
-+        return layout == LAYOUT_CLASSIC ? "classic" : "redesigned";
-+    }
-+
-+    bool OnGossipHello(Player* player, Creature* creature) override
-+    {
-+        InstanceScript* instance = creature->GetInstanceScript();
-+        if (!instance)
-+            return false;
-+
-+        uint32 const layout = instance->GetData(DATA_LAYOUT);
-+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Which Blackfathom Deeps is this?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_LAYOUT_INFO);
-+        AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, layout == LAYOUT_CLASSIC
-+            ? "Show me the redesigned Blackfathom Deeps (Domina, Thruk, Twilight Lord Bathiel...)."
-+            : "Show me the classic Blackfathom Deeps (Lady Sarevess, Gelihast, Twilight Lord Kelris...).", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_LAYOUT_CHANGE);
-+        SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
-+        return true;
-+    }
-+
-+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
-+    {
-+        CloseGossipMenuFor(player);
-+
-+        InstanceScript* instance = creature->GetInstanceScript();
-+        if (!instance)
-+            return true;
-+
-+        ChatHandler handler(player->GetSession());
-+        uint32 const layout = instance->GetData(DATA_LAYOUT);
-+        switch (action)
-+        {
-+            case GOSSIP_ACTION_LAYOUT_INFO:
-+                handler.PSendSysMessage("This is the %s Blackfathom Deeps. Its bosses count for the dungeon's objectives either way.", LayoutName(layout));
-+                if (instance->GetData(DATA_LAYOUT_LOCKED))
-+                    handler.PSendSysMessage("A boss has fallen here, so the layout is set until the instance resets.");
-+                else
-+                    handler.PSendSysMessage("Until the first boss falls, I can show you the other one.");
-+                break;
-+            case GOSSIP_ACTION_LAYOUT_CHANGE:
-+                if (instance->GetData(DATA_LAYOUT_LOCKED))
-+                {
-+                    handler.PSendSysMessage("A boss has fallen here, so the layout is set until the instance resets.");
-+                    break;
-+                }
-+                if (player->IsInCombat())
-+                {
-+                    handler.PSendSysMessage("Not while you are fighting.");
-+                    break;
-+                }
-+                instance->SetData(DATA_LAYOUT, layout == LAYOUT_CLASSIC ? LAYOUT_REDESIGN : LAYOUT_CLASSIC);
-+                handler.PSendSysMessage("The deeps shift. This is now the %s Blackfathom Deeps.", LayoutName(instance->GetData(DATA_LAYOUT)));
-+                break;
-+            default:
-+                break;
-+        }
-+        return true;
-+    }
-+};
-+
- // 151159 - Darkness Calls
- class spell_subjugator_korul_darkness_calls : public SpellScriptLoader
- {
-@@ -253,5 +327,6 @@
-     new go_blackfathom_fire();
-     new npc_blackfathom_deeps_event();
-     new npc_morridune();
-+    new npc_blackfathom_chronicler();
-     new spell_subjugator_korul_darkness_calls();
- }
 diff --git a/src/server/worldserver/worldserver.conf.dist b/src/server/worldserver/worldserver.conf.dist
 --- a/src/server/worldserver/worldserver.conf.dist
 +++ b/src/server/worldserver/worldserver.conf.dist
-@@ -4662,3 +4662,22 @@
+@@ -4662,3 +4662,22 @@ DungeonScale.XP.StopAfterCompletion = 1
  
  #
  ###################################################################################################
