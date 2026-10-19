@@ -54,7 +54,8 @@ credited Domina, Subjugator Kor'ul and the Guardian of the Deep. On PR #14, not 
 - **Changed (SQL):** deleted the 19 alcove spawns and the spawned Morridune (with their
   `creature_addon` rows); moved Sea Witch 321185 to (-607.3, -35.0, -24.9), Myrmidon 321205 to
   (-610.3, -30.7, -24.3) and Sea Witch 321204 to (-610.0, -27.5, -24.1). Myrmidon 321131 stays.
-- **Status:** the SQL ran twice against the dump. Not tested in game.
+- **Status:** the SQL ran twice against the dump. Confirmed in game by Four on 2026-10-19 ("classic
+  working as desired").
 
 #### To pick up the classic fixes
 SQL only, then a restart.
@@ -76,7 +77,8 @@ Four on 2026-10-19. On PR #14, not merged yet.
   rewards, exploration, XP-granting spells and player choices pass no victim, so they still count.
   `.dungeonscale info` now says "XP: quests only, kills give none ...". The descriptions of both keys in
   `worldserver.conf.dist` say kill XP. Your `worldserver.conf` needs no change.
-- **Status:** `solocraft.cpp` compiles here and the patch applies on the full chain. Not tested in game.
+- **Status:** `solocraft.cpp` compiles here and the patch applies on the full chain. Confirmed in game by
+  Four on 2026-10-19: quests in a dungeon give XP while kills give none.
 
 #### To pick up the XP change
 A new patch on top of the others, the build and a restart.
@@ -112,7 +114,7 @@ The grep prints 1.
   - Rope Ladder Climb (150851) gets a cast condition (source type 17, condition 29): Invisible Man 74997
     within 40 yards of the player, so the bottom post does nothing until the Coiled Rope was used. The
     jump target is still the Invisible Man 75000.
-- **Status:** the SQL ran twice against the dump. Not tested in game.
+- **Status:** the SQL ran twice against the dump. Confirmed in game by Four on 2026-10-19.
 
 #### To pick up the Coiled Rope fix
 SQL only, then a restart.
