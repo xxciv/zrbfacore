@@ -5,6 +5,81 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-19
 
+### World: Stormwind (Innkeeper Allison, stray spawns, Miss Danna's tour)
+
+Merged to `main` with PR #13 on 2026-10-19.
+
+#### Innkeeper Allison has no inn or vendor options
+- **Found** (reported by Four): Innkeeper Allison (6740) in the Trade District only offered "Make this
+  inn your home" and "Let me browse your goods" while her Hallow's End quest was available. She is the
+  only big-city innkeeper set up differently: `gossip_menu_id` 0 and no `ScriptName`, while Innkeeper
+  Farley (295), Brianna (6727), Belm (1247), Firebrew (5111), Norman (6741) and the other city
+  innkeepers use `ScriptName` `npc_innkeeper` with a real innkeeper menu. `npc_innkeeper`
+  (`src/server/scripts/World/npc_innkeeper.cpp`) builds the inn, vendor and Hallow's End "Trick or
+  Treat" options itself. Why the default menu 0 path left her without options wasn't pinned down; the
+  fix gives her the same setup as the innkeepers that work.
+- **Changed:** new `sql/fixes/world/2026_10_19_03_stormwind_innkeeper_allison.sql`:
+  `creature_template` 6740 `gossip_menu_id` 0 -> 342 (the menu her own SmartAI's Trick or Treat rows
+  expect, also used by Innkeeper Brianna), `ScriptName` '' -> 'npc_innkeeper'. Her SmartAI
+  (/flex credit for Flexing for Nougat) is unchanged.
+- **Status:** confirmed in game by Four on 2026-10-19.
+
+#### A Prisoner on the bridge and Gil under it
+- **Found** (reported by Four): a Prisoner (53527, guid 300000881) stood alone in the middle of the bridge
+  between the Trade District and the Mage Quarter, and Gil (3504, guid 189600) was stuck under the bridge
+  next to it.
+  - The Prisoner is the only spawn of 53527 on the server, with no waypoints, formation or SmartAI: the
+    guard escort it belongs to doesn't exist here.
+  - Gil's spawn (`VerifiedBuild` 0, not sniffed) had no path or formation and just stood under the
+    bridge. He comes back on his own walking path in the Miss Danna fix below.
+- **Changed:** new `sql/fixes/world/2026_10_19_04_stormwind_stray_spawns.sql` deletes both spawns
+  (`creature` and `creature_addon` guids 300000881 and 189600). The file has the rows to put back in its
+  comments.
+- **Status:** confirmed in game by Four on 2026-10-19.
+
+#### Miss Danna, her school group and Gil were missing from Stormwind
+- **Found** (asked by Four, who checked Wowhead and Wowpedia: she should still walk her tour): Miss
+  Danna (3513) and the children Pat (3505), Andi (3507), Mikey (3508), Geoff (3509), Twain (3510),
+  Steven (3511) and Jimmy (3512) had creature templates and SmartAI but no spawns, in the dump or in
+  any core update. Their SmartAI here started a `waypoints` path 3513 that doesn't exist, and Miss
+  Danna, Steven and Jimmy had no `creature_text`. Gil (3504) only had the stray spawn under the bridge.
+- **Source:** the alexkulya/pandaria_5.4.8 world database (`sql/base/world_04_03_2023.zip`, the same
+  reference the zrpandaria548 spawncompare tool uses) has the whole group: spawns, Miss Danna's path,
+  the formation, her SmartAI and texts, and Gil on his own path. Everything is copied from there and
+  converted to this core's columns.
+- **Changed:** new `sql/fixes/world/2026_10_19_05_stormwind_miss_danna_orphans.sql`:
+  - `creature`: Miss Danna guid 188983 (MovementType 2) and the seven children 188984 to 188990 in the
+    Trade District at (-8838.52, 670.28); Gil guid 6183 (MovementType 2) at (-8780, 899.541).
+    Respawn 300 s (Pandaria had 43200 for the group).
+  - `creature_addon`: path 188983 for Miss Danna, path 6183 for Gil.
+  - `waypoint_data`: path 188983, 60 points (Trade District, Cathedral Square, Stormwind Keep, the
+    Valley of Heroes and back, with stops of 15 to 22 s at each sight); path 6183, 25 points (Gil's walk
+    toward the Mage Quarter and back). Gil's Pandaria path called `waypoint_scripts` 102 to 116; those
+    are not copied (`action` 0), his SmartAI already says his lines.
+  - `creature_formations`: the seven children follow 188983. `groupAI` 514 instead of Pandaria's 2,
+    because this core only moves members with the leader when `FLAG_IDLE_IN_FORMATION` (0x200) is set
+    (`CreatureGroup::LeaderMoveTo`).
+  - `smart_scripts`: Miss Danna (3513, ids 0 to 6) starts action lists 351300 to 351306 on reaching
+    path nodes 20, 34, 35, 37, 51, 52 and 54; they make her talk and emote, make Jimmy and Steven ask
+    their questions, and tell the children which way to face (children ids 0 to 2, data set 1/2/3).
+    Replaced: her old rows 0 to 8, the children's ids 0 and 1 (follow Miss Danna) and action lists
+    351300 to 351302. The children's emote reactions (ids 100 and up) are kept.
+  - `creature_text`: Miss Danna groups 0 to 5, 7 and 8, Steven 0, Jimmy 0. Group 5 isn't in the
+    Pandaria data; its text is from Wowpedia. The text for group 6 (at the Valley of Heroes) isn't known
+    anywhere checked, so that one talk row is left out and she only plays the emote there.
+- **Status:** confirmed in game by Four on 2026-10-19.
+
+### To pick up the Stormwind fixes
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_19_03_stormwind_innkeeper_allison.sql
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_19_04_stormwind_stray_spawns.sql
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_19_05_stormwind_miss_danna_orphans.sql
+```
+Then restart worldserver.
+
 ### Blackfathom Deeps (redesign): weapons, and the missing breath bar
 
 `sql/fixes/world/2026_10_19_02_blackfathom_redesign_equipment.sql`, and a setting. Both from Four's
@@ -492,6 +567,75 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_17_02_blackfathom_j
 Then restart `worldserver`.
 
 ## 2026-10-16
+
+### World: Lazy Peons (Durotar)
+
+#### The Foreman's Blackjack says "Invalid target" on every Lazy Peon
+- **Found** (reported by Four): every Lazy Peon (10556) in the Valley of Trials lay asleep, and the
+  Foreman's Blackjack said "Invalid target" on all of them, so quest 37446 "Lazy Peons" couldn't be
+  done. Lying asleep at spawn is intended (on retail the peons nap by the lumber piles until you wake
+  them). The blackjack's spell, Awaken Peon (19938), only accepts a target that has the aura Peon
+  Sleeping (17743): `Spell::CheckCast` in `Spell.cpp` checks it, and so does the spell condition
+  (`conditions` source 17, entry 19938). Since the core's world update
+  `2026_09_20_valley_of_trials_cosmetic_improvements.sql`, the peon's SmartAI adds 17743 once, on reset
+  (spawn and after evading), and sets stand state 3 (asleep). The old C++ script `npc_lazy_peon`
+  (removed from the peon by update `2026_08_06_00_Quest37446_Lazy_Peons_Fix.sql`) recast 17743 every
+  5 minutes, because the aura runs out. After it runs out the peon keeps lying down, since the stand
+  state doesn't change, but it can't be targeted. That the aura expiring is the cause is inferred from
+  the old script and the error; it wasn't checked in game.
+- **Changed:** new `sql/fixes/world/2026_10_16_04_durotar_lazy_peon_sleep_aura.sql`, on
+  `smart_scripts` for 10556 (`source_type` 0):
+  - id 1 (on reset, add aura 17743): `link` 0 -> 7.
+  - id 6 (on wake, start the work action list 1055600): `link` 0 -> 8.
+  - new id 7: linked from id 1, set event phase 1 (asleep).
+  - new id 8: linked from id 6, set event phase 2 (working).
+  - new id 9: out of combat, only in phase 1, every 30 s, add aura 17743 again.
+  Waking, quest credit, the walk to the lumber pile, chopping for 60 to 180 s and going back to sleep
+  (rows 0 to 6 and action list 1055600 from the core update) are unchanged.
+- **Status:** confirmed in game by Four on 2026-10-16: the blackjack wakes the peons again.
+
+### To pick up the Lazy Peon fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_16_04_durotar_lazy_peon_sleep_aura.sql
+```
+Then restart worldserver.
+
+### World: Northwatch Scout (Durotar)
+
+#### Northwatch Scout never melees, only casts Fan of Knives
+- **Found** (reported by Four): Northwatch Scout (39317) in the Valley of Trials, Durotar, only ever
+  cast Fan of Knives and never auto-attacked. The dump has 23 `smart_scripts` rows for 39317 from two
+  different script versions mixed together (none of the core's `sql/updates/world` files touch them).
+  On aggro, the old link chain (ids 0, 1, 2) cast Shoot once, then ran action 20
+  (`SMART_ACTION_AUTO_ATTACK`) with 0, which turns melee off for the rest of the fight. The newer rows
+  that turn it back on and switch between Shoot and melee (ids 4 to 15, 18) all have
+  `event_phase_mask` 1, and nothing sets phase 1, so they never ran. Shoot (6660) has a minimum range,
+  so next to the player only Fan of Knives (id 3) still worked. Id 16 (a talk on combat) did nothing
+  either, because 39317 has no `creature_text`.
+- **Faction:** unchanged. The scout's faction 190 shows as neutral (yellow). That value is sniffed data
+  from build 35662, and every other mob in the Valley of Trials is neutral too (Mottled Boar, Scorpid
+  Worker, Vile Familiar and Sarkoth are faction 7), so neutral is expected. It only fights back when
+  attacked.
+- **Changed:** new `sql/fixes/world/2026_10_16_03_durotar_northwatch_scout.sql` deletes every
+  `smart_scripts` row for 39317 (`source_type` 0) and inserts three:
+  - id 0: on reset (spawn and after evade), cast Stealth (58506) on itself if it isn't stealthed.
+  - id 1: when the target is 5 to 30 yards away, cast Shoot (6660) on it every 2.3 to 3.9 s.
+  - id 2: when the target is within 8 yards, cast Fan of Knives (79584) every 15 to 22 s (was within
+    10 yards).
+  Melee and chasing are left to SmartAI's defaults, so it auto-attacks in melee range.
+- **Status:** confirmed in game by Four on 2026-10-16.
+
+### To pick up the Northwatch Scout fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_16_03_durotar_northwatch_scout.sql
+```
+Then restart worldserver.
 
 ### Loot: reference loot tables never dropped, and bosses now always drop an item
 
