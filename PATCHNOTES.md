@@ -26,7 +26,8 @@ redesign runs. On PR #14, not merged yet.
   set in that data and stay unarmed.
 - **Changed (setting, optional):** `DisableWaterBreath = 4` in `worldserver.conf` gives GM accounts
   normal breath. The guide now mentions it.
-- **Status:** the SQL ran twice against the dump. Not tested in game.
+- **Status:** the SQL ran twice against the dump. Confirmed in game by Four on 2026-10-19 (weapons shown,
+  breath bar with `DisableWaterBreath = 4`).
 
 #### To pick up the weapons and the breath setting
 SQL and a config line, then a restart. No rebuild.
