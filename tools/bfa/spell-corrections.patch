@@ -1,0 +1,18 @@
+diff --git a/src/server/game/Spells/SpellMgr.cpp b/src/server/game/Spells/SpellMgr.cpp
+--- a/src/server/game/Spells/SpellMgr.cpp
++++ b/src/server/game/Spells/SpellMgr.cpp
+@@ -2735,6 +2735,14 @@
+         spellInfo->AttributesEx5 &= ~SPELL_ATTR5_SINGLE_TARGET_SPELL; // it is multitarget aoe spell
+     });
+ 
++    // Poison Cloud (Aku'mai, Blackfathom Deeps)
++    ApplySpellFix({ 3815 }, [](SpellInfo* spellInfo)
++    {
++        // 8.3.7 data has aura 70 (extra attacks, client-side only) with a 3 s period and 33 base points,
++        // so the cloud did nothing; it is the old periodic nature damage
++        const_cast<SpellEffectInfo*>(spellInfo->GetEffect(EFFECT_0))->ApplyAuraName = SPELL_AURA_PERIODIC_DAMAGE;
++    });
++
+     ApplySpellFix({
+         63026, // Summon Aspirant Test NPC (HACK: Target shouldn't be changed)
+         63137  // Summon Valiant Test (HACK: Target shouldn't be changed; summon position should be untied from spell destination)

@@ -1,0 +1,12 @@
+-- Stormwind, Trade District: Innkeeper Allison (6740) has no "Make this inn your home" or
+-- "Let me browse your goods" outside of Hallow's End quests.
+-- She is the only big-city innkeeper set up differently: gossip_menu_id 0 and no ScriptName,
+-- while Innkeeper Farley (295), Brianna (6727), Belm (1247), Firebrew (5111), Norman (6741) and
+-- the other city innkeepers use ScriptName npc_innkeeper with a real innkeeper menu. npc_innkeeper
+-- (src/server/scripts/World/npc_innkeeper.cpp) builds the inn, vendor and Hallow's End
+-- "Trick or Treat" options itself. Her own SmartAI expects menu 342 (rows id 0/1, gossip select
+-- 342/0, Trick or Treat), the menu Brianna uses, so she gets menu 342 and the same script.
+-- Her other SmartAI row (/flex credit for Flexing for Nougat) is unchanged.
+-- Revert:
+-- UPDATE `creature_template` SET `gossip_menu_id` = 0, `ScriptName` = '' WHERE `entry` = 6740;
+UPDATE `creature_template` SET `gossip_menu_id` = 342, `ScriptName` = 'npc_innkeeper' WHERE `entry` = 6740;

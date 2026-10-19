@@ -1,0 +1,97 @@
+diff --git a/src/server/scripts/Custom/solocraft.cpp b/src/server/scripts/Custom/solocraft.cpp
+--- a/src/server/scripts/Custom/solocraft.cpp
++++ b/src/server/scripts/Custom/solocraft.cpp
+@@ -292,11 +292,11 @@
+         // Largest share of the victim's max health one hit from a scaled creature may deal (0 = no cap).
+         float hitCapPct = 35.0f;
+ 
+-        bool xpEnable = true;                   // false: no XP at all inside scaled instances
+-        bool xpStopAfterCompletion = true;      // no XP once the player has the dungeon's achievement for this mode
++        bool xpEnable = true;                   // false: no kill XP inside scaled instances
++        bool xpStopAfterCompletion = true;      // no kill XP once the player has the dungeon's achievement for this mode
+     };
+ 
+-    // Why a player gets no XP in a scaled instance.
++    // Why a player gets no kill XP in a scaled instance. Quests and other XP without a victim are never blocked.
+     enum class XPBlock : uint8
+     {
+         None,
+@@ -821,7 +821,7 @@
+             return std::min(damage, cap);
+         }
+ 
+-        // Whether (and why) the player earns no XP where they are now.
++        // Whether (and why) the player earns no kill XP where they are now.
+         XPBlock GetXPBlock(Player const* player, uint32* achievementId = nullptr)
+         {
+             Map const* map = player->GetMap();
+@@ -1071,10 +1071,11 @@
+         sDungeonScale->OnPlayerUpdate(player);
+     }
+ 
+-    // DungeonScale.XP.*: kills and quests inside a scaled instance give no XP when switched off or once completed
+-    void OnGiveXP(Player* player, uint32& amount, Unit* /*victim*/) override
++    // DungeonScale.XP.*: kills inside a scaled instance give no XP when switched off or once completed.
++    // Only kill XP has a victim; quest, exploration and other XP still count.
++    void OnGiveXP(Player* player, uint32& amount, Unit* victim) override
+     {
+-        if (amount && sDungeonScale->GetXPBlock(player) != DungeonScale::XPBlock::None)
++        if (amount && victim && sDungeonScale->GetXPBlock(player) != DungeonScale::XPBlock::None)
+             amount = 0;
+     }
+ };
+@@ -1119,17 +1120,17 @@
+         switch (sDungeonScale->GetXPBlock(player, &achievementId))
+         {
+             case DungeonScale::XPBlock::Disabled:
+-                handler->SendSysMessage("XP: none inside scaled instances (DungeonScale.XP.Enable = 0).");
++                handler->SendSysMessage("XP: quests only, kills give none inside scaled instances (DungeonScale.XP.Enable = 0).");
+                 break;
+             case DungeonScale::XPBlock::Completed:
+             {
+                 AchievementEntry const* achievement = sAchievementStore.LookupEntry(achievementId);
+-                handler->PSendSysMessage("XP: none, you completed this dungeon in this mode (achievement %u \"%s\").", achievementId,
++                handler->PSendSysMessage("XP: quests only, kills give none: you completed this dungeon in this mode (achievement %u \"%s\").", achievementId,
+                     achievement ? achievement->Title->Str[handler->GetSessionDbcLocale()] : "");
+                 break;
+             }
+             default:
+-                handler->PSendSysMessage("XP: given%s.", cfg.xpStopAfterCompletion ? " until you complete this dungeon in this mode" : "");
++                handler->PSendSysMessage("XP: given%s.", cfg.xpStopAfterCompletion ? " (kills stop giving XP once you complete this dungeon in this mode)" : "");
+                 break;
+         }
+ 
+diff --git a/src/server/worldserver/worldserver.conf.dist b/src/server/worldserver/worldserver.conf.dist
+--- a/src/server/worldserver/worldserver.conf.dist
++++ b/src/server/worldserver/worldserver.conf.dist
+@@ -4642,21 +4642,22 @@
+ 
+ #
+ #    DungeonScale.XP.Enable
+-#        Description: XP inside scaled instances, from kills and quests. Turn it
+-#                     off to test dungeons without levelling out of them.
++#        Description: XP from kills inside scaled instances. Turn it off to test
++#                     dungeons without levelling out of them. Quests still give XP.
+ #        Default:     1 - XP as usual
+-#                     0 - no XP inside scaled instances
++#                     0 - no kill XP inside scaled instances (quest XP as usual)
+ 
+ DungeonScale.XP.Enable = 1
+ 
+ #
+ #    DungeonScale.XP.StopAfterCompletion
+-#        Description: No XP inside a scaled dungeon once you have its achievement
+-#                     for the mode you are in (for example "The Deadmines" for
+-#                     Normal), even while you are still in its level range.
++#        Description: No kill XP inside a scaled dungeon once you have its
++#                     achievement for the mode you are in (for example "The
++#                     Deadmines" for Normal), even while you are still in its
++#                     level range. Quests still give XP.
+ #                     `.dungeonscale info` shows which achievements count.
+-#        Default:     1 - no XP after completion
+-#                     0 - XP every run
++#        Default:     1 - no kill XP after completion
++#                     0 - kill XP every run
+ 
+ DungeonScale.XP.StopAfterCompletion = 1
+ 

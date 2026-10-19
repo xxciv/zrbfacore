@@ -97,6 +97,15 @@ git apply ../tools-repo/tools/bfa/player-search.patch
 git apply ../tools-repo/tools/bfa/stealth-pull.patch
 git apply ../tools-repo/tools/bfa/random-target.patch
 git apply ../tools-repo/tools/bfa/transmog-collection.patch
+git apply ../tools-repo/tools/bfa/loot-fixes.patch
+git apply ../tools-repo/tools/bfa/scenario-debug.patch
+git apply ../tools-repo/tools/bfa/wailing-caverns-fixes.patch
+git apply ../tools-repo/tools/bfa/dungeon-scale-xp.patch
+git apply ../tools-repo/tools/bfa/dungeon-boss-loot.patch
+git apply ../tools-repo/tools/bfa/blackfathom-layouts.patch
+git apply ../tools-repo/tools/bfa/dungeon-spell-fixes.patch
+git apply ../tools-repo/tools/bfa/dungeon-scale-quest-xp.patch
+git apply ../tools-repo/tools/bfa/spell-corrections.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -207,6 +216,45 @@ vanishing still resets the fight.
 `random-target.patch` fixes `UnitAI::DoCastRandom`, which scripts use to cast at a random player. It
 passed its aura filter where `SelectTarget` expects "include the tank", so the player a boss was fighting
 was never picked. Solo, that means those spells were never cast.
+
+`loot-fixes.patch` fixes loot tables that point to a shared reference table (world drops, most
+green items, many boss and chest tables). `LootTemplate::Process` handed the referenced table on without
+the looter, and `Loot::AddItem` throws away an item with no looter, so nothing from a reference ever
+dropped. About 2,740 creature loot tables use one. The same patch makes every dungeon and raid boss drop
+at least one item: when the normal rolls leave a boss with only gold (or only cloth and junk), one item
+from its own table is added, picked by drop chance. It also lets a corpse be skinned once you've
+taken everything you can see: an item hidden from you (a quest item for a quest you don't have) used to
+keep the corpse from ever counting as looted.
+
+`dungeon-boss-loot.patch` widens "boss" for that guarantee. The world database only lists some dungeons'
+bosses (`instance_encounters`; Blackfathom Deeps and Ragefire Chasm have none), so a creature also
+counts when the dungeon's scenario has an objective to kill it once ("Lady Anacondra defeated", and
+optional bosses such as Kresh).
+
+`blackfathom-layouts.patch` gives Blackfathom Deeps both of its layouts. The world database spawns the
+classic one (Lady Sarevess, Gelihast, Twilight Lord Kelris...), while the client's Adventure Guide and
+dungeon objectives describe the 6.0.2 redesign (Domina, Thruk, Twilight Lord Bathiel...). With
+`sql/fixes/world/2026_10_17_03_blackfathom_redesign_layout.sql` both are spawned, and the instance shows
+one: `Blackfathom.Layout` in `worldserver.conf` picks it for new instances (1, the redesign, by default),
+and the Blackfathom Chronicler just inside the entrance switches it until the first boss of the run dies.
+Either way, the bosses count for the dungeon's objectives.
+
+`dungeon-spell-fixes.patch` makes two kinds of creature spells work that did nothing. Spells aimed with a
+cone by entry (target 110) never picked a target, because the core's selection for them was commented
+out; they now pick the caster's enemies in a cone, or what the spell's conditions name. And spells
+whose dummy effect names the spell to cast (Piercing Rain, Foul Tempest and others in Blackfathom Deeps)
+get `spell_gen_dummy_cast_base_points`, through
+`sql/fixes/world/2026_10_18_01_blackfathom_redesign_spells.sql`.
+
+`scenario-debug.patch` adds a GM command, `.debug scenario`. Dungeons in this client run a scenario:
+the objective list on the right of the screen (Wailing Caverns has "Muyoh escorted", for one). Its steps
+and criteria live in the client's db2 files, not the world database. Typed inside a dungeon, the command
+lists each step, its criteria, what each one waits for (criteria type and the creature, event or spell
+id) and the group's progress, so a missing credit can be traced. It changes nothing in game.
+
+`wailing-caverns-fixes.patch` makes Muyoh's escort send the scenario event (582) behind the "Muyoh
+escorted" objective when she reaches Naralex. The rest of the Wailing Caverns fixes are SQL, under
+`sql/fixes/world` (see PATCHNOTES.md).
 
 `transmog-collection.patch` makes transmog appearances collectable at all: upstream refuses every
 item that has no row in `ItemSearchName.db2`, and with this client's data that is every item. It also
@@ -348,6 +396,11 @@ happened, `sudo chown -R $USER: ~/bfa/server` hands everything back. The resulti
 `~/bfa/server/etc/worldserver.conf` and `bnetserver.conf`; everything else in them stays at upstream's
 defaults.
 
+One upstream default to know about: `DisableWaterBreath = 1` means any account with GM level 1 or
+higher never runs out of breath, and gets no breath bar under water. To test with normal breath on a GM
+account, set it to 4 (nobody is exempt) and restart:
+`sed -i 's/^DisableWaterBreath *= *[0-9]*/DisableWaterBreath = 4/' ~/bfa/server/etc/worldserver.conf`.
+
 Start `worldserver` once on its own, in `tmux`, and let it bring the databases up to date:
 
 ```sh
@@ -461,6 +514,14 @@ selected creature. The settings are explained in the block itself. A dungeon of 
 easier or harder with lines like `DungeonScale.Map.36.Damage = 0.25` (36 is The Deadmines), then
 `.reload config`.
 
+`dungeon-scale-xp.patch` adds two XP settings. `DungeonScale.XP.StopAfterCompletion` (on unless set to
+0) stops kill XP inside a scaled dungeon once you have that dungeon's achievement for the mode you are in
+("The Deadmines" for Normal), even while you are still in its level range.
+`DungeonScale.XP.Enable = 0` stops kill XP inside every scaled instance, for testing. Quests still give
+XP either way (`dungeon-scale-quest-xp.patch`; before it, both settings stopped quest XP too). Neither key needs to be
+in `worldserver.conf`; add a line only to change one, then `.reload config`. `.dungeonscale info` says
+whether you get XP there, and which achievements count as completing the dungeon.
+
 ### Transmog collection
 
 `transmog-collection.patch` (step 3) is on without any settings. To see or change them, copy its block
@@ -489,6 +550,15 @@ git apply ../tools-repo/tools/bfa/player-search.patch
 git apply ../tools-repo/tools/bfa/stealth-pull.patch
 git apply ../tools-repo/tools/bfa/random-target.patch
 git apply ../tools-repo/tools/bfa/transmog-collection.patch
+git apply ../tools-repo/tools/bfa/loot-fixes.patch
+git apply ../tools-repo/tools/bfa/scenario-debug.patch
+git apply ../tools-repo/tools/bfa/wailing-caverns-fixes.patch
+git apply ../tools-repo/tools/bfa/dungeon-scale-xp.patch
+git apply ../tools-repo/tools/bfa/dungeon-boss-loot.patch
+git apply ../tools-repo/tools/bfa/blackfathom-layouts.patch
+git apply ../tools-repo/tools/bfa/dungeon-spell-fixes.patch
+git apply ../tools-repo/tools/bfa/dungeon-scale-quest-xp.patch
+git apply ../tools-repo/tools/bfa/spell-corrections.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
