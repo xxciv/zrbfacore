@@ -6,8 +6,8 @@
 -- 2. Gil (3504), guid 189600, under the bridge next to it (-8867.41, 760.137, 97.1436), below
 --    the bridge deck. Gil is one of the orphans who followed Miss Danna (3513) around Stormwind;
 --    Miss Danna and the other children (3505-3512) have no spawns in this database, Gil has no
---    formation or path, and his spawn is not sniffed (VerifiedBuild 0), so there is no correct
---    place to move him to.
+--    formation or path, and his spawn is not sniffed (VerifiedBuild 0). He comes back on his
+--    own walking path, with Miss Danna's group, in 2026_10_19_05_stormwind_miss_danna_orphans.sql.
 -- Both spawns are removed.
 -- Revert:
 -- INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnDifficulties`, `phaseUseFlags`, `PhaseId`, `PhaseGroup`, `terrainSwapMap`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `spawndist`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `unit_flags2`, `unit_flags3`, `dynamicflags`, `ScriptName`, `VerifiedBuild`) VALUES

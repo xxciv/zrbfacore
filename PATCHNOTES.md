@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-19
 
-### World: Stormwind (Innkeeper Allison, two stray spawns)
+### World: Stormwind (Innkeeper Allison, stray spawns, Miss Danna's tour)
 
 On PR #13 (world fixes), not merged yet.
 
@@ -30,12 +30,43 @@ On PR #13 (world fixes), not merged yet.
   next to it.
   - The Prisoner is the only spawn of 53527 on the server, with no waypoints, formation or SmartAI: the
     guard escort it belongs to doesn't exist here.
-  - Gil is one of the orphans who followed Miss Danna (3513) around Stormwind. Miss Danna and the other
-    children (3505 to 3512) have no spawns in this database, Gil has no formation or path, and his
-    spawn isn't sniffed (`VerifiedBuild` 0), so there is no correct place to move him to.
+  - Gil's spawn (`VerifiedBuild` 0, not sniffed) had no path or formation and just stood under the
+    bridge. He comes back on his own walking path in the Miss Danna fix below.
 - **Changed:** new `sql/fixes/world/2026_10_19_04_stormwind_stray_spawns.sql` deletes both spawns
   (`creature` and `creature_addon` guids 300000881 and 189600). The file has the rows to put back in its
   comments.
+- **Status:** not yet tested in game.
+
+#### Miss Danna, her school group and Gil were missing from Stormwind
+- **Found** (asked by Four, who checked Wowhead and Wowpedia: she should still walk her tour): Miss
+  Danna (3513) and the children Pat (3505), Andi (3507), Mikey (3508), Geoff (3509), Twain (3510),
+  Steven (3511) and Jimmy (3512) had creature templates and SmartAI but no spawns, in the dump or in
+  any core update. Their SmartAI here started a `waypoints` path 3513 that doesn't exist, and Miss
+  Danna, Steven and Jimmy had no `creature_text`. Gil (3504) only had the stray spawn under the bridge.
+- **Source:** the alexkulya/pandaria_5.4.8 world database (`sql/base/world_04_03_2023.zip`, the same
+  reference the zrpandaria548 spawncompare tool uses) has the whole group: spawns, Miss Danna's path,
+  the formation, her SmartAI and texts, and Gil on his own path. Everything is copied from there and
+  converted to this core's columns.
+- **Changed:** new `sql/fixes/world/2026_10_19_05_stormwind_miss_danna_orphans.sql`:
+  - `creature`: Miss Danna guid 188983 (MovementType 2) and the seven children 188984 to 188990 in the
+    Trade District at (-8838.52, 670.28); Gil guid 6183 (MovementType 2) at (-8780, 899.541).
+    Respawn 300 s (Pandaria had 43200 for the group).
+  - `creature_addon`: path 188983 for Miss Danna, path 6183 for Gil.
+  - `waypoint_data`: path 188983, 60 points (Trade District, Cathedral Square, Stormwind Keep, the
+    Valley of Heroes and back, with stops of 15 to 22 s at each sight); path 6183, 25 points (Gil's walk
+    toward the Mage Quarter and back). Gil's Pandaria path called `waypoint_scripts` 102 to 116; those
+    are not copied (`action` 0), his SmartAI already says his lines.
+  - `creature_formations`: the seven children follow 188983. `groupAI` 514 instead of Pandaria's 2,
+    because this core only moves members with the leader when `FLAG_IDLE_IN_FORMATION` (0x200) is set
+    (`CreatureGroup::LeaderMoveTo`).
+  - `smart_scripts`: Miss Danna (3513, ids 0 to 6) starts action lists 351300 to 351306 on reaching
+    path nodes 20, 34, 35, 37, 51, 52 and 54; they make her talk and emote, make Jimmy and Steven ask
+    their questions, and tell the children which way to face (children ids 0 to 2, data set 1/2/3).
+    Replaced: her old rows 0 to 8, the children's ids 0 and 1 (follow Miss Danna) and action lists
+    351300 to 351302. The children's emote reactions (ids 100 and up) are kept.
+  - `creature_text`: Miss Danna groups 0 to 5, 7 and 8, Steven 0, Jimmy 0. Group 5 isn't in the
+    Pandaria data; its text is from Wowpedia. The text for group 6 (at the Valley of Heroes) isn't known
+    anywhere checked, so that one talk row is left out and she only plays the emote there.
 - **Status:** not yet tested in game.
 
 ### To pick up the Stormwind fixes
@@ -45,6 +76,7 @@ cd ~/bfa/source
 git -C ../tools-repo pull
 mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_19_03_stormwind_innkeeper_allison.sql
 mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_19_04_stormwind_stray_spawns.sql
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_19_05_stormwind_miss_danna_orphans.sql
 ```
 Then restart worldserver.
 
