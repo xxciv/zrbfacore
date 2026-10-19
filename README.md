@@ -53,6 +53,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   Blackfathom Deeps spells.
 - [`tools/bfa/dungeon-scale-quest-xp.patch`](tools/bfa/dungeon-scale-quest-xp.patch): the DungeonScale
   XP settings stop only kill XP; quests inside the dungeon still give XP.
+- [`tools/bfa/spell-corrections.patch`](tools/bfa/spell-corrections.patch): fixes for spells whose
+  8.3.7 data does nothing on the server, starting with Aku'mai's Poison Cloud in Blackfathom Deeps.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.

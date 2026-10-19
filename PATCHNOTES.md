@@ -5,6 +5,32 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-19
 
+### Aku'mai's Poison Cloud (Blackfathom Deeps, classic)
+
+New `tools/bfa/spell-corrections.patch`, applied after `dungeon-scale-quest-xp.patch`. Four's classic
+run on 2026-10-19 had Aku'mai only meleeing; Four chose to fix this one spell and leave the other
+classic bosses' original abilities as they are. On PR #14, not merged yet.
+
+- **Found:** Aku'mai (4829, `boss_aku_mai`) casts Poison Cloud (3815) every 25-50 s. In the 8.3.7 client
+  data its only effect applies aura 70, which this core treats as client-side (extra attacks) and
+  ignores, although it has a 3 s period and 33 base points: the old cloud's nature damage. So the cloud
+  did nothing. Frenzied Rage at 30% health is unaffected.
+- **Changed (patch):** `SpellMgr.cpp`, `SpellMgr::LoadSpellInfoCorrections`: spell 3815 effect 0 applies
+  `SPELL_AURA_PERIODIC_DAMAGE`, so enemies within 8 yards of Aku'mai take 33 nature damage every 3 s
+  while it lasts (before any scaling).
+- **Status:** `SpellMgr.cpp` compiles here and the patch applies on the full chain. Not tested in game.
+
+#### To pick up the Poison Cloud fix
+A new patch on top of the others, the build and a restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/spell-corrections.patch | git apply
+grep -c "Poison Cloud (Aku'mai" src/server/game/Spells/SpellMgr.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1.
+
 ### Blackfathom Deeps (classic): fixes from the first classic run
 
 `sql/fixes/world/2026_10_19_01_blackfathom_classic_fixes.sql`. Four ran the classic layout on 2026-10-19:
