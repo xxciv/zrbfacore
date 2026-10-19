@@ -3,6 +3,66 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-19
+
+### DungeonScale XP settings stop only kill XP
+
+New `tools/bfa/dungeon-scale-quest-xp.patch`, applied after `dungeon-spell-fixes.patch`. Asked for by
+Four on 2026-10-19. On PR #14, not merged yet.
+
+- **Found:** `DungeonScale.XP.Enable = 0` and `DungeonScale.XP.StopAfterCompletion` took all XP inside
+  a scaled instance, quest XP included. Four wants quests to still give XP.
+- **Changed (patch):** `solocraft.cpp`, `DungeonScale_PlayerScript::OnGiveXP`: XP is only taken when
+  it comes with a victim. In this core that is only kill XP (`KillRewarder`, solo or in a group); quest
+  rewards, exploration, XP-granting spells and player choices pass no victim, so they still count.
+  `.dungeonscale info` now says "XP: quests only, kills give none ...". The descriptions of both keys in
+  `worldserver.conf.dist` say kill XP. Your `worldserver.conf` needs no change.
+- **Status:** `solocraft.cpp` compiles here and the patch applies on the full chain. Not tested in game.
+
+#### To pick up the XP change
+A new patch on top of the others, the build and a restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/dungeon-scale-quest-xp.patch | git apply
+grep -c "amount && victim" src/server/scripts/Custom/solocraft.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1.
+
+### Blackfathom Deeps (redesign): Coiled Rope shortcut, second try
+
+`sql/fixes/world/2026_10_19_00_blackfathom_coiled_rope.sql`. On PR #14, not merged yet.
+
+- **Found (Four's run, 2026-10-19):** the Rope Ladder Post at the bottom (224747) jumped you up to the
+  Coiled Rope before anyone had used the Coiled Rope, and using the Coiled Rope changed nothing you could
+  see. In TrinityCore's sniff, the second Rope Ladder Post (224628, beside the Coiled Rope) and the
+  Invisible Man next to it (74997) only appear after the Coiled Rope is used;
+  `2026_10_17_03` spawned both from the start. The bottom post's flag 0x10 (not selectable) doesn't stop
+  the client from using it, and the core doesn't check that flag.
+- **Changed (SQL):**
+  - Removed the start-of-run spawns of the top post (gameobject guid 4800007) and its Invisible Man
+    (creature guid 4800158), with their `spawn_group` rows. Creature guid 4800007 (Ghamoo-Ra) is untouched.
+  - Coiled Rope 224627 SmartAI, now once per instance and only on use: summons Invisible Man 74997 at
+    (-289.306, 82.339, -52.110) and Rope Ladder Post 224628 at (-289.270, 82.371, -52.264), clears 0x10 on
+    the bottom post, removes Coiled Rope Usable (150866) from the Invisible Man 75000, and sets 0x10 on
+    itself.
+  - Invisible Man 74997 SmartAI: when summoned, casts Rope Ladder (150850). A `conditions` row aims its
+    second effect (an aura on a nearby creature) at the Invisible Man 74998 by the bottom post. This is
+    likely what draws the rope between the posts; not verified.
+  - Rope Ladder Climb (150851) gets a cast condition (source type 17, condition 29): Invisible Man 74997
+    within 40 yards of the player, so the bottom post does nothing until the Coiled Rope was used. The
+    jump target is still the Invisible Man 75000.
+- **Status:** the SQL ran twice against the dump. Not tested in game.
+
+#### To pick up the Coiled Rope fix
+SQL only, then a restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_00_blackfathom_coiled_rope.sql | mysql -u root -p bfa_world
+```
+
 ## 2026-10-18
 
 ### Creature spells that did nothing, and the Coiled Rope shortcut
@@ -46,9 +106,10 @@ SpellEffect and SpellMisc.db2, which Four sent on 2026-10-18. On PR #14, not mer
   Tempest (the dummy-cast script) now work. Later the same day Four also confirmed Corpse Spew
   (Blindlight Rotmouth), Catch of the Day and Fillet of Flesh (Thruk), Restorative Waters (summons its
   adds) and Piercing Rain (Bathiel), and all of Aku'mai the Devourer's spells. Then: Ghamoo-Ra's Static
-  Shock and the rest of her spells, all of Kor'ul's and the Guardian of the Deep's spells, and the
-  Coiled Rope (the entrance-side Rope Ladder Post jumps you up to the rope once it has been used).
-  Everything in this entry is confirmed in game as of 2026-10-19.
+  Shock and the rest of her spells, and all of Kor'ul's and the Guardian of the Deep's spells. Every
+  spell in this entry is confirmed in game as of 2026-10-19. The Coiled Rope part did not work: the
+  bottom post jumped you up before the Coiled Rope was used, and using it showed nothing. See
+  "Coiled Rope shortcut, second try" (2026-10-19).
 
 #### To pick up the spell fixes
 A new patch on top of the others, the SQL, the build and a restart.
