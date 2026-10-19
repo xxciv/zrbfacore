@@ -31,6 +31,18 @@ On branch `claude/project-thread-g6xhsv` (PR #16), not merged yet. Found in a su
   rows are in the world dump.
 - **Status:** untested in game.
 
+#### Stuck in combat after killing an Irradiated Pillager
+- **Found** (reported by Four): right after killing an Irradiated Pillager (6329), `.debug combat`
+  still listed it ("[PvE] Irradiated Pillager (SpawnID 324438)") and Four stayed in combat until
+  `.combatstop`. Two SmartAI rows (ids 2 and 5, two script versions) cast Radiation (9798) on death. In
+  8.3.7 that puts a permanent aura (duration index 21) on every enemy within 13 yards that triggers
+  Radiation (9770) damage every 3 s, cast by the dead Pillager, so each tick put the player back in
+  combat with the corpse.
+- **Changed:** new `sql/fixes/world/2026_10_19_10_gnomeregan_irradiated_pillager_death.sql` deletes
+  `smart_scripts` 6329 ids 2 and 5. The living Pillager's own Radiation auras (9769, and 9798 on 18
+  spawns, from `creature_addon` and On Reset) stay.
+- **Status:** untested in game.
+
 #### To pick up the Gnomeregan fixes
 SQL only, then restart `worldserver` (templates and SmartAI load at startup).
 ```
@@ -38,6 +50,7 @@ cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_08_gnomeregan_emi_electrocutioner.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_09_gnomeregan_emi_event_prespawns.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_10_gnomeregan_irradiated_pillager_death.sql | mysql -u root -p bfa_world
 ```
 
 ### The Stockade
