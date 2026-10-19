@@ -63,7 +63,7 @@ On branch `claude/project-thread-g6xhsv` (PR #16), not merged yet. Found in a su
     against everyone in the instance (`SET_IN_COMBAT_WITH_ZONE`).
   - The bomb spawned from the start, creature guid 324517, is deleted.
   - The faces' buttons (142214 to 142219) still do nothing.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four on 2026-10-19 (bombs walk out in front of the faces).
 
 #### To pick up the Gnomeregan fixes
 SQL only, then restart `worldserver` (templates and SmartAI load at startup).
