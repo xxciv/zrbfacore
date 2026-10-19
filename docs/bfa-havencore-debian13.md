@@ -396,6 +396,11 @@ happened, `sudo chown -R $USER: ~/bfa/server` hands everything back. The resulti
 `~/bfa/server/etc/worldserver.conf` and `bnetserver.conf`; everything else in them stays at upstream's
 defaults.
 
+One upstream default to know about: `DisableWaterBreath = 1` means any account with GM level 1 or
+higher never runs out of breath, and gets no breath bar under water. To test with normal breath on a GM
+account, set it to 4 (nobody is exempt) and restart:
+`sed -i 's/^DisableWaterBreath *= *[0-9]*/DisableWaterBreath = 4/' ~/bfa/server/etc/worldserver.conf`.
+
 Start `worldserver` once on its own, in `tmux`, and let it bring the databases up to date:
 
 ```sh

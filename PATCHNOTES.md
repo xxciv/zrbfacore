@@ -5,6 +5,40 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-19
 
+### Blackfathom Deeps (redesign): weapons, and the missing breath bar
+
+`sql/fixes/world/2026_10_19_02_blackfathom_redesign_equipment.sql`, and a setting. Both from Four's
+redesign runs. On PR #14, not merged yet.
+
+- **Found:**
+  - The Twilight's Hammer, the Blindlight murlocs, Thruk, Executioner Gore, Domina, Subjugator Kor'ul,
+    Je'neu and Zeya held no weapons. Their spawns name equipment set 1 (Thruk also set 2), but
+    `creature_equip_template` had no rows for them: TrinityCore's redesign sniff only added the two
+    entrance Sentinels'.
+  - No breath bar under water. Not a bug: upstream's `worldserver.conf` has `DisableWaterBreath = 1`, so
+    every account with GM level 1 or higher has unlimited breath, everywhere.
+- **Changed (SQL):** 33 `creature_equip_template` rows for 32 creatures (every redesign creature that
+  has a set: 74351, 74353, 74363, 74380, 74382, 74408, 74409, 74476, 74505 sets 1 and 2, 74518, 74565,
+  74720, 74721, 74980, 74983, 74984, 74988, 74989, 75011, 75012, 75058, 75285, 75286, 75640-75643,
+  76036-76039, 77232), copied from TrinityCore's
+  `sql/old/9.x/world/22012_2022_03_06/2022_02_16_09_world_910.sql` (sniffed on build 40120). Every
+  redesign spawn's equipment set now exists. Twilight Lord Bathiel and the Twilight Tormentor have no
+  set in that data and stay unarmed.
+- **Changed (setting, optional):** `DisableWaterBreath = 4` in `worldserver.conf` gives GM accounts
+  normal breath. The guide now mentions it.
+- **Status:** the SQL ran twice against the dump. Not tested in game.
+
+#### To pick up the weapons and the breath setting
+SQL and a config line, then a restart. No rebuild.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_02_blackfathom_redesign_equipment.sql | mysql -u root -p bfa_world
+sed -i 's/^DisableWaterBreath *= *[0-9]*/DisableWaterBreath = 4/' ~/bfa/server/etc/worldserver.conf
+grep '^DisableWaterBreath' ~/bfa/server/etc/worldserver.conf
+```
+The grep prints `DisableWaterBreath = 4`.
+
 ### Aku'mai's Poison Cloud (Blackfathom Deeps, classic)
 
 New `tools/bfa/spell-corrections.patch`, applied after `dungeon-scale-quest-xp.patch`. Four's classic
