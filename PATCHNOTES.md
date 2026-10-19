@@ -5,6 +5,27 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-19
 
+### Gnomeregan
+
+On branch `claude/project-thread-g6xhsv` (PR #16), not merged yet. Found in a survey before the first run.
+
+#### Blastmaster Emi Shortfuse couldn't be talked to; Electrocutioner 6000 yelled twice
+- **Found:** Emi (7998) starts the trogg event from her gossip option "I am ready to begin." (menu
+  1080, `OptionNpcFlag` 1), but her `npcflag` was 2 (questgiver) and she has no quests, so there was
+  nothing to click. The Pandaria 5.4.8 world database has `npcflag` 1. Electrocutioner 6000 (6235) had
+  two "On Aggro - Say Line 0" SmartAI rows (ids 0 and 3, from two script versions).
+- **Changed:** new `sql/fixes/world/2026_10_19_08_gnomeregan_emi_electrocutioner.sql`:
+  `creature_template` 7998 `npcflag` 2 -> 1; `smart_scripts` 6235 id 3 deleted.
+- **Status:** untested in game.
+
+#### To pick up the Gnomeregan fixes
+SQL only, then restart `worldserver` (templates and SmartAI load at startup).
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_08_gnomeregan_emi_electrocutioner.sql | mysql -u root -p bfa_world
+```
+
 ### The Stockade
 
 On branch `claude/project-thread-g6xhsv` (PR #16), not merged yet.
