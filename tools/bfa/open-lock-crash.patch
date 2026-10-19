@@ -1,0 +1,15 @@
+diff --git a/src/server/game/Spells/SpellEffects.cpp b/src/server/game/Spells/SpellEffects.cpp
+--- a/src/server/game/Spells/SpellEffects.cpp
++++ b/src/server/game/Spells/SpellEffects.cpp
+@@ -1933,8 +1933,9 @@ void Spell::EffectOpenLock(SpellEffIndex effIndex)
+         itemTarget->SetState(ITEM_CHANGED, itemTarget->GetOwner());
+     }
+ 	
+-    GameObjectTemplate const* goInfo = gameObjTarget->GetGOInfo();
+-    if (goInfo->type == GAMEOBJECT_TYPE_GATHERING_NODE || goInfo->type == GAMEOBJECT_TYPE_CHEST)
++    // gameObjTarget is null when the lock is on an item (Pick Lock on a junkbox or lockbox)
++    GameObjectTemplate const* goInfo = gameObjTarget ? gameObjTarget->GetGOInfo() : nullptr;
++    if (goInfo && (goInfo->type == GAMEOBJECT_TYPE_GATHERING_NODE || goInfo->type == GAMEOBJECT_TYPE_CHEST))
+     {
+         // locks can have no explicit required skill value. For type 50 gathering
+         // nodes, use the template's trivial-skill data to derive the base skill

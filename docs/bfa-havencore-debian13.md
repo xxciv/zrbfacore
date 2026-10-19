@@ -106,6 +106,7 @@ git apply ../tools-repo/tools/bfa/blackfathom-layouts.patch
 git apply ../tools-repo/tools/bfa/dungeon-spell-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale-quest-xp.patch
 git apply ../tools-repo/tools/bfa/spell-corrections.patch
+git apply ../tools-repo/tools/bfa/open-lock-crash.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -559,6 +560,7 @@ git apply ../tools-repo/tools/bfa/blackfathom-layouts.patch
 git apply ../tools-repo/tools/bfa/dungeon-spell-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale-quest-xp.patch
 git apply ../tools-repo/tools/bfa/spell-corrections.patch
+git apply ../tools-repo/tools/bfa/open-lock-crash.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

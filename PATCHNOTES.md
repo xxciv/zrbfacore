@@ -5,6 +5,34 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-19
 
+### Crash: picking open a lockbox or junkbox
+
+On branch `claude/project-thread-g6xhsv` (The Stockade work), not merged yet.
+
+- **Found** (reported by Four): Pick Lock on a Battered Junkbox (16882, looted in The Stockade) crashed
+  the worldserver at once, and the client was disconnected. Four's gdb backtrace: `SIGSEGV` in
+  `GameObject::GetGOInfo (this=0x0)` called from `Spell::EffectOpenLock` at `SpellEffects.cpp:1936`.
+  Upstream commit 9d1bf0d ("Core/CPP: Fix Mining Gain Skill") added a gathering skill-up block at the
+  end of `EffectOpenLock` that reads `gameObjTarget->GetGOInfo()` without checking `gameObjTarget`.
+  When the lock is on an item, `gameObjTarget` is null, so every item lock opened with a spell (rogue
+  Pick Lock, and any key or spell that opens an item lock) crashes the server. Still in upstream HEAD
+  (51fad1a) at the time of writing. The junkbox loot tables are fine.
+- **Changed:** new `tools/bfa/open-lock-crash.patch` (`src/server/game/Spells/SpellEffects.cpp`): that
+  block now runs only when the target is a gameobject (`goInfo` is null for an item). Opening chests and
+  gathering nodes is unchanged.
+- **Status:** compiles; untested in game.
+
+#### To pick up the lockbox crash fix
+A new patch on top of the others, the build and a restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/open-lock-crash.patch | git apply
+grep -c "Pick Lock on a junkbox" src/server/game/Spells/SpellEffects.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1. Then restart `worldserver`.
+
 ### World: Stormwind (Innkeeper Allison, stray spawns, Miss Danna's tour)
 
 Merged to `main` with PR #13 on 2026-10-19.
