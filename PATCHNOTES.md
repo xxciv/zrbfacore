@@ -18,7 +18,8 @@ classic bosses' original abilities as they are. On PR #14, not merged yet.
 - **Changed (patch):** `SpellMgr.cpp`, `SpellMgr::LoadSpellInfoCorrections`: spell 3815 effect 0 applies
   `SPELL_AURA_PERIODIC_DAMAGE`, so enemies within 8 yards of Aku'mai take 33 nature damage every 3 s
   while it lasts (before any scaling).
-- **Status:** `SpellMgr.cpp` compiles here and the patch applies on the full chain. Not tested in game.
+- **Status:** `SpellMgr.cpp` compiles here and the patch applies on the full chain. Confirmed in game by
+  Four on 2026-10-19: the cloud now damages.
 
 #### To pick up the Poison Cloud fix
 A new patch on top of the others, the build and a restart.
