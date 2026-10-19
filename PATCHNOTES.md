@@ -27,7 +27,7 @@ On PR #15 (world fixes), not merged yet.
     position for it. The pool keeps 52499 and 10604700, one up at a time.
   - Every Sewer Beast: `MovementType` 1 -> 0, `spawndist` 25 -> 0 (standing still, as in the Pandaria
     data).
-- **Status:** not yet tested in game.
+- **Status:** confirmed in game by Four on 2026-10-19.
 
 ### To pick up the Sewer Beast fix
 SQL only, no rebuild:
