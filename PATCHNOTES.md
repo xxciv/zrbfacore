@@ -5,6 +5,28 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-19
 
+### The Stockade
+
+On branch `claude/project-thread-g6xhsv` (PR #16), not merged yet.
+
+#### Lord Overheat's Fiery Core didn't always drop
+- **Found** (reported by Four): the first kill of Lord Overheat (46264) gave no Lord Overheat's Fiery
+  Core (62305) for "By Fire Be Saved!" (27737); after `.respawn`, a second kill dropped it. The loot row
+  only drops for players on the quest (`QuestRequired` 1), but its `Chance` was 36.5696, so roughly two
+  kills in three dropped nothing for the quest.
+- **Changed:** new `sql/fixes/world/2026_10_19_07_stockade_overheat_core.sql`: `creature_loot_template`
+  46264 / 62305 `Chance` 36.5696 -> 100.
+- **Status:** untested in game. The missed dungeon credit on the same kill is not explained by this
+  and is still being looked into.
+
+#### To pick up the core fix
+SQL only, then restart `worldserver` (it loads loot tables at startup).
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_07_stockade_overheat_core.sql | mysql -u root -p bfa_world
+```
+
 ### Crash: picking open a lockbox or junkbox
 
 On branch `claude/project-thread-g6xhsv` (The Stockade work), not merged yet.
