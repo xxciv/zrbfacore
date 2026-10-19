@@ -16,8 +16,9 @@ On branch `claude/project-thread-g6xhsv` (PR #16), not merged yet.
   kills in three dropped nothing for the quest.
 - **Changed:** new `sql/fixes/world/2026_10_19_07_stockade_overheat_core.sql`: `creature_loot_template`
   46264 / 62305 `Chance` 36.5696 -> 100.
-- **Status:** untested in game. The missed dungeon credit on the same kill is not explained by this
-  and is still being looked into.
+- **Status:** untested in game. The dungeon objectives were fine: `.debug scenario` showed Lord
+  Overheat's objective at progress 2 (both kills counted), and the one-step objectives finished
+  with the achievement after Hogger. What looked missing was most likely just the core quest.
 
 #### To pick up the core fix
 SQL only, then restart `worldserver` (it loads loot tables at startup).
