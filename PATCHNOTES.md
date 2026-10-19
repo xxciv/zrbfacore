@@ -5,6 +5,39 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-19
 
+### World: Sewer Beast (Stormwind canals)
+
+On PR #15 (world fixes), not merged yet.
+
+#### The Sewer Beast walks the canal pathways
+- **Found** (reported by Four): the Sewer Beast (3581, rare crocolisk), guid 308329, walked the canal
+  walkways instead of staying under water. It has three spawns, pooled by core update
+  `2026_09_09_00_world_sewer_beast.sql` so only one is up at a time; that update also set
+  `MovementType` 1 and `spawndist` 25 on all three. Two of the spawn points are at walkway height:
+  308329 at (-8583.18, 522.841, 92.7076) (the walkway guards next to it stand at z 92.71) and 10604700
+  at (-8781.6, 488.886, 92.6396). Only 52499 (-8560.69, 486.619, 85.8912) is on the canal floor. Random
+  movement in this core goes in a straight line to a random point up to `spawndist` away and up to 10
+  yards higher, so even from the floor a 25 yard wander reaches the walkways.
+- **Changed:** new `sql/fixes/world/2026_10_19_06_stormwind_sewer_beast.sql`, using the
+  alexkulya/pandaria_5.4.8 world database as the reference (same three spawns, the two floor ones
+  standing still):
+  - 10604700 moves to Pandaria's position for it, (-8783.6, 487.416, 85.8914), orientation 0.528863, on
+    the canal floor.
+  - 308329 is removed (`creature`, `creature_addon`, `pool_creature`): no data checked has a canal floor
+    position for it. The pool keeps 52499 and 10604700, one up at a time.
+  - Every Sewer Beast: `MovementType` 1 -> 0, `spawndist` 25 -> 0 (standing still, as in the Pandaria
+    data).
+- **Status:** confirmed in game by Four on 2026-10-19.
+
+### To pick up the Sewer Beast fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_19_06_stormwind_sewer_beast.sql
+```
+Then restart worldserver.
+
 ### World: Stormwind (Innkeeper Allison, stray spawns, Miss Danna's tour)
 
 Merged to `main` with PR #13 on 2026-10-19.
