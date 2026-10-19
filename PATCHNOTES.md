@@ -45,8 +45,10 @@ SpellEffect and SpellMisc.db2, which Four sent on 2026-10-18. On PR #14, not mer
   and 1), Four confirmed in game on 2026-10-19 that Domina's Maw of Death (the cone fix) and Foul
   Tempest (the dummy-cast script) now work. Later the same day Four also confirmed Corpse Spew
   (Blindlight Rotmouth), Catch of the Day and Fillet of Flesh (Thruk), Restorative Waters (summons its
-  adds) and Piercing Rain (Bathiel), and all of Aku'mai the Devourer's spells. Not reported yet: the
-  Coiled Rope, Darkness Calls (Kor'ul), Static Shock (Ghamoo-Ra) and Spore Cloud (Guardian of the Deep).
+  adds) and Piercing Rain (Bathiel), and all of Aku'mai the Devourer's spells. Then: Ghamoo-Ra's Static
+  Shock and the rest of her spells, all of Kor'ul's and the Guardian of the Deep's spells, and the
+  Coiled Rope (the entrance-side Rope Ladder Post jumps you up to the rope once it has been used).
+  Everything in this entry is confirmed in game as of 2026-10-19.
 
 #### To pick up the spell fixes
 A new patch on top of the others, the SQL, the build and a restart.
