@@ -39,7 +39,9 @@ SpellEffect and SpellMisc.db2, which Four sent on 2026-10-18. On PR #14, not mer
     when used, then makes itself unselectable. A `conditions` row points Rope Ladder Climb at the
     Invisible Man 75000 beside the Coiled Rope, so the post jumps you back up to it.
 - **Status:** the three changed files compile here and the patch applies on the full chain; the SQL ran
-  twice against the dump. Not yet tested in game.
+  twice against the dump. Not working in game yet: on 2026-10-19 Four's run had Corpse Spew, Maw of
+  Death, Foul Tempest, Piercing Rain, Restorative Waters and Tearing the Void still doing nothing.
+  Checking whether that build had the patch.
 
 #### To pick up the spell fixes
 A new patch on top of the others, the SQL, the build and a restart.
@@ -97,8 +99,9 @@ On PR #14, not merged yet.
 - **Not done yet:** the Coiled Rope shortcut, the boss spells that do nothing (Piercing Rain, Restorative
   Waters, Spore Cloud, the Rotmouth's vomit), the executions and the Ghamoo-Ra and tentacle events, and
   weapons for the Twilight's Hammer creatures (no equipment data).
-- **Status:** the patch compiles here and applies on the full chain; the SQL ran twice against the dump.
-  Not yet tested in game.
+- **Status:** confirmed in game by Four on 2026-10-19: the run reached and killed Aku'mai the Devourer
+  (the portal opened after Bathiel), every boss counted for the objectives, and the Blackfathom Deeps
+  achievement was awarded. The other changes in this entry weren't reported on separately.
 
 #### To pick up the redesign fixes
 The patch changed, so the old version comes out first (commit 1c47a4c is the last one with it), then the
