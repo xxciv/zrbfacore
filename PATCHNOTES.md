@@ -7,7 +7,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### World: Stormwind (Innkeeper Allison, stray spawns, Miss Danna's tour)
 
-On PR #13 (world fixes), not merged yet.
+Merged to `main` with PR #13 on 2026-10-19.
 
 #### Innkeeper Allison has no inn or vendor options
 - **Found** (reported by Four): Innkeeper Allison (6740) in the Trade District only offered "Make this
@@ -22,7 +22,7 @@ On PR #13 (world fixes), not merged yet.
   `creature_template` 6740 `gossip_menu_id` 0 -> 342 (the menu her own SmartAI's Trick or Treat rows
   expect, also used by Innkeeper Brianna), `ScriptName` '' -> 'npc_innkeeper'. Her SmartAI
   (/flex credit for Flexing for Nougat) is unchanged.
-- **Status:** not yet tested in game.
+- **Status:** confirmed in game by Four on 2026-10-19.
 
 #### A Prisoner on the bridge and Gil under it
 - **Found** (reported by Four): a Prisoner (53527, guid 300000881) stood alone in the middle of the bridge
@@ -35,7 +35,7 @@ On PR #13 (world fixes), not merged yet.
 - **Changed:** new `sql/fixes/world/2026_10_19_04_stormwind_stray_spawns.sql` deletes both spawns
   (`creature` and `creature_addon` guids 300000881 and 189600). The file has the rows to put back in its
   comments.
-- **Status:** not yet tested in game.
+- **Status:** confirmed in game by Four on 2026-10-19.
 
 #### Miss Danna, her school group and Gil were missing from Stormwind
 - **Found** (asked by Four, who checked Wowhead and Wowpedia: she should still walk her tour): Miss
@@ -67,7 +67,7 @@ On PR #13 (world fixes), not merged yet.
   - `creature_text`: Miss Danna groups 0 to 5, 7 and 8, Steven 0, Jimmy 0. Group 5 isn't in the
     Pandaria data; its text is from Wowpedia. The text for group 6 (at the Valley of Heroes) isn't known
     anywhere checked, so that one talk row is left out and she only plays the emote there.
-- **Status:** not yet tested in game.
+- **Status:** confirmed in game by Four on 2026-10-19.
 
 ### To pick up the Stormwind fixes
 SQL only, no rebuild:
