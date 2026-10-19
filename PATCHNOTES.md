@@ -41,7 +41,7 @@ SpellEffect and SpellMisc.db2, which Four sent on 2026-10-18. On PR #14, not mer
 - **Status:** the three changed files compile here and the patch applies on the full chain; the SQL ran
   twice against the dump. Not working in game yet: on 2026-10-19 Four's run had Corpse Spew, Maw of
   Death, Foul Tempest, Piercing Rain, Restorative Waters and Tearing the Void still doing nothing.
-  Checking whether that build had the patch.
+  That build didn't have the patch (both greps printed 0), so the spells are still untested.
 
 #### To pick up the spell fixes
 A new patch on top of the others, the SQL, the build and a restart.
