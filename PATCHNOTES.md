@@ -16,6 +16,19 @@ On branch `claude/project-thread-g6xhsv` (PR #16), not merged yet. Found in a su
   two "On Aggro - Say Line 0" SmartAI rows (ids 0 and 3, from two script versions).
 - **Changed:** new `sql/fixes/world/2026_10_19_08_gnomeregan_emi_electrocutioner.sql`:
   `creature_template` 7998 `npcflag` 2 -> 1; `smart_scripts` 6235 id 3 deleted.
+- **Status:** Emi confirmed in game by Four on 2026-10-19 (her event ran to the end, Grubbis counted
+  for his objective). Electrocutioner untested.
+
+#### Way too many troggs in Emi's event
+- **Found** (reported by Four): Emi's event summons every trogg wave, her explosive charges (183410),
+  Grubbis and Chomper, and three red rockets at the end. The DB also had all of it spawned from the
+  start at the same spots (`VerifiedBuild` 0: a sniff of the event saved as spawns), so the two tunnels
+  emptied out on top of the waves.
+- **Changed:** new `sql/fixes/world/2026_10_19_09_gnomeregan_emi_event_prespawns.sql` deletes creature
+  guids 324522 to 324554 (30 Caverndeep Ambushers 6207, 1 Caverndeep Burrower 6206, Grubbis 7361,
+  Chomper 6215) and gameobject guids 189336 to 189339 (Explosive Charge 144065) and 189340, 189341
+  (red rockets 103820), with their `gameobject_addon` rows. The event still summons its own. The original
+  rows are in the world dump.
 - **Status:** untested in game.
 
 #### To pick up the Gnomeregan fixes
@@ -24,6 +37,7 @@ SQL only, then restart `worldserver` (templates and SmartAI load at startup).
 cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_08_gnomeregan_emi_electrocutioner.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_09_gnomeregan_emi_event_prespawns.sql | mysql -u root -p bfa_world
 ```
 
 ### The Stockade
