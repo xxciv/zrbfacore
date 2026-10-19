@@ -5,6 +5,39 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-19
 
+### Blackfathom Deeps (classic): fixes from the first classic run
+
+`sql/fixes/world/2026_10_19_01_blackfathom_classic_fixes.sql`. Four ran the classic layout on 2026-10-19:
+all bosses looted, all quests could be completed, and Lady Sarevess, Gelihast and Old Serra'kis
+credited Domina, Subjugator Kor'ul and the Guardian of the Deep. On PR #14, not merged yet.
+
+- **Found:**
+  - The creatures the Fire of Aku'mai event summons were already standing in the side alcoves before
+    any fire was lit: 19 spawns (guids 321248-321266: 4 Barbed Crustaceans, 3 Aku'mai Snapjaws,
+    10 Murkshallow Softshells, 2 Aku'mai Servants). The Portal of Aku'mai still opened after all four
+    fires and their waves, because only summoned creatures count towards it.
+  - Morridune (6729) was spawned at Aku'mai's altar from the start (guid 327435) and the instance script
+    summons another one when Aku'mai dies.
+  - Two Blackfathom Myrmidons and two Blackfathom Sea Witches stood on one spot (within 2 yards) in the
+    corridor at (-607, -31).
+  - Not bugs: the Flaming Eradicator (44387), frozen in ice, gives the Horde quest The Enemy of My
+    Enemy (26899, Head of Kelris), so an Alliance character sees nothing to do there. Thruk and
+    Executioner Gore are credited by Lorgus Jett (12902, guid 321127 at (-456, -40, -32), past Gelihast)
+    and Baron Aquanis (12876, guid 321268 at (-780, -79, -44), in the water below Kelris's ledge, by the
+    Fathom Stone).
+- **Changed (SQL):** deleted the 19 alcove spawns and the spawned Morridune (with their
+  `creature_addon` rows); moved Sea Witch 321185 to (-607.3, -35.0, -24.9), Myrmidon 321205 to
+  (-610.3, -30.7, -24.3) and Sea Witch 321204 to (-610.0, -27.5, -24.1). Myrmidon 321131 stays.
+- **Status:** the SQL ran twice against the dump. Not tested in game.
+
+#### To pick up the classic fixes
+SQL only, then a restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_01_blackfathom_classic_fixes.sql | mysql -u root -p bfa_world
+```
+
 ### DungeonScale XP settings stop only kill XP
 
 New `tools/bfa/dungeon-scale-quest-xp.patch`, applied after `dungeon-spell-fixes.patch`. Asked for by
