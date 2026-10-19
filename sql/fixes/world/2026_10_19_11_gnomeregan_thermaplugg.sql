@@ -9,8 +9,12 @@
 -- which doesn't exist, so the despawn after Detonation never ran.
 
 -- 1. Thermaplugg: one Knock Away (10101) every 12-15 s; every 12-16 s a random Gnome Face (one of six action
---    lists, 780000-780005) sends a Walking Bomb out below it, 40% of the way from the face to its button.
---    Yells, Pound, Steam Blast and Welding Beam are unchanged. The faces' buttons still do nothing.
+--    lists, 780000-780005) sends a Walking Bomb out in front of its pedestal. The Gnome Face and Button
+--    gameobject positions lie 40-55 yards from the room's centre, well outside the room the player sees, so the
+--    bombs stand 15 yards from the centre of the six faces (-522.75, 670.10) on the line to each face, on
+--    the floor (z -325.0). Four's `.gps` in front of Gnome Face 01's pedestal (-532.85, 682.18, floor
+--    -325.27) is 1.3 yards from that face's spot. Yells, Pound, Steam Blast and Welding Beam are unchanged.
+--    The faces' buttons still do nothing.
 DELETE FROM `smart_scripts` WHERE `entryorguid` = 7800 AND `source_type` = 0;
 DELETE FROM `smart_scripts` WHERE `entryorguid` BETWEEN 780000 AND 780005 AND `source_type` = 9;
 INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `event_param5`, `event_param_string`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
@@ -23,12 +27,12 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 (7800, 0, 7, 0, 0, 0, 100, 0, 8000, 8000, 14000, 16000, 0, '', 11, 74720, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Mekgineer Thermaplugg - In Combat - Cast Pound'),
 (7800, 0, 9, 0, 0, 0, 100, 0, 9000, 10000, 33500, 39000, 0, '', 11, 93655, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Mekgineer Thermaplugg - In Combat - Cast Steam Blast'),
 (7800, 0, 10, 0, 0, 0, 100, 0, 2000, 15000, 8000, 29000, 0, '', 11, 52778, 1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Mekgineer Thermaplugg - In Combat - Cast Welding Beam'),
-(780000, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, '', 12, 7915, 3, 60000, 0, 0, 0, 8, 0, 0, 0, -557.371, 708.373, -325.2, 5.911, 'Mekgineer Thermaplugg - Actionlist - Summon Walking Bomb below Gnome Face 01'),
-(780001, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, '', 12, 7915, 3, 60000, 0, 0, 0, 8, 0, 0, 0, -517.734, 714.287, -325.2, 4.985, 'Mekgineer Thermaplugg - Actionlist - Summon Walking Bomb below Gnome Face 02'),
-(780002, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, '', 12, 7915, 3, 60000, 0, 0, 0, 8, 0, 0, 0, -488.471, 687.25, -325.2, 4.063, 'Mekgineer Thermaplugg - Actionlist - Summon Walking Bomb below Gnome Face 03'),
-(780003, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, '', 12, 7915, 3, 60000, 0, 0, 0, 8, 0, 0, 0, -491.197, 647.561, -325.2, 3.162, 'Mekgineer Thermaplugg - Actionlist - Summon Walking Bomb below Gnome Face 04'),
-(780004, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, '', 12, 7915, 3, 60000, 0, 0, 0, 8, 0, 0, 0, -523.963, 624.949, -325.2, 2.284, 'Mekgineer Thermaplugg - Actionlist - Summon Walking Bomb below Gnome Face 05'),
-(780005, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, '', 12, 7915, 3, 60000, 0, 0, 0, 8, 0, 0, 0, -562.071, 636.64, -325.2, 1.375, 'Mekgineer Thermaplugg - Actionlist - Summon Walking Bomb below Gnome Face 06');
+(780000, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, '', 12, 7915, 3, 60000, 0, 0, 0, 8, 0, 0, 0, -533.181, 680.879, -325.0, 5.481, 'Mekgineer Thermaplugg - Actionlist - Summon Walking Bomb below Gnome Face 01'),
+(780001, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, '', 12, 7915, 3, 60000, 0, 0, 0, 8, 0, 0, 0, -521.562, 685.051, -325.0, 4.633, 'Mekgineer Thermaplugg - Actionlist - Summon Walking Bomb below Gnome Face 02'),
+(780002, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, '', 12, 7915, 3, 60000, 0, 0, 0, 8, 0, 0, 0, -509.67, 677.437, -325.0, 3.653, 'Mekgineer Thermaplugg - Actionlist - Summon Walking Bomb below Gnome Face 03'),
+(780003, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, '', 12, 7915, 3, 60000, 0, 0, 0, 8, 0, 0, 0, -510.015, 662.175, -325.0, 2.585, 'Mekgineer Thermaplugg - Actionlist - Summon Walking Bomb below Gnome Face 04'),
+(780004, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, '', 12, 7915, 3, 60000, 0, 0, 0, 8, 0, 0, 0, -522.218, 655.107, -325.0, 1.606, 'Mekgineer Thermaplugg - Actionlist - Summon Walking Bomb below Gnome Face 05'),
+(780005, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, '', 12, 7915, 3, 60000, 0, 0, 0, 8, 0, 0, 0, -533.662, 659.804, -325.0, 0.756, 'Mekgineer Thermaplugg - Actionlist - Summon Walking Bomb below Gnome Face 06');
 
 -- 2. Walking Bomb: despawns after Detonation, and a summoned bomb goes for the players straight away.
 DELETE FROM `smart_scripts` WHERE `entryorguid` = 7915 AND `source_type` = 0;
