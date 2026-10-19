@@ -43,7 +43,10 @@ SpellEffect and SpellMisc.db2, which Four sent on 2026-10-18. On PR #14, not mer
   Death, Foul Tempest, Piercing Rain, Restorative Waters and Tearing the Void still doing nothing.
   That build didn't have the patch (both greps printed 0). Rebuilt with the patch applied (greps 4
   and 1), Four confirmed in game on 2026-10-19 that Domina's Maw of Death (the cone fix) and Foul
-  Tempest (the dummy-cast script) now work. The other spells and the Coiled Rope aren't reported yet.
+  Tempest (the dummy-cast script) now work. Later the same day Four also confirmed Corpse Spew
+  (Blindlight Rotmouth), Catch of the Day and Fillet of Flesh (Thruk), Restorative Waters (summons its
+  adds) and Piercing Rain (Bathiel), and all of Aku'mai the Devourer's spells. Not reported yet: the
+  Coiled Rope, Darkness Calls (Kor'ul), Static Shock (Ghamoo-Ra) and Spore Cloud (Guardian of the Deep).
 
 #### To pick up the spell fixes
 A new patch on top of the others, the SQL, the build and a restart.
