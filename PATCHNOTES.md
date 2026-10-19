@@ -54,11 +54,11 @@ On branch `claude/project-thread-g6xhsv` (PR #16), not merged yet. Found in a su
 - **Changed:** new `sql/fixes/world/2026_10_19_11_gnomeregan_thermaplugg.sql`:
   - Thermaplugg's `smart_scripts` rewritten: Knock Away (10101) every 12 to 15 s; every 12 to 16 s
     one of six action lists (780000 to 780005, picked at random) summons a Walking Bomb (despawns
-    after 60 s) in front of one of the six Gnome Face pedestals. The Gnome Face and Button gameobject
-    positions lie 40 to 55 yards from the room's centre, outside the room the player sees (the first
-    version spawned bombs there, and Four saw none), so the bombs stand 15 yards from the centre of the
-    six faces (-522.75, 670.10) on the line to each face, at z -325.0. Four's `.gps` in front of Gnome
-    Face 01's pedestal (-532.85, 682.18, floor -325.27) is 1.3 yards from that face's spot. The yells, Pound (74720), Steam Blast (93655) and Welding Beam (52778) are as before.
+    after 60 s) in front of one of the six Gnome Face pedestals: 15 yards from the Gnome Face
+    gameobject towards the centre of the six faces (-522.75, 670.10), at z -325.0. The first version
+    put them 40% of the way to the faces' buttons, inside the pedestals, and Four saw none. Four's
+    `.gps` in front of Gnome Face 06's pedestal (-553.38, 643.70, floor -327.27) is 1.8 yards from
+    that face's spot. The yells, Pound (74720), Steam Blast (93655) and Welding Beam (52778) are as before.
   - Walking Bomb: Detonation (4043) now links to the despawn; a summoned bomb joins the fight
     against everyone in the instance (`SET_IN_COMBAT_WITH_ZONE`).
   - The bomb spawned from the start, creature guid 324517, is deleted.
