@@ -20,7 +20,7 @@ On branch `claude/project-thread-g6xhsv` (The Stockade work), not merged yet.
 - **Changed:** new `tools/bfa/open-lock-crash.patch` (`src/server/game/Spells/SpellEffects.cpp`): that
   block now runs only when the target is a gameobject (`goInfo` is null for an item). Opening chests and
   gathering nodes is unchanged.
-- **Status:** compiles; untested in game.
+- **Status:** confirmed in game by Four on 2026-10-19 (Battered Junkbox picks open, no crash).
 
 #### To pick up the lockbox crash fix
 A new patch on top of the others, the build and a restart.
