@@ -1,0 +1,232 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -2590,6 +2590,8 @@
+     uint8 level = getLevel();
+ 
+     sScriptMgr->OnGivePlayerXP(this, xp, victim);
++    if (!xp)                                                // a script took all of it
++        return;
+ 
+     // XP to money conversion processed in Player::RewardQuest
+     if (level >= sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+diff --git a/src/server/scripts/Custom/solocraft.cpp b/src/server/scripts/Custom/solocraft.cpp
+--- a/src/server/scripts/Custom/solocraft.cpp
++++ b/src/server/scripts/Custom/solocraft.cpp
+@@ -215,7 +215,10 @@
+ * buffs: set Solocraft.Enable = 0 so players are not buffed on top of scaled-down mobs.
+ */
+ 
++#include "AchievementMgr.h"
++#include "CriteriaHandler.h"
+ #include "Creature.h"
++#include "DB2Stores.h"
+ #include "ObjectMgr.h"
+ #include "RBAC.h"
+ #include "TemporarySummon.h"
+@@ -288,6 +291,26 @@
+ 
+         // Largest share of the victim's max health one hit from a scaled creature may deal (0 = no cap).
+         float hitCapPct = 35.0f;
++
++        bool xpEnable = true;                   // false: no XP at all inside scaled instances
++        bool xpStopAfterCompletion = true;      // no XP once the player has the dungeon's achievement for this mode
++    };
++
++    // Why a player gets no XP in a scaled instance.
++    enum class XPBlock : uint8
++    {
++        None,
++        Disabled,       // DungeonScale.XP.Enable = 0
++        Completed,      // DungeonScale.XP.StopAfterCompletion = 1 and the dungeon's achievement is done
++    };
++
++    // An achievement that marks the dungeon as completed: one of its criteria kills a boss of the dungeon.
++    // The criteria's modifier tree (a difficulty requirement, for heroic achievements) must hold where the
++    // player is now for it to count as completed "in this mode".
++    struct CompletionAchievement
++    {
++        uint32 achievementId;
++        uint32 modifierTreeId;
+     };
+ 
+     // What one creature is currently scaled for.
+@@ -504,10 +527,13 @@
+             }
+ 
+             cfg->hitCapPct = std::min(100.0f, std::max(0.0f, sConfigMgr->GetFloatDefault("DungeonScale.HitCap.Pct", 35.0f)));
++            cfg->xpEnable = sConfigMgr->GetBoolDefault("DungeonScale.XP.Enable", true);
++            cfg->xpStopAfterCompletion = sConfigMgr->GetBoolDefault("DungeonScale.XP.StopAfterCompletion", true);
+ 
+-            TC_LOG_INFO("server.loading", "[DungeonScale] %s config: %s, %u map override(s), %u rank override(s), hit cap %.0f%%.",
++            TC_LOG_INFO("server.loading", "[DungeonScale] %s config: %s, %u map override(s), %u rank override(s), hit cap %.0f%%, XP %s%s.",
+                 reload ? "Reloaded" : "Loaded", cfg->enable ? "ENABLED" : "disabled", uint32(cfg->mapOverrides.size()),
+-                uint32(cfg->rankOverrides.size()), cfg->hitCapPct);
++                uint32(cfg->rankOverrides.size()), cfg->hitCapPct, cfg->xpEnable ? "on" : "OFF",
++                cfg->xpEnable && cfg->xpStopAfterCompletion ? " until the dungeon is completed" : "");
+ 
+             // Publish the new snapshot. Old ones are kept so that no reader ever sees freed memory.
+             _configs.push_back(std::move(cfg));
+@@ -795,6 +821,76 @@
+             return std::min(damage, cap);
+         }
+ 
++        // Whether (and why) the player earns no XP where they are now.
++        XPBlock GetXPBlock(Player const* player, uint32* achievementId = nullptr)
++        {
++            Map const* map = player->GetMap();
++            if (!IsScaledMap(map))
++                return XPBlock::None;
++
++            ScaleConfig const& cfg = GetConfig();
++            if (!cfg.xpEnable)
++                return XPBlock::Disabled;
++            if (!cfg.xpStopAfterCompletion)
++                return XPBlock::None;
++
++            for (CompletionAchievement const& completion : GetCompletionAchievements(map))
++            {
++                if (!player->HasAchieved(completion.achievementId))
++                    continue;
++                if (completion.modifierTreeId && !player->ModifierTreeSatisfied(completion.modifierTreeId))
++                    continue;
++
++                if (achievementId)
++                    *achievementId = completion.achievementId;
++                return XPBlock::Completed;
++            }
++            return XPBlock::None;
++        }
++
++        // Achievements that mark this map and difficulty as completed: not statistics, with a criteria killing
++        // a creature, made for this map (Achievement InstanceID) or killing its final boss (instance_encounters
++        // row with lastEncounterDungeon). Built once per map and difficulty; DB2 and world data never change.
++        std::vector<CompletionAchievement> const& GetCompletionAchievements(Map const* map)
++        {
++            uint32 const key = (map->GetId() << 8) | uint32(map->GetDifficultyID());
++            std::lock_guard<std::mutex> guard(_completionLock);
++            auto itr = _completionAchievements.find(key);
++            if (itr != _completionAchievements.end())
++                return itr->second;
++
++            std::vector<CompletionAchievement>& completions = _completionAchievements[key];
++
++            std::unordered_set<uint32> finalBosses;
++            if (DungeonEncounterList const* encounters = sObjectMgr->GetDungeonEncounterList(map->GetId(), map->GetDifficultyID()))
++                for (DungeonEncounter const* encounter : *encounters)
++                    if (encounter->lastEncounterDungeon && encounter->creditType == ENCOUNTER_CREDIT_KILL_CREATURE)
++                        finalBosses.insert(encounter->creditEntry);
++
++            std::unordered_set<uint64> seen;
++            for (Criteria const* criteria : sCriteriaMgr->GetPlayerCriteriaByType(CRITERIA_TYPE_KILL_CREATURE))
++            {
++                CriteriaTreeList const* trees = sCriteriaMgr->GetCriteriaTreesByCriteria(criteria->ID);
++                if (!trees)
++                    continue;
++
++                bool const killsFinalBoss = finalBosses.count(uint32(criteria->Entry->Asset.CreatureID)) != 0;
++                for (CriteriaTree const* tree : *trees)
++                {
++                    AchievementEntry const* achievement = tree->Achievement;
++                    if (!achievement || (achievement->Flags & ACHIEVEMENT_FLAG_COUNTER))
++                        continue;
++                    if (achievement->InstanceID != int16(map->GetId()) && !(achievement->InstanceID == -1 && killsFinalBoss))
++                        continue;
++                    if (!seen.insert((uint64(achievement->ID) << 32) | criteria->Entry->ModifierTreeId).second)
++                        continue;
++
++                    completions.push_back({ achievement->ID, criteria->Entry->ModifierTreeId });
++                }
++            }
++            return completions;
++        }
++
+     private:
+         Manager() : _generation(1)
+         {
+@@ -888,6 +984,9 @@
+ 
+         std::mutex _stateLock;                                  // guards the _states container, not its values
+         std::unordered_map<uint64, InstanceState> _states;
++
++        std::mutex _completionLock;
++        std::unordered_map<uint32, std::vector<CompletionAchievement>> _completionAchievements;   // map << 8 | difficulty
+     };
+ }
+ 
+@@ -971,6 +1070,13 @@
+     {
+         sDungeonScale->OnPlayerUpdate(player);
+     }
++
++    // DungeonScale.XP.*: kills and quests inside a scaled instance give no XP when switched off or once completed
++    void OnGiveXP(Player* player, uint32& amount, Unit* /*victim*/) override
++    {
++        if (amount && sDungeonScale->GetXPBlock(player) != DungeonScale::XPBlock::None)
++            amount = 0;
++    }
+ };
+ 
+ class DungeonScale_CommandScript : public CommandScript
+@@ -1009,6 +1115,33 @@
+             return true;
+         }
+ 
++        uint32 achievementId = 0;
++        switch (sDungeonScale->GetXPBlock(player, &achievementId))
++        {
++            case DungeonScale::XPBlock::Disabled:
++                handler->SendSysMessage("XP: none inside scaled instances (DungeonScale.XP.Enable = 0).");
++                break;
++            case DungeonScale::XPBlock::Completed:
++            {
++                AchievementEntry const* achievement = sAchievementStore.LookupEntry(achievementId);
++                handler->PSendSysMessage("XP: none, you completed this dungeon in this mode (achievement %u \"%s\").", achievementId,
++                    achievement ? achievement->Title->Str[handler->GetSessionDbcLocale()] : "");
++                break;
++            }
++            default:
++                handler->PSendSysMessage("XP: given%s.", cfg.xpStopAfterCompletion ? " until you complete this dungeon in this mode" : "");
++                break;
++        }
++
++        if (cfg.xpEnable && cfg.xpStopAfterCompletion)
++        {
++            // * = only counts when its criteria's requirements (usually the difficulty) hold where you are
++            std::string ids;
++            for (DungeonScale::CompletionAchievement const& completion : sDungeonScale->GetCompletionAchievements(map))
++                ids += (ids.empty() ? "" : ", ") + std::to_string(completion.achievementId) + (completion.modifierTreeId ? "*" : "");
++            handler->PSendSysMessage("Achievements that complete this map: %s", ids.empty() ? "none found (XP is never stopped here)" : ids.c_str());
++        }
++
+         uint32 const players = sDungeonScale->GetEffectivePlayers(map);
+         handler->PSendSysMessage("Scaling for %u of %u player(s) (%u non-GM player(s) inside).", players, sDungeonScale->GetMaxPlayers(map), map->GetPlayersCountExceptGMs());
+         for (uint8 r = 0; r < DungeonScale::RANK_COUNT; ++r)
+diff --git a/src/server/worldserver/worldserver.conf.dist b/src/server/worldserver/worldserver.conf.dist
+--- a/src/server/worldserver/worldserver.conf.dist
++++ b/src/server/worldserver/worldserver.conf.dist
+@@ -4641,4 +4641,24 @@
+ DungeonScale.HitCap.Pct = 35
+ 
+ #
++#    DungeonScale.XP.Enable
++#        Description: XP inside scaled instances, from kills and quests. Turn it
++#                     off to test dungeons without levelling out of them.
++#        Default:     1 - XP as usual
++#                     0 - no XP inside scaled instances
++
++DungeonScale.XP.Enable = 1
++
++#
++#    DungeonScale.XP.StopAfterCompletion
++#        Description: No XP inside a scaled dungeon once you have its achievement
++#                     for the mode you are in (for example "The Deadmines" for
++#                     Normal), even while you are still in its level range.
++#                     `.dungeonscale info` shows which achievements count.
++#        Default:     1 - no XP after completion
++#                     0 - XP every run
++
++DungeonScale.XP.StopAfterCompletion = 1
++
++#
+ ###################################################################################################

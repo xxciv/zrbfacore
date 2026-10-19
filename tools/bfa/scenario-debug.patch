@@ -1,0 +1,109 @@
+diff --git a/src/server/game/Scenarios/Scenario.cpp b/src/server/game/Scenarios/Scenario.cpp
+--- a/src/server/game/Scenarios/Scenario.cpp
++++ b/src/server/game/Scenarios/Scenario.cpp
+@@ -339,6 +339,12 @@
+     player->SendDirectMessage(scenarioBoot.Write());
+ }
+ 
++uint64 Scenario::GetCriteriaCounter(Criteria const* criteria)
++{
++    CriteriaProgress const* progress = GetCriteriaProgress(criteria);
++    return progress ? progress->Counter : 0;
++}
++
+ void Scenario::SendScenarioEvent(Player* player, uint32 eventId)
+ {
+     UpdateCriteria(CRITERIA_TYPE_SEND_EVENT_SCENARIO, eventId, 0, 0, nullptr, player);
+diff --git a/src/server/game/Scenarios/Scenario.h b/src/server/game/Scenarios/Scenario.h
+--- a/src/server/game/Scenarios/Scenario.h
++++ b/src/server/game/Scenarios/Scenario.h
+@@ -78,6 +78,8 @@
+         ScenarioStepEntry const* GetStep() const { return _currentstep; }
+         ScenarioStepEntry const* GetFirstStep() const;
+         void CompleteCurrStep();
++        ScenarioData const* GetData() const { return _data; }
++        uint64 GetCriteriaCounter(Criteria const* criteria);  // for .debug scenario
+ 
+         void SendScenarioState(Player* player);
+         void SendBootPlayer(Player* player);
+diff --git a/src/server/scripts/Commands/cs_debug.cpp b/src/server/scripts/Commands/cs_debug.cpp
+--- a/src/server/scripts/Commands/cs_debug.cpp
++++ b/src/server/scripts/Commands/cs_debug.cpp
+@@ -43,6 +43,8 @@
+ #include "MotionMaster.h"
+ #include "ObjectMgr.h"
+ #include "PhasingHandler.h"
++#include "Scenario.h"
++#include "ScenarioMgr.h"
+ #include "RBAC.h"
+ #include "SpellPackets.h"
+ #include "Transport.h"
+@@ -120,6 +122,7 @@
+             { "worldstate" ,   rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugWorldStateCommand,       "" },
+             { "wsexpression" , rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugWSExpressionCommand,     "" },
+             { "transmog",      rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugTransmogCommand,         "" },
++            { "scenario",      rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugScenarioCommand,         "" },
+         };
+         static std::vector<ChatCommand> commandTable =
+         {
+@@ -1554,6 +1557,60 @@
+         }
+ 
+         return true;
++    }
++
++    // .debug scenario: lists every step and criteria of the instance scenario you are in, with its progress
++    static bool HandleDebugScenarioCommand(ChatHandler* handler, char const* /*args*/)
++    {
++        Player* player = handler->GetSession()->GetPlayer();
++        Scenario* scenario = player->GetScenario();
++        if (!scenario || !scenario->GetData())
++        {
++            handler->SendSysMessage("You are not in a scenario.");
++            handler->SetSentErrorMessage(true);
++            return false;
++        }
++
++        LocaleConstant locale = handler->GetSessionDbcLocale();
++        ScenarioStepEntry const* currentStep = scenario->GetStep();
++        handler->PSendSysMessage("Scenario %u \"%s\", current step %u.", scenario->GetEntry()->ID, scenario->GetEntry()->Name->Str[locale], currentStep ? currentStep->ID : 0);
++
++        std::function<void(CriteriaTree const*, std::string const&)> printTree = [&](CriteriaTree const* tree, std::string const& indent)
++        {
++            std::ostringstream line;
++            line << indent << "tree " << tree->ID;
++            if (*tree->Entry->Description->Str[locale])
++                line << " \"" << tree->Entry->Description->Str[locale] << "\"";
++            line << " (operator " << int32(tree->Entry->Operator) << ", amount " << tree->Entry->Amount << ")";
++            if (Criteria const* criteria = tree->Criteria)
++            {
++                line << ": criteria " << criteria->ID << " " << CriteriaMgr::GetCriteriaTypeString(uint32(criteria->Entry->Type))
++                    << " (" << criteria->Entry->Type << ") asset " << criteria->Entry->Asset.ID
++                    << ", progress " << scenario->GetCriteriaCounter(criteria);
++                if (criteria->Entry->ModifierTreeId)
++                    line << ", modifier tree " << criteria->Entry->ModifierTreeId;
++                if (criteria->Entry->StartEvent)
++                    line << ", start event " << uint32(criteria->Entry->StartEvent) << "/" << criteria->Entry->StartAsset;
++                if (criteria->Entry->FailEvent)
++                    line << ", fail event " << uint32(criteria->Entry->FailEvent) << "/" << criteria->Entry->FailAsset;
++            }
++            handler->SendSysMessage(line.str().c_str());
++
++            for (CriteriaTree const* child : tree->Children)
++                printTree(child, indent + ". ");
++        };
++
++        for (auto const& stepPair : scenario->GetData()->Steps)
++        {
++            ScenarioStepEntry const* step = stepPair.second;
++            handler->PSendSysMessage("Step %u (order %u%s) \"%s\": state %u, criteria tree %u.", step->ID, uint32(step->OrderIndex),
++                step->IsBonusObjective() ? ", bonus" : "", step->Title->Str[locale], uint32(scenario->GetStepState(step)), step->Criteriatreeid);
++
++            if (CriteriaTree const* tree = sCriteriaMgr->GetCriteriaTree(step->Criteriatreeid))
++                printTree(tree, ". ");
++        }
++
++        return true;
+     }
+ 
+     static bool HandleDebugTransportStateCommand(ChatHandler* handler, char const* args)

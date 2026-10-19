@@ -1,0 +1,610 @@
+diff --git a/src/server/game/Entities/Player/KillRewarder.cpp b/src/server/game/Entities/Player/KillRewarder.cpp
+--- a/src/server/game/Entities/Player/KillRewarder.cpp
++++ b/src/server/game/Entities/Player/KillRewarder.cpp
+@@ -291,7 +291,10 @@ void KillRewarder::Reward()
+                 guild->UpdateCriteria(CRITERIA_TYPE_KILL_CREATURE, victim->GetEntry(), 1, 0, victim, _killer);
+ 
+         if (Scenario* scenario = victim->GetScenario())
+-            scenario->UpdateCriteria(CRITERIA_TYPE_KILL_CREATURE, victim->GetEntry(), 1, 0, victim, _killer);
++        {
++            InstanceScript* instance = victim->GetInstanceScript();
++            scenario->UpdateCriteria(CRITERIA_TYPE_KILL_CREATURE, instance ? instance->GetScenarioKillCredit(victim) : victim->GetEntry(), 1, 0, victim, _killer);
++        }
+ 
+         // Guild achievements: Critter Kill Squad / Crittergeddon. Credited once per
+         // kill to the killer's own guild; the creature type is checked by the
+diff --git a/src/server/game/Entities/Unit/Unit.cpp b/src/server/game/Entities/Unit/Unit.cpp
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -11540,7 +11540,9 @@ void Unit::Kill(Unit* victim, bool durabilityLoss)
+                 // Dungeon and raid bosses always drop at least one item from their own loot table. A boss is an
+                 // instance_encounters credit, or a creature the dungeon's scenario asks to kill once
+                 Scenario const* scenario = creature->GetScenario();
+-                if (GetMap()->IsDungeon() && (creature->IsDungeonBoss() || (scenario && scenario->HasKillCriteria(creature->GetEntry()))))
++                InstanceScript const* instance = creature->GetInstanceScript();
++                uint32 const scenarioEntry = instance ? instance->GetScenarioKillCredit(creature) : creature->GetEntry();
++                if (GetMap()->IsDungeon() && (creature->IsDungeonBoss() || (scenario && scenario->HasKillCriteria(scenarioEntry))))
+                     if (uint32 lootid = creature->GetCreatureTemplate()->lootid)
+                         if (LootTemplate const* lootTemplate = LootTemplates_Creature.GetLootFor(lootid))
+                             lootTemplate->AddItemIfNoneDropped(*loot, creature->GetLootMode(), looter);
+diff --git a/src/server/game/Instances/InstanceScript.cpp b/src/server/game/Instances/InstanceScript.cpp
+--- a/src/server/game/Instances/InstanceScript.cpp
++++ b/src/server/game/Instances/InstanceScript.cpp
+@@ -847,6 +847,11 @@ void InstanceScript::DoResurrectPlayers(float restore_percent)
+ }
+ 
+ // Update Achievement Criteria for all players in instance
++uint32 InstanceScript::GetScenarioKillCredit(Creature const* creature) const
++{
++    return creature->GetEntry();
++}
++
+ void InstanceScript::DoUpdateCriteria(CriteriaTypes type, uint32 miscValue1 /*= 0*/, uint32 miscValue2 /*= 0*/, Unit* unit /*= nullptr*/)
+ {
+     if (!instance)
+diff --git a/src/server/game/Instances/InstanceScript.h b/src/server/game/Instances/InstanceScript.h
+--- a/src/server/game/Instances/InstanceScript.h
++++ b/src/server/game/Instances/InstanceScript.h
+@@ -387,6 +387,10 @@ class TC_GAME_API InstanceScript : public ZoneScript
+ 
+         // Checks encounter state at kill/spellcast
+         void UpdateEncounterStateForKilledCreature(uint32 creatureId, Unit* source);
++
++        // The creature entry a kill of this creature counts as for the instance's scenario
++        // (dungeon objectives). Lets a dungeon map its own bosses onto the client's objectives.
++        virtual uint32 GetScenarioKillCredit(Creature const* creature) const;
+         void UpdateEncounterStateForSpellCast(uint32 spellId, Unit* source);
+ 
+         // Used only during loading
+diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.cpp b/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.cpp
+--- a/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.cpp
++++ b/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.cpp
+@@ -17,6 +17,7 @@
+ 
+ #include "ScriptMgr.h"
+ #include "blackfathom_deeps.h"
++#include "Chat.h"
+ #include "GameObject.h"
+ #include "InstanceScript.h"
+ #include "Player.h"
+@@ -218,6 +219,79 @@ public:
+     }
+ };
+ 
++enum ChroniclerGossip
++{
++    GOSSIP_ACTION_LAYOUT_INFO                               = GOSSIP_ACTION_INFO_DEF + 1,
++    GOSSIP_ACTION_LAYOUT_CHANGE                             = GOSSIP_ACTION_INFO_DEF + 2
++};
++
++// 4800000 - Blackfathom Chronicler (custom): shows which layout the instance has and changes it
++// until the first boss of the run is defeated
++class npc_blackfathom_chronicler : public CreatureScript
++{
++public:
++    npc_blackfathom_chronicler() : CreatureScript("npc_blackfathom_chronicler") { }
++
++    static char const* LayoutName(uint32 layout)
++    {
++        return layout == LAYOUT_CLASSIC ? "classic" : "redesigned";
++    }
++
++    bool OnGossipHello(Player* player, Creature* creature) override
++    {
++        InstanceScript* instance = creature->GetInstanceScript();
++        if (!instance)
++            return false;
++
++        uint32 const layout = instance->GetData(DATA_LAYOUT);
++        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Which Blackfathom Deeps is this?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_LAYOUT_INFO);
++        AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, layout == LAYOUT_CLASSIC
++            ? "Show me the redesigned Blackfathom Deeps (Domina, Thruk, Twilight Lord Bathiel...)."
++            : "Show me the classic Blackfathom Deeps (Lady Sarevess, Gelihast, Twilight Lord Kelris...).", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_LAYOUT_CHANGE);
++        SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
++        return true;
++    }
++
++    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
++    {
++        CloseGossipMenuFor(player);
++
++        InstanceScript* instance = creature->GetInstanceScript();
++        if (!instance)
++            return true;
++
++        ChatHandler handler(player->GetSession());
++        uint32 const layout = instance->GetData(DATA_LAYOUT);
++        switch (action)
++        {
++            case GOSSIP_ACTION_LAYOUT_INFO:
++                handler.PSendSysMessage("This is the %s Blackfathom Deeps. Its bosses count for the dungeon's objectives either way.", LayoutName(layout));
++                if (instance->GetData(DATA_LAYOUT_LOCKED))
++                    handler.PSendSysMessage("A boss has fallen here, so the layout is set until the instance resets.");
++                else
++                    handler.PSendSysMessage("Until the first boss falls, I can show you the other one.");
++                break;
++            case GOSSIP_ACTION_LAYOUT_CHANGE:
++                if (instance->GetData(DATA_LAYOUT_LOCKED))
++                {
++                    handler.PSendSysMessage("A boss has fallen here, so the layout is set until the instance resets.");
++                    break;
++                }
++                if (player->IsInCombat())
++                {
++                    handler.PSendSysMessage("Not while you are fighting.");
++                    break;
++                }
++                instance->SetData(DATA_LAYOUT, layout == LAYOUT_CLASSIC ? LAYOUT_REDESIGN : LAYOUT_CLASSIC);
++                handler.PSendSysMessage("The deeps shift. This is now the %s Blackfathom Deeps.", LayoutName(instance->GetData(DATA_LAYOUT)));
++                break;
++            default:
++                break;
++        }
++        return true;
++    }
++};
++
+ // 151159 - Darkness Calls
+ class spell_subjugator_korul_darkness_calls : public SpellScriptLoader
+ {
+@@ -253,5 +327,6 @@ void AddSC_blackfathom_deeps()
+     new go_blackfathom_fire();
+     new npc_blackfathom_deeps_event();
+     new npc_morridune();
++    new npc_blackfathom_chronicler();
+     new spell_subjugator_korul_darkness_calls();
+ }
+diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.h b/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.h
+--- a/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.h
++++ b/src/server/scripts/Kalimdor/BlackfathomDeeps/blackfathom_deeps.h
+@@ -23,7 +23,36 @@
+ #define BFDScriptName "instance_blackfathom_deeps"
+ #define DataHeader "BFD"
+ 
+-uint32 const EncounterCount = 3;
++uint32 const EncounterCount = 11;
++
++// The dungeon has two layouts. Classic is the one HavenCore spawns: Ghamoo-Ra, Lady Sarevess, Gelihast,
++// Lorgus Jett, Baron Aquanis, Twilight Lord Kelris, Old Serra'kis and Aku'mai. Redesign is the one
++// the 8.3.7 client's Adventure Guide and dungeon objectives (scenario 333) describe, added in 6.0.2.
++// Blackfathom.Layout in worldserver.conf picks the layout of new instances; the Blackfathom
++// Chronicler at the entrance changes it until the first boss of the run is defeated.
++enum BFDLayout
++{
++    LAYOUT_CLASSIC                                         = 0,
++    LAYOUT_REDESIGN                                        = 1
++};
++
++// Redesign spawns (sql/fixes/world/2026_10_17_03). Every other map 48 spawn in the default
++// spawn group belongs to the classic layout.
++enum BFDSpawnGroups
++{
++    SPAWN_GROUP_REDESIGN                                   = 433,
++    SPAWN_GROUP_REDESIGN_ENTRANCE_ALLIANCE                 = 434,
++    SPAWN_GROUP_REDESIGN_ENTRANCE_HORDE                    = 435,
++    SPAWN_GROUP_REDESIGN_AKU_MAI_ALLIANCE                  = 436, // after Aku'mai the Devourer
++    SPAWN_GROUP_REDESIGN_AKU_MAI_HORDE                     = 437,
++    SPAWN_GROUP_REDESIGN_ALTAR_DOMINA                      = 438, // after Domina
++    SPAWN_GROUP_REDESIGN_ALTAR_KORUL                       = 439, // after Subjugator Kor'ul
++    SPAWN_GROUP_REDESIGN_SPOILS                            = 440, // after Aku'mai the Devourer
++    SPAWN_GROUP_LAYOUT_CHRONICLER                          = 441, // both layouts
++
++    SPAWN_GROUP_REDESIGN_FIRST                             = SPAWN_GROUP_REDESIGN,
++    SPAWN_GROUP_REDESIGN_LAST                              = SPAWN_GROUP_REDESIGN_SPOILS
++};
+ 
+ enum BFDData64
+ {
+@@ -42,8 +71,20 @@ enum BFDData
+     DATA_GELIHAST,
+     DATA_KELRIS,
+     DATA_AKU_MAI,
+-    DATA_FIRE,
+-    DATA_EVENT
++    // Redesign bosses
++    DATA_GHAMOO_RA,
++    DATA_DOMINA,
++    DATA_SUBJUGATOR_KORUL,
++    DATA_THRUK,
++    DATA_GUARDIAN_OF_THE_DEEP,
++    DATA_EXECUTIONER_GORE,
++    DATA_TWILIGHT_LORD_BATHIEL,
++    DATA_AKU_MAI_THE_DEVOURER,
++
++    DATA_FIRE = 100,
++    DATA_EVENT,
++    DATA_LAYOUT,
++    DATA_LAYOUT_LOCKED
+ };
+ 
+ enum BFDCreatureIds
+@@ -56,7 +97,26 @@ enum BFDCreatureIds
+     NPC_AKU_MAI_SERVANT                                    = 4978,
+     NPC_BARBED_CRUSTACEAN                                  = 4823,
+ 
+-    NPC_MORRIDUNE                                          = 6729
++    NPC_MORRIDUNE                                          = 6729,
++    NPC_BLACKFATHOM_CHRONICLER                             = 4800000, // custom, picks the layout
++
++    // Classic bosses
++    NPC_GHAMOO_RA                                          = 4887,
++    NPC_LADY_SAREVESS                                      = 4831,
++    NPC_GELIHAST                                           = 6243,
++    NPC_BARON_AQUANIS                                      = 12876,
++    NPC_OLD_SERRAKIS                                       = 4830,
++    NPC_AKU_MAI                                            = 4829,
++
++    // Redesign bosses
++    NPC_GHAMOO_RA_REDESIGN                                 = 74446,
++    NPC_DOMINA                                             = 74476,
++    NPC_SUBJUGATOR_KORUL                                   = 74565,
++    NPC_THRUK                                              = 74505,
++    NPC_GUARDIAN_OF_THE_DEEP                               = 74508,
++    NPC_EXECUTIONER_GORE                                   = 74518,
++    NPC_TWILIGHT_LORD_BATHIEL                              = 74728,
++    NPC_AKU_MAI_THE_DEVOURER                               = 75155
+ };
+ 
+ enum BFDGameObjectIds
+@@ -67,7 +127,8 @@ enum BFDGameObjectIds
+     GO_FIRE_OF_AKU_MAI_3                                   = 21120,
+     GO_FIRE_OF_AKU_MAI_4                                   = 21121,
+     GO_AKU_MAI_DOOR                                        = 21117,
+-    GO_ALTAR_OF_THE_DEEPS                                  = 103016
++    GO_ALTAR_OF_THE_DEEPS                                  = 103016,
++    GO_SPOILS_OF_BLACKFATHOM                               = 225817
+ };
+ 
+ template<typename AI>
+diff --git a/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_deeps.cpp b/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_deeps.cpp
+--- a/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_deeps.cpp
++++ b/src/server/scripts/Kalimdor/BlackfathomDeeps/instance_blackfathom_deeps.cpp
+@@ -24,10 +24,15 @@ EndScriptData */
+ 
+ #include "ScriptMgr.h"
+ #include "blackfathom_deeps.h"
++#include "Config.h"
+ #include "Creature.h"
+ #include "GameObject.h"
+ #include "InstanceScript.h"
+ #include "Map.h"
++#include "PhasingHandler.h"
++#include "Player.h"
++#include "SpawnData.h"
++#include <algorithm>
+ 
+ const Position LorgusPosition[4] =
+ {
+@@ -46,6 +51,54 @@ const Position SpawnsLocation[] =
+     {-863.895f, -458.899f, -33.891f, 5.637f}
+ };
+ 
++// Not a Phase.db2 phase: no player is ever in it, so the spawns of the other layout given it are not
++// seen and do not interact (same approach as Shadowfang Keep's faction troops).
++uint16 const PHASE_BFD_HIDDEN = 65535;
++
++// Each classic boss stands where a redesign boss does. In the classic layout, killing one credits the
++// redesign boss's dungeon objective (InstanceScript::GetScenarioKillCredit); in the redesign layout,
++// killing the redesign boss credits the classic boss for the quests that still ask for it.
++struct BossCredit
++{
++    uint32 classicEntry;
++    uint32 redesignEntry;
++    uint32 redesignBossId;
++};
++
++BossCredit const BossCredits[] =
++{
++    { NPC_GHAMOO_RA,            NPC_GHAMOO_RA_REDESIGN,     DATA_GHAMOO_RA             },
++    { NPC_LADY_SAREVESS,        NPC_DOMINA,                 DATA_DOMINA                }, // bonus objective
++    { NPC_GELIHAST,             NPC_SUBJUGATOR_KORUL,       DATA_SUBJUGATOR_KORUL      }, // bonus objective
++    { NPC_LORGUS_JETT,          NPC_THRUK,                  DATA_THRUK                 },
++    { NPC_BARON_AQUANIS,        NPC_EXECUTIONER_GORE,       DATA_EXECUTIONER_GORE      },
++    { NPC_OLD_SERRAKIS,         NPC_GUARDIAN_OF_THE_DEEP,   DATA_GUARDIAN_OF_THE_DEEP  }, // bonus objective
++    { NPC_TWILIGHT_LORD_KELRIS, NPC_TWILIGHT_LORD_BATHIEL,  DATA_TWILIGHT_LORD_BATHIEL },
++    { NPC_AKU_MAI,              NPC_AKU_MAI_THE_DEVOURER,   DATA_AKU_MAI_THE_DEVOURER  }
++};
++
++// Redesign creatures that hold still where they were sniffed (TrinityCore's "Sessile" static flag):
++// tentacles, heads, bunnies, channelers and bodies.
++uint32 const RedesignRootedEntries[] =
++{
++    75155, 75408, 75158, 74747, 75046, 75086, 75111, 75463, 75780, 75034, 76062, 76005, 76012,
++    74997, 74998, 75000, 75042, 75147, 75307, 75575, 75923
++};
++
++// Redesign creatures sniffed off the ground (TrinityCore's "Floating" static flag) that would
++// otherwise drop to the floor: the defeated bosses over Bathiel's altar and the sacrifice.
++uint32 const RedesignHoveringEntries[] =
++{
++    75550, // Domina
++    75553, // Subjugator Kor'ul
++    75039, // Frightened Prisoner
++    85844  // The Old Gods
++};
++
++// Redesign bodies: Lady Sarevess and Gelihast (killed by the Twilight's Hammer) and the Slain Hero.
++// Their "Slain ... Cosmetic (Dead)" auras have no effect in 8.3.7 without a script.
++uint32 const RedesignDeadEntries[] = { 76005, 76012, 75060 };
++
+ class instance_blackfathom_deeps : public InstanceMapScript
+ {
+ public:
+@@ -65,10 +118,128 @@ public:
+ 
+             countFires = 0;
+             deathTimes = 0;
++            _team = 0;
++            _layout = sConfigMgr->GetIntDefault("Blackfathom.Layout", LAYOUT_REDESIGN) == LAYOUT_CLASSIC ? LAYOUT_CLASSIC : LAYOUT_REDESIGN;
++        }
++
++        void WriteSaveDataMore(std::ostringstream& data) override
++        {
++            data << uint32(_layout) << ' ';
++        }
++
++        void ReadSaveDataMore(std::istringstream& data) override
++        {
++            // An instance saved before the redesign existed has no layout and was classic
++            uint32 layout = LAYOUT_CLASSIC;
++            data >> layout;
++            _layout = layout == LAYOUT_REDESIGN ? LAYOUT_REDESIGN : LAYOUT_CLASSIC;
+         }
+ 
++        // Does the spawn belong to this instance's layout? Spawns in other spawn groups
++        // (gathering nodes) belong to both.
++        bool IsLayoutSpawn(SpawnData const* data) const
++        {
++            uint32 groupId = data->spawnGroupData ? data->spawnGroupData->groupId : 0;
++            if (groupId >= SPAWN_GROUP_REDESIGN_FIRST && groupId <= SPAWN_GROUP_REDESIGN_LAST)
++                return _layout == LAYOUT_REDESIGN;
++
++            return groupId != 0 || _layout == LAYOUT_CLASSIC;
++        }
++
++        bool IsSpawnShown(SpawnData const* data) const
++        {
++            if (!IsLayoutSpawn(data))
++                return false;
++
++            bool const alliance = _team == ALLIANCE;
++            bool const horde = _team == HORDE;
++            bool const akuMai = GetBossState(DATA_AKU_MAI_THE_DEVOURER) == DONE;
++
++            switch (data->spawnGroupData ? data->spawnGroupData->groupId : 0)
++            {
++                case SPAWN_GROUP_REDESIGN_ENTRANCE_ALLIANCE:    return alliance;
++                case SPAWN_GROUP_REDESIGN_ENTRANCE_HORDE:       return horde;
++                case SPAWN_GROUP_REDESIGN_AKU_MAI_ALLIANCE:     return alliance && akuMai;
++                case SPAWN_GROUP_REDESIGN_AKU_MAI_HORDE:        return horde && akuMai;
++                case SPAWN_GROUP_REDESIGN_ALTAR_DOMINA:         return GetBossState(DATA_DOMINA) == DONE;
++                case SPAWN_GROUP_REDESIGN_ALTAR_KORUL:          return GetBossState(DATA_SUBJUGATOR_KORUL) == DONE;
++                case SPAWN_GROUP_REDESIGN_SPOILS:               return akuMai;
++                default:                                        return true;
++            }
++        }
++
++        template<class T>
++        void UpdateSpawnVisibility(T* object, SpawnData const* data, bool updateVisibility)
++        {
++            bool const hidden = object->GetPhaseShift().HasPhase(PHASE_BFD_HIDDEN);
++            bool const shown = IsSpawnShown(data);
++            if (shown == !hidden)
++                return;
++
++            // Set as the object's database phase: PhasingHandler::AddPhase doesn't clear the "unphased"
++            // flag of an object spawned from the database, so it would stay visible to everyone
++            if (shown)
++                PhasingHandler::InitDbPhaseShift(object->GetPhaseShift(), data->phaseUseFlags, data->phaseId, data->phaseGroup);
++            else
++                PhasingHandler::InitDbPhaseShift(object->GetPhaseShift(), PHASE_USE_FLAGS_NONE, PHASE_BFD_HIDDEN, 0);
++
++            if (updateVisibility && object->IsInWorld())
++                object->UpdateObjectVisibility();
++        }
++
++        void UpdateSpawns()
++        {
++            for (auto const& pair : instance->GetCreatureBySpawnIdStore())
++                if (CreatureData const* data = pair.second->GetCreatureData())
++                    UpdateSpawnVisibility(pair.second, data, true);
++
++            for (auto const& pair : instance->GetGameObjectBySpawnIdStore())
++                if (GameObjectData const* data = pair.second->GetGameObjectData())
++                    UpdateSpawnVisibility(pair.second, data, true);
++        }
++
++        // The layout can't change once a boss of either layout has been defeated
++        bool IsLayoutLocked() const
++        {
++            for (uint32 i = 0; i < EncounterCount; ++i)
++                if (GetBossState(i) == DONE)
++                    return true;
++            return false;
++        }
++
++        void OnPlayerEnter(Player* player) override
++        {
++            if (!_team)
++            {
++                _team = player->GetTeam();
++                UpdateSpawns();
++            }
++        }
++
++        // Both layouts are loaded; the one not in use is hidden, so the layout can be changed before
++        // the first boss falls (npc_blackfathom_chronicler)
+         void OnCreatureCreate(Creature* creature) override
+         {
++            if (CreatureData const* data = creature->GetCreatureData())
++                UpdateSpawnVisibility(creature, data, false);
++
++            uint32 entry = creature->GetEntry();
++            if (std::find(std::begin(RedesignRootedEntries), std::end(RedesignRootedEntries), entry) != std::end(RedesignRootedEntries))
++            {
++                creature->SetControlled(true, UNIT_STATE_ROOT);
++                creature->SetDisableGravity(true);
++            }
++            else if (std::find(std::begin(RedesignHoveringEntries), std::end(RedesignHoveringEntries), entry) != std::end(RedesignHoveringEntries))
++                creature->SetDisableGravity(true);
++
++            if (std::find(std::begin(RedesignDeadEntries), std::end(RedesignDeadEntries), entry) != std::end(RedesignDeadEntries))
++            {
++                creature->SetDynamicFlags(UNIT_DYNFLAG_DEAD);
++                creature->AddUnitFlag2(UNIT_FLAG2_FEIGN_DEATH);
++                creature->AddUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC));
++                creature->SetReactState(REACT_PASSIVE);
++            }
++
+             switch (creature->GetEntry())
+             {
+                 case NPC_TWILIGHT_LORD_KELRIS:
+@@ -82,6 +253,10 @@ public:
+ 
+         void OnGameObjectCreate(GameObject* go) override
+         {
++            GameObjectData const* data = go->GetGameObjectData();
++            if (data)
++                UpdateSpawnVisibility(go, data, false);
++
+             switch (go->GetEntry())
+             {
+                 case GO_FIRE_OF_AKU_MAI_1:
+@@ -107,6 +282,15 @@ public:
+                         go->AddFlag(GO_FLAG_NOT_SELECTABLE);
+                     break;
+                 case GO_AKU_MAI_DOOR:
++                    // Each layout has its own door: the classic one opens when the fires of Aku'mai are lit,
++                    // the redesign one when Twilight Lord Bathiel dies
++                    if (data && data->spawnGroupData && data->spawnGroupData->groupId == SPAWN_GROUP_REDESIGN)
++                    {
++                        if (GetBossState(DATA_TWILIGHT_LORD_BATHIEL) == DONE)
++                            HandleGameObject(ObjectGuid::Empty, true, go);
++                        redesignDoorGUID = go->GetGUID();
++                        break;
++                    }
+                     if (GetBossState(DATA_AKU_MAI) == DONE)
+                         HandleGameObject(ObjectGuid::Empty, true, go);
+                     mainDoorGUID = go->GetGUID();
+@@ -118,6 +302,14 @@ public:
+         {
+             switch (type)
+             {
++                case DATA_LAYOUT:
++                    if (data != _layout && (data == LAYOUT_CLASSIC || data == LAYOUT_REDESIGN) && !IsLayoutLocked())
++                    {
++                        _layout = data;
++                        UpdateSpawns();
++                        SaveToDB();
++                    }
++                    break;
+                 case DATA_FIRE:
+                     countFires = data;
+                     switch (countFires)
+@@ -170,8 +362,15 @@ public:
+             if (!InstanceScript::SetBossState(type, state))
+                 return false;
+ 
++            if (_layout == LAYOUT_REDESIGN && state == DONE)
++                UpdateSpawns();
++
+             switch (type)
+             {
++                case DATA_TWILIGHT_LORD_BATHIEL:
++                    if (state == DONE)
++                        HandleGameObject(redesignDoorGUID, true);
++                    break;
+                 case DATA_GELIHAST:
+                     if (state == DONE)
+                         if (GameObject* go = instance->GetGameObject(shrineOfGelihastGUID))
+@@ -192,10 +391,52 @@ public:
+             return true;
+         }
+ 
++        uint32 GetScenarioKillCredit(Creature const* creature) const override
++        {
++            if (_layout == LAYOUT_CLASSIC)
++                for (BossCredit const& credit : BossCredits)
++                    if (credit.classicEntry == creature->GetEntry())
++                        return credit.redesignEntry;
++
++            return creature->GetEntry();
++        }
++
++        void OnUnitDeath(Unit* unit) override
++        {
++            Creature* creature = unit->ToCreature();
++            if (!creature || _layout != LAYOUT_REDESIGN)
++                return;
++
++            for (BossCredit const& credit : BossCredits)
++            {
++                if (credit.redesignEntry != creature->GetEntry())
++                    continue;
++
++                // The redesign bosses have no boss scripts yet; their deaths save the run's progress.
++                // A new instance's bosses start as TO_BE_DECIDED, and SetBossState from that state only
++                // records the new state and returns false: nothing is saved, and the door and spawn
++                // updates below don't run. A boss no boss script has engaged is set NOT_STARTED first.
++                if (GetBossState(credit.redesignBossId) == TO_BE_DECIDED)
++                    SetBossState(credit.redesignBossId, NOT_STARTED);
++                if (GetBossState(credit.redesignBossId) != DONE)
++                    SetBossState(credit.redesignBossId, DONE);
++
++                instance->ApplyOnEveryPlayer([&](Player* player)
++                {
++                    player->KilledMonsterCredit(credit.classicEntry);
++                });
++                break;
++            }
++        }
++
+         uint32 GetData(uint32 type) const override
+         {
+             switch (type)
+             {
++                case DATA_LAYOUT:
++                    return _layout;
++                case DATA_LAYOUT_LOCKED:
++                    return IsLayoutLocked() ? 1 : 0;
+                 case DATA_FIRE:
+                     return countFires;
+                 case DATA_EVENT:
+@@ -237,8 +478,11 @@ public:
+         ObjectGuid shrineOfGelihastGUID;
+         ObjectGuid altarOfTheDeepsGUID;
+         ObjectGuid mainDoorGUID;
++        ObjectGuid redesignDoorGUID;
+         uint8 countFires;
+         uint8 deathTimes;
++        uint32 _team;
++        uint8 _layout;
+     };
+ };
+ 
+diff --git a/src/server/worldserver/worldserver.conf.dist b/src/server/worldserver/worldserver.conf.dist
+--- a/src/server/worldserver/worldserver.conf.dist
++++ b/src/server/worldserver/worldserver.conf.dist
+@@ -4662,3 +4662,22 @@ DungeonScale.XP.StopAfterCompletion = 1
+ 
+ #
+ ###################################################################################################
++
++###################################################################################################
++# DUNGEON LAYOUTS
++#
++#    Blackfathom.Layout
++#        Description: Which Blackfathom Deeps a new instance gets. The Blackfathom
++#                     Chronicler at the entrance switches an instance to the other
++#                     layout until its first boss is defeated.
++#        Default:     1 - Redesign (Ghamoo-Ra, Domina, Subjugator Kor'ul, Thruk,
++#                         Guardian of the Deep, Executioner Gore, Twilight Lord
++#                         Bathiel, Aku'mai the Devourer), as in the Adventure Guide
++#                     0 - Classic (Ghamoo-Ra, Lady Sarevess, Gelihast, Lorgus Jett,
++#                         Baron Aquanis, Twilight Lord Kelris, Old Serra'kis,
++#                         Aku'mai); its bosses count for the redesign's objectives
++
++Blackfathom.Layout = 1
++
++#
++###################################################################################################
