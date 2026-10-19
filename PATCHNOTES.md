@@ -43,6 +43,25 @@ On branch `claude/project-thread-g6xhsv` (PR #16), not merged yet. Found in a su
   spawns, from `creature_addon` and On Reset) stay.
 - **Status:** untested in game.
 
+#### Mekgineer Thermaplugg: bombs from the Gnome Faces, one Knock Away
+- **Found** (reported by Four): Thermaplugg (7800) used Knock Away very often. Walking Bombs (7915)
+  appeared in the middle of the room and then under him wherever he stood, never from the Gnome Faces
+  on the walls. One bomb stood below a face before the fight, and bombs kept meleeing after they had
+  detonated. Kill credit and the Gnomeregan achievement worked. His SmartAI mixed two script versions:
+  two rows each with ids 3 and 5, Knock Away three times (10101 twice, 11130 once), bombs summoned on
+  himself and at one fixed spot, and broken links. The bomb's Detonation row linked to id 3, which
+  doesn't exist, so its despawn never ran.
+- **Changed:** new `sql/fixes/world/2026_10_19_11_gnomeregan_thermaplugg.sql`:
+  - Thermaplugg's `smart_scripts` rewritten: Knock Away (10101) every 12 to 15 s; every 12 to 16 s
+    one of six action lists (780000 to 780005, picked at random) summons a Walking Bomb (despawns
+    after 60 s) below one of the six Gnome Faces, 40% of the way from the face to its button,
+    z -325.2. The yells, Pound (74720), Steam Blast (93655) and Welding Beam (52778) are as before.
+  - Walking Bomb: Detonation (4043) now links to the despawn; a summoned bomb joins the fight
+    against everyone in the instance (`SET_IN_COMBAT_WITH_ZONE`).
+  - The bomb spawned from the start, creature guid 324517, is deleted.
+  - The faces' buttons (142214 to 142219) still do nothing.
+- **Status:** untested in game.
+
 #### To pick up the Gnomeregan fixes
 SQL only, then restart `worldserver` (templates and SmartAI load at startup).
 ```
@@ -51,6 +70,7 @@ git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_08_gnomeregan_emi_electrocutioner.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_09_gnomeregan_emi_event_prespawns.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_10_gnomeregan_irradiated_pillager_death.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_11_gnomeregan_thermaplugg.sql | mysql -u root -p bfa_world
 ```
 
 ### The Stockade
