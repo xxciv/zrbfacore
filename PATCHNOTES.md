@@ -160,11 +160,15 @@ keeps it.
 - **Status:** untested in game.
 
 #### To pick up these fixes
-New patch on top of the others: apply it and rebuild. Then the SQL, and restart `worldserver`.
+New patch on top of the others: apply it and rebuild. It adds a new source file (`scarlet_halls.cpp`),
+so CMake has to re-run its configure step once (`cmake build`, which keeps your settings); without it
+the link fails with `undefined reference to AddSC_scarlet_halls()`. Then the SQL, and restart
+`worldserver`.
 ```
 cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
 git -C ../tools-repo show FETCH_HEAD:tools/bfa/scarlet-halls.patch | git apply
+sudo cmake build
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_01_scarlet_entrances_exits.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_02_scarlet_halls_hooded_crusaders.sql | mysql -u root -p bfa_world

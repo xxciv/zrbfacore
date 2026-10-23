@@ -572,6 +572,10 @@ git apply ../tools-repo/tools/bfa/scarlet-halls.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
+When an update adds a source file (`scarlet-halls.patch` adds `scarlet_halls.cpp`), run `cmake build`
+once before building: CMake only finds new files when it configures, and the link fails with an
+`undefined reference` otherwise. It keeps the settings you configured with.
+
 `git checkout -- .` throws away every change to upstream's files, so keep your own edits somewhere else.
 `git apply -R` would only work if the patch hadn't changed since it was applied, and the pull may have
 changed it.
