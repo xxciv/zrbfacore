@@ -66,6 +66,14 @@ Found in Four's first visit.
 - **Changed:** the same SQL sets faction 14, level 29 to 90, matching the Starving Hounds next to it.
 - **Status:** untested in game.
 
+#### Codex of the Crusade almost never dropped
+- **Found** (reported by Four): Flameweaver Koegler (59150) didn't drop the Codex of the Crusade for
+  "Just for Safekeeping, Of Course". The normal item 87267 (quest 31493) had `Chance` 1 and
+  `QuestRequired` 0. The heroic item 87268 (quest 31497) used loot mode 2, which this core never turns on.
+- **Changed:** new `sql/fixes/world/2026_10_23_04_scarlet_halls_codex.sql` sets both to `Chance` 100,
+  `QuestRequired` 1, `LootMode` 1: they drop every kill, only for players on the quest.
+- **Status:** untested in game.
+
 #### To pick up these fixes
 SQL only, then restart `worldserver` (it loads teleports, Dungeon Finder data and spawns at startup).
 ```
@@ -74,6 +82,7 @@ git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_01_scarlet_entrances_exits.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_02_scarlet_halls_hooded_crusaders.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_03_scarlet_halls_hounds.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_04_scarlet_halls_codex.sql | mysql -u root -p bfa_world
 ```
 
 ## 2026-10-19
