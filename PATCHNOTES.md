@@ -112,16 +112,28 @@ keeps it.
   it as a shield: Heroic Defense, 75% less damage taken but slower and no attacking. Stepping into the
   hall (area trigger 7532) sets off a line of Exploding Shots on the floor. Within 10 yards of Lindon
   the volleys stop and the whole crew draws blades; Heroic Defense drops then, and past the hall.
-  Simplified: the archery target follows you instead of riding on you as a vehicle.
-- **Status:** untested in game.
+  Simplified: the archery target walks just ahead of you instead of riding on you as a vehicle.
+- **Found** (Four's run, 2026-10-23): the archery target trailed behind, didn't cut the arrows' damage,
+  and kept following after Lindon died. Heroic Defense was never applied: its first effect makes the
+  player a vehicle for the target, and cast on a player that isn't one it never landed.
+- **Changed:** the target adds the aura directly, walks 2 yards in front of you (you're slowed by 65%
+  while carrying it), and goes back on its stand as soon as the aura is gone. It can't be picked up
+  once Lindon is dead.
+- **Status:** Lindon's fight and gate confirmed by Four on 2026-10-23. The archery target fix is
+  untested.
 
 #### Starving and Angry Hounds, and the dog food buckets
 - **Found:** the buckets of dog food did nothing and the Angry Hounds weren't chained.
 - **Changed:** Starving Hounds (58876) are C++ now, Hungry Dog still capped at 4 seconds. Click a Bucket
   of Meaty Dog Food (65379), then throw it (out of combat) next to a Vigilant Watchman: he is pinned
   down and every hound within 20 yards turns on him, then sits down to eat. Angry Hounds (58674) are
-  chained to their stakes and only attack when you come within 5 yards; they give up beyond 8.
-- **Status:** untested in game.
+  chained to their stakes and only attack when you come within 5 yards, or when attacked.
+- **Found** (Four's run, 2026-10-23): an Angry Hound attacked from stealth stayed passive, and one that
+  had aggroed ran back to its stake and reset when you stepped back.
+- **Changed:** an attack wakes the hound, and when you go past the end of its chain (8 yards from the
+  stake) it waits at the stake still in combat instead of resetting, and comes back at you when you're
+  in reach.
+- **Status:** the Angry Hound fix is untested.
 
 #### Houndmaster Braun
 - **Found** (reported by Four): melee, Death Blossom and Bloody Mess only; an easy fight.
@@ -129,7 +141,7 @@ keeps it.
   one Obedient Hound called at 90, 80, 70 and 60%, Bloody Rage at 50%. At 15% his own hounds turn on
   him: he stops fighting, is eaten, and dies 12 to 15 seconds later with the kill credited to you. The
   hounds then run to his exit and kill the guards there.
-- **Status:** untested in game.
+- **Status:** confirmed by Four on 2026-10-23 (yells, hounds, kill credit, the guards at the exit).
 
 #### Armsmaster Harlan
 - **Found** (reported by Four): melee and Dragon's Reach only.
@@ -137,7 +149,7 @@ keeps it.
   the balconies; break the armor and they are Unarmored), Heroic Leap to the middle of the room
   followed by Blades of Light spinning round it (every second, damage to everyone within 8 yards), and
   Berserker Rage at 50%. Simplified: Blades of Light doesn't pick players up.
-- **Status:** untested in game.
+- **Status:** confirmed by Four on 2026-10-23 (yells, Call for Help, bonus objective).
 
 #### Flameweaver Koegler meleed too much
 - **Found** (reported by Four): far too much melee for a caster, and Quickened Mind (113682) didn't make
@@ -146,12 +158,12 @@ keeps it.
   a book case (it burns and hurts anyone in front of him). Quickened Mind now gives him three instant
   casts. Every 30 seconds he teleports to the middle and channels Greater Dragon's Breath for 10
   seconds, a cone that sweeps round the room.
-- **Status:** untested in game.
+- **Status:** confirmed by Four on 2026-10-23: "All scripts fired off successfully".
 
 #### The Hooded Crusader never came for the codex
 - **Changed:** the crusader outside the library stays hidden until Koegler dies, then walks in and asks
   for the codex.
-- **Status:** untested in game.
+- **Status:** confirmed by Four on 2026-10-23 (codex dropped, quest turned in, dungeon complete).
 
 #### Smaller things
 - **Changed:** 22 yells and emotes for Braun, Harlan, Koegler, Lindon, the archery target and the

@@ -1341,10 +1341,10 @@ index f6e88ba..94fdb62 100644
 -
 diff --git a/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp b/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp
 new file mode 100644
-index 0000000..62be89b
+index 0000000..3969ef4
 --- /dev/null
 +++ b/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp
-@@ -0,0 +1,701 @@
+@@ -0,0 +1,751 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -1487,16 +1487,27 @@ index 0000000..62be89b
 +};
 +
 +// Angry Hound 58674
-+// Chained to a stake: ignores players until one comes within reach of the chain.
++// Chained to a stake: ignores players until one comes within reach of the chain or attacks it. It
++// can't follow anyone past the end of the chain, but stays in the fight.
++float const AngryHoundChainLength = 8.0f;
++
 +struct npc_angry_hound : public ScriptedAI
 +{
-+    npc_angry_hound(Creature* creature) : ScriptedAI(creature) { }
++    npc_angry_hound(Creature* creature) : ScriptedAI(creature), _chasing(true) { }
 +
 +    void Reset() override
 +    {
 +        _events.Reset();
 +        _events.ScheduleEvent(EVENT_LEASH, 1000);
++        _chasing = true;
 +        me->SetReactState(REACT_PASSIVE);
++    }
++
++    void JustEngagedWith(Unit* who) override
++    {
++        // pulled by an attack (from stealth, or from range) rather than by walking up to it
++        me->SetReactState(REACT_AGGRESSIVE);
++        AttackStart(who);
 +    }
 +
 +    void UpdateAI(uint32 diff) override
@@ -1523,14 +1534,25 @@ index 0000000..62be89b
 +            return;
 +        }
 +
++        if (me->HasReactState(REACT_PASSIVE))
++            me->SetReactState(REACT_AGGRESSIVE);
++
 +        if (!UpdateVictim())
 +            return;
 +
-+        // the chain only reaches so far
-+        if (me->GetDistance(me->GetHomePosition()) > 8.0f)
++        Unit* victim = me->GetVictim();
++        bool const inReach = victim->GetDistance(me->GetHomePosition()) <= AngryHoundChainLength;
++        if (!inReach && _chasing)
 +        {
-+            EnterEvadeMode(EVADE_REASON_BOUNDARY);
-+            return;
++            _chasing = false;
++            me->GetMotionMaster()->Clear();
++            me->GetMotionMaster()->MovePoint(0, me->GetHomePosition());
++        }
++        else if (inReach && !_chasing)
++        {
++            _chasing = true;
++            me->GetMotionMaster()->Clear();
++            me->GetMotionMaster()->MoveChase(victim);
 +        }
 +
 +        DoMeleeAttackIfReady();
@@ -1538,6 +1560,7 @@ index 0000000..62be89b
 +
 +private:
 +    EventMap _events;
++    bool _chasing;
 +};
 +
 +// Bucket of Meaty Dog Food 65379
@@ -1565,8 +1588,9 @@ index 0000000..62be89b
 +};
 +
 +// Reinforced Archery Target 59163
-+// The player picks the target up as a moving shield: it follows them and gives Heroic Defense
-+// (less damage taken, slower, no attacking). Leaving the gauntlet or reaching Lindon drops it.
++// The player picks the target up as a moving shield: it goes ahead of them and gives Heroic Defense
++// (75% less damage taken, slower, no attacking). Leaving the gauntlet or reaching Lindon drops it, and
++// it goes back on its stand.
 +struct npc_reinforced_archery_target : public ScriptedAI
 +{
 +    npc_reinforced_archery_target(Creature* creature) : ScriptedAI(creature) { }
@@ -1578,6 +1602,7 @@ index 0000000..62be89b
 +
 +    void Reset() override
 +    {
++        _carrier.Clear();
 +        me->SetReactState(REACT_PASSIVE);
 +        me->AddNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
 +    }
@@ -1587,10 +1612,20 @@ index 0000000..62be89b
 +        if (!me->HasNpcFlag(UNIT_NPC_FLAG_SPELLCLICK) || clicker->HasAura(SPELL_HEROIC_DEFENSE))
 +            return;
 +
++        // nothing left to shield against
++        if (InstanceScript* instance = me->GetInstanceScript())
++            if (instance->GetBossState(DATA_COMMANDER_LINDON) == DONE)
++                return;
++
++        // Added directly: as a cast it never landed, because the spell's first effect wants
++        // the player to be a vehicle the target rides on.
++        if (!me->AddAura(SPELL_HEROIC_DEFENSE, clicker))
++            return;
++
++        _carrier = clicker->GetGUID();
 +        me->RemoveNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
 +        Talk(TALK_INTRO, clicker);
-+        DoCast(clicker, SPELL_HEROIC_DEFENSE, true);
-+        me->GetMotionMaster()->MoveFollow(clicker, 1.5f, 0.0f);
++        me->GetMotionMaster()->MoveFollow(clicker, 2.0f, 0.0f);
 +    }
 +
 +    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
@@ -1599,7 +1634,22 @@ index 0000000..62be89b
 +            damage = me->GetHealth() - 1;
 +    }
 +
-+    void UpdateAI(uint32 /*diff*/) override { }
++    void UpdateAI(uint32 /*diff*/) override
++    {
++        if (_carrier.IsEmpty())
++            return;
++
++        // shield dropped (Lindon reached or dead, past the hall, carrier died): back on the stand
++        Unit* carrier = ObjectAccessor::GetUnit(*me, _carrier);
++        if (!carrier || !carrier->IsAlive() || !carrier->HasAura(SPELL_HEROIC_DEFENSE, me->GetGUID()))
++        {
++            _carrier.Clear();
++            me->DespawnOrUnsummon(0, Seconds(5));
++        }
++    }
++
++private:
++    ObjectGuid _carrier;
 +};
 +
 +// Commander Lindon 59191
