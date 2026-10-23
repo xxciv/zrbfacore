@@ -14,18 +14,21 @@ Found in Four's first visit.
   18.67, with no ground under you. That is the old Armory entrance (map 189). `lfg_dungeon_template`
   row 163 (now Scarlet Halls, normal) was never moved to the new map. Row 164 (Scarlet Monastery,
   normal) had the right x and y but the old Cathedral height, 18.67 instead of 0.99.
-- **Changed:** new `sql/fixes/world/2026_10_23_01_scarlet_entrances_exits.sql` sets 163 to
-  836.666, 605.141, 12.8149 (facing 4.65618) and 164 to 1124.64, 512.467, 0.989549 (facing 1.5708).
-  These are the values in the Pandaria 5.4.8 world database. The heroic rows (473, and 474 from the
-  door's trigger) were already right.
-- **Status:** untested in game.
+- **Changed:** new `sql/fixes/world/2026_10_23_01_scarlet_entrances_exits.sql` sets 163 and heroic 473
+  to 839.075, 618.522, 12.8115 (facing 4.76381). Four picked that spot with `.gps`, a few yards back
+  from the Pandaria 5.4.8 value (836.666, 605.141). It sets 164 to 1124.64, 512.467, 0.989549
+  (facing 1.5708), the Pandaria value. Heroic Scarlet Monastery (474) has no row and uses the door's
+  target, which was already right.
+- **Status:** the Dungeon Finder put Four inside Scarlet Halls on 2026-10-23 (old spot). The moved spot
+  is untested.
 
 #### The Scarlet Halls door outside did nothing
 - **Found:** area trigger 614 (the Scarlet Halls door) points at WorldSafeLoc 4077, and that row was
   missing from `world_safe_locs`. The core skips a teleport whose target is missing, at startup.
-- **Changed:** the same SQL adds `world_safe_locs` 4077: map 1001, 836.666, 605.141, 12.8149. This core
-  reads `Facing` as radians (`ObjectMgr::LoadWorldSafeLocs`), so it is 4.65618.
-- **Status:** untested in game.
+- **Changed:** the same SQL adds `world_safe_locs` 4077: map 1001, the same spot as the Dungeon Finder
+  (839.075, 618.522, 12.8115). This core reads `Facing` as radians (`ObjectMgr::LoadWorldSafeLocs`), so
+  it is 4.76381.
+- **Status:** loads without errors; walking through the door is untested.
 
 #### No way out of either dungeon
 - **Found** (reported by Four): once inside Scarlet Monastery you couldn't walk out. `areatrigger_teleport`
@@ -33,8 +36,8 @@ Found in Four's first visit.
 - **Changed:** the same SQL adds 7801 (Scarlet Halls exit, to WorldSafeLoc 3626, 2869.32, -820.82,
   160.33) and 7802 (Scarlet Monastery exit, to 3623, 2915.34, -801.58, 160.33). Both are the courtyard
   spots the old wings used.
-- **Status:** untested in game. If the BFA client data doesn't have triggers 7801 or 7802, the core
-  logs "Area Trigger (ID: 7801) does not exist in AreaTrigger.dbc" in `Errors.log` at startup.
+- **Status:** the core loads 614, 7801 and 7802 without errors (Four's `Errors.log`, 2026-10-23).
+  Walking through them is untested.
 
 #### To pick up these fixes
 SQL only, then restart `worldserver` (it loads teleports and Dungeon Finder data at startup).
