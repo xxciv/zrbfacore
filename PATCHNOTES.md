@@ -15,8 +15,9 @@ Found in Four's first visit.
   row 163 (now Scarlet Halls, normal) was never moved to the new map. Row 164 (Scarlet Monastery,
   normal) had the right x and y but the old Cathedral height, 18.67 instead of 0.99.
 - **Changed:** new `sql/fixes/world/2026_10_23_01_scarlet_entrances_exits.sql` sets 163 and heroic 473
-  to 837.23, 615.755, 12.8115 (facing 4.75989). Four picked that spot with `.gps` (a second try: the first `.gps` read the selected crusader's spot), a few yards back
-  from the Pandaria 5.4.8 value (836.666, 605.141). It sets 164 to 1124.64, 512.467, 0.989549
+  to 837.23, 615.755, 12.8115 (facing 4.75989). Four picked that spot with `.gps`, a few yards back
+  from the Pandaria 5.4.8 value (836.666, 605.141). (Their first `.gps` gave the selected crusader's
+  spot instead.) It sets 164 to 1124.64, 512.467, 0.989549
   (facing 1.5708), the Pandaria value. Heroic Scarlet Monastery (474) has no row and uses the door's
   target, which was already right.
 - **Status:** the Dungeon Finder put Four inside Scarlet Halls on 2026-10-23 (old spot). The moved spot
