@@ -119,8 +119,8 @@ keeps it.
 - **Changed:** the target adds the aura directly, walks 2 yards in front of you (you're slowed by 65%
   while carrying it), and goes back on its stand as soon as the aura is gone. It can't be picked up
   once Lindon is dead.
-- **Status:** Lindon's fight and gate confirmed by Four on 2026-10-23. The archery target fix is
-  untested.
+- **Status:** Four got past Lindon on 2026-10-23; the volleys, the exploding floor and the melee
+  switch weren't reported on. The archery target fix is untested.
 
 #### Starving and Angry Hounds, and the dog food buckets
 - **Found:** the buckets of dog food did nothing and the Angry Hounds weren't chained.
