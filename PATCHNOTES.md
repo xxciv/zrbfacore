@@ -15,7 +15,7 @@ Found in Four's first visit.
   row 163 (now Scarlet Halls, normal) was never moved to the new map. Row 164 (Scarlet Monastery,
   normal) had the right x and y but the old Cathedral height, 18.67 instead of 0.99.
 - **Changed:** new `sql/fixes/world/2026_10_23_01_scarlet_entrances_exits.sql` sets 163 and heroic 473
-  to 839.075, 618.522, 12.8115 (facing 4.76381). Four picked that spot with `.gps`, a few yards back
+  to 837.23, 615.755, 12.8115 (facing 4.75989). Four picked that spot with `.gps` (a second try: the first `.gps` read the selected crusader's spot), a few yards back
   from the Pandaria 5.4.8 value (836.666, 605.141). It sets 164 to 1124.64, 512.467, 0.989549
   (facing 1.5708), the Pandaria value. Heroic Scarlet Monastery (474) has no row and uses the door's
   target, which was already right.
@@ -26,8 +26,8 @@ Found in Four's first visit.
 - **Found:** area trigger 614 (the Scarlet Halls door) points at WorldSafeLoc 4077, and that row was
   missing from `world_safe_locs`. The core skips a teleport whose target is missing, at startup.
 - **Changed:** the same SQL adds `world_safe_locs` 4077: map 1001, the same spot as the Dungeon Finder
-  (839.075, 618.522, 12.8115). This core reads `Facing` as radians (`ObjectMgr::LoadWorldSafeLocs`), so
-  it is 4.76381.
+  (837.23, 615.755, 12.8115). This core reads `Facing` as radians (`ObjectMgr::LoadWorldSafeLocs`), so
+  it is 4.75989.
 - **Status:** loads without errors; walking through the door is untested.
 
 #### No way out of either dungeon
@@ -46,7 +46,7 @@ Found in Four's first visit.
   heroic copies 31495 and 31497 (level 90). Both spawned in normal and heroic (`spawnDifficulties` 1,2).
 - **Changed:** new `sql/fixes/world/2026_10_23_02_scarlet_halls_hooded_crusaders.sql`: 64738 spawns
   only in normal (1), 64764 only in heroic (2).
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four on 2026-10-23 (one crusader in normal).
 
 #### To pick up these fixes
 SQL only, then restart `worldserver` (it loads teleports, Dungeon Finder data and spawns at startup).
