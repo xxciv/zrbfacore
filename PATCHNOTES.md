@@ -132,9 +132,17 @@ keeps it.
   with no conditions row the core falls back to every enemy within 13 yards, so it hit the player.
 - **Changed:** new `sql/fixes/world/2026_10_23_06_scarlet_halls_shield_breaker.sql` limits 125493 to
   the Reinforced Archery Target (59163). After the knockdown the target goes back on its stand.
+- **Found** (Four's fourth run, 2026-10-23): the target still trailed the player, bullseye towards
+  the player. Four's source turned out to still hold the `ea91d85` version of the patch (the two
+  updates before this one never reached the build), so the quarter-second positioning above was never
+  tried in game.
+- **Changed:** the target now moves every 0.1 seconds, leads by 3 yards (more while you walk) at 1.5
+  times your speed, and keeps its bullseye (the back of the model) towards the archers, also while
+  moving.
 - **Status:** Four got past Lindon on 2026-10-23; the volleys, the exploding floor and the melee
-  switch weren't reported on. Heroic Defense and the in-front position confirmed by Four on
-  2026-10-23. The Shield Breaker fix is untested.
+  switch weren't reported on. Heroic Defense confirmed by Four on 2026-10-23. The positioning,
+  facing and Shield Breaker fixes are untested. Lindon has no loot table (`lootid` 0 here and in the
+  Pandaria 5.4.8 database), so he drops nothing.
 
 #### Starving and Angry Hounds, and the dog food buckets
 - **Found:** the buckets of dog food did nothing and the Angry Hounds weren't chained.
@@ -159,7 +167,8 @@ keeps it.
   frees the hound to chase you anywhere. Until then it is chained: it attacks anyone within 5 yards
   but waits at its post, still in combat, for anyone past 8 yards. A hound that resets gets Chained
   back.
-- **Status:** "they attack as they should" (Four, 2026-10-23); the chain breaking is untested.
+- **Status:** "they attack as they should" (Four, 2026-10-23); the chain breaking is untested (Four's
+  fourth run was built without it, see the archery target above).
 
 #### Houndmaster Braun
 - **Found** (reported by Four): melee, Death Blossom and Bloody Mess only; an easy fight.
@@ -202,10 +211,11 @@ keeps it.
   could only hurt you in melee. They were summoned on the cannon's own spot. Their shell was fired by
   the cannon (58726), which is a level 1 friendly stalker, so its 15-yard Cannon Blast (111569) found
   no enemies to hit.
-- **Changed:** the cannon summons its cannoneer with Ready Cannon (113933), which puts him at the
-  gun's side (1.5 yards to its right if the spell doesn't place him). The cannoneer fires the shell
-  himself, at a random player within 40 yards every 3 to 5 seconds, so it hits at his level.
-- **Status:** untested in game.
+- **Changed:** the cannoneer fires the shell himself, at a random player within 40 yards every 3 to
+  5 seconds, so it hits at his level. The shell only hits within 3 yards of where it lands and takes a
+  moment to fly, so he leads a moving target by its speed and the flight time. He stands 2 yards
+  behind the gun (Ready Cannon, 113933, put him out at the muzzle).
+- **Status:** untested in game (Four's fourth run was built without it).
 
 #### To pick up these fixes
 New patch on top of the others: apply it and rebuild. It adds a new source file (`scarlet_halls.cpp`),

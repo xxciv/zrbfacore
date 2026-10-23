@@ -1341,10 +1341,10 @@ index f6e88ba..94fdb62 100644
 -
 diff --git a/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp b/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp
 new file mode 100644
-index 0000000..1492f34
+index 0000000..2ca828c
 --- /dev/null
 +++ b/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp
-@@ -0,0 +1,820 @@
+@@ -0,0 +1,861 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -1371,10 +1371,14 @@ index 0000000..1492f34
 +#include "GameObject.h"
 +#include "InstanceScript.h"
 +#include "MotionMaster.h"
++#include "MoveSpline.h"
++#include "MoveSplineInit.h"
 +#include "ObjectAccessor.h"
 +#include "Player.h"
 +#include "ScriptedCreature.h"
 +#include "SpellAuraEffects.h"
++#include "SpellInfo.h"
++#include "SpellMgr.h"
 +#include "SpellScript.h"
 +#include "TemporarySummon.h"
 +#include "scarlet_halls.h"
@@ -1390,7 +1394,6 @@ index 0000000..1492f34
 +    SPELL_PIERCING_ARROW      = 113564,
 +    SPELL_BLEEDING_WOUND      = 113855,
 +    SPELL_EXPLODING_SHOT      = 113644,
-+    SPELL_READY_CANNON        = 113933, // summons the cannoneer beside the gun
 +    SPELL_FIRE_CANNON         = 113932, // cannoneer's firing animation, smoke at the gun
 +    SPELL_CANNON_BLAST_DAMAGE = 111569, // the shell: 15 yard blast where it lands
 +};
@@ -1696,29 +1699,43 @@ index 0000000..1492f34
 +            return;
 +        }
 +
-+        // keep a few yards in front of the carrier, facing the way they face
++        // pushed out a few yards in front of the carrier, bullseye towards the archers
 +        if (_moveTimer > diff)
 +        {
 +            _moveTimer -= diff;
 +            return;
 +        }
-+        _moveTimer = 250;
++        _moveTimer = 100;
++
++        // lead further while the carrier walks, so the target never drops back level with them
++        float lead = ArcheryTargetLead;
++        if (carrier->isMoving())
++            lead += carrier->GetSpeed(MOVE_RUN) * 0.4f;
 +
 +        float x, y, z;
-+        carrier->GetClosePoint(x, y, z, me->GetObjectSize(), ArcheryTargetLead, 0.0f);
-+        if (me->GetExactDist2d(x, y) > 0.75f)
-+            me->GetMotionMaster()->MovePoint(POINT_IN_FRONT, x, y, z, false);
-+        else if (me->IsStopped())
++        carrier->GetClosePoint(x, y, z, me->GetObjectSize(), lead, 0.0f);
++        // the bullseye is on the back of the model
++        float const facing = Position::NormalizeOrientation(carrier->GetOrientation() + float(M_PI));
++
++        if (me->GetExactDist2d(x, y) > 0.5f)
 +        {
-+            float turn = Position::NormalizeOrientation(me->GetOrientation() - carrier->GetOrientation());
++            Movement::MoveSplineInit init(me);
++            init.MoveTo(x, y, z, false);
++            init.SetVelocity(std::max(carrier->GetSpeed(MOVE_RUN) * 1.5f, 4.0f));
++            init.SetOrientationFixed(true);
++            init.SetFacing(facing);
++            init.Launch();
++        }
++        else if (me->movespline->Finalized())
++        {
++            float turn = Position::NormalizeOrientation(me->GetOrientation() - facing);
 +            if (turn > 0.2f && turn < 2 * float(M_PI) - 0.2f)
-+                me->SetFacingTo(carrier->GetOrientation());
++                me->SetFacingTo(facing);
 +        }
 +    }
 +
 +private:
-+    static constexpr float ArcheryTargetLead = 2.5f;
-+    static constexpr uint32 POINT_IN_FRONT = 1;
++    static constexpr float ArcheryTargetLead = 3.0f;
 +
 +    ObjectGuid _carrier;
 +    uint32 _moveTimer = 0;
@@ -1935,15 +1952,15 @@ index 0000000..1492f34
 +        if (_events.ExecuteEvent() != EVENT_SUMMON_CANNONEER || !_cannoneer.IsEmpty())
 +            return;
 +
-+        // the spell places him at the gun's side; summoned on the stalker he stood inside the barrel
-+        DoCast(me, SPELL_READY_CANNON, true);
-+        if (_cannoneer.IsEmpty())
-+        {
-+            Position pos = me->GetPosition();
-+            me->MovePosition(pos, 1.5f, -float(M_PI) / 2);
-+            me->SummonCreature(NPC_SCARLET_CANNONEER, pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300 * IN_MILLISECONDS);
-+        }
++        // behind the breech: on the stalker he stood inside the barrel, and Ready Cannon (113933)
++        // put him out at the muzzle
++        Position pos = me->GetPosition();
++        me->MovePositionToFirstCollision(pos, CannoneerBehindGun, float(M_PI));
++        pos.SetOrientation(me->GetOrientation());
++        me->SummonCreature(NPC_SCARLET_CANNONEER, pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300 * IN_MILLISECONDS);
 +    }
++
++    static constexpr float CannoneerBehindGun = 2.0f;
 +
 +private:
 +    EventMap _events;
@@ -1982,7 +1999,7 @@ index 0000000..1492f34
 +            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 40.0f, true))
 +            {
 +                DoCast(me, SPELL_FIRE_CANNON, true);
-+                me->CastSpell(target->GetPosition(), SPELL_CANNON_BLAST_DAMAGE, true);
++                me->CastSpell(AimAt(target), SPELL_CANNON_BLAST_DAMAGE, true);
 +            }
 +            _events.ScheduleEvent(EVENT_CANNON_READY, urand(3000, 5000));
 +        }
@@ -1991,6 +2008,30 @@ index 0000000..1492f34
 +    }
 +
 +private:
++    // The shell flies for a while and only hits within 3 yards of where it lands, so aimed at
++    // a walking player's feet it always landed behind them. Lead the target instead.
++    Position AimAt(Unit* target) const
++    {
++        Position pos = target->GetPosition();
++        if (!target->isMoving())
++            return pos;
++
++        SpellInfo const* shell = sSpellMgr->GetSpellInfo(SPELL_CANNON_BLAST_DAMAGE);
++        float flightTime = shell && shell->Speed > 0.0f ? me->GetDistance(target) / shell->Speed : 0.5f;
++        float travel = std::min(target->GetSpeed(target->IsWalking() ? MOVE_WALK : MOVE_RUN) * flightTime, 10.0f);
++
++        float direction = target->GetOrientation();
++        if (target->HasUnitMovementFlag(MOVEMENTFLAG_BACKWARD))
++            direction += float(M_PI);
++        if (target->HasUnitMovementFlag(MOVEMENTFLAG_STRAFE_LEFT))
++            direction += float(M_PI) / 2;
++        if (target->HasUnitMovementFlag(MOVEMENTFLAG_STRAFE_RIGHT))
++            direction -= float(M_PI) / 2;
++
++        target->MovePosition(pos, travel, direction - target->GetOrientation());
++        return pos;
++    }
++
 +    EventMap _events;
 +};
 +
