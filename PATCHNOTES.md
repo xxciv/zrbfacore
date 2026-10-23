@@ -5,6 +5,129 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-19
 
+### Gnomeregan
+
+Merged to `main` with PR #16 on 2026-10-23. Found in a survey before the first run and in Four's run.
+
+#### Blastmaster Emi Shortfuse couldn't be talked to; Electrocutioner 6000 yelled twice
+- **Found:** Emi (7998) starts the trogg event from her gossip option "I am ready to begin." (menu
+  1080, `OptionNpcFlag` 1), but her `npcflag` was 2 (questgiver) and she has no quests, so there was
+  nothing to click. The Pandaria 5.4.8 world database has `npcflag` 1. Electrocutioner 6000 (6235) had
+  two "On Aggro - Say Line 0" SmartAI rows (ids 0 and 3, from two script versions).
+- **Changed:** new `sql/fixes/world/2026_10_19_08_gnomeregan_emi_electrocutioner.sql`:
+  `creature_template` 7998 `npcflag` 2 -> 1; `smart_scripts` 6235 id 3 deleted.
+- **Status:** Emi confirmed in game by Four on 2026-10-19 (her event ran to the end, Grubbis counted
+  for his objective). Electrocutioner untested.
+
+#### Way too many troggs in Emi's event
+- **Found** (reported by Four): Emi's event summons every trogg wave, her explosive charges (183410),
+  Grubbis and Chomper, and three red rockets at the end. The DB also had all of it spawned from the
+  start at the same spots (`VerifiedBuild` 0: a sniff of the event saved as spawns), so the two tunnels
+  emptied out on top of the waves.
+- **Changed:** new `sql/fixes/world/2026_10_19_09_gnomeregan_emi_event_prespawns.sql` deletes creature
+  guids 324522 to 324554 (30 Caverndeep Ambushers 6207, 1 Caverndeep Burrower 6206, Grubbis 7361,
+  Chomper 6215) and gameobject guids 189336 to 189339 (Explosive Charge 144065) and 189340, 189341
+  (red rockets 103820), with their `gameobject_addon` rows. The event still summons its own. The original
+  rows are in the world dump.
+- **Status:** untested in game.
+
+#### Stuck in combat after killing an Irradiated Pillager
+- **Found** (reported by Four): right after killing an Irradiated Pillager (6329), `.debug combat`
+  still listed it ("[PvE] Irradiated Pillager (SpawnID 324438)") and Four stayed in combat until
+  `.combatstop`. Two SmartAI rows (ids 2 and 5, two script versions) cast Radiation (9798) on death. In
+  8.3.7 that puts a permanent aura (duration index 21) on every enemy within 13 yards that triggers
+  Radiation (9770) damage every 3 s, cast by the dead Pillager, so each tick put the player back in
+  combat with the corpse.
+- **Changed:** new `sql/fixes/world/2026_10_19_10_gnomeregan_irradiated_pillager_death.sql` deletes
+  `smart_scripts` 6329 ids 2 and 5. The living Pillager's own Radiation auras (9769, and 9798 on 18
+  spawns, from `creature_addon` and On Reset) stay.
+- **Status:** untested in game.
+
+#### Mekgineer Thermaplugg: bombs from the Gnome Faces, one Knock Away
+- **Found** (reported by Four): Thermaplugg (7800) used Knock Away very often. Walking Bombs (7915)
+  appeared in the middle of the room and then under him wherever he stood, never from the Gnome Faces
+  on the walls. One bomb stood below a face before the fight, and bombs kept meleeing after they had
+  detonated. Kill credit and the Gnomeregan achievement worked. His SmartAI mixed two script versions:
+  two rows each with ids 3 and 5, Knock Away three times (10101 twice, 11130 once), bombs summoned on
+  himself and at one fixed spot, and broken links. The bomb's Detonation row linked to id 3, which
+  doesn't exist, so its despawn never ran.
+- **Changed:** new `sql/fixes/world/2026_10_19_11_gnomeregan_thermaplugg.sql`:
+  - Thermaplugg's `smart_scripts` rewritten: Knock Away (10101) every 12 to 15 s; every 12 to 16 s
+    one of six action lists (780000 to 780005, picked at random) summons a Walking Bomb (despawns
+    after 60 s) in front of one of the six Gnome Face pedestals: 15 yards from the Gnome Face
+    gameobject towards the centre of the six faces (-522.75, 670.10), at z -325.0. The first version
+    put them 40% of the way to the faces' buttons, inside the pedestals, and Four saw none. Four's
+    `.gps` in front of Gnome Face 06's pedestal (-553.38, 643.70, floor -327.27) is 1.8 yards from
+    that face's spot. The yells, Pound (74720), Steam Blast (93655) and Welding Beam (52778) are as before.
+  - Walking Bomb: Detonation (4043) now links to the despawn; a summoned bomb joins the fight
+    against everyone in the instance (`SET_IN_COMBAT_WITH_ZONE`).
+  - The bomb spawned from the start, creature guid 324517, is deleted.
+  - The faces' buttons (142214 to 142219) still do nothing.
+- **Status:** confirmed in game by Four on 2026-10-19 (bombs walk out in front of the faces).
+
+#### To pick up the Gnomeregan fixes
+SQL only, then restart `worldserver` (templates and SmartAI load at startup).
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_08_gnomeregan_emi_electrocutioner.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_09_gnomeregan_emi_event_prespawns.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_10_gnomeregan_irradiated_pillager_death.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_11_gnomeregan_thermaplugg.sql | mysql -u root -p bfa_world
+```
+
+### The Stockade
+
+Merged to `main` with PR #16 on 2026-10-23.
+
+#### Lord Overheat's Fiery Core didn't always drop
+- **Found** (reported by Four): the first kill of Lord Overheat (46264) gave no Lord Overheat's Fiery
+  Core (62305) for "By Fire Be Saved!" (27737); after `.respawn`, a second kill dropped it. The loot row
+  only drops for players on the quest (`QuestRequired` 1), but its `Chance` was 36.5696, so roughly two
+  kills in three dropped nothing for the quest.
+- **Changed:** new `sql/fixes/world/2026_10_19_07_stockade_overheat_core.sql`: `creature_loot_template`
+  46264 / 62305 `Chance` 36.5696 -> 100.
+- **Status:** confirmed in game by Four on 2026-10-23 (the core dropped on the first kill, on an alt).
+  The dungeon objectives were fine: `.debug scenario` showed Lord
+  Overheat's objective at progress 2 (both kills counted), and the one-step objectives finished
+  with the achievement after Hogger. What looked missing was most likely just the core quest.
+
+#### To pick up the core fix
+SQL only, then restart `worldserver` (it loads loot tables at startup).
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_07_stockade_overheat_core.sql | mysql -u root -p bfa_world
+```
+
+### Crash: picking open a lockbox or junkbox
+
+Merged to `main` with PR #16 on 2026-10-23.
+
+- **Found** (reported by Four): Pick Lock on a Battered Junkbox (16882, looted in The Stockade) crashed
+  the worldserver at once, and the client was disconnected. Four's gdb backtrace: `SIGSEGV` in
+  `GameObject::GetGOInfo (this=0x0)` called from `Spell::EffectOpenLock` at `SpellEffects.cpp:1936`.
+  Upstream commit 9d1bf0d ("Core/CPP: Fix Mining Gain Skill") added a gathering skill-up block at the
+  end of `EffectOpenLock` that reads `gameObjTarget->GetGOInfo()` without checking `gameObjTarget`.
+  When the lock is on an item, `gameObjTarget` is null, so every item lock opened with a spell (rogue
+  Pick Lock, and any key or spell that opens an item lock) crashes the server. Still in upstream HEAD
+  (51fad1a) at the time of writing. The junkbox loot tables are fine.
+- **Changed:** new `tools/bfa/open-lock-crash.patch` (`src/server/game/Spells/SpellEffects.cpp`): that
+  block now runs only when the target is a gameobject (`goInfo` is null for an item). Opening chests and
+  gathering nodes is unchanged.
+- **Status:** confirmed in game by Four on 2026-10-19 (Battered Junkbox picks open, no crash).
+
+#### To pick up the lockbox crash fix
+A new patch on top of the others, the build and a restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/open-lock-crash.patch | git apply
+grep -c "Pick Lock on a junkbox" src/server/game/Spells/SpellEffects.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1. Then restart `worldserver`.
+
 ### World: Stormwind (Innkeeper Allison, stray spawns, Miss Danna's tour)
 
 Merged to `main` with PR #13 on 2026-10-19.
