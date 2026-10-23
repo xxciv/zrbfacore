@@ -49,6 +49,23 @@ Found in Four's first visit.
   only in normal (1), 64764 only in heroic (2).
 - **Status:** confirmed in game by Four on 2026-10-23 (one crusader in normal).
 
+#### Starving Hounds kept you knocked down
+- **Found** (reported by Four): after the first Starving Hound (58876) pack jumped you, you lay on the
+  floor and never got up; only `.combatstop` freed you. The hounds cast Hungry Dog (111582) every 12 to
+  15 seconds. It is a 30-second channel that stuns its target and ends early only if the hound is
+  interrupted. That's a group mechanic (someone else knocks the dog off you), and with four hounds per
+  pack a solo player stayed stunned.
+- **Changed:** new `sql/fixes/world/2026_10_23_03_scarlet_halls_hounds.sql` replaces the hound's SmartAI.
+  Every 20 to 25 seconds in combat it runs actionlist 5887600: cast Hungry Dog on its target, then 4
+  seconds later interrupt its own Hungry Dog channel, which removes the stun.
+- **Status:** untested in game.
+
+#### Angry Hounds showed as neutral
+- **Found** (reported by Four): Angry Hound (58674) was level 1 with faction 7 (neutral creature). It
+  is an elite with its own loot table, and the Pandaria 5.4.8 database has it hostile at level 30.
+- **Changed:** the same SQL sets faction 14, level 29 to 90, matching the Starving Hounds next to it.
+- **Status:** untested in game.
+
 #### To pick up these fixes
 SQL only, then restart `worldserver` (it loads teleports, Dungeon Finder data and spawns at startup).
 ```
@@ -56,6 +73,7 @@ cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_01_scarlet_entrances_exits.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_02_scarlet_halls_hooded_crusaders.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_03_scarlet_halls_hounds.sql | mysql -u root -p bfa_world
 ```
 
 ## 2026-10-19
