@@ -7,7 +7,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### Gnomeregan
 
-On branch `claude/project-thread-g6xhsv` (PR #16), not merged yet. Found in a survey before the first run.
+Merged to `main` with PR #16 on 2026-10-23. Found in a survey before the first run and in Four's run.
 
 #### Blastmaster Emi Shortfuse couldn't be talked to; Electrocutioner 6000 yelled twice
 - **Found:** Emi (7998) starts the trogg event from her gossip option "I am ready to begin." (menu
@@ -78,7 +78,7 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_11_gnomeregan_th
 
 ### The Stockade
 
-On branch `claude/project-thread-g6xhsv` (PR #16), not merged yet.
+Merged to `main` with PR #16 on 2026-10-23.
 
 #### Lord Overheat's Fiery Core didn't always drop
 - **Found** (reported by Four): the first kill of Lord Overheat (46264) gave no Lord Overheat's Fiery
@@ -87,7 +87,8 @@ On branch `claude/project-thread-g6xhsv` (PR #16), not merged yet.
   kills in three dropped nothing for the quest.
 - **Changed:** new `sql/fixes/world/2026_10_19_07_stockade_overheat_core.sql`: `creature_loot_template`
   46264 / 62305 `Chance` 36.5696 -> 100.
-- **Status:** untested in game. The dungeon objectives were fine: `.debug scenario` showed Lord
+- **Status:** confirmed in game by Four on 2026-10-23 (the core dropped on the first kill, on an alt).
+  The dungeon objectives were fine: `.debug scenario` showed Lord
   Overheat's objective at progress 2 (both kills counted), and the one-step objectives finished
   with the achievement after Hogger. What looked missing was most likely just the core quest.
 
@@ -101,7 +102,7 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_07_stockade_over
 
 ### Crash: picking open a lockbox or junkbox
 
-On branch `claude/project-thread-g6xhsv` (The Stockade work), not merged yet.
+Merged to `main` with PR #16 on 2026-10-23.
 
 - **Found** (reported by Four): Pick Lock on a Battered Junkbox (16882, looted in The Stockade) crashed
   the worldserver at once, and the client was disconnected. Four's gdb backtrace: `SIGSEGV` in
