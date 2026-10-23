@@ -39,12 +39,22 @@ Found in Four's first visit.
 - **Status:** the core loads 614, 7801 and 7802 without errors (Four's `Errors.log`, 2026-10-23).
   Walking through them is untested.
 
+#### Two Hooded Crusaders on top of each other at the Scarlet Halls entrance
+- **Found** (reported by Four): two quest givers stood on the same spot. One offered Rank and File
+  and Just for Safekeeping, Of Course; the other showed the same quests greyed out. 64738 (guid
+  13241581) gives the normal quests 31490 and 31493 (from level 26). 64764 (guid 13241582) gives the
+  heroic copies 31495 and 31497 (level 90). Both spawned in normal and heroic (`spawnDifficulties` 1,2).
+- **Changed:** new `sql/fixes/world/2026_10_23_02_scarlet_halls_hooded_crusaders.sql`: 64738 spawns
+  only in normal (1), 64764 only in heroic (2).
+- **Status:** untested in game.
+
 #### To pick up these fixes
-SQL only, then restart `worldserver` (it loads teleports and Dungeon Finder data at startup).
+SQL only, then restart `worldserver` (it loads teleports, Dungeon Finder data and spawns at startup).
 ```
 cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_01_scarlet_entrances_exits.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_02_scarlet_halls_hooded_crusaders.sql | mysql -u root -p bfa_world
 ```
 
 ## 2026-10-19
