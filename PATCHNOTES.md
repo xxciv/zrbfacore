@@ -124,9 +124,17 @@ keeps it.
   is within 3 yards of you, so once behind you it stayed there.
 - **Changed:** every quarter second the target runs to the point 2.5 yards in front of you and turns
   to face the way you face.
+- **Found** (Four's third run, 2026-10-23): the target now stays in front (seen in Four's video). But
+  after Lindon's Shield Breaker knocked Four down, the character was invisible except for the weapons,
+  floating and oversized, even back in Stormwind, until `.unaura all`. Shield Breaker (125492) fires
+  two shells: 125507 knocks you down and strips Heroic Defense (meant), and 125493 transforms its
+  targets into Invisible Man (64188) with no time limit. 125493 picks targets by creature entry, and
+  with no conditions row the core falls back to every enemy within 13 yards, so it hit the player.
+- **Changed:** new `sql/fixes/world/2026_10_23_06_scarlet_halls_shield_breaker.sql` limits 125493 to
+  the Reinforced Archery Target (59163). After the knockdown the target goes back on its stand.
 - **Status:** Four got past Lindon on 2026-10-23; the volleys, the exploding floor and the melee
-  switch weren't reported on. Heroic Defense confirmed by Four on 2026-10-23; the in-front position
-  is untested.
+  switch weren't reported on. Heroic Defense and the in-front position confirmed by Four on
+  2026-10-23. The Shield Breaker fix is untested.
 
 #### Starving and Angry Hounds, and the dog food buckets
 - **Found:** the buckets of dog food did nothing and the Angry Hounds weren't chained.
@@ -143,7 +151,15 @@ keeps it.
   the stake when you stepped away. Once a hound is in the fight its chain should be broken.
 - **Changed:** when a hound is attacked or attacks you, the Leashed aura comes off and it chases you
   like any other hound. The chain-length limit is gone. A hound that resets is chained again.
-- **Status:** "they attack as they should" (Four, 2026-10-23); the broken chain is untested.
+- **Found** (Four's third run, 2026-10-23): the hound still showed the Chained debuff ("Chained to a
+  post. Always attacks nearest enemy.") after being hit. That is a separate aura, Chained (111641),
+  from `creature_template_addon`; only Leashed (103169) was being removed. Also, a hound that pulled
+  itself by you walking up to it should stay chained: only an attack breaks the chain.
+- **Changed:** the first damage, or a hostile spell such as a stun, removes Chained and Leashed and
+  frees the hound to chase you anywhere. Until then it is chained: it attacks anyone within 5 yards
+  but waits at its post, still in combat, for anyone past 8 yards. A hound that resets gets Chained
+  back.
+- **Status:** "they attack as they should" (Four, 2026-10-23); the chain breaking is untested.
 
 #### Houndmaster Braun
 - **Found** (reported by Four): melee, Death Blossom and Bloody Mess only; an easy fight.
@@ -207,6 +223,7 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_02_scarlet_halls
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_03_scarlet_halls_hounds.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_04_scarlet_halls_codex.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_05_scarlet_halls_rework.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_06_scarlet_halls_shield_breaker.sql | mysql -u root -p bfa_world
 ```
 
 ## 2026-10-19

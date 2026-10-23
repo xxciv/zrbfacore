@@ -1341,10 +1341,10 @@ index f6e88ba..94fdb62 100644
 -
 diff --git a/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp b/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp
 new file mode 100644
-index 0000000..c587ede
+index 0000000..1492f34
 --- /dev/null
 +++ b/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp
-@@ -0,0 +1,759 @@
+@@ -0,0 +1,820 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -1383,6 +1383,7 @@ index 0000000..c587ede
 +{
 +    SPELL_HUNGRY_DOG          = 111582,
 +    SPELL_LEASHED             = 103169,
++    SPELL_CHAINED             = 111641, // the "Chained to a post" debuff from creature_template_addon
 +    SPELL_CARRYING_BUCKET     = 128164,
 +    SPELL_DOG_FOOD            = 111894,
 +    SPELL_SHIELD_BREAKER      = 125492,
@@ -1488,8 +1489,11 @@ index 0000000..c587ede
 +};
 +
 +// Angry Hound 58674
-+// Chained to a stake: ignores players until one comes within reach of the chain or attacks it.
-+// Once it is in the fight the chain snaps and it chases like any other hound.
++// Chained to a post: ignores players until one comes within reach of the chain (5 yards), and while
++// still chained it can't follow anyone past the end of the chain. The first attack or damage it
++// takes snaps the chain (Chained comes off) and from then on it chases like any other hound.
++float const AngryHoundChainLength = 8.0f;
++
 +struct npc_angry_hound : public ScriptedAI
 +{
 +    npc_angry_hound(Creature* creature) : ScriptedAI(creature) { }
@@ -1498,14 +1502,33 @@ index 0000000..c587ede
 +    {
 +        _events.Reset();
 +        _events.ScheduleEvent(EVENT_LEASH, 1000);
++        _chained = true;
++        _chasing = true;
 +        me->SetReactState(REACT_PASSIVE);
++        // back on its post after a reset
++        if (!me->HasAura(SPELL_CHAINED))
++            DoCast(me, SPELL_CHAINED, true);
 +    }
 +
 +    void JustEngagedWith(Unit* who) override
 +    {
-+        // pulled by an attack (from stealth, or from range) rather than by walking up to it
-+        BreakChain();
++        // pulled by an attack (from stealth, or from range) or by a neighbour calling for help;
++        // only the attack itself (damage or a hostile spell, below) snaps the chain
++        me->SetReactState(REACT_AGGRESSIVE);
 +        AttackStart(who);
++    }
++
++    void DamageTaken(Unit* attacker, uint32& /*damage*/) override
++    {
++        if (attacker && attacker != me)
++            BreakChain();
++    }
++
++    void SpellHit(Unit* caster, SpellInfo const* spell) override
++    {
++        // a stun or snare from a player counts as an attack too
++        if (caster && caster != me && !spell->IsPositive() && me->IsValidAttackTarget(caster))
++            BreakChain();
 +    }
 +
 +    void UpdateAI(uint32 diff) override
@@ -1526,14 +1549,36 @@ index 0000000..c587ede
 +            if (Player* player = me->SelectNearestPlayer(5.0f))
 +                if (me->IsValidAttackTarget(player))
 +                {
-+                    BreakChain();
++                    me->SetReactState(REACT_AGGRESSIVE);
 +                    AttackStart(player);
 +                }
 +            return;
 +        }
 +
++        if (me->HasReactState(REACT_PASSIVE))
++            me->SetReactState(REACT_AGGRESSIVE);
++
 +        if (!UpdateVictim())
 +            return;
++
++        if (_chained)
++        {
++            // still on the chain: wait at the post for anyone out of reach, without resetting
++            Unit* victim = me->GetVictim();
++            bool const inReach = victim->GetDistance(me->GetHomePosition()) <= AngryHoundChainLength;
++            if (!inReach && _chasing)
++            {
++                _chasing = false;
++                me->GetMotionMaster()->Clear();
++                me->GetMotionMaster()->MovePoint(0, me->GetHomePosition());
++            }
++            else if (inReach && !_chasing)
++            {
++                _chasing = true;
++                me->GetMotionMaster()->Clear();
++                me->GetMotionMaster()->MoveChase(victim);
++            }
++        }
 +
 +        DoMeleeAttackIfReady();
 +    }
@@ -1541,12 +1586,28 @@ index 0000000..c587ede
 +private:
 +    void BreakChain()
 +    {
++        if (!_chained)
++            return;
++
++        _chained = false;
 +        _events.Reset();
 +        me->RemoveAurasDueToSpell(SPELL_LEASHED);
++        me->RemoveAurasDueToSpell(SPELL_CHAINED);
 +        me->SetReactState(REACT_AGGRESSIVE);
++        if (!_chasing)
++        {
++            _chasing = true;
++            if (Unit* victim = me->GetVictim())
++            {
++                me->GetMotionMaster()->Clear();
++                me->GetMotionMaster()->MoveChase(victim);
++            }
++        }
 +    }
 +
 +    EventMap _events;
++    bool _chained = true;
++    bool _chasing = true;
 +};
 +
 +// Bucket of Meaty Dog Food 65379
