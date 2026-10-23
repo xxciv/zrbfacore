@@ -58,7 +58,8 @@ Found in Four's first visit.
 - **Changed:** new `sql/fixes/world/2026_10_23_03_scarlet_halls_hounds.sql` replaces the hound's SmartAI.
   Every 20 to 25 seconds in combat it runs actionlist 5887600: cast Hungry Dog on its target, then 4
   seconds later interrupt its own Hungry Dog channel, which removes the stun.
-- **Status:** untested in game.
+- **Status:** replaced the same day by the C++ hound in `scarlet-halls.patch` (below), which keeps the
+  4-second cap. `2026_10_23_05` removes this action list again.
 
 #### Angry Hounds showed as neutral
 - **Found** (reported by Four): Angry Hound (58674) was level 1 with faction 7 (neutral creature). It
@@ -74,15 +75,102 @@ Found in Four's first visit.
   `QuestRequired` 1, `LootMode` 1: they drop every kill, only for players on the quest.
 - **Status:** untested in game.
 
+### Scarlet Halls: the events and bosses
+
+Found in Four's first full run (2026-10-23). Most of Scarlet Halls had no working script in this core:
+the instance had no instance script, the bosses ran short stubs, and the events had neither scripts nor
+the creatures they need. New `tools/bfa/scarlet-halls.patch` ports the Pandaria 5.4.8 scripts
+(`src/server/scripts/EasternKingdoms/ScarletHalls/`: `scarlet_halls.cpp` is new, the instance script,
+the header and the three boss files are rewritten, and the script loader registers them). New
+`sql/fixes/world/2026_10_23_05_scarlet_halls_rework.sql` supplies the spawns, yells and bindings.
+Trash that already had working SmartAI (Myrmidons, Evangelists, Evokers, Scholars, Pupils and others)
+keeps it.
+
+#### The dungeon had no instance script
+- **Found:** `instance_template` for map 1001 had no script, and the core had none to register: no
+  boss states, so no doors and nothing to tell the codex crusader that Koegler died.
+- **Changed:** the patch's `instance_scarlet_halls` tracks the three bosses and Lindon's gauntlet, and
+  opens Lindon's gate (212160) and Braun's fire wall (210097) when they die. Herod's Door (210480)
+  closes while Harlan is fought. The SQL sets the instance script.
+- **Status:** untested in game.
+
+#### Half the dungeon's creatures were missing
+- **Found:** map 1001 had 84 spawns, a partial and slightly shifted set. Braun's six Obedient Hounds,
+  the ten Scarlet Guardians and Sergeant Verdone at his exit, the stakes, buckets of dog food, archery
+  targets, cannons and all 71 Books were missing, and so were Lindon's gate, Braun's fire wall and the
+  heroes' statues in Harlan's room. The only door was the old Armory's Herod's Door (101854).
+- **Changed:** the SQL replaces every map 1001 spawn except the two entrance Hooded Crusaders with the
+  Pandaria set: 253 creatures (guids 1001000001+, with the 20 patrol paths) and 27 gameobjects. The
+  challenge mode door and orb, the herbs and a second portal are left out.
+- **Status:** the SQL runs twice without errors on a copy of this database. Untested in game.
+
+#### Commander Lindon's archery hall had no event
+- **Found** (reported by Four): Lindon (59191) and his Master Archers (59175) were neutral (faction 7)
+  and just stood there to be tanked.
+- **Changed:** they are hostile (14). When Lindon sees you, his archers shoot Piercing Arrow down the
+  hall and he uses Shield Breaker on anyone within 18 yards. Click a Reinforced Archery Target to carry
+  it as a shield: Heroic Defense, 75% less damage taken but slower and no attacking. Stepping into the
+  hall (area trigger 7532) sets off a line of Exploding Shots on the floor. Within 10 yards of Lindon
+  the volleys stop and the whole crew draws blades; Heroic Defense drops then, and past the hall.
+  Simplified: the archery target follows you instead of riding on you as a vehicle.
+- **Status:** untested in game.
+
+#### Starving and Angry Hounds, and the dog food buckets
+- **Found:** the buckets of dog food did nothing and the Angry Hounds weren't chained.
+- **Changed:** Starving Hounds (58876) are C++ now, Hungry Dog still capped at 4 seconds. Click a Bucket
+  of Meaty Dog Food (65379), then throw it (out of combat) next to a Vigilant Watchman: he is pinned
+  down and every hound within 20 yards turns on him, then sits down to eat. Angry Hounds (58674) are
+  chained to their stakes and only attack when you come within 5 yards; they give up beyond 8.
+- **Status:** untested in game.
+
+#### Houndmaster Braun
+- **Found** (reported by Four): melee, Death Blossom and Bloody Mess only; an easy fight.
+- **Changed:** Piercing Throw every 7 to 9 seconds, Death Blossom as a leap that spins where it lands,
+  one Obedient Hound called at 90, 80, 70 and 60%, Bloody Rage at 50%. At 15% his own hounds turn on
+  him: he stops fighting, is eaten, and dies 12 to 15 seconds later with the kill credited to you. The
+  hounds then run to his exit and kill the guards there.
+- **Status:** untested in game.
+
+#### Armsmaster Harlan
+- **Found** (reported by Four): melee and Dragon's Reach only.
+- **Changed:** Call for Help every 20 to 25 seconds (two Scarlet Defenders in Heavy Armor run in along
+  the balconies; break the armor and they are Unarmored), Heroic Leap to the middle of the room
+  followed by Blades of Light spinning round it (every second, damage to everyone within 8 yards), and
+  Berserker Rage at 50%. Simplified: Blades of Light doesn't pick players up.
+- **Status:** untested in game.
+
+#### Flameweaver Koegler meleed too much
+- **Found** (reported by Four): far too much melee for a caster, and Quickened Mind (113682) didn't make
+  his casts instant. Its cast-time cut is a spell modifier, which only reaches player spell families.
+- **Changed:** he casts back to back: Pyroblast, Fireball Volley every 13.5 seconds, and Book Burner on
+  a book case (it burns and hurts anyone in front of him). Quickened Mind now gives him three instant
+  casts. Every 30 seconds he teleports to the middle and channels Greater Dragon's Breath for 10
+  seconds, a cone that sweeps round the room.
+- **Status:** untested in game.
+
+#### The Hooded Crusader never came for the codex
+- **Changed:** the crusader outside the library stays hidden until Koegler dies, then walks in and asks
+  for the codex.
+- **Status:** untested in game.
+
+#### Smaller things
+- **Changed:** 22 yells and emotes for Braun, Harlan, Koegler, Lindon, the archery target and the
+  crusader (none existed). Scarlet Treasurers drop a pile of Gold Coins. The Scarlet Cannons get their
+  Cannoneers, who fire Cannon Blast at players in the courtyard.
+- **Status:** untested in game.
+
 #### To pick up these fixes
-SQL only, then restart `worldserver` (it loads teleports, Dungeon Finder data and spawns at startup).
+New patch on top of the others: apply it and rebuild. Then the SQL, and restart `worldserver`.
 ```
 cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/scarlet-halls.patch | git apply
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_01_scarlet_entrances_exits.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_02_scarlet_halls_hooded_crusaders.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_03_scarlet_halls_hounds.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_04_scarlet_halls_codex.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_05_scarlet_halls_rework.sql | mysql -u root -p bfa_world
 ```
 
 ## 2026-10-19

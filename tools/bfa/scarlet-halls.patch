@@ -1,0 +1,2240 @@
+diff --git a/src/server/scripts/EasternKingdoms/ScarletHalls/boss_armsmaster_harlan.cpp b/src/server/scripts/EasternKingdoms/ScarletHalls/boss_armsmaster_harlan.cpp
+index 470a404..73b9726 100644
+--- a/src/server/scripts/EasternKingdoms/ScarletHalls/boss_armsmaster_harlan.cpp
++++ b/src/server/scripts/EasternKingdoms/ScarletHalls/boss_armsmaster_harlan.cpp
+@@ -1,114 +1,261 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Armsmaster Harlan, Scarlet Halls. Fight flow ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ * Blades of Light only deals its damage here: players are not carried around as passengers.
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
+ #include "ScriptMgr.h"
++#include "InstanceScript.h"
++#include "MotionMaster.h"
++#include "ObjectAccessor.h"
+ #include "ScriptedCreature.h"
++#include "SpellAuraEffects.h"
++#include "SpellScript.h"
+ #include "scarlet_halls.h"
+ 
+-// Cosmetic ToDo: Call for Help (he should summon guards) will be done soon
++enum HarlanSpells
++{
++    SPELL_HEROIC_LEAP_DUMMY  = 111219,
++    SPELL_HEROIC_LEAP        = 111218,
++    SPELL_DRAGONS_REACH      = 111217,
++    SPELL_BERSERKER_RAGE     = 111221,
++    SPELL_BLADES_OF_LIGHT    = 111216, // periodic 111394 every second
++    SPELL_BLADES_OF_LIGHT_HIT = 111215,
++    SPELL_HEAVY_ARMOR        = 113959,
++    SPELL_UNARMORED          = 113969,
++};
+ 
+-enum Spells
++enum HarlanTexts
+ {
+-    SPELL_BERSERKER_RAGE  = 111221,
+-    SPELL_BLADES_OF_LIGHT = 111216,
+-    SPELL_DRAGONS_REACH   = 111217,
+-    SPELL_HEROIC_LEAP     = 111218
++    TALK_AGGRO               = 0, // Ah-hah! Another chance to test my might.
++    TALK_DEATH               = 1, // Bested... by the likes of...
++    TALK_HEROIC_LEAP         = 2, // Hah-HAH!
++    TALK_DRAGONS_REACH       = 3, // Tsk! You need more training.
++    TALK_CALL_FOR_HELP       = 4, // On your guard!
+ };
+ 
+-enum Events
++enum HarlanEvents
+ {
+-    EVENT_RAGE = 1,
+-    EVENT_BLADES,
+-    EVENT_DRAGON,
+-    EVENT_HAR_JUMP,
+-    EVENT_MOVE,
+-    EVENT_STOP_MOVE,
++    EVENT_DRAGONS_REACH      = 1,
++    EVENT_HEROIC_LEAP,
++    EVENT_CALL_FOR_HELP,
++    EVENT_BLADES_DONE,
++
++    EVENT_INIT_COMBAT        = 1,
+ };
+ 
+-enum Texts
++enum HarlanMisc
+ {
+-    SAY_AGGRO             = 0,
+-    SAY_CALL_GUARDS       = 1,
+-    SAY_KILLER1           = 2,
+-    SAY_KILLER2           = 3,
+-    SAY_DEATH             = 4
++    POINT_BLADES_PATH        = 1,
+ };
+ 
+-//58632
+ struct boss_armsmaster_harlan : public BossAI
+ {
+-    boss_armsmaster_harlan(Creature* creature) : BossAI(creature, DATA_ARMSMASTER_HARLAN) { }
+-
+-private:
+-    bool rage;
++    boss_armsmaster_harlan(Creature* creature) : BossAI(creature, DATA_ARMSMASTER_HARLAN), _berserk(false) { }
+ 
+     void Reset() override
+     {
+-        BossAI::Reset();
+-        rage = false;
+-        me->GetMotionMaster()->Clear();
++        _Reset();
++        _berserk = false;
++        me->SetReactState(REACT_AGGRESSIVE);
+     }
+ 
+     void JustEngagedWith(Unit* /*who*/) override
+     {
+         _JustEngagedWith();
+-        Talk(SAY_AGGRO);
+-        events.ScheduleEvent(EVENT_HAR_JUMP, 30000);
+-        events.ScheduleEvent(EVENT_DRAGON, 4000);
++        Talk(TALK_AGGRO);
++        ScheduleTasks();
++    }
++
++    void ScheduleTasks() override
++    {
++        events.ScheduleEvent(EVENT_DRAGONS_REACH, urand(5000, 8000));
++        events.ScheduleEvent(EVENT_CALL_FOR_HELP, urand(10000, 11000));
++        events.ScheduleEvent(EVENT_HEROIC_LEAP, 25000);
+     }
+ 
+     void JustDied(Unit* /*killer*/) override
+     {
+         _JustDied();
+-        Talk(SAY_DEATH);
++        Talk(TALK_DEATH);
+     }
+ 
+-    void KilledUnit(Unit* victim) override
++    void EnterEvadeMode(EvadeReason why) override
+     {
+-        if (victim->IsPlayer() && roll_chance_f(15))
+-            Talk(RAND(SAY_KILLER1, SAY_KILLER2));
++        me->RemoveAurasDueToSpell(SPELL_BLADES_OF_LIGHT);
++        BossAI::EnterEvadeMode(why);
++    }
++
++    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
++    {
++        if (!_berserk && me->HealthBelowPctDamaged(50, damage))
++        {
++            _berserk = true;
++            DoCast(me, SPELL_BERSERKER_RAGE, true);
++        }
+     }
+ 
+-    void DamageTaken(Unit* /*attacker*/, uint32& /*damage*/) override
++    void MovementInform(uint32 type, uint32 pointId) override
+     {
+-        if(!rage && !me->IsNonMeleeSpellCast(false) && HealthBelowPct(10))
++        if (type != EFFECT_MOTION_TYPE)
++            return;
++
++        if (pointId == EVENT_JUMP)
+         {
+-            rage = true;
+-            DoCast(me, SPELL_BERSERKER_RAGE);
++            // landed in the middle of the room: spin around it with Blades of Light
++            DoCastAOE(SPELL_HEROIC_LEAP, true);
++            DoCast(me, SPELL_BLADES_OF_LIGHT, true);
++            me->GetMotionMaster()->MoveSmoothPath(POINT_BLADES_PATH, HarlanBladesPath, 16, false);
+         }
++        else if (pointId == POINT_BLADES_PATH)
++            events.ScheduleEvent(EVENT_BLADES_DONE, 500);
+     }
+ 
+-    void ExecuteEvent(uint32 eventId) override
++    void UpdateAI(uint32 diff) override
+     {
+-        switch(eventId)
++        if (!UpdateVictim())
++            return;
++
++        events.Update(diff);
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        while (uint32 eventId = events.ExecuteEvent())
+         {
+-        case EVENT_HAR_JUMP:
+-            me->GetMotionMaster()->MoveJump(1206.589f, 444.073f, 0.987f, 40.0f, 40.0f, false);
+-            DoCastAOE(SPELL_HEROIC_LEAP);
+-            events.ScheduleEvent(EVENT_BLADES, 15000);
+-            break;
+-        case EVENT_BLADES:
+-            me->GetThreatManager().ResetAllThreat();
+-            DoCast(me, SPELL_BLADES_OF_LIGHT);
+-            events.ScheduleEvent(EVENT_MOVE, 7000);
+-            events.CancelEvent(EVENT_DRAGON);
+-            break;
+-        case EVENT_MOVE:
+-             // the move status (random or with special points?) needs more infos @ retail
+-             events.ScheduleEvent(EVENT_STOP_MOVE, 12000);
+-             break;
+-        case EVENT_STOP_MOVE:
+-             events.CancelEvent(EVENT_MOVE);
+-             events.CancelEvent(EVENT_BLADES);
+-             events.ScheduleEvent(EVENT_HAR_JUMP, 50000);
+-             events.ScheduleEvent(EVENT_DRAGON, 4000);
+-             break;
+-        case EVENT_DRAGON:
+-            DoCastVictim(SPELL_DRAGONS_REACH);
+-            events.ScheduleEvent(EVENT_DRAGON, 4000);
+-            break;
++            switch (eventId)
++            {
++                case EVENT_DRAGONS_REACH:
++                    DoCastVictim(SPELL_DRAGONS_REACH);
++                    if (roll_chance_i(30))
++                        Talk(TALK_DRAGONS_REACH);
++                    events.ScheduleEvent(EVENT_DRAGONS_REACH, urand(5000, 8000));
++                    break;
++                case EVENT_CALL_FOR_HELP:
++                    Talk(TALK_CALL_FOR_HELP);
++                    for (uint8 i = 0; i < 2; ++i)
++                        me->SummonCreature(NPC_SCARLET_DEFENDER_SUMMON, 1188.38f, 444.03f + frand(2.0f, 4.0f), 11.17f, 0.07f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10 * IN_MILLISECONDS);
++                    events.ScheduleEvent(EVENT_CALL_FOR_HELP, urand(20000, 25000));
++                    break;
++                case EVENT_HEROIC_LEAP:
++                    events.Reset();
++                    Talk(TALK_HEROIC_LEAP);
++                    DoCast(me, SPELL_HEROIC_LEAP_DUMMY, true);
++                    _leapTarget = me->GetVictim() ? me->GetVictim()->GetGUID() : ObjectGuid::Empty;
++                    me->SetReactState(REACT_PASSIVE);
++                    me->AttackStop();
++                    me->GetMotionMaster()->Clear();
++                    me->GetMotionMaster()->MoveJump(HarlanJumpPos, 42.0f, 42.0f, EVENT_JUMP);
++                    return;
++                case EVENT_BLADES_DONE:
++                    me->RemoveAurasDueToSpell(SPELL_BLADES_OF_LIGHT);
++                    me->SetReactState(REACT_AGGRESSIVE);
++                    if (Unit* target = ObjectAccessor::GetUnit(*me, _leapTarget))
++                        if (target->IsAlive())
++                            AttackStart(target);
++                    if (!me->GetVictim())
++                        if (Unit* target = SelectTarget(SELECT_TARGET_MAXTHREAT))
++                            AttackStart(target);
++                    ScheduleTasks();
++                    break;
++                default:
++                    break;
++            }
+         }
++
++        if (me->HasAura(SPELL_BLADES_OF_LIGHT))
++            return;
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    bool _berserk;
++    ObjectGuid _leapTarget;
++};
++
++// Scarlet Defender 58998, called in by Harlan. They run in along the balconies in heavy armor.
++struct npc_harlan_scarlet_defender : public ScriptedAI
++{
++    npc_harlan_scarlet_defender(Creature* creature) : ScriptedAI(creature) { }
++
++    void IsSummonedBy(Unit* /*summoner*/) override
++    {
++        DoCast(me, SPELL_HEAVY_ARMOR, true);
++        me->SetReactState(REACT_PASSIVE);
++        me->GetMotionMaster()->MoveSmoothPath(1, urand(0, 1) ? DefenderPath1 : DefenderPath2, 6, false);
++    }
++
++    void MovementInform(uint32 type, uint32 pointId) override
++    {
++        if (type == EFFECT_MOTION_TYPE && pointId == 1)
++        {
++            me->SetReactState(REACT_AGGRESSIVE);
++            DoZoneInCombat();
++        }
++    }
++
++    void UpdateAI(uint32 /*diff*/) override
++    {
++        if (!UpdateVictim())
++            return;
++
++        DoMeleeAttackIfReady();
++    }
++};
++
++// Blades of Light 111394: every second, hit everyone in the spin
++class spell_harlan_blades_of_light_proc : public SpellScript
++{
++    PrepareSpellScript(spell_harlan_blades_of_light_proc);
++
++    void HandleDummy(SpellEffIndex /*effIndex*/)
++    {
++        if (Unit* target = GetHitUnit())
++            GetCaster()->CastSpell(target, SPELL_BLADES_OF_LIGHT_HIT, true);
++    }
++
++    void Register() override
++    {
++        OnEffectHitTarget += SpellEffectFn(spell_harlan_blades_of_light_proc::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
++    }
++};
++
++// Heavy Armor 113959: once the shield is broken the defender is left Unarmored
++class spell_harlan_heavy_armor : public AuraScript
++{
++    PrepareAuraScript(spell_harlan_heavy_armor);
++
++    void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
++    {
++        if (GetTargetApplication()->GetRemoveMode() == AURA_REMOVE_BY_ENEMY_SPELL)
++            GetTarget()->CastSpell(GetTarget(), SPELL_UNARMORED, true);
++    }
++
++    void Register() override
++    {
++        OnEffectRemove += AuraEffectRemoveFn(spell_harlan_heavy_armor::HandleRemove, EFFECT_1, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
+     }
+ };
+ 
+-void AddSC_armsmaster_harlan()
++void AddSC_boss_armsmaster_harlan()
+ {
+     RegisterCreatureAI(boss_armsmaster_harlan);
++    RegisterCreatureAI(npc_harlan_scarlet_defender);
++    RegisterSpellScript(spell_harlan_blades_of_light_proc);
++    RegisterAuraScript(spell_harlan_heavy_armor);
+ }
+diff --git a/src/server/scripts/EasternKingdoms/ScarletHalls/boss_flameweaver_koegler.cpp b/src/server/scripts/EasternKingdoms/ScarletHalls/boss_flameweaver_koegler.cpp
+index 39b9773..38b260e 100644
+--- a/src/server/scripts/EasternKingdoms/ScarletHalls/boss_flameweaver_koegler.cpp
++++ b/src/server/scripts/EasternKingdoms/ScarletHalls/boss_flameweaver_koegler.cpp
+@@ -1,145 +1,344 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Flameweaver Koegler, Scarlet Halls. Fight flow ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
+ #include "ScriptMgr.h"
++#include "InstanceScript.h"
++#include "MotionMaster.h"
++#include "ObjectAccessor.h"
+ #include "ScriptedCreature.h"
++#include "SpellAuraEffects.h"
++#include "SpellScript.h"
++#include "TemporarySummon.h"
+ #include "scarlet_halls.h"
+ 
+-enum Spells
++enum KoeglerSpells
+ {
+-    SPELL_BOOK_BURNER     = 113364,
+-    SPELL_BURNING_BOOKS   = 113616, // Aura stay for 30 seconds
+-    SPELL_FIREBALL_VOLLEY = 113691,
+-    SPELL_DRAGON_BREATH   = 113641,
+-    SPELL_PYROBLAST       = 113690,
+-    SPELL_QUICKENED_MIND  = 113682,
+-    SPELL_TELEPORT        = 113626
++    SPELL_BOOK_BURNER            = 113364,
++    SPELL_BURNING_BOOKS          = 113616,
++    SPELL_GREATER_DRAGONS_BREATH = 113641, // 10 s channel, ticks 113653 every 0.5 s
++    SPELL_DRAGONS_BREATH_CONE    = 113653,
++    SPELL_QUICKENED_MIND         = 113682,
++    SPELL_PYROBLAST              = 113690,
++    SPELL_FIREBALL_VOLLEY        = 113691,
+ };
+ 
+-enum Talk
++enum KoeglerTexts
+ {
+-    SAY_INTRO           = 0, // Everything must burn. None shall know of the Scarlet Crusade's shame!
+-    SAY_AGGRO           = 1, // You, too, shall be charred to ash!
+-    SAY_DRAGON_BREATH_1 = 2, // Breath of the Dragon!
+-    SAY_DRAGON_BREATH_2 = 3, // Purged by fire!
+-    SAY_KILLER_1        = 4, // Burn, BURN!
+-    SAY_KILLER_2        = 5, // Die in a fire!
+-    SAY_DEATH           = 6  // My fire...has gone out.
++    TALK_INTRO                   = 0, // Everything must burn. None shall know of the Scarlet Crusade's shame!
++    TALK_AGGRO                   = 1, // You, too, shall be charred to ash!
++    TALK_DRAGONS_BREATH          = 2, // Purged by fire!
++    TALK_BOOK_BURNER_ANN         = 3,
++    TALK_DRAGONS_BREATH_ANN      = 4,
++    TALK_DEATH                   = 5, // My fire... has gone out..
+ };
+ 
+-enum Events
++enum KoeglerEvents
+ {
+-    EVENT_BURNING_BOOKS = 1,
+-    EVENT_TELEPORT,
+-    EVENT_DRAGON_BREATH,
+-    EVENT_QUICK_MIND,
+-    EVENT_FIREBALL,
++    EVENT_BOOK_BURNER            = 1,
++    EVENT_QUICKENED_MIND,
++    EVENT_FIREBALL_VOLLEY,
+     EVENT_PYROBLAST,
+-    EVENT_DRAGON_BREATH_INTRO
++    EVENT_TELEPORT,
++    EVENT_DRAGONS_BREATH,
++    EVENT_DRAGONS_BREATH_END,
++
++    EVENT_MOVE                   = 1,
+ };
+ 
+-//59150
++uint8 const QuickenedMindCharges = 3;
++float const BreathTargetDistance = 8.0f;
++
+ struct boss_flameweaver_koegler : public BossAI
+ {
+-    boss_flameweaver_koegler(Creature* creature) : BossAI(creature, DATA_FLAMEWEAVER_KOEGLER) { }
+-
+-private:
+-    bool intro;
++    boss_flameweaver_koegler(Creature* creature) : BossAI(creature, DATA_FLAMEWEAVER_KOEGLER), _intro(false), _quickenedCharges(0), _breathing(false) { }
+ 
+     void Reset() override
+     {
+-        BossAI::Reset();
+-        intro = false;
+-        me->SetReactState(REACT_DEFENSIVE);
++        _Reset();
++        _quickenedCharges = 0;
++        _breathing = false;
++        me->SetReactState(REACT_AGGRESSIVE);
++    }
++
++    void MoveInLineOfSight(Unit* who) override
++    {
++        if (!_intro && who->GetTypeId() == TYPEID_PLAYER && me->IsWithinDistInMap(who, 40.0f))
++        {
++            _intro = true;
++            Talk(TALK_INTRO);
++        }
++
++        BossAI::MoveInLineOfSight(who);
+     }
+ 
+     void JustEngagedWith(Unit* /*who*/) override
+     {
+         _JustEngagedWith();
+-        Talk(SAY_AGGRO);
+-        events.ScheduleEvent(EVENT_BURNING_BOOKS, 30000);
+-        events.ScheduleEvent(EVENT_QUICK_MIND, 15000);
+-        events.ScheduleEvent(EVENT_TELEPORT, 38000);
+-        events.ScheduleEvent(EVENT_FIREBALL, 5000);
+-        events.ScheduleEvent(EVENT_PYROBLAST, 20000);
++        Talk(TALK_AGGRO);
++        ScheduleTasks();
+     }
+ 
+-    void JustDied(Unit* /*killer*/) override
++    void ScheduleTasks() override
+     {
+-        _JustDied();
+-        Talk(SAY_DEATH);
++        events.ScheduleEvent(EVENT_PYROBLAST, 1000);
++        events.ScheduleEvent(EVENT_BOOK_BURNER, 7000);
++        events.ScheduleEvent(EVENT_QUICKENED_MIND, 10000);
++        events.ScheduleEvent(EVENT_FIREBALL_VOLLEY, 13500);
++        events.ScheduleEvent(EVENT_TELEPORT, 30000);
+     }
+ 
+-    void KilledUnit(Unit* victim) override
++    void JustDied(Unit* /*killer*/) override
+     {
+-        if (victim->IsPlayer() && roll_chance_f(15))
+-            Talk(RAND(SAY_KILLER_1, SAY_KILLER_2));
++        _JustDied();
++        Talk(TALK_DEATH);
++
++        if (instance)
++            if (Creature* crusader = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_CODEX_CRUSADER)))
++            {
++                crusader->SetVisible(true);
++                if (crusader->IsAIEnabled)
++                    crusader->AI()->DoAction(ACTION_CODEX);
++            }
+     }
+ 
+-    void MoveInLineOfSight(Unit* who) override
++    void UpdateAI(uint32 diff) override
+     {
+-        if (who && who->GetTypeId() == TYPEID_PLAYER && me->IsValidAttackTarget(who))
++        if (!UpdateVictim())
++            return;
++
++        events.Update(diff);
+ 
+-        if (!intro && me->IsWithinDistInMap(who, 25))
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        while (uint32 eventId = events.ExecuteEvent())
+         {
+-            intro = true;
+-            Talk(SAY_INTRO);
+-            ScriptedAI::MoveInLineOfSight(who);
++            switch (eventId)
++            {
++                case EVENT_PYROBLAST:
++                    CastQuickened(me->GetVictim(), SPELL_PYROBLAST);
++                    events.ScheduleEvent(EVENT_PYROBLAST, urand(1500, 3000));
++                    break;
++                case EVENT_FIREBALL_VOLLEY:
++                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 40.0f, true))
++                        CastQuickened(target, SPELL_FIREBALL_VOLLEY);
++                    events.ScheduleEvent(EVENT_FIREBALL_VOLLEY, 13500);
++                    break;
++                case EVENT_QUICKENED_MIND:
++                    // the aura's cast time cut doesn't reach creature spells here, so Koegler
++                    // spends his charges on instant casts instead
++                    DoCast(me, SPELL_QUICKENED_MIND, true);
++                    _quickenedCharges = QuickenedMindCharges;
++                    events.ScheduleEvent(EVENT_QUICKENED_MIND, 25000);
++                    break;
++                case EVENT_BOOK_BURNER:
++                    if (Creature* bookCase = SelectBookCase())
++                    {
++                        Talk(TALK_BOOK_BURNER_ANN);
++                        me->SetFacingToObject(bookCase);
++                        DoCast(bookCase, SPELL_BOOK_BURNER);
++                    }
++                    events.ScheduleEvent(EVENT_BOOK_BURNER, 15000);
++                    break;
++                case EVENT_TELEPORT:
++                    events.Reset();
++                    _breathing = true;
++                    Talk(TALK_DRAGONS_BREATH);
++                    Talk(TALK_DRAGONS_BREATH_ANN);
++                    me->SetReactState(REACT_PASSIVE);
++                    me->AttackStop();
++                    me->GetMotionMaster()->Clear();
++                    me->NearTeleportTo(KoeglerBreathPos);
++                    events.ScheduleEvent(EVENT_DRAGONS_BREATH, 1500);
++                    events.ScheduleEvent(EVENT_DRAGONS_BREATH_END, 13500);
++                    return;
++                case EVENT_DRAGONS_BREATH:
++                {
++                    Position pos = me->GetPosition();
++                    me->MovePosition(pos, BreathTargetDistance, 0.0f);
++                    if (Creature* target = me->SummonCreature(NPC_DRAGON_BREATH_TARGET, pos, TEMPSUMMON_TIMED_DESPAWN, 12 * IN_MILLISECONDS))
++                    {
++                        me->SetFacingToObject(target);
++                        DoCast(target, SPELL_GREATER_DRAGONS_BREATH);
++                    }
++                    return;
++                }
++                case EVENT_DRAGONS_BREATH_END:
++                    _breathing = false;
++                    me->InterruptNonMeleeSpells(true);
++                    summons.DespawnEntry(NPC_DRAGON_BREATH_TARGET);
++                    me->SetReactState(REACT_AGGRESSIVE);
++                    if (Unit* target = SelectTarget(SELECT_TARGET_MAXTHREAT))
++                        AttackStart(target);
++                    ScheduleTasks();
++                    break;
++                default:
++                    break;
++            }
++
++            if (me->HasUnitState(UNIT_STATE_CASTING))
++                return;
+         }
++
++        if (!_breathing)
++            DoMeleeAttackIfReady();
+     }
+ 
+-    void ExecuteEvent(uint32 eventId) override
++private:
++    void CastQuickened(Unit* target, uint32 spellId)
+     {
+-        switch (eventId)
++        if (!target)
++            return;
++
++        if (_quickenedCharges)
+         {
+-        case EVENT_BURNING_BOOKS:
+-            DoCast(SPELL_BOOK_BURNER);
+-            events.ScheduleEvent(EVENT_BURNING_BOOKS, 30000); // should be 30sec after the first one
+-            break;
+-        case EVENT_TELEPORT:
+-            DoCast(SPELL_TELEPORT);
+-            me->SetTarget(ObjectGuid::Empty);
+-            me->StopMoving();
+-            events.ScheduleEvent(EVENT_TELEPORT, 45000);
+-            events.ScheduleEvent(EVENT_DRAGON_BREATH, 1000);
+-            break;
+-        case EVENT_DRAGON_BREATH:
+-            Talk(RAND(SAY_DRAGON_BREATH_1, SAY_DRAGON_BREATH_2));
+-            DoCast(SPELL_DRAGON_BREATH);
+-            events.ScheduleEvent(EVENT_QUICK_MIND, 11000);
+-            break;
+-        case EVENT_QUICK_MIND:
+-            AttackStart(me->GetVictim());
+-            me->SetReactState(REACT_AGGRESSIVE);
+-            DoCast(me, SPELL_QUICKENED_MIND);
+-            break;
+-        case EVENT_FIREBALL:
+-            DoCastVictim(SPELL_FIREBALL_VOLLEY);
+-            events.ScheduleEvent(EVENT_FIREBALL, 15000);
+-            break;
+-        case EVENT_PYROBLAST:
+-            DoCastVictim(SPELL_PYROBLAST);
+-            events.ScheduleEvent(EVENT_PYROBLAST, urand(25000, 35000));
+-            break;
++            if (--_quickenedCharges == 0)
++                me->RemoveAurasDueToSpell(SPELL_QUICKENED_MIND);
++            me->CastSpell(target, spellId, true);
+         }
++        else
++            DoCast(target, spellId);
++    }
++
++    Creature* SelectBookCase()
++    {
++        std::list<Creature*> bookCases;
++        me->GetCreatureListWithEntryInGrid(bookCases, NPC_BOOK_CASE, 60.0f);
++        bookCases.remove_if([](Creature* bookCase) { return !bookCase->IsAlive() || bookCase->HasAura(SPELL_BURNING_BOOKS); });
++        if (bookCases.empty())
++            return nullptr;
++
++        return Trinity::Containers::SelectRandomContainerElement(bookCases);
+     }
++
++    bool _intro;
++    uint8 _quickenedCharges;
++    bool _breathing;
+ };
+ 
+-//59155
++// Book Case 59155
+ struct npc_book_case : public ScriptedAI
+ {
+     npc_book_case(Creature* creature) : ScriptedAI(creature) { }
+ 
+-    void Reset() override { }
+-
+-    void JustEngagedWith(Unit* /*who*/) override { }
++    void Reset() override
++    {
++        me->SetReactState(REACT_PASSIVE);
++        me->RemoveAurasDueToSpell(SPELL_BURNING_BOOKS);
++    }
+ 
+     void SpellHit(Unit* /*caster*/, SpellInfo const* spell) override
+     {
+-        if (spell->Id == SPELL_BOOK_BURNER)
+-            DoCast(me, SPELL_BURNING_BOOKS);
++        if (spell->Id == SPELL_BOOK_BURNER && !me->HasAura(SPELL_BURNING_BOOKS))
++            DoCast(me, SPELL_BURNING_BOOKS, true);
++    }
++
++    void UpdateAI(uint32 /*diff*/) override { }
++};
++
++// Dragon Breath Target 59198: walks a circle around Koegler, his breath follows it
++struct npc_dragon_breath_target : public ScriptedAI
++{
++    npc_dragon_breath_target(Creature* creature) : ScriptedAI(creature), _angle(0.0f) { }
++
++    void IsSummonedBy(Unit* summoner) override
++    {
++        _koegler = summoner->GetGUID();
++        _angle = summoner->GetAngle(me);
++        me->SetReactState(REACT_PASSIVE);
++        _events.ScheduleEvent(EVENT_MOVE, 200);
++    }
++
++    void MovementInform(uint32 type, uint32 pointId) override
++    {
++        if (type == POINT_MOTION_TYPE && pointId == EVENT_MOVE)
++            _events.ScheduleEvent(EVENT_MOVE, 100);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++        if (_events.ExecuteEvent() != EVENT_MOVE)
++            return;
++
++        Unit* koegler = ObjectAccessor::GetUnit(*me, _koegler);
++        if (!koegler)
++            return;
++
++        _angle = Position::NormalizeOrientation(_angle + float(M_PI) / 6.0f);
++        Position pos = koegler->GetPosition();
++        pos.m_positionX += BreathTargetDistance * std::cos(_angle);
++        pos.m_positionY += BreathTargetDistance * std::sin(_angle);
++        me->GetMotionMaster()->MovePoint(EVENT_MOVE, pos, false);
++    }
++
++private:
++    EventMap _events;
++    ObjectGuid _koegler;
++    float _angle;
++};
++
++// Greater Dragon's Breath 113641: the cone comes from Koegler and turns with the target
++class spell_koegler_greater_dragons_breath : public AuraScript
++{
++    PrepareAuraScript(spell_koegler_greater_dragons_breath);
++
++    void HandlePeriodic(AuraEffect const* /*aurEff*/)
++    {
++        PreventDefaultAction();
++
++        Unit* caster = GetCaster();
++        if (!caster || !caster->IsAlive())
++            return;
++
++        caster->SetFacingToObject(GetTarget(), true);
++        caster->CastSpell(caster, SPELL_DRAGONS_BREATH_CONE, true);
++    }
++
++    void Register() override
++    {
++        OnEffectPeriodic += AuraEffectPeriodicFn(spell_koegler_greater_dragons_breath::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
++    }
++};
++
++// Book Burner 113364: the cone only burns players; the book case catches fire from the dummy hit
++class spell_koegler_book_burner : public SpellScript
++{
++    PrepareSpellScript(spell_koegler_book_burner);
++
++    void HandleDamage(SpellEffIndex /*effIndex*/)
++    {
++        if (GetHitUnit()->GetTypeId() != TYPEID_PLAYER && !GetHitUnit()->IsControlledByPlayer())
++            SetHitDamage(0);
++    }
++
++    void Register() override
++    {
++        OnEffectHitTarget += SpellEffectFn(spell_koegler_book_burner::HandleDamage, EFFECT_1, SPELL_EFFECT_SCHOOL_DAMAGE);
+     }
+ };
+ 
+-void AddSC_flameweaver_koegler()
++void AddSC_boss_flameweaver_koegler()
+ {
+     RegisterCreatureAI(boss_flameweaver_koegler);
+     RegisterCreatureAI(npc_book_case);
++    RegisterCreatureAI(npc_dragon_breath_target);
++    RegisterAuraScript(spell_koegler_greater_dragons_breath);
++    RegisterSpellScript(spell_koegler_book_burner);
+ }
+diff --git a/src/server/scripts/EasternKingdoms/ScarletHalls/boss_houndmaster_braun.cpp b/src/server/scripts/EasternKingdoms/ScarletHalls/boss_houndmaster_braun.cpp
+index a20eab0..3030532 100644
+--- a/src/server/scripts/EasternKingdoms/ScarletHalls/boss_houndmaster_braun.cpp
++++ b/src/server/scripts/EasternKingdoms/ScarletHalls/boss_houndmaster_braun.cpp
+@@ -1,190 +1,310 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Houndmaster Braun, Scarlet Halls. Fight flow ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
+ #include "ScriptMgr.h"
++#include "InstanceScript.h"
++#include "MotionMaster.h"
++#include "ObjectAccessor.h"
++#include "Player.h"
+ #include "ScriptedCreature.h"
+ #include "scarlet_halls.h"
+ 
+-enum Spells
++enum BraunSpells
+ {
+-    SPELL_BLOODY_RAGE    = 116140,
+-    SPELL_CALL_DOG       = 114259, // will be done soon
+-    SPELL_DEATH_BLOSSOM  = 114242,
+-    SPELL_BLOSSOM_JUMP   = 114241,
+-    SPELL_PIERCING_THROW = 114004,
+-    SPELL_THROW_LINKED   = 114020,
++    SPELL_PIERCING_THROW     = 114004,
++    SPELL_DEATH_BLOSSOM_LEAP = 114241,
++    SPELL_DEATH_BLOSSOM      = 114242,
++    SPELL_BLOODY_RAGE        = 116140,
++    SPELL_RAKE_NORMAL        = 24331,
++    SPELL_RAKE_HEROIC        = 120560,
+ };
+ 
+-enum Texts
++enum BraunTexts
+ {
+-    SAY_AGGRO1           = 0,
+-    SAY_AGGRO2           = 1,
+-    SAY_CALL_DOG1        = 2,
+-    SAY_CALL_DOG2        = 3,
+-    SAY_BLOSSOM1         = 4,
+-    SAY_BLOSSOM2         = 5,
+-    SAY_MESS1            = 6,
+-    SAY_MESS2            = 7,
+-    SAY_RAGE1            = 8,
+-    SAY_RAGE2            = 9,
+-    SAY_KILL_DOG1        = 10,
+-    SAY_KILL_DOG2        = 11,
+-    SAY_KILL_DOG3        = 12,
+-    SAY_KILLER           = 13,
+-    SAY_RESET            = 14,
+-    SAY_DEATH            = 15,
++    TALK_AGGRO               = 0, // Ah, fresh meat for the dogs.
++    TALK_FINISH_1            = 1, // I bleed... haha... but I won't die!
++    TALK_FINISH_2            = 2, // What? No, no! Stop! Obey your master!
++    TALK_CALL_DOG            = 3, // I let the dogs out!
++    TALK_BLOODY_RAGE         = 4, // Stupid animals! I'll put you down after I kill these weaklings.
+ };
+ 
+-enum Events
++enum BraunEvents
+ {
+-    EVENT_RAGE = 1,
+-    EVENT_DOG,
+-    EVENT_BLOSSOM,
+-    EVENT_THROW,
+-    EVENT_CLOSE_GATE,
+-};
++    EVENT_PIERCING_THROW     = 1,
++    EVENT_DEATH_BLOSSOM,
++    EVENT_EATEN,
++    EVENT_FINISHED,
+ 
+-enum Actions
+-{
+-    ACTION_ATTACK_BRAUN = 1,
++    EVENT_RAKE               = 1,
+ };
+ 
+-Position const PosObedientHound[3] =
++enum BraunActions
+ {
+-    { 991.761f, 519.f,    13.488f, 6.262798f },
+-    { 991.724f, 517.511f, 13.488f, 6.262798f },
+-    { 991.894f, 515.835f, 13.488f, 6.262798f },
++    ACTION_ACTIVATE_DOG      = 1,
++    ACTION_FINISH_HIM,
++    ACTION_RUN_OUT,
+ };
+ 
+-//59303
+ struct boss_houndmaster_braun : public BossAI
+ {
+-    boss_houndmaster_braun(Creature* creature) : BossAI(creature, DATA_HOUNDMASTER_BRAUN) { }
+-
+-private:
+-    bool wave1;
+-    bool wave2;
+-    bool wave3;
+-    bool wave4;
+-    bool enraged;
+-    bool releasedogs;
++    boss_houndmaster_braun(Creature* creature) : BossAI(creature, DATA_HOUNDMASTER_BRAUN), _dogsCalled(0), _enraged(false), _finishing(false) { }
+ 
+     void Reset() override
+     {
+-        BossAI::Reset();
+-        me->SetReactState(REACT_DEFENSIVE);
+-        wave1 = false;
+-        wave2 = false;
+-        wave3 = false;
+-        wave4 = false;
+-        enraged = false;
+-        releasedogs = false;
++        _Reset();
++        _dogsCalled = 0;
++        _enraged = false;
++        _finishing = false;
++        me->SetReactState(REACT_AGGRESSIVE);
++        SendHounds(ACTION_ACTIVATE_DOG, true);
+     }
+ 
+     void JustEngagedWith(Unit* /*who*/) override
+     {
+         _JustEngagedWith();
+-        events.ScheduleEvent(EVENT_THROW, 18000);
+-        events.ScheduleEvent(EVENT_BLOSSOM, 15000);
+-        events.ScheduleEvent(EVENT_CLOSE_GATE, 3000);
++        Talk(TALK_AGGRO);
++        events.ScheduleEvent(EVENT_PIERCING_THROW, 7000);
++        events.ScheduleEvent(EVENT_DEATH_BLOSSOM, urand(11000, 12000));
+     }
+ 
+-    void JustDied(Unit* /*killer*/) override
++    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
+     {
+-        _JustDied();
+-        Talk(SAY_DEATH);
+-    }
+-
+-    void KilledUnit(Unit* /*victim*/) override { }
+-
+-    void DamageTaken(Unit* /*attacker*/, uint32& /*damage*/) override // percent 90/80/70/60 will be done by Call Dogs (soon)
+-    {
+-        if(!wave1 && !me->IsNonMeleeSpellCast(false) && HealthBelowPct(90))
+-            wave1 = true;
+-
+-        if(!wave2 && !me->IsNonMeleeSpellCast(false) && HealthBelowPct(80))
+-            wave2 = true;
++        if (_finishing)
++        {
++            damage = 0;
++            return;
++        }
+ 
+-        if(!wave3 && !me->IsNonMeleeSpellCast(false) && HealthBelowPct(70))         
+-            wave3 = true;
++        // one hound per 10% from 90% down to 60%
++        while (_dogsCalled < 4 && me->HealthBelowPctDamaged(90 - 10 * _dogsCalled, damage))
++        {
++            ++_dogsCalled;
++            Talk(TALK_CALL_DOG);
++            SendHounds(ACTION_ACTIVATE_DOG, false, 1);
++        }
+ 
+-        if(!wave4 && !me->IsNonMeleeSpellCast(false) && HealthBelowPct(60))       
+-            wave4 = true;
+-              
+-        if(!enraged && !me->IsNonMeleeSpellCast(false) && HealthBelowPct(50))
++        if (!_enraged && me->HealthBelowPctDamaged(50, damage))
+         {
+-            enraged = true;
+-            DoCast(me, SPELL_BLOODY_RAGE);
++            _enraged = true;
++            Talk(TALK_BLOODY_RAGE);
++            DoCast(me, SPELL_BLOODY_RAGE, true);
+         }
+ 
+-        if(!releasedogs && !me->IsNonMeleeSpellCast(false) && HealthBelowPct(10))
++        if (me->HealthBelowPctDamaged(15, damage))
+         {
+-            releasedogs = true;
+-            ReleaseDogs();
++            // his own hounds finish him
++            damage = 0;
++            _finishing = true;
++            events.Reset();
++            me->InterruptNonMeleeSpells(true);
++            me->RemoveAllAuras();
++            me->AttackStop();
++            me->SetReactState(REACT_PASSIVE);
++            Talk(TALK_FINISH_1);
++            SendHounds(ACTION_FINISH_HIM);
++            events.ScheduleEvent(EVENT_EATEN, 5000);
+         }
+     }
+ 
+-    void CloseGate() // summon 3 Dogs for the last gate after combat start
++    void JustDied(Unit* /*killer*/) override
+     {
+-        for (uint8 i = 0; i < 3; ++i)
+-        me->SummonCreature(NPC_OBEDIENT_HOUND, PosObedientHound[i], TEMPSUMMON_DEAD_DESPAWN, 0);
++        _JustDied();
++        SendHounds(ACTION_RUN_OUT);
+     }
+ 
+-    void ReleaseDogs()
++    void UpdateAI(uint32 diff) override
+     {
++        if (_finishing)
++        {
++            // he stands still while the hounds work; no victim needed
++            events.Update(diff);
++            while (uint32 eventId = events.ExecuteEvent())
++            {
++                if (eventId == EVENT_EATEN)
++                {
++                    DoCast(me, SPELL_HOUNDMASTER_EATEN, true);
++                    Talk(TALK_FINISH_2);
++                    events.ScheduleEvent(EVENT_FINISHED, urand(7000, 10000));
++                }
++                else if (eventId == EVENT_FINISHED)
++                {
++                    if (Player* player = me->SelectNearestPlayer(100.0f))
++                        player->Kill(me);
++                    else
++                        me->KillSelf();
++                    return;
++                }
++            }
++
++            if (!me->IsInCombat() || me->GetThreatManager().IsThreatListEmpty())
++                if (!me->SelectNearestPlayer(150.0f))
++                    EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
++            return;
++        }
++
++        BossAI::UpdateAI(diff);
+     }
+ 
+     void ExecuteEvent(uint32 eventId) override
+     {
+-        switch(eventId)
++        switch (eventId)
++        {
++            case EVENT_PIERCING_THROW:
++                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 40.0f, true))
++                    DoCast(target, SPELL_PIERCING_THROW);
++                events.ScheduleEvent(EVENT_PIERCING_THROW, urand(7000, 9000));
++                break;
++            case EVENT_DEATH_BLOSSOM:
++                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 40.0f, true))
++                    DoCast(target, SPELL_DEATH_BLOSSOM_LEAP);
++                events.ScheduleEvent(EVENT_DEATH_BLOSSOM, urand(11000, 12000));
++                break;
++            default:
++                break;
++        }
++    }
++
++    void MovementInform(uint32 type, uint32 pointId) override
++    {
++        // Death Blossom: the spin lands where the leap ends
++        if (type == EFFECT_MOTION_TYPE && pointId == EVENT_JUMP && !_finishing)
++            DoCastAOE(SPELL_DEATH_BLOSSOM, true);
++    }
++
++private:
++    void SendHounds(int32 action, bool includeAll = false, uint32 count = 0)
++    {
++        std::list<Creature*> hounds;
++        me->GetCreatureListWithEntryInGrid(hounds, NPC_OBEDIENT_HOUND, 200.0f);
++        if (includeAll)
+         {
+-        case EVENT_CLOSE_GATE:
+-             CloseGate();
+-             break;
+-        case EVENT_THROW:
+-             DoCast(SPELL_PIERCING_THROW);
+-             events.ScheduleEvent(EVENT_THROW, 28000);
+-             break;
+-        case EVENT_BLOSSOM:
+-             if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 40, true))
+-             {
+-                 DoCast(target, SPELL_BLOSSOM_JUMP);
+-                 DoCastAOE(SPELL_DEATH_BLOSSOM);
+-                 events.ScheduleEvent(EVENT_BLOSSOM, 25000);
+-             }
+-             break;           
+-        }      
++            // reset: put every kennel hound back on its leash
++            for (Creature* hound : hounds)
++                if (hound->IsAlive() && hound->IsAIEnabled)
++                    hound->AI()->EnterEvadeMode();
++            return;
++        }
++
++        hounds.remove_if([](Creature* hound) { return !hound->IsAlive() || !hound->IsAIEnabled; });
++        if (action == ACTION_ACTIVATE_DOG)
++        {
++            hounds.remove_if([](Creature* hound) { return hound->IsInCombat(); });
++            hounds.sort(Trinity::ObjectDistanceOrderPred(me));
++            if (hounds.size() > count)
++                hounds.resize(count);
++        }
++
++        for (Creature* hound : hounds)
++            hound->AI()->DoAction(action);
+     }
++
++    uint8 _dogsCalled;
++    bool _enraged;
++    bool _finishing;
+ };
+ 
+-//59309
++// Obedient Hound 59309
+ struct npc_obedient_hound : public ScriptedAI
+ {
+-    npc_obedient_hound(Creature* creature) : ScriptedAI(creature)
++    npc_obedient_hound(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript()) { }
++
++    void Reset() override
+     {
+-        me->ApplySpellImmune(0, IMMUNITY_ID, 114056, true);
++        _events.Reset();
++        me->RestoreFaction();
++        me->SetReactState(REACT_PASSIVE);
++        me->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+     }
+ 
+-    void Reset()
++    void DoAction(int32 actionId) override
+     {
+-        me->SetReactState(REACT_PASSIVE);
++        switch (actionId)
++        {
++            case ACTION_ACTIVATE_DOG:
++                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
++                me->SetReactState(REACT_AGGRESSIVE);
++                if (Player* player = me->SelectNearestPlayer(100.0f))
++                    AttackStart(player);
++                break;
++            case ACTION_FINISH_HIM:
++                if (Creature* braun = _instance ? _instance->GetCreature(DATA_HOUNDMASTER_BRAUN) : nullptr)
++                {
++                    me->CombatStop(true);
++                    me->GetThreatManager().ClearAllThreat();
++                    me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
++                    me->SetFaction(FACTION_HOUNDS_TURNED);
++                    me->SetReactState(REACT_AGGRESSIVE);
++                    AttackStart(braun);
++                    _events.ScheduleEvent(EVENT_RAKE, 3500);
++                }
++                break;
++            case ACTION_RUN_OUT:
++                _events.Reset();
++                me->CombatStop(true);
++                me->SetFaction(FACTION_HOUNDS_TURNED);
++                me->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
++                me->SetReactState(REACT_PASSIVE);
++                me->GetMotionMaster()->MovePoint(1, EndScenarioPos);
++                break;
++            default:
++                break;
++        }
+     }
+ 
+-    void IsSummonedBy(Unit* /*summoner*/)
++    void MovementInform(uint32 type, uint32 pointId) override
+     {
+-        me->SetReactState(REACT_PASSIVE);
++        if (type != POINT_MOTION_TYPE || pointId != 1)
++            return;
++
++        // the hounds tear through the guards at the exit
++        std::list<Creature*> guards;
++        me->GetCreatureListWithEntryInGrid(guards, NPC_SCARLET_GUARDIAN, 20.0f);
++        me->GetCreatureListWithEntryInGrid(guards, NPC_SERGEANT_VERDONE, 20.0f);
++        for (Creature* guard : guards)
++            if (guard->IsAlive())
++                guard->KillSelf();
++
++        me->DespawnOrUnsummon(1500);
+     }
+ 
+-    void DoAction(int32 const param)
++    void UpdateAI(uint32 diff) override
+     {
+-        switch (param)
++        if (!UpdateVictim())
++            return;
++
++        _events.Update(diff);
++        if (_events.ExecuteEvent() == EVENT_RAKE)
+         {
+-        case ACTION_ATTACK_BRAUN:
+-            if (Creature* braun = me->FindNearestCreature(NPC_HOUNDMASTER_BRAUN, 150, true))
+-                me->Attack(braun, true);
+-            break;
++            if (Unit* victim = me->GetVictim())
++                me->CastSpell(victim, IsHeroic() ? SPELL_RAKE_HEROIC : SPELL_RAKE_NORMAL, true);
++            _events.ScheduleEvent(EVENT_RAKE, 3500);
+         }
++
++        DoMeleeAttackIfReady();
+     }
++
++private:
++    InstanceScript* _instance;
++    EventMap _events;
+ };
+ 
+-void AddSC_houndmaster_braun()
++void AddSC_boss_houndmaster_braun()
+ {
+     RegisterCreatureAI(boss_houndmaster_braun);
+     RegisterCreatureAI(npc_obedient_hound);
+diff --git a/src/server/scripts/EasternKingdoms/ScarletHalls/instance_scarlet_halls.cpp b/src/server/scripts/EasternKingdoms/ScarletHalls/instance_scarlet_halls.cpp
+index f6e88ba..94fdb62 100644
+--- a/src/server/scripts/EasternKingdoms/ScarletHalls/instance_scarlet_halls.cpp
++++ b/src/server/scripts/EasternKingdoms/ScarletHalls/instance_scarlet_halls.cpp
+@@ -1,46 +1,105 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Scarlet Halls (map 1001), ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
+ #include "ScriptMgr.h"
+-#include "InstanceScript.h"
++#include "Creature.h"
+ #include "GameObject.h"
++#include "InstanceScript.h"
++#include "Map.h"
+ #include "scarlet_halls.h"
+ 
+-ObjectGuid HoundmasterBraunGUID;
+-ObjectGuid ArmsmasterHarlanGUID;
+-ObjectGuid FlameweaverKoeglerGUID;
++DoorData const doorData[] =
++{
++    { GO_COMMANDER_LINDON_EXIT,  DATA_COMMANDER_LINDON,  DOOR_TYPE_PASSAGE, BOUNDARY_NONE },
++    { GO_HOUNDMASTER_BRAUN_EXIT, DATA_HOUNDMASTER_BRAUN, DOOR_TYPE_PASSAGE, BOUNDARY_NONE },
++    { GO_ARMSMASTER_HARLAN_DOOR, DATA_ARMSMASTER_HARLAN, DOOR_TYPE_ROOM,    BOUNDARY_NONE },
++    { 0,                         0,                      DOOR_TYPE_ROOM,    BOUNDARY_NONE } // END
++};
+ 
+-struct instance_scarlet_halls : public InstanceScript
++ObjectData const creatureData[] =
+ {
+-    instance_scarlet_halls(InstanceMap* map) : InstanceScript(map) { }
++    { NPC_HOUNDMASTER_BRAUN,   DATA_HOUNDMASTER_BRAUN   },
++    { NPC_ARMSMASTER_HARLAN,   DATA_ARMSMASTER_HARLAN   },
++    { NPC_FLAMEWEAVER_KOEGLER, DATA_FLAMEWEAVER_KOEGLER },
++    { NPC_COMMANDER_LINDON,    DATA_COMMANDER_LINDON    },
++    { 0,                       0                        } // END
++};
+ 
+-    void Initialize()
+-    {
+-        SetBossNumber(MAX_ENCOUNTER);
+-    }
++class instance_scarlet_halls : public InstanceMapScript
++{
++public:
++    instance_scarlet_halls() : InstanceMapScript(SHScriptName, 1001) { }
+ 
+-    void OnCreatureCreate(Creature* creature)
++    struct instance_scarlet_halls_InstanceMapScript : public InstanceScript
+     {
+-        switch (creature->GetEntry())
++        instance_scarlet_halls_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
+         {
+-        case NPC_HOUNDMASTER_BRAUN:
+-            HoundmasterBraunGUID = creature->GetGUID();
+-            break;
+-        case NPC_ARMSMASTER_HARLAN:
+-            ArmsmasterHarlanGUID = creature->GetGUID();
+-            break;
+-        case NPC_FLAMEWEAVER_KOEGLER:
+-            FlameweaverKoeglerGUID = creature->GetGUID();
+-            break;
++            SetHeaders(DataHeader);
++            SetBossNumber(EncounterCount);
++            LoadDoorData(doorData);
++            LoadObjectData(creatureData, nullptr);
+         }
+-        if (instance->IsNormal())
+-            if (creature->GetEntry() != NPC_HOUNDMASTER_BRAUN && creature->GetEntry() != NPC_ARMSMASTER_HARLAN && creature->GetEntry() != NPC_FLAMEWEAVER_KOEGLER)
+-                creature->SetLevel(RAND(21, 30));
+-        if (instance->IsHeroic())
+-            if (creature->GetEntry() != NPC_HOUNDMASTER_BRAUN && creature->GetEntry() != NPC_ARMSMASTER_HARLAN && creature->GetEntry() != NPC_FLAMEWEAVER_KOEGLER)
+-                creature->SetLevel(RAND(90, 91));
++
++        void OnCreatureCreate(Creature* creature) override
++        {
++            InstanceScript::OnCreatureCreate(creature);
++
++            switch (creature->GetEntry())
++            {
++                case NPC_SCARLET_GUARDIAN:
++                case NPC_SERGEANT_VERDONE:
++                    // they wait behind Braun's fire wall for his hounds
++                    creature->SetReactState(REACT_PASSIVE);
++                    break;
++                case NPC_HOODED_CRUSADER:
++                    // the one waiting outside Koegler's library, not the quest giver at the entrance
++                    if (creature->GetPositionX() > 1200.0f)
++                    {
++                        codexCrusaderGUID = creature->GetGUID();
++                        if (GetBossState(DATA_FLAMEWEAVER_KOEGLER) != DONE)
++                            creature->SetVisible(false);
++                    }
++                    break;
++                default:
++                    break;
++            }
++        }
++
++        ObjectGuid GetGuidData(uint32 type) const override
++        {
++            if (type == DATA_CODEX_CRUSADER)
++                return codexCrusaderGUID;
++
++            return InstanceScript::GetGuidData(type);
++        }
++
++    private:
++        ObjectGuid codexCrusaderGUID;
++    };
++
++    InstanceScript* GetInstanceScript(InstanceMap* map) const override
++    {
++        return new instance_scarlet_halls_InstanceMapScript(map);
+     }
+ };
+ 
+ void AddSC_instance_scarlet_halls()
+ {
+-    RegisterInstanceScript(instance_scarlet_halls, 1001);
++    new instance_scarlet_halls();
+ }
+-
+diff --git a/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp b/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp
+new file mode 100644
+index 0000000..62be89b
+--- /dev/null
++++ b/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp
+@@ -0,0 +1,701 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Scarlet Halls (map 1001) trash and events, ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ * Trash that already has working SmartAI in this database keeps it; this file covers the kennel,
++ * the archery gauntlet, the cannons and the codex hand-in.
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "ScriptMgr.h"
++#include "AreaTrigger.h"
++#include "GameObject.h"
++#include "InstanceScript.h"
++#include "MotionMaster.h"
++#include "ObjectAccessor.h"
++#include "Player.h"
++#include "ScriptedCreature.h"
++#include "SpellAuraEffects.h"
++#include "SpellScript.h"
++#include "TemporarySummon.h"
++#include "scarlet_halls.h"
++
++enum SHTrashSpells
++{
++    SPELL_HUNGRY_DOG          = 111582,
++    SPELL_LEASHED             = 103169,
++    SPELL_CARRYING_BUCKET     = 128164,
++    SPELL_DOG_FOOD            = 111894,
++    SPELL_SHIELD_BREAKER      = 125492,
++    SPELL_PIERCING_ARROW      = 113564,
++    SPELL_BLEEDING_WOUND      = 113855,
++    SPELL_EXPLODING_SHOT      = 113644,
++    SPELL_FIRE_CANNON         = 113932,
++    SPELL_CANNON_BLAST        = 113719,
++};
++
++enum SHTrashEvents
++{
++    EVENT_HUNGRY_DOG          = 1,
++    EVENT_HUNGRY_DOG_RELEASE,
++    EVENT_LEASH,
++    EVENT_FIRE_AT_ROW,
++    EVENT_SHIELD_BREAKER,
++    EVENT_BLEEDING_WOUND,
++    EVENT_CANNON_READY,
++    EVENT_SUMMON_CANNONEER,
++    EVENT_ESCORT,
++};
++
++// Starving Hound 58876
++// Hungry Dog is a 30 s stun channel; the hound lets go after 4 s so a solo player is not pinned down.
++// When a Vigilant Watchman is hit by a thrown bucket of dog food, the hounds around him turn on him.
++struct npc_starving_hound : public ScriptedAI
++{
++    npc_starving_hound(Creature* creature) : ScriptedAI(creature), _fed(false) { }
++
++    void Reset() override
++    {
++        _events.Reset();
++    }
++
++    void JustEngagedWith(Unit* /*who*/) override
++    {
++        if (!_fed)
++            _events.ScheduleEvent(EVENT_HUNGRY_DOG, urand(5000, 8000));
++    }
++
++    void SetGUID(ObjectGuid guid, int32 /*id*/) override
++    {
++        // guid is a watchman covered in dog food
++        Creature* watchman = ObjectAccessor::GetCreature(*me, guid);
++        if (!watchman || _fed)
++            return;
++
++        _fed = true;
++        _events.Reset();
++        me->InterruptNonMeleeSpells(false);
++        me->SetFaction(FACTION_HOUNDS_TURNED);
++        me->CombatStop(true);
++        me->GetThreatManager().ClearAllThreat();
++        me->SetReactState(REACT_AGGRESSIVE);
++        AttackStart(watchman);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        if (!UpdateVictim())
++        {
++            if (_fed && !me->HasUnitState(UNIT_STATE_EVADE) && me->GetEmoteState() != EMOTE_STATE_EAT)
++            {
++                // the watchman is gone: sit down and eat
++                me->SetFaction(35); // friendly to all
++                me->SetReactState(REACT_PASSIVE);
++                me->SetEmoteState(EMOTE_STATE_EAT);
++            }
++            return;
++        }
++
++        _events.Update(diff);
++
++        while (uint32 eventId = _events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_HUNGRY_DOG:
++                    if (Unit* victim = me->GetVictim())
++                        DoCast(victim, SPELL_HUNGRY_DOG);
++                    _events.ScheduleEvent(EVENT_HUNGRY_DOG_RELEASE, 4000);
++                    _events.ScheduleEvent(EVENT_HUNGRY_DOG, urand(20000, 25000));
++                    break;
++                case EVENT_HUNGRY_DOG_RELEASE:
++                    me->InterruptNonMeleeSpells(false, SPELL_HUNGRY_DOG);
++                    break;
++                default:
++                    break;
++            }
++        }
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    EventMap _events;
++    bool _fed;
++};
++
++// Angry Hound 58674
++// Chained to a stake: ignores players until one comes within reach of the chain.
++struct npc_angry_hound : public ScriptedAI
++{
++    npc_angry_hound(Creature* creature) : ScriptedAI(creature) { }
++
++    void Reset() override
++    {
++        _events.Reset();
++        _events.ScheduleEvent(EVENT_LEASH, 1000);
++        me->SetReactState(REACT_PASSIVE);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++
++        if (_events.ExecuteEvent() == EVENT_LEASH)
++        {
++            // stakes can load after the hound, so keep trying until one is there
++            if (Creature* stake = me->FindNearestCreature(NPC_STAKE, 20.0f))
++                stake->CastSpell(me, SPELL_LEASHED, true);
++            else
++                _events.ScheduleEvent(EVENT_LEASH, 1000);
++        }
++
++        if (!me->IsInCombat())
++        {
++            if (Player* player = me->SelectNearestPlayer(5.0f))
++                if (me->IsValidAttackTarget(player))
++                {
++                    me->SetReactState(REACT_AGGRESSIVE);
++                    AttackStart(player);
++                }
++            return;
++        }
++
++        if (!UpdateVictim())
++            return;
++
++        // the chain only reaches so far
++        if (me->GetDistance(me->GetHomePosition()) > 8.0f)
++        {
++            EnterEvadeMode(EVADE_REASON_BOUNDARY);
++            return;
++        }
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    EventMap _events;
++};
++
++// Bucket of Meaty Dog Food 65379
++struct npc_bucket_of_meaty_dog_food : public ScriptedAI
++{
++    npc_bucket_of_meaty_dog_food(Creature* creature) : ScriptedAI(creature) { }
++
++    void Reset() override
++    {
++        me->SetReactState(REACT_PASSIVE);
++        me->AddNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
++    }
++
++    void OnSpellClick(Unit* clicker, bool& /*result*/) override
++    {
++        if (!me->HasNpcFlag(UNIT_NPC_FLAG_SPELLCLICK) || clicker->HasAura(SPELL_CARRYING_BUCKET))
++            return;
++
++        clicker->CastSpell(clicker, SPELL_CARRYING_BUCKET, true);
++        me->RemoveNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
++        me->DespawnOrUnsummon(1500);
++    }
++
++    void UpdateAI(uint32 /*diff*/) override { }
++};
++
++// Reinforced Archery Target 59163
++// The player picks the target up as a moving shield: it follows them and gives Heroic Defense
++// (less damage taken, slower, no attacking). Leaving the gauntlet or reaching Lindon drops it.
++struct npc_reinforced_archery_target : public ScriptedAI
++{
++    npc_reinforced_archery_target(Creature* creature) : ScriptedAI(creature) { }
++
++    enum Texts
++    {
++        TALK_INTRO = 1,
++    };
++
++    void Reset() override
++    {
++        me->SetReactState(REACT_PASSIVE);
++        me->AddNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
++    }
++
++    void OnSpellClick(Unit* clicker, bool& /*result*/) override
++    {
++        if (!me->HasNpcFlag(UNIT_NPC_FLAG_SPELLCLICK) || clicker->HasAura(SPELL_HEROIC_DEFENSE))
++            return;
++
++        me->RemoveNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
++        Talk(TALK_INTRO, clicker);
++        DoCast(clicker, SPELL_HEROIC_DEFENSE, true);
++        me->GetMotionMaster()->MoveFollow(clicker, 1.5f, 0.0f);
++    }
++
++    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
++    {
++        if (damage >= me->GetHealth())
++            damage = me->GetHealth() - 1;
++    }
++
++    void UpdateAI(uint32 /*diff*/) override { }
++};
++
++// Commander Lindon 59191
++// Stands at the end of the archery hall while his Master Archers shoot down the rows. Reaching him
++// (10 yards) ends the volleys and the whole crew draws blades.
++struct npc_commander_lindon : public BossAI
++{
++    npc_commander_lindon(Creature* creature) : BossAI(creature, DATA_COMMANDER_LINDON), _started(false), _melee(false), _explosion(false) { }
++
++    enum Texts
++    {
++        TALK_INTRO       = 1,
++        TALK_RANGE_REACH = 2,
++        TALK_MELEE_REACH = 3,
++    };
++
++    void Reset() override
++    {
++        _Reset();
++        _volleys.Reset();
++        _started = false;
++        _melee = false;
++        _explosion = false;
++        SetCombatMovement(false);
++        me->SetReactState(REACT_DEFENSIVE);
++    }
++
++    void MoveInLineOfSight(Unit* who) override
++    {
++        if (!_started && who->GetTypeId() == TYPEID_PLAYER && me->IsValidAttackTarget(who) &&
++            me->IsWithinDistInMap(who, 70.0f) && me->IsWithinLOSInMap(who))
++        {
++            _started = true;
++            Talk(TALK_INTRO);
++            me->SetReactState(REACT_AGGRESSIVE);
++            AttackStart(who);
++            DoZoneInCombat();
++            SendArchers(ACTION_FIRE_AT_LINE);
++            _volleys.ScheduleEvent(EVENT_SHIELD_BREAKER, urand(5000, 6000));
++        }
++    }
++
++    void DoAction(int32 actionId) override
++    {
++        if (actionId == ACTION_GROUND_EXPLOSION && _started && !_melee && !_explosion)
++        {
++            _explosion = true;
++            Talk(TALK_RANGE_REACH);
++            Position const& start = urand(0, 1) ? ExplodingStartPos1 : ExplodingStartPos2;
++            for (uint8 i = 0; i < 3; ++i)
++                me->CastSpell(start.GetPositionX() + 12.0f * i, start.GetPositionY(), start.GetPositionZ(), SPELL_EXPLODING_SHOT, true);
++        }
++    }
++
++    void EnterEvadeMode(EvadeReason why) override
++    {
++        if (instance)
++            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_HEROIC_DEFENSE);
++        SendArchers(ACTION_MELEE, true);
++        BossAI::EnterEvadeMode(why);
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        _JustDied();
++        if (instance)
++            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_HEROIC_DEFENSE);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        if (!UpdateVictim())
++            return;
++
++        _volleys.Update(diff);
++        if (_volleys.ExecuteEvent() == EVENT_SHIELD_BREAKER)
++        {
++            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 18.0f, true))
++                DoCast(target, SPELL_SHIELD_BREAKER, true);
++            _volleys.ScheduleEvent(EVENT_SHIELD_BREAKER, urand(4000, 6000));
++        }
++
++        if (!_melee)
++        {
++            if (Player* player = me->SelectNearestPlayer(10.0f))
++            {
++                _melee = true;
++                _volleys.Reset();
++                Talk(TALK_MELEE_REACH);
++                SetCombatMovement(true);
++                AttackStart(player);
++                SendArchers(ACTION_MELEE);
++                if (instance)
++                    instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_HEROIC_DEFENSE);
++            }
++        }
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    void SendArchers(int32 action, bool evading = false)
++    {
++        std::list<Creature*> archers;
++        me->GetCreatureListWithEntryInGrid(archers, NPC_MASTER_ARCHER, 60.0f);
++        for (Creature* archer : archers)
++            if (archer->IsAlive() && archer->IsAIEnabled && (!evading || archer->IsInCombat()))
++                archer->AI()->DoAction(evading ? -1 : action);
++    }
++
++    EventMap _volleys;
++    bool _started;
++    bool _melee;
++    bool _explosion;
++};
++
++// Master Archer 59175
++struct npc_scarlet_master_archer : public ScriptedAI
++{
++    npc_scarlet_master_archer(Creature* creature) : ScriptedAI(creature) { }
++
++    void Reset() override
++    {
++        _events.Reset();
++        SetCombatMovement(false);
++        me->SetReactState(REACT_DEFENSIVE);
++    }
++
++    void DoAction(int32 actionId) override
++    {
++        switch (actionId)
++        {
++            case ACTION_FIRE_AT_LINE:
++                me->SetReactState(REACT_AGGRESSIVE);
++                DoZoneInCombat();
++                _events.ScheduleEvent(EVENT_FIRE_AT_ROW, urand(1000, 2000));
++                break;
++            case ACTION_MELEE:
++                _events.Reset();
++                SetCombatMovement(true);
++                me->SetReactState(REACT_AGGRESSIVE);
++                if (Player* player = me->SelectNearestPlayer(60.0f))
++                    AttackStart(player);
++                _events.ScheduleEvent(EVENT_BLEEDING_WOUND, urand(2500, 4500));
++                break;
++            case -1: // Lindon evaded
++                EnterEvadeMode(EVADE_REASON_OTHER);
++                break;
++            default:
++                break;
++        }
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        if (!UpdateVictim())
++            return;
++
++        _events.Update(diff);
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        while (uint32 eventId = _events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_FIRE_AT_ROW:
++                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 60.0f, true))
++                        DoCast(target, SPELL_PIERCING_ARROW);
++                    _events.ScheduleEvent(EVENT_FIRE_AT_ROW, urand(1500, 3000));
++                    break;
++                case EVENT_BLEEDING_WOUND:
++                    if (me->IsWithinMeleeRange(me->GetVictim()))
++                        DoCastVictim(SPELL_BLEEDING_WOUND);
++                    _events.ScheduleEvent(EVENT_BLEEDING_WOUND, urand(5500, 6500));
++                    break;
++                default:
++                    break;
++            }
++        }
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    EventMap _events;
++};
++
++// Scarlet Cannon 58726 (cannon stalker): puts a Scarlet Cannoneer 59293 on the gun
++struct npc_scarlet_cannon_stalker : public ScriptedAI
++{
++    npc_scarlet_cannon_stalker(Creature* creature) : ScriptedAI(creature) { }
++
++    void Reset() override
++    {
++        me->SetReactState(REACT_PASSIVE);
++        if (_cannoneer.IsEmpty())
++            _events.ScheduleEvent(EVENT_SUMMON_CANNONEER, 1000);
++    }
++
++    void JustSummoned(Creature* summon) override
++    {
++        _cannoneer = summon->GetGUID();
++        if (summon->IsAIEnabled)
++            summon->AI()->SetGUID(me->GetGUID());
++    }
++
++    void SummonedCreatureDies(Creature* /*summon*/, Unit* /*killer*/) override
++    {
++        // a dead cannoneer stays dead
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++        if (_events.ExecuteEvent() == EVENT_SUMMON_CANNONEER)
++            me->SummonCreature(NPC_SCARLET_CANNONEER, me->GetPosition(), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300 * IN_MILLISECONDS);
++    }
++
++private:
++    EventMap _events;
++    ObjectGuid _cannoneer;
++};
++
++// Scarlet Cannoneer 59293: fires the cannon at players in the courtyard
++struct npc_scarlet_cannoneer : public ScriptedAI
++{
++    npc_scarlet_cannoneer(Creature* creature) : ScriptedAI(creature) { }
++
++    void SetGUID(ObjectGuid guid, int32 /*id*/) override
++    {
++        _cannon = guid;
++    }
++
++    void Reset() override
++    {
++        _events.Reset();
++        SetCombatMovement(false);
++    }
++
++    void JustEngagedWith(Unit* /*who*/) override
++    {
++        _events.ScheduleEvent(EVENT_CANNON_READY, urand(1500, 4000));
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        if (!UpdateVictim())
++            return;
++
++        _events.Update(diff);
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        if (_events.ExecuteEvent() == EVENT_CANNON_READY)
++        {
++            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 40.0f, true))
++            {
++                DoCast(me, SPELL_FIRE_CANNON, true);
++                Creature* cannon = ObjectAccessor::GetCreature(*me, _cannon);
++                (cannon ? cannon : me)->CastSpell(target->GetPosition(), SPELL_CANNON_BLAST, true);
++            }
++            _events.ScheduleEvent(EVENT_CANNON_READY, urand(3000, 5000));
++        }
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    EventMap _events;
++    ObjectGuid _cannon;
++};
++
++// Hooded Crusader 64738: the one outside Koegler's library walks in once he is dead
++struct npc_scarlet_hooded_crusader : public ScriptedAI
++{
++    npc_scarlet_hooded_crusader(Creature* creature) : ScriptedAI(creature), _point(0) { }
++
++    enum Texts
++    {
++        TALK_INTRO = 0,
++        TALK_CODEX = 1,
++    };
++
++    void DoAction(int32 actionId) override
++    {
++        if (actionId == ACTION_CODEX && _point == 0)
++            _events.ScheduleEvent(EVENT_ESCORT, 1000);
++    }
++
++    void MovementInform(uint32 type, uint32 pointId) override
++    {
++        if (type != POINT_MOTION_TYPE)
++            return;
++
++        if (pointId == 0)
++        {
++            Talk(TALK_INTRO, me->SelectNearestPlayer(80.0f));
++            _point = 1;
++            _events.ScheduleEvent(EVENT_ESCORT, 6000);
++        }
++        else if (pointId == 1)
++        {
++            me->SetFacingTo(HoodedCrusaderPath[1].GetOrientation());
++            Talk(TALK_CODEX, me->SelectNearestPlayer(80.0f));
++            _point = 2;
++        }
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++        if (_events.ExecuteEvent() == EVENT_ESCORT && _point < 2)
++            me->GetMotionMaster()->MovePoint(_point, HoodedCrusaderPath[_point]);
++    }
++
++private:
++    EventMap _events;
++    uint8 _point;
++};
++
++// Throw Bucket of Meaty Dog Food 113029
++class spell_throw_bucket_meaty_dog : public SpellScript
++{
++    PrepareSpellScript(spell_throw_bucket_meaty_dog);
++
++    SpellCastResult CheckCast()
++    {
++        Unit* caster = GetCaster();
++        if (caster->IsInCombat())
++        {
++            caster->RemoveAurasDueToSpell(SPELL_CARRYING_BUCKET);
++            return SPELL_FAILED_AFFECTING_COMBAT;
++        }
++
++        return SPELL_CAST_OK;
++    }
++
++    void Register() override
++    {
++        OnCheckCast += SpellCheckCastFn(spell_throw_bucket_meaty_dog::CheckCast);
++    }
++};
++
++// Dog Food 111894: only Vigilant Watchmen near the splash count (the spell's own radius is 2 yards)
++class spell_scarlet_halls_dog_food : public SpellScript
++{
++    PrepareSpellScript(spell_scarlet_halls_dog_food);
++
++    void FilterTargets(std::list<WorldObject*>& targets)
++    {
++        targets.clear();
++
++        WorldLocation const* dest = GetExplTargetDest();
++        if (!dest)
++            return;
++
++        std::list<Creature*> watchmen;
++        GetCaster()->GetCreatureListWithEntryInGrid(watchmen, NPC_VIGILANT_WATCHMAN, 60.0f);
++        for (Creature* watchman : watchmen)
++            if (watchman->IsAlive() && watchman->GetExactDist2d(dest) <= 8.0f)
++                targets.push_back(watchman);
++    }
++
++    void HandleHit(SpellEffIndex /*effIndex*/)
++    {
++        Creature* watchman = GetHitCreature();
++        if (!watchman)
++            return;
++
++        watchman->InterruptNonMeleeSpells(false);
++        watchman->CastSpell(watchman, SPELL_HOUNDMASTER_EATEN, true);
++
++        std::list<Creature*> hounds;
++        watchman->GetCreatureListWithEntryInGrid(hounds, NPC_STARVING_HOUND, 20.0f);
++        for (Creature* hound : hounds)
++            if (hound->IsAlive() && hound->IsAIEnabled)
++                hound->AI()->SetGUID(watchman->GetGUID());
++    }
++
++    void Register() override
++    {
++        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_scarlet_halls_dog_food::FilterTargets, EFFECT_0, TARGET_UNIT_DEST_AREA_ENEMY);
++        OnEffectHitTarget += SpellEffectFn(spell_scarlet_halls_dog_food::HandleHit, EFFECT_0, SPELL_EFFECT_DUMMY);
++    }
++};
++
++// Heroic Defense 113436: the archery target goes back on its stand when the shield is dropped
++class spell_scarlet_halls_heroic_defense : public AuraScript
++{
++    PrepareAuraScript(spell_scarlet_halls_heroic_defense);
++
++    void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
++    {
++        if (Unit* caster = GetCaster())
++            if (Creature* target = caster->ToCreature())
++                target->DespawnOrUnsummon(0, Seconds(5));
++    }
++
++    void Register() override
++    {
++        OnEffectRemove += AuraEffectRemoveFn(spell_scarlet_halls_heroic_defense::HandleRemove, EFFECT_1, SPELL_AURA_MOD_DECREASE_SPEED, AURA_EFFECT_HANDLE_REAL);
++    }
++};
++
++// AreaTrigger 7532: the archery hall
++class AreaTrigger_at_commander_lindon : public AreaTriggerScript
++{
++public:
++    AreaTrigger_at_commander_lindon() : AreaTriggerScript("AreaTrigger_at_commander_lindon") { }
++
++    bool OnTrigger(Player* player, AreaTriggerEntry const* /*trigger*/, bool entered) override
++    {
++        if (!entered)
++            return false;
++
++        if (InstanceScript* instance = player->GetInstanceScript())
++            if (Creature* lindon = instance->GetCreature(DATA_COMMANDER_LINDON))
++                if (lindon->IsAIEnabled)
++                    lindon->AI()->DoAction(ACTION_GROUND_EXPLOSION);
++
++        if (player->GetPositionX() > 950.0f)
++            player->RemoveAurasDueToSpell(SPELL_HEROIC_DEFENSE);
++
++        return false;
++    }
++};
++
++void AddSC_scarlet_halls()
++{
++    RegisterCreatureAI(npc_starving_hound);
++    RegisterCreatureAI(npc_angry_hound);
++    RegisterCreatureAI(npc_bucket_of_meaty_dog_food);
++    RegisterCreatureAI(npc_reinforced_archery_target);
++    RegisterCreatureAI(npc_commander_lindon);
++    RegisterCreatureAI(npc_scarlet_master_archer);
++    RegisterCreatureAI(npc_scarlet_cannon_stalker);
++    RegisterCreatureAI(npc_scarlet_cannoneer);
++    RegisterCreatureAI(npc_scarlet_hooded_crusader);
++    RegisterSpellScript(spell_throw_bucket_meaty_dog);
++    RegisterSpellScript(spell_scarlet_halls_dog_food);
++    RegisterAuraScript(spell_scarlet_halls_heroic_defense);
++    new AreaTrigger_at_commander_lindon();
++}
+diff --git a/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.h b/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.h
+index 45f992f..9c6f525 100644
+--- a/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.h
++++ b/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.h
+@@ -1,22 +1,139 @@
+-#ifndef DEF_SCARLET_H
+-#define DEF_SCARLET_H
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Scarlet Halls (map 1001), ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
+ 
+-enum Data
++#ifndef DEF_SCARLET_HALLS_H
++#define DEF_SCARLET_HALLS_H
++
++#include "Position.h"
++
++#define SHScriptName "instance_scarlet_halls"
++#define DataHeader "SH"
++
++uint32 const EncounterCount = 4;
++
++enum SHDataTypes
++{
++    DATA_HOUNDMASTER_BRAUN   = 0,
++    DATA_ARMSMASTER_HARLAN   = 1,
++    DATA_FLAMEWEAVER_KOEGLER = 2,
++    DATA_COMMANDER_LINDON    = 3,   // archer gauntlet, not a dungeon encounter
++
++    DATA_CODEX_CRUSADER      = 10,  // the Hooded Crusader who walks in after Koegler
++};
++
++enum SHCreatures
++{
++    NPC_HOUNDMASTER_BRAUN         = 59303,
++    NPC_ARMSMASTER_HARLAN         = 58632,
++    NPC_FLAMEWEAVER_KOEGLER       = 59150,
++    NPC_OBEDIENT_HOUND            = 59309,
++    NPC_COMMANDER_LINDON          = 59191,
++    NPC_MASTER_ARCHER             = 59175,
++    NPC_SERGEANT_VERDONE          = 59302,
++    NPC_SCARLET_GUARDIAN          = 59299,
++    NPC_SCARLET_DEFENDER_SUMMON   = 58998,
++    NPC_BOOK_CASE                 = 59155,
++    NPC_REINFORCED_ARCHERY_TARGET = 59163,
++    NPC_STAKE                     = 58701,
++    NPC_DRAGON_BREATH_TARGET      = 59198,
++    NPC_HOODED_CRUSADER           = 64738,
++    NPC_VIGILANT_WATCHMAN         = 58898,
++    NPC_STARVING_HOUND            = 58876,
++    NPC_ANGRY_HOUND               = 58674,
++    NPC_SCARLET_CANNONEER         = 59293,
++};
++
++enum SHGameObjects
++{
++    GO_COMMANDER_LINDON_EXIT  = 212160,
++    GO_HOUNDMASTER_BRAUN_EXIT = 210097,
++    GO_ARMSMASTER_HARLAN_DOOR = 210480,
++    GO_GOLD_COINS             = 210894,
++};
++
++enum SHActions
++{
++    ACTION_CODEX              = 0,
++    ACTION_FIRE_AT_LINE       = 1,
++    ACTION_MELEE              = 2,
++    ACTION_GROUND_EXPLOSION   = 3,
++};
++
++enum SHSharedSpells
++{
++    SPELL_HEROIC_DEFENSE      = 113436,
++    SPELL_HOUNDMASTER_EATEN   = 122916,
++};
++
++// Friendly to players, hostile to the Crusade: used for hounds that turn on their masters
++uint32 const FACTION_HOUNDS_TURNED = 495;
++
++Position const EndScenarioPos     = { 1038.13f, 509.705f, 13.47f, 0.10f };
++Position const HarlanJumpPos      = { 1206.25f, 444.04f,  0.98f,  0.1f  };
++Position const KoeglerBreathPos   = { 1298.21f, 549.49f,  12.79f, 3.12f };
++Position const ExplodingStartPos1 = {  905.77f, 534.20f,  12.90f, 6.23f };
++Position const ExplodingStartPos2 = {  906.47f, 547.90f,  12.92f, 6.23f };
++
++Position const HarlanBladesPath[16] =
++{
++    { 1201.52f, 438.68f, 0.98f  },
++    { 1198.41f, 445.94f, 0.98f  },
++    { 1205.38f, 445.08f, 1.01f  },
++    { 1213.15f, 453.57f, 3.53f  },
++    { 1218.32f, 446.91f, 6.08f  },
++    { 1222.85f, 438.54f, 6.08f  },
++    { 1215.36f, 427.42f, 6.08f  },
++    { 1200.62f, 425.51f, 7.48f  },
++    { 1188.55f, 436.41f, 10.66f },
++    { 1188.44f, 449.05f, 11.01f },
++    { 1198.83f, 462.78f, 7.77f  },
++    { 1218.94f, 459.59f, 6.08f  },
++    { 1223.45f, 444.52f, 6.09f  },
++    { 1212.56f, 431.35f, 2.93f  },
++    { 1200.78f, 435.94f, 0.98f  },
++    { 1206.30f, 443.73f, 0.98f  }
++};
++
++Position const DefenderPath1[6] =
++{
++    { 1187.91f, 438.71f, 11.04f },
++    { 1195.04f, 428.00f, 8.63f  },
++    { 1211.36f, 425.51f, 6.08f  },
++    { 1225.26f, 441.73f, 6.08f  },
++    { 1219.72f, 447.40f, 6.08f  },
++    { 1205.54f, 458.19f, 1.15f  }
++};
++
++Position const DefenderPath2[6] =
+ {
+-    DATA_HOUNDMASTER_BRAUN,
+-    DATA_ARMSMASTER_HARLAN,
+-    DATA_FLAMEWEAVER_KOEGLER,
+-    MAX_ENCOUNTER,
+-    TEAM_IN_INSTANCE
++    { 1188.02f, 449.28f, 11.00f },
++    { 1198.27f, 461.83f, 7.94f  },
++    { 1218.28f, 459.83f, 6.08f  },
++    { 1223.84f, 445.44f, 6.08f  },
++    { 1219.39f, 440.57f, 6.08f  },
++    { 1205.45f, 429.81f, 1.11f  }
+ };
+ 
+-enum Creatures
++Position const HoodedCrusaderPath[2] =
+ {
+-    NPC_HOUNDMASTER_BRAUN = 67266, // its the tempfix entry and not the real one
+-    NPC_ARMSMASTER_HARLAN = 67268,
+-    NPC_FLAMEWEAVER_KOEGLER = 67269,
+-    NPC_OBEDIENT_HOUND     = 67267,
+-    NPC_BOOK               = 59155
++    { 1276.34f, 549.60f, 12.82f, 0.02f },
++    { 1295.33f, 549.61f, 12.79f, 6.24f }
+ };
+ 
+ #endif
+diff --git a/src/server/scripts/EasternKingdoms/eastern_kingdoms_script_loader.cpp b/src/server/scripts/EasternKingdoms/eastern_kingdoms_script_loader.cpp
+index 28782d4..cd7c751 100644
+--- a/src/server/scripts/EasternKingdoms/eastern_kingdoms_script_loader.cpp
++++ b/src/server/scripts/EasternKingdoms/eastern_kingdoms_script_loader.cpp
+@@ -98,9 +98,11 @@ void AddSC_the_scarlet_enclave();               //Scarlet Enclave
+ void AddSC_the_scarlet_enclave_c1();
+ void AddSC_the_scarlet_enclave_c2();
+ void AddSC_the_scarlet_enclave_c5();
+-void AddSC_houndmaster_braun();                  //Scarlet Halls
+-void AddSC_armsmaster_harlan();
+-void AddSC_flameweaver_koegler();
++void AddSC_boss_houndmaster_braun();             //Scarlet Halls
++void AddSC_boss_armsmaster_harlan();
++void AddSC_boss_flameweaver_koegler();
++void AddSC_instance_scarlet_halls();
++void AddSC_scarlet_halls();
+ void AddSC_boss_arcanist_doan();                //Scarlet Monastery
+ void AddSC_boss_azshir_the_sleepless();
+ void AddSC_boss_bloodmage_thalnos();
+@@ -344,9 +346,11 @@ void AddEasternKingdomsScripts()
+     AddSC_the_scarlet_enclave_c1();
+     AddSC_the_scarlet_enclave_c2();
+     AddSC_the_scarlet_enclave_c5();
+-    AddSC_houndmaster_braun();                  //Scarlet Halls
+-    AddSC_armsmaster_harlan();
+-    AddSC_flameweaver_koegler();
++    AddSC_boss_houndmaster_braun();             //Scarlet Halls
++    AddSC_boss_armsmaster_harlan();
++    AddSC_boss_flameweaver_koegler();
++    AddSC_instance_scarlet_halls();
++    AddSC_scarlet_halls();
+     AddSC_boss_arcanist_doan();                 //Scarlet Monastery
+     AddSC_boss_azshir_the_sleepless();
+     AddSC_boss_bloodmage_thalnos();
