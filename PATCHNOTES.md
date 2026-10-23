@@ -119,8 +119,14 @@ keeps it.
 - **Changed:** the target adds the aura directly, walks 2 yards in front of you (you're slowed by 65%
   while carrying it), and goes back on its stand as soon as the aura is gone. It can't be picked up
   once Lindon is dead.
+- **Found** (Four's second run, 2026-10-23): Heroic Defense now works (slowed, arrows hit for less),
+  but the target still walked behind you. It used the follow movement, which stops moving whenever it
+  is within 3 yards of you, so once behind you it stayed there.
+- **Changed:** every quarter second the target runs to the point 2.5 yards in front of you and turns
+  to face the way you face.
 - **Status:** Four got past Lindon on 2026-10-23; the volleys, the exploding floor and the melee
-  switch weren't reported on. The archery target fix is untested.
+  switch weren't reported on. Heroic Defense confirmed by Four on 2026-10-23; the in-front position
+  is untested.
 
 #### Starving and Angry Hounds, and the dog food buckets
 - **Found:** the buckets of dog food did nothing and the Angry Hounds weren't chained.
@@ -133,7 +139,11 @@ keeps it.
 - **Changed:** an attack wakes the hound, and when you go past the end of its chain (8 yards from the
   stake) it waits at the stake still in combat instead of resetting, and comes back at you when you're
   in reach.
-- **Status:** the Angry Hound fix is untested.
+- **Found** (Four's second run, 2026-10-23): the hounds now fight back, but they still went back to
+  the stake when you stepped away. Once a hound is in the fight its chain should be broken.
+- **Changed:** when a hound is attacked or attacks you, the Leashed aura comes off and it chases you
+  like any other hound. The chain-length limit is gone. A hound that resets is chained again.
+- **Status:** "they attack as they should" (Four, 2026-10-23); the broken chain is untested.
 
 #### Houndmaster Braun
 - **Found** (reported by Four): melee, Death Blossom and Bloody Mess only; an easy fight.
@@ -169,6 +179,16 @@ keeps it.
 - **Changed:** 22 yells and emotes for Braun, Harlan, Koegler, Lindon, the archery target and the
   crusader (none existed). Scarlet Treasurers drop a pile of Gold Coins. The Scarlet Cannons get their
   Cannoneers, who fire Cannon Blast at players in the courtyard.
+- **Status:** yells and the Treasurer's gold untested in game.
+
+#### The cannons only made smoke
+- **Found** (Four's run, 2026-10-23): the Scarlet Cannoneers (59293) stood inside the cannons and
+  could only hurt you in melee. They were summoned on the cannon's own spot. Their shell was fired by
+  the cannon (58726), which is a level 1 friendly stalker, so its 15-yard Cannon Blast (111569) found
+  no enemies to hit.
+- **Changed:** the cannon summons its cannoneer with Ready Cannon (113933), which puts him at the
+  gun's side (1.5 yards to its right if the spell doesn't place him). The cannoneer fires the shell
+  himself, at a random player within 40 yards every 3 to 5 seconds, so it hits at his level.
 - **Status:** untested in game.
 
 #### To pick up these fixes
