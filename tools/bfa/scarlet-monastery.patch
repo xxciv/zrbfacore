@@ -2474,10 +2474,10 @@ index 5aa3c7b..055fb64 100644
          protected:
 diff --git a/src/server/scripts/EasternKingdoms/ScarletMonastery/scarlet_monastery.cpp b/src/server/scripts/EasternKingdoms/ScarletMonastery/scarlet_monastery.cpp
 new file mode 100644
-index 0000000..9b6de4c
+index 0000000..40c9724
 --- /dev/null
 +++ b/src/server/scripts/EasternKingdoms/ScarletMonastery/scarlet_monastery.cpp
-@@ -0,0 +1,498 @@
+@@ -0,0 +1,506 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -2631,7 +2631,7 @@ index 0000000..9b6de4c
 +    EventMap _events;
 +};
 +
-+// Fuel Tank 59706: click it (npc_spellclick_spells 114953) and it blows up, burning the Scarlet around it
++// Fuel Tank 59706: click it (npc_spellclick_spells 114953) or hit it, and it blows up, burning the Scarlet around it
 +struct npc_scm_fuel_tank : public ScriptedAI
 +{
 +    npc_scm_fuel_tank(Creature* creature) : ScriptedAI(creature), _exploded(false) { }
@@ -2647,6 +2647,22 @@ index 0000000..9b6de4c
 +
 +    void OnSpellClick(Unit* /*clicker*/, bool& /*result*/) override
 +    {
++        Explode();
++    }
++
++    void DamageTaken(Unit* attacker, uint32& damage) override
++    {
++        damage = 0;
++        // the click may not register in this client, so any hit from a player sets it off too
++        if (attacker && attacker->GetCharmerOrOwnerPlayerOrPlayerItself())
++            Explode();
++    }
++
++    void UpdateAI(uint32 /*diff*/) override { }
++
++private:
++    void Explode()
++    {
 +        if (_exploded)
 +            return;
 +
@@ -2656,14 +2672,6 @@ index 0000000..9b6de4c
 +        me->DespawnOrUnsummon(500);
 +    }
 +
-+    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
-+    {
-+        damage = 0;
-+    }
-+
-+    void UpdateAI(uint32 /*diff*/) override { }
-+
-+private:
 +    bool _exploded;
 +};
 +

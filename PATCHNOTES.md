@@ -5,6 +5,33 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-24
 
+### Scarlet Monastery: second test run (Fuel Tanks, dungeon and achievement credit)
+
+From Four's second run, 2026-10-24. C++ in `tools/bfa/scarlet-monastery.patch` (new version again),
+data in `sql/fixes/world/2026_10_24_06_scarlet_fuel_tank_encounters.sql`.
+
+#### Whitemane gave no dungeon completion and no "Scarlet Monastery" achievement
+- **Found** (reported by Four): the scenario counted Whitemane (`.debug scenario` showed progress 1),
+  but the achievement stayed locked. `instance_encounters` only had the classic encounters for Scarlet
+  Halls and Scarlet Monastery (448 Herod, 450 Whitemane), which belong to the old maps, so killing the
+  last boss on the new maps completed no dungeon encounter. The classic rows were also marked as the
+  last boss of dungeon finder entries 163 and 164, and the core keeps only one last boss per entry.
+- **Changed:** the SQL takes the "last boss" mark off 448 and 450 and adds the Mists encounters, as the
+  Pandaria 5.4.8 database has them: 1425 High Inquisitor Whitemane (last boss of 164) and 1420
+  Flameweaver Koegler (last boss of Scarlet Halls, 163).
+- **Status:** untested in game. Not checked against the client's achievement data (not available
+  here), so it is not certain the achievement uses the encounter. Already-killed bosses don't count;
+  it needs a new kill.
+
+#### Fuel Tanks still couldn't be clicked
+- **Found** (reported by Four): clearing the unselectable flag (2026_10_24_04) didn't make the tank
+  clickable. Cause not found.
+- **Changed:** the tank now also explodes when a player hits it. The SQL gives it the Monster faction
+  (14) so it can be attacked, and lets anyone use its spell click (`user_type` 0), since it is no longer
+  friendly. `npc_scm_fuel_tank` explodes on a click or on the first hit from a player, and ignores
+  damage from creatures.
+- **Status:** untested in game.
+
 ### Scarlet Monastery: first test run fixes, and the Headless Horseman
 
 From Four's first run, 2026-10-24. The C++ is in `tools/bfa/scarlet-monastery.patch` (same patch,

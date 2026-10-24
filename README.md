@@ -64,8 +64,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/scarlet-monastery.patch`](tools/bfa/scarlet-monastery.patch): Scarlet Monastery scripts (the
   graveyard trash, Fuel Tanks, Zealots, Thalnos, Korloff, Durand and Whitemane, the Blades of the
   Anointed quest, and the Hallow's End Headless Horseman on the graveyard). Needs
-  `sql/fixes/world/2026_10_24_03_scarlet_monastery_rework.sql`, `2026_10_24_04_scarlet_monastery_fuel_tank_burning_man.sql`
-  and `2026_10_24_05_headless_horseman.sql`.
+  `sql/fixes/world/2026_10_24_03_scarlet_monastery_rework.sql`, `2026_10_24_04_scarlet_monastery_fuel_tank_burning_man.sql`,
+  `2026_10_24_05_headless_horseman.sql` and `2026_10_24_06_scarlet_fuel_tank_encounters.sql`.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.
