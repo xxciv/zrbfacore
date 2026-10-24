@@ -9,7 +9,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
 `sql/fixes/world/2026_10_24_07_maraudon_noxxion_gizlock_vyletongue.sql` and
-`2026_10_24_08_maraudon_creeping_sludge_combat.sql`; no rebuild.
+`2026_10_24_08_maraudon_creeping_sludge_combat.sql` and `2026_10_24_09_maraudon_celebras_redeemed.sql`; no rebuild.
 
 #### Noxxion couldn't be targeted
 - **Found** (reported by Four): Noxxion (13282) showed as a quest giver with `.gm on`, couldn't be
@@ -34,6 +34,15 @@ From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
 - **Changed:** `2026_10_24_08_maraudon_creeping_sludge_combat.sql` gives the sludge one SmartAI row:
   when it damages someone, it attacks them. It then fights that player, or, if it can't see them (in
   stealth), evades and drops the combat right away.
+- **Status:** waiting on Four's test.
+
+#### Celebras the Redeemed stood next to Celebras the Cursed
+- **Found** (reported by Four, with a screenshot): the friendly spirit, Celebras the Redeemed (13716),
+  was already standing beside the boss before the fight. The core script `celebras_the_cursed`
+  summons him on the boss's corpse when it dies, but the world database also spawns him permanently
+  (guid 324986; the Pandaria database has the same row).
+- **Changed:** `2026_10_24_09_maraudon_celebras_redeemed.sql` deletes the static spawn. He now only
+  appears when Celebras the Cursed dies, for 10 minutes.
 - **Status:** waiting on Four's test.
 
 #### Tinkerer Gizlock and Lord Vyletongue stood still and never meleed
