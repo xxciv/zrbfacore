@@ -70,7 +70,7 @@ From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
   database has the same row).
 - **Changed:** `2026_10_24_11_maraudon_zaetars_spirit.sql` deletes the static spawn. He now appears
   when the Princess dies, for 10 minutes, to give and take the Maraudon quests.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed in game by Four (2026-10-24).
 
 #### Tinkerer Gizlock and Lord Vyletongue stood still and never meleed
 - **Found** (reported by Four): Gizlock only used Goblin Dragon Gun, Vyletongue only an occasional
