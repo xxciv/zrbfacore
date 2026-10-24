@@ -107,6 +107,7 @@ git apply ../tools-repo/tools/bfa/dungeon-spell-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale-quest-xp.patch
 git apply ../tools-repo/tools/bfa/spell-corrections.patch
 git apply ../tools-repo/tools/bfa/open-lock-crash.patch
+git apply ../tools-repo/tools/bfa/scarlet-halls.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -252,6 +253,12 @@ the objective list on the right of the screen (Wailing Caverns has "Muyoh escort
 and criteria live in the client's db2 files, not the world database. Typed inside a dungeon, the command
 lists each step, its criteria, what each one waits for (criteria type and the creature, event or spell
 id) and the group's progress, so a missing credit can be traced. It changes nothing in game.
+
+`scarlet-halls.patch` ports the Pandaria 5.4.8 Scarlet Halls scripts: the instance script (boss states,
+doors, the Hooded Crusader who comes for the codex), Commander Lindon's archery hall, the kennel
+hounds and buckets of dog food, and the three bosses. It needs
+`sql/fixes/world/2026_10_23_05_scarlet_halls_rework.sql`, which brings in the spawns the dungeon was
+missing and binds the scripts.
 
 `wailing-caverns-fixes.patch` makes Muyoh's escort send the scenario event (582) behind the "Muyoh
 escorted" objective when she reaches Naralex. The rest of the Wailing Caverns fixes are SQL, under
@@ -561,8 +568,13 @@ git apply ../tools-repo/tools/bfa/dungeon-spell-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale-quest-xp.patch
 git apply ../tools-repo/tools/bfa/spell-corrections.patch
 git apply ../tools-repo/tools/bfa/open-lock-crash.patch
+git apply ../tools-repo/tools/bfa/scarlet-halls.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
+
+When an update adds a source file (`scarlet-halls.patch` adds `scarlet_halls.cpp`), run `cmake build`
+once before building: CMake only finds new files when it configures, and the link fails with an
+`undefined reference` otherwise. It keeps the settings you configured with.
 
 `git checkout -- .` throws away every change to upstream's files, so keep your own edits somewhere else.
 `git apply -R` would only work if the patch hadn't changed since it was applied, and the pull may have

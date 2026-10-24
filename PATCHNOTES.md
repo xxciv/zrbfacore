@@ -3,6 +3,283 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-23
+
+### Scarlet Halls and Scarlet Monastery: getting in and out
+
+Found in Four's first visit.
+
+#### The Dungeon Finder dropped you outside Scarlet Halls
+- **Found** (reported by Four): queueing for Scarlet Halls put you on map 1001 at 1610.83, -323.43,
+  18.67, with no ground under you. That is the old Armory entrance (map 189). `lfg_dungeon_template`
+  row 163 (now Scarlet Halls, normal) was never moved to the new map. Row 164 (Scarlet Monastery,
+  normal) had the right x and y but the old Cathedral height, 18.67 instead of 0.99.
+- **Changed:** new `sql/fixes/world/2026_10_23_01_scarlet_entrances_exits.sql` sets 163 and heroic 473
+  to 837.23, 615.755, 12.8115 (facing 4.75989). Four picked that spot with `.gps`, a few yards back
+  from the Pandaria 5.4.8 value (836.666, 605.141). (Their first `.gps` gave the selected crusader's
+  spot instead.) It sets 164 to 1124.64, 512.467, 0.989549
+  (facing 1.5708), the Pandaria value. Heroic Scarlet Monastery (474) has no row and uses the door's
+  target, which was already right.
+- **Status:** the Dungeon Finder put Four inside Scarlet Halls on 2026-10-23 (old spot). The moved spot
+  is untested.
+- **Changed** (Four's request, 2026-10-24): new `sql/fixes/world/2026_10_24_02_scarlet_halls_arrival.sql`
+  moves the arrival spot for 163, 473 and the door's `world_safe_locs` 4077 to Four's new `.gps`:
+  821.987, 608.059, 13.5985, facing 0.021594 (into the hall).
+- **Status:** untested in game.
+
+#### The Scarlet Halls door outside did nothing
+- **Found:** area trigger 614 (the Scarlet Halls door) points at WorldSafeLoc 4077, and that row was
+  missing from `world_safe_locs`. The core skips a teleport whose target is missing, at startup.
+- **Changed:** the same SQL adds `world_safe_locs` 4077: map 1001, the same spot as the Dungeon Finder
+  (837.23, 615.755, 12.8115). This core reads `Facing` as radians (`ObjectMgr::LoadWorldSafeLocs`), so
+  it is 4.75989.
+- **Status:** loads without errors; walking through the door is untested.
+
+#### No way out of either dungeon
+- **Found** (reported by Four): once inside Scarlet Monastery you couldn't walk out. `areatrigger_teleport`
+  had no exit row for either new map. The Pandaria database has them as triggers 7801 and 7802.
+- **Changed:** the same SQL adds 7801 (Scarlet Halls exit, to WorldSafeLoc 3626, 2869.32, -820.82,
+  160.33) and 7802 (Scarlet Monastery exit, to 3623, 2915.34, -801.58, 160.33). Both are the courtyard
+  spots the old wings used.
+- **Status:** the core loads 614, 7801 and 7802 without errors (Four's `Errors.log`, 2026-10-23).
+  Walking through them is untested.
+
+#### Two Hooded Crusaders on top of each other at the Scarlet Halls entrance
+- **Found** (reported by Four): two quest givers stood on the same spot. One offered Rank and File
+  and Just for Safekeeping, Of Course; the other showed the same quests greyed out. 64738 (guid
+  13241581) gives the normal quests 31490 and 31493 (from level 26). 64764 (guid 13241582) gives the
+  heroic copies 31495 and 31497 (level 90). Both spawned in normal and heroic (`spawnDifficulties` 1,2).
+- **Changed:** new `sql/fixes/world/2026_10_23_02_scarlet_halls_hooded_crusaders.sql`: 64738 spawns
+  only in normal (1), 64764 only in heroic (2).
+- **Status:** confirmed in game by Four on 2026-10-23 (one crusader in normal).
+
+#### Starving Hounds kept you knocked down
+- **Found** (reported by Four): after the first Starving Hound (58876) pack jumped you, you lay on the
+  floor and never got up; only `.combatstop` freed you. The hounds cast Hungry Dog (111582) every 12 to
+  15 seconds. It is a 30-second channel that stuns its target and ends early only if the hound is
+  interrupted. That's a group mechanic (someone else knocks the dog off you), and with four hounds per
+  pack a solo player stayed stunned.
+- **Changed:** new `sql/fixes/world/2026_10_23_03_scarlet_halls_hounds.sql` replaces the hound's SmartAI.
+  Every 20 to 25 seconds in combat it runs actionlist 5887600: cast Hungry Dog on its target, then 4
+  seconds later interrupt its own Hungry Dog channel, which removes the stun.
+- **Status:** replaced the same day by the C++ hound in `scarlet-halls.patch` (below), which keeps the
+  4-second cap. `2026_10_23_05` removes this action list again.
+
+#### Angry Hounds showed as neutral
+- **Found** (reported by Four): Angry Hound (58674) was level 1 with faction 7 (neutral creature). It
+  is an elite with its own loot table, and the Pandaria 5.4.8 database has it hostile at level 30.
+- **Changed:** the same SQL sets faction 14, level 29 to 90, matching the Starving Hounds next to it.
+- **Status:** untested in game.
+
+#### Codex of the Crusade almost never dropped
+- **Found** (reported by Four): Flameweaver Koegler (59150) didn't drop the Codex of the Crusade for
+  "Just for Safekeeping, Of Course". The normal item 87267 (quest 31493) had `Chance` 1 and
+  `QuestRequired` 0. The heroic item 87268 (quest 31497) used loot mode 2, which this core never turns on.
+- **Changed:** new `sql/fixes/world/2026_10_23_04_scarlet_halls_codex.sql` sets both to `Chance` 100,
+  `QuestRequired` 1, `LootMode` 1: they drop every kill, only for players on the quest.
+- **Status:** untested in game.
+
+### Scarlet Halls: the events and bosses
+
+Four called Scarlet Halls done on 2026-10-24, after five runs. The per-fix statuses below say which
+parts were seen working in game.
+
+Found in Four's first full run (2026-10-23). Most of Scarlet Halls had no working script in this core:
+the instance had no instance script, the bosses ran short stubs, and the events had neither scripts nor
+the creatures they need. New `tools/bfa/scarlet-halls.patch` ports the Pandaria 5.4.8 scripts
+(`src/server/scripts/EasternKingdoms/ScarletHalls/`: `scarlet_halls.cpp` is new, the instance script,
+the header and the three boss files are rewritten, and the script loader registers them). New
+`sql/fixes/world/2026_10_23_05_scarlet_halls_rework.sql` supplies the spawns, yells and bindings.
+Trash that already had working SmartAI (Myrmidons, Evangelists, Evokers, Scholars, Pupils and others)
+keeps it.
+
+#### The dungeon had no instance script
+- **Found:** `instance_template` for map 1001 had no script, and the core had none to register: no
+  boss states, so no doors and nothing to tell the codex crusader that Koegler died.
+- **Changed:** the patch's `instance_scarlet_halls` tracks the three bosses and Lindon's gauntlet, and
+  opens Lindon's gate (212160) and Braun's fire wall (210097) when they die. Herod's Door (210480)
+  closes while Harlan is fought. The SQL sets the instance script.
+- **Status:** untested in game.
+
+#### Half the dungeon's creatures were missing
+- **Found:** map 1001 had 84 spawns, a partial and slightly shifted set. Braun's six Obedient Hounds,
+  the ten Scarlet Guardians and Sergeant Verdone at his exit, the stakes, buckets of dog food, archery
+  targets, cannons and all 71 Books were missing, and so were Lindon's gate, Braun's fire wall and the
+  heroes' statues in Harlan's room. The only door was the old Armory's Herod's Door (101854).
+- **Changed:** the SQL replaces every map 1001 spawn except the two entrance Hooded Crusaders with the
+  Pandaria set: 253 creatures (guids 1001000001+, with the 20 patrol paths) and 27 gameobjects. The
+  challenge mode door and orb, the herbs and a second portal are left out.
+- **Status:** the SQL runs twice without errors on a copy of this database. Untested in game.
+
+#### Commander Lindon's archery hall had no event
+- **Found** (reported by Four): Lindon (59191) and his Master Archers (59175) were neutral (faction 7)
+  and just stood there to be tanked.
+- **Changed:** they are hostile (14). When Lindon sees you, his archers shoot Piercing Arrow down the
+  hall and he uses Shield Breaker on anyone within 18 yards. Click a Reinforced Archery Target to carry
+  it as a shield: Heroic Defense, 75% less damage taken but slower and no attacking. Stepping into the
+  hall (area trigger 7532) sets off a line of Exploding Shots on the floor. Within 10 yards of Lindon
+  the volleys stop and the whole crew draws blades; Heroic Defense drops then, and past the hall.
+  Simplified: the archery target walks just ahead of you instead of riding on you as a vehicle.
+- **Found** (Four's run, 2026-10-23): the archery target trailed behind, didn't cut the arrows' damage,
+  and kept following after Lindon died. Heroic Defense was never applied: its first effect makes the
+  player a vehicle for the target, and cast on a player that isn't one it never landed.
+- **Changed:** the target adds the aura directly, walks 2 yards in front of you (you're slowed by 65%
+  while carrying it), and goes back on its stand as soon as the aura is gone. It can't be picked up
+  once Lindon is dead.
+- **Found** (Four's second run, 2026-10-23): Heroic Defense now works (slowed, arrows hit for less),
+  but the target still walked behind you. It used the follow movement, which stops moving whenever it
+  is within 3 yards of you, so once behind you it stayed there.
+- **Changed:** every quarter second the target runs to the point 2.5 yards in front of you and turns
+  to face the way you face.
+- **Found** (Four's third run, 2026-10-23): the target now stays in front (seen in Four's video). But
+  after Lindon's Shield Breaker knocked Four down, the character was invisible except for the weapons,
+  floating and oversized, even back in Stormwind, until `.unaura all`. Shield Breaker (125492) fires
+  two shells: 125507 knocks you down and strips Heroic Defense (meant), and 125493 transforms its
+  targets into Invisible Man (64188) with no time limit. 125493 picks targets by creature entry, and
+  with no conditions row the core falls back to every enemy within 13 yards, so it hit the player.
+- **Changed:** new `sql/fixes/world/2026_10_23_06_scarlet_halls_shield_breaker.sql` limits 125493 to
+  the Reinforced Archery Target (59163). After the knockdown the target goes back on its stand.
+- **Found** (Four's fourth run, 2026-10-23): the target still trailed the player, bullseye towards
+  the player. Four's source turned out to still hold the `ea91d85` version of the patch (the two
+  updates before this one never reached the build), so the quarter-second positioning above was never
+  tried in game.
+- **Changed:** the target now moves every 0.1 seconds at 1.5 times your speed, stays in front of you
+  (further ahead while you walk), and keeps its facing while it moves.
+- **Found** (Four's fifth run, 2026-10-24): it now leads, but too far out and with the bullseye towards
+  the player. The bullseye is on the front of the model after all (the old follow movement had turned
+  the model to face the player).
+- **Changed:** it faces the way you face, bullseye towards the archers, about 1 yard in front of you
+  (plus a little while you walk).
+- **Status:** Four got past Lindon on 2026-10-23; the volleys, the exploding floor and the melee
+  switch weren't reported on. Heroic Defense confirmed by Four on 2026-10-23, leading confirmed on
+  2026-10-24. The distance, facing and Shield Breaker fixes are untested. Lindon has no loot table (`lootid` 0 here and in the
+  Pandaria 5.4.8 database), so he drops nothing.
+
+#### Starving and Angry Hounds, and the dog food buckets
+- **Found:** the buckets of dog food did nothing and the Angry Hounds weren't chained.
+- **Changed:** Starving Hounds (58876) are C++ now, Hungry Dog still capped at 4 seconds. Click a Bucket
+  of Meaty Dog Food (65379), then throw it (out of combat) next to a Vigilant Watchman: he is pinned
+  down and every hound within 20 yards turns on him, then sits down to eat. Angry Hounds (58674) are
+  chained to their stakes and only attack when you come within 5 yards, or when attacked.
+- **Found** (Four's run, 2026-10-23): an Angry Hound attacked from stealth stayed passive, and one that
+  had aggroed ran back to its stake and reset when you stepped back.
+- **Changed:** an attack wakes the hound, and when you go past the end of its chain (8 yards from the
+  stake) it waits at the stake still in combat instead of resetting, and comes back at you when you're
+  in reach.
+- **Found** (Four's second run, 2026-10-23): the hounds now fight back, but they still went back to
+  the stake when you stepped away. Once a hound is in the fight its chain should be broken.
+- **Changed:** when a hound is attacked or attacks you, the Leashed aura comes off and it chases you
+  like any other hound. The chain-length limit is gone. A hound that resets is chained again.
+- **Found** (Four's third run, 2026-10-23): the hound still showed the Chained debuff ("Chained to a
+  post. Always attacks nearest enemy.") after being hit. That is a separate aura, Chained (111641),
+  from `creature_template_addon`; only Leashed (103169) was being removed. Also, a hound that pulled
+  itself by you walking up to it should stay chained: only an attack breaks the chain.
+- **Changed:** the first damage, or a hostile spell such as a stun, removes Chained and Leashed and
+  frees the hound to chase you anywhere. Until then it is chained: it attacks anyone within 5 yards
+  but waits at its post, still in combat, for anyone past 8 yards. A hound that resets gets Chained
+  back.
+- **Status:** confirmed by Four on 2026-10-24 ("Angry Hound is fixed").
+
+#### Houndmaster Braun
+- **Found** (reported by Four): melee, Death Blossom and Bloody Mess only; an easy fight.
+- **Changed:** Piercing Throw every 7 to 9 seconds, Death Blossom as a leap that spins where it lands,
+  one Obedient Hound called at 90, 80, 70 and 60%, Bloody Rage at 50%. At 15% his own hounds turn on
+  him: he stops fighting, is eaten, and dies 12 to 15 seconds later with the kill credited to you. The
+  hounds then run to his exit and kill the guards there.
+- **Status:** confirmed by Four on 2026-10-23 (yells, hounds, kill credit, the guards at the exit).
+
+#### Armsmaster Harlan
+- **Found** (reported by Four): melee and Dragon's Reach only.
+- **Changed:** Call for Help every 20 to 25 seconds (two Scarlet Defenders in Heavy Armor run in along
+  the balconies; break the armor and they are Unarmored), Heroic Leap to the middle of the room
+  followed by Blades of Light spinning round it (every second, damage to everyone within 8 yards), and
+  Berserker Rage at 50%. Simplified: Blades of Light doesn't pick players up.
+- **Status:** confirmed by Four on 2026-10-23 (yells, Call for Help, bonus objective).
+
+#### Flameweaver Koegler meleed too much
+- **Found** (reported by Four): far too much melee for a caster, and Quickened Mind (113682) didn't make
+  his casts instant. Its cast-time cut is a spell modifier, which only reaches player spell families.
+- **Changed:** he casts back to back: Pyroblast, Fireball Volley every 13.5 seconds, and Book Burner on
+  a book case (it burns and hurts anyone in front of him). Quickened Mind now gives him three instant
+  casts. Every 30 seconds he teleports to the middle and channels Greater Dragon's Breath for 10
+  seconds, a cone that sweeps round the room.
+- **Status:** confirmed by Four on 2026-10-23: "All scripts fired off successfully".
+
+#### The Hooded Crusader never came for the codex
+- **Changed:** the crusader outside the library stays hidden until Koegler dies, then walks in and asks
+  for the codex.
+- **Status:** confirmed by Four on 2026-10-23 (codex dropped, quest turned in, dungeon complete).
+
+#### Smaller things
+- **Changed:** 22 yells and emotes for Braun, Harlan, Koegler, Lindon, the archery target and the
+  crusader (none existed). Scarlet Treasurers drop a pile of Gold Coins. The Scarlet Cannons get their
+  Cannoneers, who fire Cannon Blast at players in the courtyard.
+- **Status:** yells and the Treasurer's gold untested in game.
+
+#### The cannons only made smoke
+- **Found** (Four's run, 2026-10-23): the Scarlet Cannoneers (59293) stood inside the cannons and
+  could only hurt you in melee. They were summoned on the cannon's own spot. Their shell was fired by
+  the cannon (58726), which is a level 1 friendly stalker, so its 15-yard Cannon Blast (111569) found
+  no enemies to hit.
+- **Changed:** the cannoneer fires the shell himself, at a random player within 40 yards every 3 to
+  5 seconds, so it hits at his level. The shell only hits within 3 yards of where it lands and takes a
+  moment to fly, so he leads a moving target by its speed and the flight time. He stands 2 yards
+  behind the gun (Ready Cannon, 113933, put him out at the muzzle).
+- **Found** (Four's fifth run, 2026-10-24): the shells now land and hurt ("the cannon shots work"),
+  but the cannoneers stood in front of the muzzles. The stalker faces the breech end of its gun, not
+  the muzzle.
+- **Changed:** each cannoneer stands beside the breech (1.5 yards towards it and 1.3 yards out to the
+  side, stopping short of any wall), facing the way the gun fires.
+- **Status:** cannon damage confirmed by Four on 2026-10-24; the new standing spot is untested.
+
+#### Trash dropped almost nothing
+- **Found** (reported by Four, 2026-10-23/24): "some enemies only drop money", loot "not the same
+  density". These are the Mists of Pandaria versions of the Scarlet mobs, and their loot tables were
+  built for heroic: most rows are heroic-only (LootMode 2, a mode the core never gives creatures), and
+  the normal rows add up to 29-47% for one item per kill, with no world-drop reference tables. The
+  Pandaria 5.4.8 database splits them the same way. Deadmines trash, for comparison, has 90-330% plus
+  reference drops, and the old Classic Scarlet Monastery mobs still in the database about 55% (not
+  counting quest items) plus 25-45% of reference drops.
+- **Changed:** new `sql/fixes/world/2026_10_24_01_scarlet_trash_loot.sql` adds the normal-mode loot of
+  a Classic Scarlet mob of the same level to each trash mob: Scarlet Augur (4284) for the 11 Scarlet
+  Halls humanoids, Scarlet Monk (4540) for the 7 Scarlet Monastery humanoids, Haunting Phantasm
+  (6427) for the Frenzied Spirits. Quest-only rows are skipped and rows a mob already had are kept, so
+  a Scarlet Myrmidon goes from about 34% to 49% for an item plus 26 reference tables (cloth, greens,
+  recipes). Bosses and the hounds are unchanged. 1,868 rows; the file can be run again.
+- **Status:** untested in game. The "You don't have permission to loot that corpse" messages are not
+  explained yet.
+
+#### Dying sent you to Westfall
+- **Found** (Four's run, 2026-10-24): after dying to Braun, the spirit healer was at Sentinel Hill in
+  Westfall. Neither Scarlet Halls (zone 6052) nor Scarlet Monastery (zone 6109) had a row in
+  `graveyard_zone`, so the core fell back to its default Alliance graveyard.
+- **Changed:** new `sql/fixes/world/2026_10_24_00_scarlet_graveyards.sql` links both zones to the
+  Scarlet Monastery graveyard in Tirisfal Glades (`world_safe_locs` 1874), as the Pandaria 5.4.8
+  database does.
+- **Status:** untested in game.
+
+#### To pick up these fixes
+New patch on top of the others: apply it and rebuild. It adds a new source file (`scarlet_halls.cpp`),
+so CMake has to re-run its configure step once (`cmake build`, which keeps your settings); without it
+the link fails with `undefined reference to AddSC_scarlet_halls()`. Then the SQL, and restart
+`worldserver`.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/scarlet-halls.patch | git apply
+sudo cmake build
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_01_scarlet_entrances_exits.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_02_scarlet_halls_hooded_crusaders.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_03_scarlet_halls_hounds.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_04_scarlet_halls_codex.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_05_scarlet_halls_rework.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_06_scarlet_halls_shield_breaker.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_24_00_scarlet_graveyards.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_24_01_scarlet_trash_loot.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_24_02_scarlet_halls_arrival.sql | mysql -u root -p bfa_world
+```
+
 ## 2026-10-19
 
 ### Gnomeregan
