@@ -3,6 +3,236 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-24
+
+### Scarlet Monastery: the "Scarlet Monastery" achievement
+
+- **Found** (reported by Four, after the encounter fix below didn't help): Four sent the client's
+  Achievement, Criteria, CriteriaTree, ModifierTree and DungeonEncounter db2 files. "Scarlet Monastery"
+  (637, criteria tree 3990) has a single criteria, 533: be the target of spell 132022 (Whitemane's kill
+  credit, criteria type 28). Retail Whitemane casts it on everyone when she dies; the spell isn't in the
+  client's spell data, so nothing here ever cast it. "Scarlet Halls" (7413) is a plain kill of Koegler
+  (59150), which is why that one already worked (confirmed by Four). The encounter rows from
+  2026_10_24_06 are still right (DungeonEncounter 1425 is Whitemane on map 1004) but weren't the cause.
+- **Changed:** `boss_high_inquisitor_whitemane_mop` gives every player in the instance the type 28
+  criteria for 132022 when she dies (`DoUpdateCriteria`), which also covers "Heroic: Scarlet
+  Monastery" if it uses the same spell. In `tools/bfa/scarlet-monastery.patch`; no SQL.
+- **Status:** confirmed in game by Four (2026-10-24): the achievement unlocked on Whitemane's death.
+
+### Scarlet Monastery: second test run (Fuel Tanks, dungeon and achievement credit)
+
+From Four's second run, 2026-10-24. C++ in `tools/bfa/scarlet-monastery.patch` (new version again),
+data in `sql/fixes/world/2026_10_24_06_scarlet_fuel_tank_encounters.sql`.
+
+#### Whitemane gave no dungeon completion and no "Scarlet Monastery" achievement
+- **Found** (reported by Four): the scenario counted Whitemane (`.debug scenario` showed progress 1),
+  but the achievement stayed locked. `instance_encounters` only had the classic encounters for Scarlet
+  Halls and Scarlet Monastery (448 Herod, 450 Whitemane), which belong to the old maps, so killing the
+  last boss on the new maps completed no dungeon encounter. The classic rows were also marked as the
+  last boss of dungeon finder entries 163 and 164, and the core keeps only one last boss per entry.
+- **Changed:** the SQL takes the "last boss" mark off 448 and 450 and adds the Mists encounters, as the
+  Pandaria 5.4.8 database has them: 1425 High Inquisitor Whitemane (last boss of 164) and 1420
+  Flameweaver Koegler (last boss of Scarlet Halls, 163).
+- **Status:** didn't unlock the achievement (Four, second run); the real cause is the kill credit
+  spell, see the entry above. The rows are still correct for dungeon encounter credit.
+
+#### Fuel Tanks still couldn't be clicked
+- **Found** (reported by Four): clearing the unselectable flag (2026_10_24_04) didn't make the tank
+  clickable. Cause not found.
+- **Changed:** the tank now also explodes when a player hits it. The SQL gives it the Monster faction
+  (14) so it can be attacked, and lets anyone use its spell click (`user_type` 0), since it is no longer
+  friendly. `npc_scm_fuel_tank` explodes on a click or on the first hit from a player, and ignores
+  damage from creatures.
+- **Status:** confirmed in game by Four (hitting the tank sets it off). Clicking it still does nothing.
+
+### Scarlet Monastery: first test run fixes, and the Headless Horseman
+
+From Four's first run, 2026-10-24. The C++ is in `tools/bfa/scarlet-monastery.patch` (same patch,
+new version: revert the old one first), the data in
+`sql/fixes/world/2026_10_24_04_scarlet_monastery_fuel_tank_burning_man.sql` and
+`sql/fixes/world/2026_10_24_05_headless_horseman.sql`.
+
+#### Fuel Tanks couldn't be clicked
+- **Found** (reported by Four): the Fuel Tank template (59706) has `UNIT_FLAG_NOT_SELECTABLE`
+  (0x02000000) in `unit_flags`, and an unselectable creature can't be clicked, so the spell-click row
+  and script never ran.
+- **Changed:** the SQL clears that flag on the template, and `npc_scm_fuel_tank` also clears it when
+  the tank spawns.
+- **Status:** untested in game.
+
+#### Brother Korloff left players burning
+- **Found** (reported by Four, with screenshot): after Korloff, the player kept a fire glow with no
+  debuff icon until `.unaura all`. Blazing Fists and Firestorm Kick trigger Burning Man (125844, 125852),
+  a hidden dummy aura with no duration that is meant for the Training Dummies (achievement). It picks
+  its targets by creature entry, and with no `conditions` row the core hit everyone in range.
+- **Changed:** `conditions` rows limit both spells to the Training Dummies (64446, 60197).
+- **Status:** untested in game. Korloff's fight itself (melee, Flying Kick, Blazing Fists, fire trail,
+  loot, dungeon credit) is confirmed by Four.
+
+#### Whitemane never came out after Durand fell
+- **Found** (reported by Four): Durand died, Whitemane stayed behind her door, passive and
+  unselectable. Not reproduced here, so the exact cause isn't known. Two weak points in the script:
+  Whitemane ignored Durand's call if she already counted as "in combat", and if Durand died outright
+  (instead of feigning) nothing called her at all.
+- **Changed:** Whitemane now only checks her own "intro started" flag. Durand looks her up by the
+  instance data or, failing that, the nearest Whitemane within 150 yards, and if he really dies he
+  still calls her out (she then fights alone).
+- **Status:** untested in game. Thalnos (all abilities, door, scenario credit) is confirmed by Four.
+
+#### The Headless Horseman couldn't be summoned
+- **Found:** the classic Horseman script flew him over map 189's coordinates. That map is gone from
+  the 8.3.7 client: the Monastery graveyard (map 1004) is the only one left. The Pumpkin Shrine (186267)
+  that Hallow's End (game event 12) spawns there had no working summon.
+- **Changed:** `boss_headless_horseman.cpp` is replaced by a port of the Pandaria 5.4.8 map-1004
+  script:
+  - **Pumpkin Shrine** (`go_pumpkin_shrine`): "Call the Headless Horseman." summons him once per
+    instance. The caller recites the four rhyme lines, he rises from the soil beside the shrine, circles
+    the graveyard and lands, then attacks everyone in range. A wipe despawns him and the shrine works
+    again. The shrine's quest turn-ins (11135, 11220) still show.
+  - **Phases:** each time his body would die it loses its head (Head of the Horseman, 23775, which
+    wanders within 30 yards). While headless the body is immune, confused, regenerates 4% a second and
+    whirlwinds. Beat the head to 66% (phase 1), 33% (phase 2) or 0% (phase 3) to end the phase; if the
+    body heals to full first, the head comes back and the phase repeats. Cleave (42587) all fight;
+    phase 2 adds Conflagration (42380) every 8 to 12 seconds; phase 3 throws pumpkins every 15 seconds
+    (52236), which sprout into Pumpkin Fiends unless killed first (`spell_sprouting`, 42281).
+  - **Death:** Sir Thomas (23904) appears for 60 seconds, the instance marks the Horseman done, and a
+    dungeon finder group queued for "The Headless Horseman" (285) is finished.
+  - The SQL binds the scripts, replaces the Horseman texts with the Pandaria set, adds level scaling
+    for difficulties 1 and 2 (23682, 23775, 23694, 23904: scaled to you, up to 120), moves the dungeon
+    finder arrival for 285 from map 189 coordinates to the Monastery entrance, and adds a reward row for
+    levels 86 to 120.
+- **Status:** untested in game.
+
+### Scarlet Monastery (map 1004): spawns, scripts and the Blades quest
+
+Found in Four's first run, 2026-10-24. Everything below is in `tools/bfa/scarlet-monastery.patch`
+(22nd patch; adds four source files, so run `sudo cmake build` once before building) and
+`sql/fixes/world/2026_10_24_03_scarlet_monastery_rework.sql`. The scripts are ported from the
+Pandaria 5.4.8 project (alexkulya). None of it has been tested in game yet.
+
+#### The graveyard had the wrong things standing in it
+- **Found** (reported by Four): the graveyard had Empowering Spirits, Frenzied Spirits, Piles of
+  Corpses, "level ??" Zombified Corpses, Centurions, Flamethrowers and Thalnos together. Compared with
+  the Pandaria 5.4.8 database, this one had 18 permanent Empowering Spirits (59893, level 100 to 101).
+  Those are Thalnos's summons and should only appear during his fight. It also had 6 Fuel Tanks (59706)
+  that should only drop from dead Flamethrowers, and 30 Frenzied Spirits instead of 12. Purifiers were
+  20 instead of 40 and Zealots 13 instead of 24. There were two stray Durand copies (60106 and the
+  Dashing Strike stalker 60107), and Thalnos and Durand wandered (random movement, 10 yards).
+- **Changed:** the SQL replaces every creature on map 1004 with the Pandaria set (167 spawns, guids
+  1004000001 and up). Two spawns from this database stay because they belong to its quest chain: the
+  entrance Hooded Crusader (64827, quests 31513 and 31514) and the Blade of the Anointed at the pool
+  (64854). It also adds Korloff's patrol path and the two drunk Judicators in the graveyard hall.
+  Gameobjects were already the same as Pandaria's and are untouched.
+- **Status:** untested in game.
+
+#### "Level ??" Zombified Corpses
+- **Found:** Zombified Corpse (59771), Fallen Crusader (59884), Empowered Zombie (59930), Evicted Soul
+  (59974) and Spirit of Redemption (58592) only had a `creature_template_scaling` row for difficulty 0.
+  The dungeon runs as difficulty 1, so they got no scaling and rolled a random level between 31 and 90.
+- **Changed:** the SQL copies their difficulty 0 rows to difficulty 1 (level 1 to 100, scaled to you).
+- **Status:** untested in game.
+
+#### Fuel Tanks glowed but did nothing
+- **Found** (reported by Four): Fuel Tanks have the spell-click flag and `npc_spellclick_spells` row
+  (114953), but their SmartAI had nothing to do on a click.
+- **Changed:** `npc_scm_fuel_tank`: clicking it blows it up with Barrel Explosion (114952, 10 yards) and
+  it despawns. New `conditions` rows make the explosion hit creatures only, never players or other
+  tanks. Scarlet Flamethrowers (`npc_scarlet_flamethrower`) now drop a Fuel Tank when they die (it lasts
+  5 minutes), and burn the dead with their flamethrower (115506) out of combat.
+- **Status:** untested in game.
+
+#### Graveyard trash
+- **Changed:**
+  - **Pile of Corpses** (`npc_pile_of_corpses`) raises a Zombified Corpse every 10 seconds (114951) until
+    it is destroyed. It doesn't move or fight back, and its zombies vanish when it dies.
+  - **Zombified Corpses** get faction 1962, which is hostile to players and to the Crusade. When a
+    Centurion hits one, it fights back and falls 3 to 5 seconds later.
+  - **Scarlet Centurions** (`npc_scarlet_centurion`) cut down zombies within 10 yards while no player is
+    fighting them. Against players they Cleave (115519) every 5 to 6 seconds and use Retaliation
+    (115511) once, at 20% health.
+  - **Frenzied Spirits** (`npc_frenzied_spirit`) stack Frenzied Spirit (115524, more damage and size)
+    every 3 to 4 seconds in combat. Pandaria stacks it every 1 to 1.5 seconds; that is slowed here for
+    solo play.
+  - **The entrance Hooded Crusader** warns "Destroy the Piles of Corpses to stop the Zombified
+    Corpses!" (raid warning) the first time a player comes within 30 yards.
+- **Status:** untested in game.
+
+#### Scarlet Zealots
+- **Changed:** `npc_scarlet_zealot` replaces their SmartAI:
+  - Smite (111010) on a random player every 4 to 6 seconds.
+  - Heal (111008) on the most hurt Scarlet within 40 yards every 9 to 14 seconds.
+  - Resurrection (111670) on a dead Fanatic, Purifier, Zealot, Judicator or Initiate within 30 yards
+    every 15 to 25 seconds. The body gets up when the cast finishes.
+  - When one dies it leaves a Spirit of Redemption (58592) for 12 seconds. The spirit can't be
+    attacked and keeps healing (111024) the most hurt Scarlet.
+- **Status:** untested in game.
+
+#### Thalnos the Soulrender had no fight
+- **Found:** Thalnos (59789) had no script and no SmartAI rows.
+- **Changed:** `boss_thalnos_the_soulrender`:
+  - Spirit Gale (115289) on a random player every 7.5 to 13 seconds.
+  - Raise Fallen Crusader (115139), a 5-second channel that raises a Fallen Crusader (59884) every
+    second. The Crusaders cast Mind Rot (115144) every 3.5 to 4.2 seconds. First at 6.5 seconds, then
+    20 seconds after each Empowering Spirits.
+  - Evict Soul (115297) every 25 seconds, on someone other than the tank when there is one. The
+    Evicted Soul (59974) it spawns copies its player's looks and attacks them.
+  - Empowering Spirits (115147) every 40 seconds. Each spirit turns into an Empowered Zombie (59930)
+    after 5 seconds unless it is killed first.
+  - His yells and the two raid warnings come from the Pandaria database. All his adds despawn when he
+    dies or resets.
+  - New `spell_areatrigger` / `areatrigger_template` 220 rows: the pool Spirit Gale leaves (3 yards)
+    puts its damage-over-time (115291) on players standing in it. The 3-yard size is a guess: neither
+    database had this data.
+  - The Graveyard Door (211844) opens when he dies.
+- **Status:** untested in game.
+
+#### Brother Korloff had no fight
+- **Found:** Korloff (59223) had no script and no SmartAI rows.
+- **Changed:** `boss_brother_korloff`:
+  - Flying Kick every 25 seconds: he leaps at a player more than 5 yards away (or the tank), knocking
+    them back (114488). Where he lands, Firestorm Kick (113764) burns everyone around him for 6 seconds.
+  - Blazing Fists (114807), a 6-second channel of punches at the tank, every 20 seconds.
+  - Rising Flame (114410), +10% damage for every 10% of health he loses.
+  - Below 50% health he leaves Scorched Earth (59507, burning ground, 114464) where he walks; each
+    patch lasts 30 seconds.
+  - He patrols his room (Pandaria path), and the cathedral door (210564) opens when he dies.
+- **Status:** untested in game.
+
+#### Commander Durand and High Inquisitor Whitemane
+- **Found:** Durand (60040) had no script. Whitemane (3977) still ran the old Cathedral script for the
+  Mograine fight (`boss_high_inquisitor_whitemane`), and her lines were the old ones.
+- **Changed:** `boss_commander_durand` and `boss_high_inquisitor_whitemane_mop`:
+  - Durand uses Flash of Steel (115629) six times in a row on the farthest player, every 21 to 26
+    seconds. He also uses Dashing Strike three times, every 24 seconds: line damage (115739) to a
+    random player, then he comes out behind them.
+  - When Durand "dies" the first time he only feigns it. Whitemane's door (210563) opens and she walks
+    out and fights at range: Holy Smite (114848), Heal (36678) on herself, and Mass Resurrection
+    (113134) every 20 seconds while dead Scarlet trash lies within 80 yards.
+  - At 50% health she casts Deep Sleep (9256) on everyone near and a shield on herself. She then walks
+    to Durand and raises him with Scarlet Resurrection (9232; a new `conditions` row lets it target
+    Durand). From then on both fight until dead, and she heals Durand when he is lower than her.
+  - A wipe resets both. When both are dead, the Hooded Crusader (64842) comes out of her room.
+- **Status:** untested in game.
+
+#### "Unto Dust Thou Shalt Return" couldn't be finished
+- **Found** (reported by Four): the Blades of the Anointed said "Requires High Inquisitor Whitemane's
+  corpse". That is a spell focus (gameobject 214291) Whitemane is meant to leave when she dies, with
+  spell 126789, and nothing cast it. Even with it there, the Blades' spells (126787, 126843) only send
+  an event (33000 / 33001) that nothing handles, so there was no quest credit.
+- **Changed:** Whitemane casts 126789 as she dies. New `spell_scm_blades_of_the_anointed`
+  (`spell_script_names` for both spells) gives the quest credit (64835 for quest 31514, 64840 for
+  31516) when the Blades are used at her corpse. The Hooded Crusader who appears after the fight
+  (64842) now also takes quest 31514 (`creature_questender`), as well as the entrance crusader.
+- **Status:** untested in game. Until it is in, `.quest complete 31514` finishes the quest.
+
+#### Instance script
+- **Changed:** `instance_scarlet_monastery` was registered for the old map 189, which no longer exists
+  in 8.3.7. It is now registered for map 1004. It keeps the Headless Horseman and Pumpkin Shrine data,
+  and adds boss states for Thalnos, Korloff, Durand and Whitemane and the three doors.
+- **Status:** builds; untested in game. The Headless Horseman script itself is still the old map 189 one
+  (its flight path is in old coordinates), so summoning him at the Pumpkin Shrine is not expected to
+  work yet.
+
 ## 2026-10-23
 
 ### Scarlet Halls and Scarlet Monastery: getting in and out
