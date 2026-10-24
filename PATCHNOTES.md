@@ -23,7 +23,7 @@ From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
   deleted. Noxxion's Spawn (13456) gets the missing scaling row for difficulty 1.
 - **Not changed:** the 3 Constrictor Vines and Barbed Lasher standing on Noxxion are spawned exactly
   like that in the Pandaria database too; trim them with `.npc delete` if they're in the way.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed in game by Four (2026-10-24): Noxxion "checked out good".
 
 #### Creeping Sludge left you stuck in combat
 - **Found** (reported by Four, `.debug combat` showed a PvE combat ref to Creeping Sludge 324883 after
