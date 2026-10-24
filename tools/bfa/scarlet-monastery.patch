@@ -193,10 +193,10 @@ index 0000000..270fc74
 +}
 diff --git a/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_durand_and_whitemane.cpp b/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_durand_and_whitemane.cpp
 new file mode 100644
-index 0000000..6be8b4e
+index 0000000..b3b74dd
 --- /dev/null
 +++ b/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_durand_and_whitemane.cpp
-@@ -0,0 +1,534 @@
+@@ -0,0 +1,538 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -246,6 +246,7 @@ index 0000000..6be8b4e
 +    SPELL_DEEP_SLEEP                = 9256,
 +    SPELL_SCARLET_RESURRECTION      = 9232,
 +    SPELL_SUMMON_CORPSE_FOCUS       = 126789, // "High Inquisitor Whitemane's Corpse Spell Focus" for the Blades
++    SPELL_WHITEMANE_KILL_CREDIT     = 132022, // server-side spell, not in the client data
 +
 +    SPELL_BLADES_OF_THE_ANOINTED    = 126787, // the quest item, both versions of the quest
 +    SPELL_BLADES_OF_THE_ANOINTED_2  = 126843,
@@ -568,6 +569,9 @@ index 0000000..6be8b4e
 +        _JustDied();
 +        Talk(TALK_WHITEMANE_DEATH);
 +        DoCast(me, SPELL_SUMMON_CORPSE_FOCUS, true);
++        // the "Scarlet Monastery" achievements (637, 6761) want every player to be the target of her
++        // kill credit spell; the spell doesn't exist here, so give the criteria directly
++        instance->DoUpdateCriteria(CRITERIA_TYPE_BE_SPELL_TARGET, SPELL_WHITEMANE_KILL_CREDIT, 0, me);
 +    }
 +
 +    void EnterEvadeMode(EvadeReason why) override

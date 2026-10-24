@@ -5,6 +5,20 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-24
 
+### Scarlet Monastery: the "Scarlet Monastery" achievement
+
+- **Found** (reported by Four, after the encounter fix below didn't help): Four sent the client's
+  Achievement, Criteria, CriteriaTree, ModifierTree and DungeonEncounter db2 files. "Scarlet Monastery"
+  (637, criteria tree 3990) has a single criteria, 533: be the target of spell 132022 (Whitemane's kill
+  credit, criteria type 28). Retail Whitemane casts it on everyone when she dies; the spell isn't in the
+  client's spell data, so nothing here ever cast it. "Scarlet Halls" (7413) is a plain kill of Koegler
+  (59150), which is why that one already worked (confirmed by Four). The encounter rows from
+  2026_10_24_06 are still right (DungeonEncounter 1425 is Whitemane on map 1004) but weren't the cause.
+- **Changed:** `boss_high_inquisitor_whitemane_mop` gives every player in the instance the type 28
+  criteria for 132022 when she dies (`DoUpdateCriteria`), which also covers "Heroic: Scarlet
+  Monastery" if it uses the same spell. In `tools/bfa/scarlet-monastery.patch`; no SQL.
+- **Status:** untested in game. Needs a new Whitemane kill.
+
 ### Scarlet Monastery: second test run (Fuel Tanks, dungeon and achievement credit)
 
 From Four's second run, 2026-10-24. C++ in `tools/bfa/scarlet-monastery.patch` (new version again),
@@ -19,9 +33,8 @@ data in `sql/fixes/world/2026_10_24_06_scarlet_fuel_tank_encounters.sql`.
 - **Changed:** the SQL takes the "last boss" mark off 448 and 450 and adds the Mists encounters, as the
   Pandaria 5.4.8 database has them: 1425 High Inquisitor Whitemane (last boss of 164) and 1420
   Flameweaver Koegler (last boss of Scarlet Halls, 163).
-- **Status:** untested in game. Not checked against the client's achievement data (not available
-  here), so it is not certain the achievement uses the encounter. Already-killed bosses don't count;
-  it needs a new kill.
+- **Status:** didn't unlock the achievement (Four, second run); the real cause is the kill credit
+  spell, see the entry above. The rows are still correct for dungeon encounter credit.
 
 #### Fuel Tanks still couldn't be clicked
 - **Found** (reported by Four): clearing the unselectable flag (2026_10_24_04) didn't make the tank
