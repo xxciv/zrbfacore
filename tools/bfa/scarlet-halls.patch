@@ -1341,10 +1341,10 @@ index f6e88ba..94fdb62 100644
 -
 diff --git a/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp b/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp
 new file mode 100644
-index 0000000..666c61a
+index 0000000..64192a7
 --- /dev/null
 +++ b/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp
-@@ -0,0 +1,860 @@
+@@ -0,0 +1,862 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -1942,7 +1942,6 @@ index 0000000..666c61a
 +    void JustSummoned(Creature* summon) override
 +    {
 +        _cannoneer = summon->GetGUID();
-+        summon->SetFacingTo(me->GetOrientation());
 +    }
 +
 +    void UpdateAI(uint32 diff) override
@@ -1951,15 +1950,18 @@ index 0000000..666c61a
 +        if (_events.ExecuteEvent() != EVENT_SUMMON_CANNONEER || !_cannoneer.IsEmpty())
 +            return;
 +
-+        // behind the breech: on the stalker he stood inside the barrel, and Ready Cannon (113933)
-+        // put him out at the muzzle
++        // The stalker sits in the middle of the gun and faces its breech; the muzzle points the other
++        // way. On the stalker the cannoneer stood inside the barrel, and moved back he stood in front
++        // of the muzzle. He belongs beside the breech, facing where the gun fires.
 +        Position pos = me->GetPosition();
-+        me->MovePositionToFirstCollision(pos, CannoneerBehindGun, float(M_PI));
-+        pos.SetOrientation(me->GetOrientation());
++        me->MovePositionToFirstCollision(pos, std::sqrt(CannoneerForward * CannoneerForward + CannoneerSide * CannoneerSide), -std::atan2(CannoneerSide, CannoneerForward));
++        pos.SetOrientation(Position::NormalizeOrientation(me->GetOrientation() + float(M_PI)));
 +        me->SummonCreature(NPC_SCARLET_CANNONEER, pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300 * IN_MILLISECONDS);
 +    }
 +
-+    static constexpr float CannoneerBehindGun = 2.0f;
++    // towards the breech, then out to the gun's right
++    static constexpr float CannoneerForward = 1.5f;
++    static constexpr float CannoneerSide = 1.3f;
 +
 +private:
 +    EventMap _events;

@@ -218,7 +218,29 @@ keeps it.
   5 seconds, so it hits at his level. The shell only hits within 3 yards of where it lands and takes a
   moment to fly, so he leads a moving target by its speed and the flight time. He stands 2 yards
   behind the gun (Ready Cannon, 113933, put him out at the muzzle).
-- **Status:** untested in game (Four's fourth run was built without it).
+- **Found** (Four's fifth run, 2026-10-24): the shells now land and hurt ("the cannon shots work"),
+  but the cannoneers stood in front of the muzzles. The stalker faces the breech end of its gun, not
+  the muzzle.
+- **Changed:** each cannoneer stands beside the breech (1.5 yards towards it and 1.3 yards out to the
+  side, stopping short of any wall), facing the way the gun fires.
+- **Status:** cannon damage confirmed by Four on 2026-10-24; the new standing spot is untested.
+
+#### Trash dropped almost nothing
+- **Found** (reported by Four, 2026-10-23/24): "some enemies only drop money", loot "not the same
+  density". These are the Mists of Pandaria versions of the Scarlet mobs, and their loot tables were
+  built for heroic: most rows are heroic-only (LootMode 2, a mode the core never gives creatures), and
+  the normal rows add up to 29-47% for one item per kill, with no world-drop reference tables. The
+  Pandaria 5.4.8 database splits them the same way. Deadmines trash, for comparison, has 90-330% plus
+  reference drops, and the old Classic Scarlet Monastery mobs still in the database about 55% (not
+  counting quest items) plus 25-45% of reference drops.
+- **Changed:** new `sql/fixes/world/2026_10_24_01_scarlet_trash_loot.sql` adds the normal-mode loot of
+  a Classic Scarlet mob of the same level to each trash mob: Scarlet Augur (4284) for the 11 Scarlet
+  Halls humanoids, Scarlet Monk (4540) for the 7 Scarlet Monastery humanoids, Haunting Phantasm
+  (6427) for the Frenzied Spirits. Quest-only rows are skipped and rows a mob already had are kept, so
+  a Scarlet Myrmidon goes from about 34% to 49% for an item plus 26 reference tables (cloth, greens,
+  recipes). Bosses and the hounds are unchanged. 1,868 rows; the file can be run again.
+- **Status:** untested in game. The "You don't have permission to loot that corpse" messages are not
+  explained yet.
 
 #### Dying sent you to Westfall
 - **Found** (Four's run, 2026-10-24): after dying to Braun, the spirit healer was at Sentinel Hill in
@@ -247,6 +269,7 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_04_scarlet_halls
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_05_scarlet_halls_rework.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_06_scarlet_halls_shield_breaker.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_24_00_scarlet_graveyards.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_24_01_scarlet_trash_loot.sql | mysql -u root -p bfa_world
 ```
 
 ## 2026-10-19
