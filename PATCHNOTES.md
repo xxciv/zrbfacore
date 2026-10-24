@@ -17,7 +17,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed:** `boss_high_inquisitor_whitemane_mop` gives every player in the instance the type 28
   criteria for 132022 when she dies (`DoUpdateCriteria`), which also covers "Heroic: Scarlet
   Monastery" if it uses the same spell. In `tools/bfa/scarlet-monastery.patch`; no SQL.
-- **Status:** untested in game. Needs a new Whitemane kill.
+- **Status:** confirmed in game by Four (2026-10-24): the achievement unlocked on Whitemane's death.
 
 ### Scarlet Monastery: second test run (Fuel Tanks, dungeon and achievement credit)
 
@@ -43,7 +43,7 @@ data in `sql/fixes/world/2026_10_24_06_scarlet_fuel_tank_encounters.sql`.
   (14) so it can be attacked, and lets anyone use its spell click (`user_type` 0), since it is no longer
   friendly. `npc_scm_fuel_tank` explodes on a click or on the first hit from a player, and ignores
   damage from creatures.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (hitting the tank sets it off). Clicking it still does nothing.
 
 ### Scarlet Monastery: first test run fixes, and the Headless Horseman
 
