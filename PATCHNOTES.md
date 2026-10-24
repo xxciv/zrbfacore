@@ -5,6 +5,37 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-24
 
+### Maraudon: first test run (Noxxion, Gizlock, Vyletongue)
+
+From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
+`sql/fixes/world/2026_10_24_07_maraudon_noxxion_gizlock_vyletongue.sql`; no rebuild.
+
+#### Noxxion couldn't be targeted
+- **Found** (reported by Four): Noxxion (13282) showed as a quest giver with `.gm on`, couldn't be
+  targeted, and gave no credit. His template had the "not selectable" unit flag (0x02000000) and the
+  quest giver npc flag, and `creature_queststarter` listed him (and Razorlash, 12258) as starters of
+  27698 "Servants of Theradras", the quest that asks you to kill them. The Pandaria 5.4.8 database has
+  neither the flag nor those rows; its only giver is Zaetar's Spirit (12238).
+- **Changed:** Noxxion gets the Pandaria values (npcflag 0, unit_flags 32832, no SmartAI; his fight is
+  the core script `boss_noxxion`: Toxic Volley, Uppercut, and every 40 seconds he hides for 15 seconds
+  while five Noxxion's Spawn attack). Razorlash loses the quest giver flag. Both bogus starter rows are
+  deleted. Noxxion's Spawn (13456) gets the missing scaling row for difficulty 1.
+- **Not changed:** the 3 Constrictor Vines and Barbed Lasher standing on Noxxion are spawned exactly
+  like that in the Pandaria database too; trim them with `.npc delete` if they're in the way.
+- **Status:** waiting on Four's test.
+
+#### Tinkerer Gizlock and Lord Vyletongue stood still and never meleed
+- **Found** (reported by Four): Gizlock only used Goblin Dragon Gun, Vyletongue only an occasional
+  Smoke Bomb, and neither meleed. Each had two SmartAI scripts mixed in the table: old spell timers plus
+  a ranged-hunter template that stops moving and stops melee on aggro and leaves the rest to phase 1
+  rows. Nothing sets phase 1, so those rows never ran.
+- **Changed:** both scripts replaced with one clean set. They chase and melee, Shoot when the target
+  is 5-30 yards away, and use their full kit: Gizlock says his aggro line and uses Bomb (random
+  player), Goblin Dragon Gun and Flash Bomb; Vyletongue uses Multi-Shot (random player), Smoke Bomb and
+  Blink.
+- **Not changed:** Razorlash (Puncture and Cleave) already uses his whole kit; that's all he has.
+- **Status:** waiting on Four's test.
+
 ### Scarlet Monastery: the "Scarlet Monastery" achievement
 
 - **Found** (reported by Four, after the encounter fix below didn't help): Four sent the client's
