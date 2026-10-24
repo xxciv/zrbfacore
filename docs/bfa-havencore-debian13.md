@@ -263,8 +263,11 @@ missing and binds the scripts.
 
 `scarlet-monastery.patch` does the same for Scarlet Monastery: the graveyard trash (Piles of Corpses,
 Zombified Corpses, Centurions, Flamethrowers and their clickable Fuel Tanks), the Zealots, Thalnos,
-Korloff, and Durand with Whitemane. It also adds the quest credit for the Blades of the Anointed. It needs
-`sql/fixes/world/2026_10_24_03_scarlet_monastery_rework.sql`, which swaps in the Pandaria spawns.
+Korloff, and Durand with Whitemane. It also adds the quest credit for the Blades of the Anointed, and
+replaces the classic Headless Horseman script (map 189, which this client no longer has) with the
+Monastery graveyard version: during Hallow's End the Pumpkin Shrine there summons him. It needs
+`sql/fixes/world/2026_10_24_03_scarlet_monastery_rework.sql`, which swaps in the Pandaria spawns,
+`2026_10_24_04_scarlet_monastery_fuel_tank_burning_man.sql` and `2026_10_24_05_headless_horseman.sql`.
 
 `wailing-caverns-fixes.patch` makes Muyoh's escort send the scenario event (582) behind the "Muyoh
 escorted" objective when she reaches Naralex. The rest of the Wailing Caverns fixes are SQL, under

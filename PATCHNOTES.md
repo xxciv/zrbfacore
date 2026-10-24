@@ -5,6 +5,64 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-24
 
+### Scarlet Monastery: first test run fixes, and the Headless Horseman
+
+From Four's first run, 2026-10-24. The C++ is in `tools/bfa/scarlet-monastery.patch` (same patch,
+new version: revert the old one first), the data in
+`sql/fixes/world/2026_10_24_04_scarlet_monastery_fuel_tank_burning_man.sql` and
+`sql/fixes/world/2026_10_24_05_headless_horseman.sql`.
+
+#### Fuel Tanks couldn't be clicked
+- **Found** (reported by Four): the Fuel Tank template (59706) has `UNIT_FLAG_NOT_SELECTABLE`
+  (0x02000000) in `unit_flags`, and an unselectable creature can't be clicked, so the spell-click row
+  and script never ran.
+- **Changed:** the SQL clears that flag on the template, and `npc_scm_fuel_tank` also clears it when
+  the tank spawns.
+- **Status:** untested in game.
+
+#### Brother Korloff left players burning
+- **Found** (reported by Four, with screenshot): after Korloff, the player kept a fire glow with no
+  debuff icon until `.unaura all`. Blazing Fists and Firestorm Kick trigger Burning Man (125844, 125852),
+  a hidden dummy aura with no duration that is meant for the Training Dummies (achievement). It picks
+  its targets by creature entry, and with no `conditions` row the core hit everyone in range.
+- **Changed:** `conditions` rows limit both spells to the Training Dummies (64446, 60197).
+- **Status:** untested in game. Korloff's fight itself (melee, Flying Kick, Blazing Fists, fire trail,
+  loot, dungeon credit) is confirmed by Four.
+
+#### Whitemane never came out after Durand fell
+- **Found** (reported by Four): Durand died, Whitemane stayed behind her door, passive and
+  unselectable. Not reproduced here, so the exact cause isn't known. Two weak points in the script:
+  Whitemane ignored Durand's call if she already counted as "in combat", and if Durand died outright
+  (instead of feigning) nothing called her at all.
+- **Changed:** Whitemane now only checks her own "intro started" flag. Durand looks her up by the
+  instance data or, failing that, the nearest Whitemane within 150 yards, and if he really dies he
+  still calls her out (she then fights alone).
+- **Status:** untested in game. Thalnos (all abilities, door, scenario credit) is confirmed by Four.
+
+#### The Headless Horseman couldn't be summoned
+- **Found:** the classic Horseman script flew him over map 189's coordinates. That map is gone from
+  the 8.3.7 client: the Monastery graveyard (map 1004) is the only one left. The Pumpkin Shrine (186267)
+  that Hallow's End (game event 12) spawns there had no working summon.
+- **Changed:** `boss_headless_horseman.cpp` is replaced by a port of the Pandaria 5.4.8 map-1004
+  script:
+  - **Pumpkin Shrine** (`go_pumpkin_shrine`): "Call the Headless Horseman." summons him once per
+    instance. The caller recites the four rhyme lines, he rises from the soil beside the shrine, circles
+    the graveyard and lands, then attacks everyone in range. A wipe despawns him and the shrine works
+    again. The shrine's quest turn-ins (11135, 11220) still show.
+  - **Phases:** each time his body would die it loses its head (Head of the Horseman, 23775, which
+    wanders within 30 yards). While headless the body is immune, confused, regenerates 4% a second and
+    whirlwinds. Beat the head to 66% (phase 1), 33% (phase 2) or 0% (phase 3) to end the phase; if the
+    body heals to full first, the head comes back and the phase repeats. Cleave (42587) all fight;
+    phase 2 adds Conflagration (42380) every 8 to 12 seconds; phase 3 throws pumpkins every 15 seconds
+    (52236), which sprout into Pumpkin Fiends unless killed first (`spell_sprouting`, 42281).
+  - **Death:** Sir Thomas (23904) appears for 60 seconds, the instance marks the Horseman done, and a
+    dungeon finder group queued for "The Headless Horseman" (285) is finished.
+  - The SQL binds the scripts, replaces the Horseman texts with the Pandaria set, adds level scaling
+    for difficulties 1 and 2 (23682, 23775, 23694, 23904: scaled to you, up to 120), moves the dungeon
+    finder arrival for 285 from map 189 coordinates to the Monastery entrance, and adds a reward row for
+    levels 86 to 120.
+- **Status:** untested in game.
+
 ### Scarlet Monastery (map 1004): spawns, scripts and the Blades quest
 
 Found in Four's first run, 2026-10-24. Everything below is in `tools/bfa/scarlet-monastery.patch`
