@@ -34,7 +34,7 @@ From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
 - **Changed:** `2026_10_24_08_maraudon_creeping_sludge_combat.sql` gives the sludge one SmartAI row:
   when it damages someone, it attacks them. It then fights that player, or, if it can't see them (in
   stealth), evades and drops the combat right away.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed in game by Four (2026-10-24).
 
 #### Celebras the Redeemed stood next to Celebras the Cursed
 - **Found** (reported by Four, with a screenshot): the friendly spirit, Celebras the Redeemed (13716),
@@ -43,7 +43,7 @@ From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
   (guid 324986; the Pandaria database has the same row).
 - **Changed:** `2026_10_24_09_maraudon_celebras_redeemed.sql` deletes the static spawn. He now only
   appears when Celebras the Cursed dies, for 10 minutes.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed in game by Four (2026-10-24).
 
 #### Almost nothing in Maraudon moved
 - **Found** (reported by Four: Primordial Behemoths used to patrol, Princess Theradras stood still,
@@ -61,7 +61,7 @@ From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
   - New path ids 349000001 and up.
 - **Not changed:** AzerothCore has only one patrolling Behemoth too; the rest stand. Rotgrip's
   classic path is in a different place from his BFA spawn, so he stays put.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed in game by Four (2026-10-24): the new patrols and Rotgrip checked out.
 
 #### Zaetar's Spirit stood beside Princess Theradras
 - **Found** (reported by Four, with a screenshot): Zaetar's Spirit (12238) was already standing next to
@@ -82,7 +82,7 @@ From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
   player), Goblin Dragon Gun and Flash Bomb; Vyletongue uses Multi-Shot (random player), Smoke Bomb and
   Blink.
 - **Not changed:** Razorlash (Puncture and Cleave) already uses his whole kit; that's all he has.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed in game by Four (2026-10-24): "the boss mechanics" checked out.
 
 ### Scarlet Monastery: the "Scarlet Monastery" achievement
 
