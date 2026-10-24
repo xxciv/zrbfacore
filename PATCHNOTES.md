@@ -9,7 +9,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
 `sql/fixes/world/2026_10_24_07_maraudon_noxxion_gizlock_vyletongue.sql` and
-`2026_10_24_08_maraudon_creeping_sludge_combat.sql` and `2026_10_24_09_maraudon_celebras_redeemed.sql`; no rebuild.
+`2026_10_24_08_maraudon_creeping_sludge_combat.sql` `2026_10_24_09_maraudon_celebras_redeemed.sql` and `2026_10_24_10_maraudon_movement.sql`; no rebuild.
 
 #### Noxxion couldn't be targeted
 - **Found** (reported by Four): Noxxion (13282) showed as a quest giver with `.gm on`, couldn't be
@@ -43,6 +43,24 @@ From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
   (guid 324986; the Pandaria database has the same row).
 - **Changed:** `2026_10_24_09_maraudon_celebras_redeemed.sql` deletes the static spawn. He now only
   appears when Celebras the Cursed dies, for 10 minutes.
+- **Status:** waiting on Four's test.
+
+#### Almost nothing in Maraudon moved
+- **Found** (reported by Four: Primordial Behemoths used to patrol, Princess Theradras stood still,
+  "much more creatures wandered or had paths"): the BFA world database has no waypoint paths and no
+  wandering for any Maraudon mob except a few critters.
+- **Changed:** `2026_10_24_10_maraudon_movement.sql`, matched to these spawns by entry and position:
+  - 30 waypoint paths from the Pandaria 5.4.8 database (same spawn guids), including a Primordial
+    Behemoth, Meshlok's second spawn, Shardlings, Larvae and Snapjaws.
+  - 8 paths from the AzerothCore 3.3.5 database: Princess Theradras (a loop around her room),
+    Meshlok, Spirit of Veng, a Sister of Celebras pair, a Celebrian Dryad pair, a Stolid Snapjaw, a
+    Thessala Hydra and a Corruptor group, with the pairs and the group walking in formation.
+  - Random wandering for 218 spawns, with the AzerothCore radius capped at 5 yards (this core's random
+    movement doesn't path around walls). Water creatures (Thessala Hydra, Stolid Snapjaw, Rotgrip)
+    don't wander.
+  - New path ids 349000001 and up.
+- **Not changed:** AzerothCore has only one patrolling Behemoth too; the rest stand. Rotgrip's
+  classic path is in a different place from his BFA spawn, so he stays put.
 - **Status:** waiting on Four's test.
 
 #### Tinkerer Gizlock and Lord Vyletongue stood still and never meleed
