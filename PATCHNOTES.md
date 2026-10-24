@@ -81,6 +81,9 @@ Found in Four's first visit.
 
 ### Scarlet Halls: the events and bosses
 
+Four called Scarlet Halls done on 2026-10-24, after five runs. The per-fix statuses below say which
+parts were seen working in game.
+
 Found in Four's first full run (2026-10-23). Most of Scarlet Halls had no working script in this core:
 the instance had no instance script, the bosses ran short stubs, and the events had neither scripts nor
 the creatures they need. New `tools/bfa/scarlet-halls.patch` ports the Pandaria 5.4.8 scripts
