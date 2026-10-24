@@ -8,7 +8,8 @@ to do to pick it up (rebuild, restart, run SQL).
 ### Maraudon: first test run (Noxxion, Gizlock, Vyletongue)
 
 From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
-`sql/fixes/world/2026_10_24_07_maraudon_noxxion_gizlock_vyletongue.sql`; no rebuild.
+`sql/fixes/world/2026_10_24_07_maraudon_noxxion_gizlock_vyletongue.sql` and
+`2026_10_24_08_maraudon_creeping_sludge_combat.sql`; no rebuild.
 
 #### Noxxion couldn't be targeted
 - **Found** (reported by Four): Noxxion (13282) showed as a quest giver with `.gm on`, couldn't be
@@ -22,6 +23,17 @@ From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
   deleted. Noxxion's Spawn (13456) gets the missing scaling row for difficulty 1.
 - **Not changed:** the 3 Constrictor Vines and Barbed Lasher standing on Noxxion are spawned exactly
   like that in the Pandaria database too; trim them with `.npc delete` if they're in the way.
+- **Status:** waiting on Four's test.
+
+#### Creeping Sludge left you stuck in combat
+- **Found** (reported by Four, `.debug combat` showed a PvE combat ref to Creeping Sludge 324883 after
+  walking past it): most Creeping Sludges (12222) carry Poison Shock (22638), which hits everyone
+  within 8 yards every 2 seconds. A player it hits is put in combat with the sludge, but the sludge
+  never puts the player on its own threat list, so it neither attacks nor evades and the combat never
+  ends. No other Maraudon creature has a pulsing damage aura like this.
+- **Changed:** `2026_10_24_08_maraudon_creeping_sludge_combat.sql` gives the sludge one SmartAI row:
+  when it damages someone, it attacks them. It then fights that player, or, if it can't see them (in
+  stealth), evades and drops the combat right away.
 - **Status:** waiting on Four's test.
 
 #### Tinkerer Gizlock and Lord Vyletongue stood still and never meleed
