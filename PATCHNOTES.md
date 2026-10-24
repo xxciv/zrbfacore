@@ -136,12 +136,16 @@ keeps it.
   the player. Four's source turned out to still hold the `ea91d85` version of the patch (the two
   updates before this one never reached the build), so the quarter-second positioning above was never
   tried in game.
-- **Changed:** the target now moves every 0.1 seconds, leads by 3 yards (more while you walk) at 1.5
-  times your speed, and keeps its bullseye (the back of the model) towards the archers, also while
-  moving.
+- **Changed:** the target now moves every 0.1 seconds at 1.5 times your speed, stays in front of you
+  (further ahead while you walk), and keeps its facing while it moves.
+- **Found** (Four's fifth run, 2026-10-24): it now leads, but too far out and with the bullseye towards
+  the player. The bullseye is on the front of the model after all (the old follow movement had turned
+  the model to face the player).
+- **Changed:** it faces the way you face, bullseye towards the archers, about 1 yard in front of you
+  (plus a little while you walk).
 - **Status:** Four got past Lindon on 2026-10-23; the volleys, the exploding floor and the melee
-  switch weren't reported on. Heroic Defense confirmed by Four on 2026-10-23. The positioning,
-  facing and Shield Breaker fixes are untested. Lindon has no loot table (`lootid` 0 here and in the
+  switch weren't reported on. Heroic Defense confirmed by Four on 2026-10-23, leading confirmed on
+  2026-10-24. The distance, facing and Shield Breaker fixes are untested. Lindon has no loot table (`lootid` 0 here and in the
   Pandaria 5.4.8 database), so he drops nothing.
 
 #### Starving and Angry Hounds, and the dog food buckets
@@ -167,8 +171,7 @@ keeps it.
   frees the hound to chase you anywhere. Until then it is chained: it attacks anyone within 5 yards
   but waits at its post, still in combat, for anyone past 8 yards. A hound that resets gets Chained
   back.
-- **Status:** "they attack as they should" (Four, 2026-10-23); the chain breaking is untested (Four's
-  fourth run was built without it, see the archery target above).
+- **Status:** confirmed by Four on 2026-10-24 ("Angry Hound is fixed").
 
 #### Houndmaster Braun
 - **Found** (reported by Four): melee, Death Blossom and Bloody Mess only; an easy fight.
@@ -217,6 +220,15 @@ keeps it.
   behind the gun (Ready Cannon, 113933, put him out at the muzzle).
 - **Status:** untested in game (Four's fourth run was built without it).
 
+#### Dying sent you to Westfall
+- **Found** (Four's run, 2026-10-24): after dying to Braun, the spirit healer was at Sentinel Hill in
+  Westfall. Neither Scarlet Halls (zone 6052) nor Scarlet Monastery (zone 6109) had a row in
+  `graveyard_zone`, so the core fell back to its default Alliance graveyard.
+- **Changed:** new `sql/fixes/world/2026_10_24_00_scarlet_graveyards.sql` links both zones to the
+  Scarlet Monastery graveyard in Tirisfal Glades (`world_safe_locs` 1874), as the Pandaria 5.4.8
+  database does.
+- **Status:** untested in game.
+
 #### To pick up these fixes
 New patch on top of the others: apply it and rebuild. It adds a new source file (`scarlet_halls.cpp`),
 so CMake has to re-run its configure step once (`cmake build`, which keeps your settings); without it
@@ -234,6 +246,7 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_03_scarlet_halls
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_04_scarlet_halls_codex.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_05_scarlet_halls_rework.sql | mysql -u root -p bfa_world
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_06_scarlet_halls_shield_breaker.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_24_00_scarlet_graveyards.sql | mysql -u root -p bfa_world
 ```
 
 ## 2026-10-19

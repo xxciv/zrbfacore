@@ -1341,10 +1341,10 @@ index f6e88ba..94fdb62 100644
 -
 diff --git a/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp b/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp
 new file mode 100644
-index 0000000..2ca828c
+index 0000000..666c61a
 --- /dev/null
 +++ b/src/server/scripts/EasternKingdoms/ScarletHalls/scarlet_halls.cpp
-@@ -0,0 +1,861 @@
+@@ -0,0 +1,860 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -1699,7 +1699,7 @@ index 0000000..2ca828c
 +            return;
 +        }
 +
-+        // pushed out a few yards in front of the carrier, bullseye towards the archers
++        // held just in front of the carrier, bullseye towards the archers
 +        if (_moveTimer > diff)
 +        {
 +            _moveTimer -= diff;
@@ -1710,12 +1710,11 @@ index 0000000..2ca828c
 +        // lead further while the carrier walks, so the target never drops back level with them
 +        float lead = ArcheryTargetLead;
 +        if (carrier->isMoving())
-+            lead += carrier->GetSpeed(MOVE_RUN) * 0.4f;
++            lead += carrier->GetSpeed(MOVE_RUN) * 0.2f;
 +
 +        float x, y, z;
 +        carrier->GetClosePoint(x, y, z, me->GetObjectSize(), lead, 0.0f);
-+        // the bullseye is on the back of the model
-+        float const facing = Position::NormalizeOrientation(carrier->GetOrientation() + float(M_PI));
++        float const facing = carrier->GetOrientation();
 +
 +        if (me->GetExactDist2d(x, y) > 0.5f)
 +        {
@@ -1735,7 +1734,7 @@ index 0000000..2ca828c
 +    }
 +
 +private:
-+    static constexpr float ArcheryTargetLead = 3.0f;
++    static constexpr float ArcheryTargetLead = 1.0f;
 +
 +    ObjectGuid _carrier;
 +    uint32 _moveTimer = 0;
