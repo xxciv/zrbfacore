@@ -9,7 +9,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
 `sql/fixes/world/2026_10_24_07_maraudon_noxxion_gizlock_vyletongue.sql` and
-`2026_10_24_08_maraudon_creeping_sludge_combat.sql` `2026_10_24_09_maraudon_celebras_redeemed.sql` and `2026_10_24_10_maraudon_movement.sql`; no rebuild.
+`2026_10_24_08_maraudon_creeping_sludge_combat.sql` `2026_10_24_09_maraudon_celebras_redeemed.sql` `2026_10_24_10_maraudon_movement.sql` and `2026_10_24_11_maraudon_zaetars_spirit.sql`; no rebuild.
 
 #### Noxxion couldn't be targeted
 - **Found** (reported by Four): Noxxion (13282) showed as a quest giver with `.gm on`, couldn't be
@@ -61,6 +61,15 @@ From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
   - New path ids 349000001 and up.
 - **Not changed:** AzerothCore has only one patrolling Behemoth too; the rest stand. Rotgrip's
   classic path is in a different place from his BFA spawn, so he stays put.
+- **Status:** waiting on Four's test.
+
+#### Zaetar's Spirit stood beside Princess Theradras
+- **Found** (reported by Four, with a screenshot): Zaetar's Spirit (12238) was already standing next to
+  Princess Theradras before the fight. Her core script `boss_princess_theradras` summons him where
+  she dies, but the world database also spawns him permanently there (guid 324993; the Pandaria
+  database has the same row).
+- **Changed:** `2026_10_24_11_maraudon_zaetars_spirit.sql` deletes the static spawn. He now appears
+  when the Princess dies, for 10 minutes, to give and take the Maraudon quests.
 - **Status:** waiting on Four's test.
 
 #### Tinkerer Gizlock and Lord Vyletongue stood still and never meleed
