@@ -5,6 +5,85 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-24
 
+### Maraudon: first test run (Noxxion, Gizlock, Vyletongue)
+
+From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
+`sql/fixes/world/2026_10_24_07_maraudon_noxxion_gizlock_vyletongue.sql` and
+`2026_10_24_08_maraudon_creeping_sludge_combat.sql` `2026_10_24_09_maraudon_celebras_redeemed.sql` `2026_10_24_10_maraudon_movement.sql` and `2026_10_24_11_maraudon_zaetars_spirit.sql`; no rebuild.
+
+#### Noxxion couldn't be targeted
+- **Found** (reported by Four): Noxxion (13282) showed as a quest giver with `.gm on`, couldn't be
+  targeted, and gave no credit. His template had the "not selectable" unit flag (0x02000000) and the
+  quest giver npc flag, and `creature_queststarter` listed him (and Razorlash, 12258) as starters of
+  27698 "Servants of Theradras", the quest that asks you to kill them. The Pandaria 5.4.8 database has
+  neither the flag nor those rows; its only giver is Zaetar's Spirit (12238).
+- **Changed:** Noxxion gets the Pandaria values (npcflag 0, unit_flags 32832, no SmartAI; his fight is
+  the core script `boss_noxxion`: Toxic Volley, Uppercut, and every 40 seconds he hides for 15 seconds
+  while five Noxxion's Spawn attack). Razorlash loses the quest giver flag. Both bogus starter rows are
+  deleted. Noxxion's Spawn (13456) gets the missing scaling row for difficulty 1.
+- **Not changed:** the 3 Constrictor Vines and Barbed Lasher standing on Noxxion are spawned exactly
+  like that in the Pandaria database too; trim them with `.npc delete` if they're in the way.
+- **Status:** confirmed in game by Four (2026-10-24): Noxxion "checked out good".
+
+#### Creeping Sludge left you stuck in combat
+- **Found** (reported by Four, `.debug combat` showed a PvE combat ref to Creeping Sludge 324883 after
+  walking past it): most Creeping Sludges (12222) carry Poison Shock (22638), which hits everyone
+  within 8 yards every 2 seconds. A player it hits is put in combat with the sludge, but the sludge
+  never puts the player on its own threat list, so it neither attacks nor evades and the combat never
+  ends. No other Maraudon creature has a pulsing damage aura like this.
+- **Changed:** `2026_10_24_08_maraudon_creeping_sludge_combat.sql` gives the sludge one SmartAI row:
+  when it damages someone, it attacks them. It then fights that player, or, if it can't see them (in
+  stealth), evades and drops the combat right away.
+- **Status:** confirmed in game by Four (2026-10-24).
+
+#### Celebras the Redeemed stood next to Celebras the Cursed
+- **Found** (reported by Four, with a screenshot): the friendly spirit, Celebras the Redeemed (13716),
+  was already standing beside the boss before the fight. The core script `celebras_the_cursed`
+  summons him on the boss's corpse when it dies, but the world database also spawns him permanently
+  (guid 324986; the Pandaria database has the same row).
+- **Changed:** `2026_10_24_09_maraudon_celebras_redeemed.sql` deletes the static spawn. He now only
+  appears when Celebras the Cursed dies, for 10 minutes.
+- **Status:** confirmed in game by Four (2026-10-24).
+
+#### Almost nothing in Maraudon moved
+- **Found** (reported by Four: Primordial Behemoths used to patrol, Princess Theradras stood still,
+  "much more creatures wandered or had paths"): the BFA world database has no waypoint paths and no
+  wandering for any Maraudon mob except a few critters.
+- **Changed:** `2026_10_24_10_maraudon_movement.sql`, matched to these spawns by entry and position:
+  - 30 waypoint paths from the Pandaria 5.4.8 database (same spawn guids), including a Primordial
+    Behemoth, Meshlok's second spawn, Shardlings, Larvae and Snapjaws.
+  - 8 paths from the AzerothCore 3.3.5 database: Princess Theradras (a loop around her room),
+    Meshlok, Spirit of Veng, a Sister of Celebras pair, a Celebrian Dryad pair, a Stolid Snapjaw, a
+    Thessala Hydra and a Corruptor group, with the pairs and the group walking in formation.
+  - Random wandering for 218 spawns, with the AzerothCore radius capped at 5 yards (this core's random
+    movement doesn't path around walls). Water creatures (Thessala Hydra, Stolid Snapjaw, Rotgrip)
+    don't wander.
+  - New path ids 349000001 and up.
+- **Not changed:** AzerothCore has only one patrolling Behemoth too; the rest stand. Rotgrip's
+  classic path is in a different place from his BFA spawn, so he stays put.
+- **Status:** confirmed in game by Four (2026-10-24): the new patrols and Rotgrip checked out.
+
+#### Zaetar's Spirit stood beside Princess Theradras
+- **Found** (reported by Four, with a screenshot): Zaetar's Spirit (12238) was already standing next to
+  Princess Theradras before the fight. Her core script `boss_princess_theradras` summons him where
+  she dies, but the world database also spawns him permanently there (guid 324993; the Pandaria
+  database has the same row).
+- **Changed:** `2026_10_24_11_maraudon_zaetars_spirit.sql` deletes the static spawn. He now appears
+  when the Princess dies, for 10 minutes, to give and take the Maraudon quests.
+- **Status:** confirmed in game by Four (2026-10-24).
+
+#### Tinkerer Gizlock and Lord Vyletongue stood still and never meleed
+- **Found** (reported by Four): Gizlock only used Goblin Dragon Gun, Vyletongue only an occasional
+  Smoke Bomb, and neither meleed. Each had two SmartAI scripts mixed in the table: old spell timers plus
+  a ranged-hunter template that stops moving and stops melee on aggro and leaves the rest to phase 1
+  rows. Nothing sets phase 1, so those rows never ran.
+- **Changed:** both scripts replaced with one clean set. They chase and melee, Shoot when the target
+  is 5-30 yards away, and use their full kit: Gizlock says his aggro line and uses Bomb (random
+  player), Goblin Dragon Gun and Flash Bomb; Vyletongue uses Multi-Shot (random player), Smoke Bomb and
+  Blink.
+- **Not changed:** Razorlash (Puncture and Cleave) already uses his whole kit; that's all he has.
+- **Status:** confirmed in game by Four (2026-10-24): "the boss mechanics" checked out.
+
 ### Scarlet Monastery: the "Scarlet Monastery" achievement
 
 - **Found** (reported by Four, after the encounter fix below didn't help): Four sent the client's
