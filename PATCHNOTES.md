@@ -7,7 +7,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### World: battle pet slots stayed locked after Battle Pet Training
 
-On PR #15 (world fixes), not merged yet.
+Merged to `main` with PR #15 on 2026-10-25.
 
 - **Found** (reported by Four): after paying a Battle Pet Trainer for Battle Pet Training (spell
   119467, 10 gold from `npc_trainer`), the first battle slot in the Pet Journal stayed unusable, so no
@@ -627,7 +627,7 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_24_02_scarlet_halls
 
 ### World: Sewer Beast (Stormwind canals)
 
-On PR #15 (world fixes), not merged yet.
+Merged to `main` with PR #15 on 2026-10-25.
 
 #### The Sewer Beast walks the canal pathways
 - **Found** (reported by Four): the Sewer Beast (3581, rare crocolisk), guid 308329, walked the canal
