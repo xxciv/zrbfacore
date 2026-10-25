@@ -3,6 +3,592 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-24
+
+### Maraudon: first test run (Noxxion, Gizlock, Vyletongue)
+
+From Four's first run of the Wicked Grotto, 2026-10-24. All SQL, in
+`sql/fixes/world/2026_10_24_07_maraudon_noxxion_gizlock_vyletongue.sql` and
+`2026_10_24_08_maraudon_creeping_sludge_combat.sql` `2026_10_24_09_maraudon_celebras_redeemed.sql` `2026_10_24_10_maraudon_movement.sql` and `2026_10_24_11_maraudon_zaetars_spirit.sql`; no rebuild.
+
+#### Noxxion couldn't be targeted
+- **Found** (reported by Four): Noxxion (13282) showed as a quest giver with `.gm on`, couldn't be
+  targeted, and gave no credit. His template had the "not selectable" unit flag (0x02000000) and the
+  quest giver npc flag, and `creature_queststarter` listed him (and Razorlash, 12258) as starters of
+  27698 "Servants of Theradras", the quest that asks you to kill them. The Pandaria 5.4.8 database has
+  neither the flag nor those rows; its only giver is Zaetar's Spirit (12238).
+- **Changed:** Noxxion gets the Pandaria values (npcflag 0, unit_flags 32832, no SmartAI; his fight is
+  the core script `boss_noxxion`: Toxic Volley, Uppercut, and every 40 seconds he hides for 15 seconds
+  while five Noxxion's Spawn attack). Razorlash loses the quest giver flag. Both bogus starter rows are
+  deleted. Noxxion's Spawn (13456) gets the missing scaling row for difficulty 1.
+- **Not changed:** the 3 Constrictor Vines and Barbed Lasher standing on Noxxion are spawned exactly
+  like that in the Pandaria database too; trim them with `.npc delete` if they're in the way.
+- **Status:** confirmed in game by Four (2026-10-24): Noxxion "checked out good".
+
+#### Creeping Sludge left you stuck in combat
+- **Found** (reported by Four, `.debug combat` showed a PvE combat ref to Creeping Sludge 324883 after
+  walking past it): most Creeping Sludges (12222) carry Poison Shock (22638), which hits everyone
+  within 8 yards every 2 seconds. A player it hits is put in combat with the sludge, but the sludge
+  never puts the player on its own threat list, so it neither attacks nor evades and the combat never
+  ends. No other Maraudon creature has a pulsing damage aura like this.
+- **Changed:** `2026_10_24_08_maraudon_creeping_sludge_combat.sql` gives the sludge one SmartAI row:
+  when it damages someone, it attacks them. It then fights that player, or, if it can't see them (in
+  stealth), evades and drops the combat right away.
+- **Status:** confirmed in game by Four (2026-10-24).
+
+#### Celebras the Redeemed stood next to Celebras the Cursed
+- **Found** (reported by Four, with a screenshot): the friendly spirit, Celebras the Redeemed (13716),
+  was already standing beside the boss before the fight. The core script `celebras_the_cursed`
+  summons him on the boss's corpse when it dies, but the world database also spawns him permanently
+  (guid 324986; the Pandaria database has the same row).
+- **Changed:** `2026_10_24_09_maraudon_celebras_redeemed.sql` deletes the static spawn. He now only
+  appears when Celebras the Cursed dies, for 10 minutes.
+- **Status:** confirmed in game by Four (2026-10-24).
+
+#### Almost nothing in Maraudon moved
+- **Found** (reported by Four: Primordial Behemoths used to patrol, Princess Theradras stood still,
+  "much more creatures wandered or had paths"): the BFA world database has no waypoint paths and no
+  wandering for any Maraudon mob except a few critters.
+- **Changed:** `2026_10_24_10_maraudon_movement.sql`, matched to these spawns by entry and position:
+  - 30 waypoint paths from the Pandaria 5.4.8 database (same spawn guids), including a Primordial
+    Behemoth, Meshlok's second spawn, Shardlings, Larvae and Snapjaws.
+  - 8 paths from the AzerothCore 3.3.5 database: Princess Theradras (a loop around her room),
+    Meshlok, Spirit of Veng, a Sister of Celebras pair, a Celebrian Dryad pair, a Stolid Snapjaw, a
+    Thessala Hydra and a Corruptor group, with the pairs and the group walking in formation.
+  - Random wandering for 218 spawns, with the AzerothCore radius capped at 5 yards (this core's random
+    movement doesn't path around walls). Water creatures (Thessala Hydra, Stolid Snapjaw, Rotgrip)
+    don't wander.
+  - New path ids 349000001 and up.
+- **Not changed:** AzerothCore has only one patrolling Behemoth too; the rest stand. Rotgrip's
+  classic path is in a different place from his BFA spawn, so he stays put.
+- **Status:** confirmed in game by Four (2026-10-24): the new patrols and Rotgrip checked out.
+
+#### Zaetar's Spirit stood beside Princess Theradras
+- **Found** (reported by Four, with a screenshot): Zaetar's Spirit (12238) was already standing next to
+  Princess Theradras before the fight. Her core script `boss_princess_theradras` summons him where
+  she dies, but the world database also spawns him permanently there (guid 324993; the Pandaria
+  database has the same row).
+- **Changed:** `2026_10_24_11_maraudon_zaetars_spirit.sql` deletes the static spawn. He now appears
+  when the Princess dies, for 10 minutes, to give and take the Maraudon quests.
+- **Status:** confirmed in game by Four (2026-10-24).
+
+#### Tinkerer Gizlock and Lord Vyletongue stood still and never meleed
+- **Found** (reported by Four): Gizlock only used Goblin Dragon Gun, Vyletongue only an occasional
+  Smoke Bomb, and neither meleed. Each had two SmartAI scripts mixed in the table: old spell timers plus
+  a ranged-hunter template that stops moving and stops melee on aggro and leaves the rest to phase 1
+  rows. Nothing sets phase 1, so those rows never ran.
+- **Changed:** both scripts replaced with one clean set. They chase and melee, Shoot when the target
+  is 5-30 yards away, and use their full kit: Gizlock says his aggro line and uses Bomb (random
+  player), Goblin Dragon Gun and Flash Bomb; Vyletongue uses Multi-Shot (random player), Smoke Bomb and
+  Blink.
+- **Not changed:** Razorlash (Puncture and Cleave) already uses his whole kit; that's all he has.
+- **Status:** confirmed in game by Four (2026-10-24): "the boss mechanics" checked out.
+
+### Scarlet Monastery: the "Scarlet Monastery" achievement
+
+- **Found** (reported by Four, after the encounter fix below didn't help): Four sent the client's
+  Achievement, Criteria, CriteriaTree, ModifierTree and DungeonEncounter db2 files. "Scarlet Monastery"
+  (637, criteria tree 3990) has a single criteria, 533: be the target of spell 132022 (Whitemane's kill
+  credit, criteria type 28). Retail Whitemane casts it on everyone when she dies; the spell isn't in the
+  client's spell data, so nothing here ever cast it. "Scarlet Halls" (7413) is a plain kill of Koegler
+  (59150), which is why that one already worked (confirmed by Four). The encounter rows from
+  2026_10_24_06 are still right (DungeonEncounter 1425 is Whitemane on map 1004) but weren't the cause.
+- **Changed:** `boss_high_inquisitor_whitemane_mop` gives every player in the instance the type 28
+  criteria for 132022 when she dies (`DoUpdateCriteria`), which also covers "Heroic: Scarlet
+  Monastery" if it uses the same spell. In `tools/bfa/scarlet-monastery.patch`; no SQL.
+- **Status:** confirmed in game by Four (2026-10-24): the achievement unlocked on Whitemane's death.
+
+### Scarlet Monastery: second test run (Fuel Tanks, dungeon and achievement credit)
+
+From Four's second run, 2026-10-24. C++ in `tools/bfa/scarlet-monastery.patch` (new version again),
+data in `sql/fixes/world/2026_10_24_06_scarlet_fuel_tank_encounters.sql`.
+
+#### Whitemane gave no dungeon completion and no "Scarlet Monastery" achievement
+- **Found** (reported by Four): the scenario counted Whitemane (`.debug scenario` showed progress 1),
+  but the achievement stayed locked. `instance_encounters` only had the classic encounters for Scarlet
+  Halls and Scarlet Monastery (448 Herod, 450 Whitemane), which belong to the old maps, so killing the
+  last boss on the new maps completed no dungeon encounter. The classic rows were also marked as the
+  last boss of dungeon finder entries 163 and 164, and the core keeps only one last boss per entry.
+- **Changed:** the SQL takes the "last boss" mark off 448 and 450 and adds the Mists encounters, as the
+  Pandaria 5.4.8 database has them: 1425 High Inquisitor Whitemane (last boss of 164) and 1420
+  Flameweaver Koegler (last boss of Scarlet Halls, 163).
+- **Status:** didn't unlock the achievement (Four, second run); the real cause is the kill credit
+  spell, see the entry above. The rows are still correct for dungeon encounter credit.
+
+#### Fuel Tanks still couldn't be clicked
+- **Found** (reported by Four): clearing the unselectable flag (2026_10_24_04) didn't make the tank
+  clickable. Cause not found.
+- **Changed:** the tank now also explodes when a player hits it. The SQL gives it the Monster faction
+  (14) so it can be attacked, and lets anyone use its spell click (`user_type` 0), since it is no longer
+  friendly. `npc_scm_fuel_tank` explodes on a click or on the first hit from a player, and ignores
+  damage from creatures.
+- **Status:** confirmed in game by Four (hitting the tank sets it off). Clicking it still does nothing.
+
+### Scarlet Monastery: first test run fixes, and the Headless Horseman
+
+From Four's first run, 2026-10-24. The C++ is in `tools/bfa/scarlet-monastery.patch` (same patch,
+new version: revert the old one first), the data in
+`sql/fixes/world/2026_10_24_04_scarlet_monastery_fuel_tank_burning_man.sql` and
+`sql/fixes/world/2026_10_24_05_headless_horseman.sql`.
+
+#### Fuel Tanks couldn't be clicked
+- **Found** (reported by Four): the Fuel Tank template (59706) has `UNIT_FLAG_NOT_SELECTABLE`
+  (0x02000000) in `unit_flags`, and an unselectable creature can't be clicked, so the spell-click row
+  and script never ran.
+- **Changed:** the SQL clears that flag on the template, and `npc_scm_fuel_tank` also clears it when
+  the tank spawns.
+- **Status:** untested in game.
+
+#### Brother Korloff left players burning
+- **Found** (reported by Four, with screenshot): after Korloff, the player kept a fire glow with no
+  debuff icon until `.unaura all`. Blazing Fists and Firestorm Kick trigger Burning Man (125844, 125852),
+  a hidden dummy aura with no duration that is meant for the Training Dummies (achievement). It picks
+  its targets by creature entry, and with no `conditions` row the core hit everyone in range.
+- **Changed:** `conditions` rows limit both spells to the Training Dummies (64446, 60197).
+- **Status:** untested in game. Korloff's fight itself (melee, Flying Kick, Blazing Fists, fire trail,
+  loot, dungeon credit) is confirmed by Four.
+
+#### Whitemane never came out after Durand fell
+- **Found** (reported by Four): Durand died, Whitemane stayed behind her door, passive and
+  unselectable. Not reproduced here, so the exact cause isn't known. Two weak points in the script:
+  Whitemane ignored Durand's call if she already counted as "in combat", and if Durand died outright
+  (instead of feigning) nothing called her at all.
+- **Changed:** Whitemane now only checks her own "intro started" flag. Durand looks her up by the
+  instance data or, failing that, the nearest Whitemane within 150 yards, and if he really dies he
+  still calls her out (she then fights alone).
+- **Status:** untested in game. Thalnos (all abilities, door, scenario credit) is confirmed by Four.
+
+#### The Headless Horseman couldn't be summoned
+- **Found:** the classic Horseman script flew him over map 189's coordinates. That map is gone from
+  the 8.3.7 client: the Monastery graveyard (map 1004) is the only one left. The Pumpkin Shrine (186267)
+  that Hallow's End (game event 12) spawns there had no working summon.
+- **Changed:** `boss_headless_horseman.cpp` is replaced by a port of the Pandaria 5.4.8 map-1004
+  script:
+  - **Pumpkin Shrine** (`go_pumpkin_shrine`): "Call the Headless Horseman." summons him once per
+    instance. The caller recites the four rhyme lines, he rises from the soil beside the shrine, circles
+    the graveyard and lands, then attacks everyone in range. A wipe despawns him and the shrine works
+    again. The shrine's quest turn-ins (11135, 11220) still show.
+  - **Phases:** each time his body would die it loses its head (Head of the Horseman, 23775, which
+    wanders within 30 yards). While headless the body is immune, confused, regenerates 4% a second and
+    whirlwinds. Beat the head to 66% (phase 1), 33% (phase 2) or 0% (phase 3) to end the phase; if the
+    body heals to full first, the head comes back and the phase repeats. Cleave (42587) all fight;
+    phase 2 adds Conflagration (42380) every 8 to 12 seconds; phase 3 throws pumpkins every 15 seconds
+    (52236), which sprout into Pumpkin Fiends unless killed first (`spell_sprouting`, 42281).
+  - **Death:** Sir Thomas (23904) appears for 60 seconds, the instance marks the Horseman done, and a
+    dungeon finder group queued for "The Headless Horseman" (285) is finished.
+  - The SQL binds the scripts, replaces the Horseman texts with the Pandaria set, adds level scaling
+    for difficulties 1 and 2 (23682, 23775, 23694, 23904: scaled to you, up to 120), moves the dungeon
+    finder arrival for 285 from map 189 coordinates to the Monastery entrance, and adds a reward row for
+    levels 86 to 120.
+- **Status:** untested in game.
+
+### Scarlet Monastery (map 1004): spawns, scripts and the Blades quest
+
+Found in Four's first run, 2026-10-24. Everything below is in `tools/bfa/scarlet-monastery.patch`
+(22nd patch; adds four source files, so run `sudo cmake build` once before building) and
+`sql/fixes/world/2026_10_24_03_scarlet_monastery_rework.sql`. The scripts are ported from the
+Pandaria 5.4.8 project (alexkulya). None of it has been tested in game yet.
+
+#### The graveyard had the wrong things standing in it
+- **Found** (reported by Four): the graveyard had Empowering Spirits, Frenzied Spirits, Piles of
+  Corpses, "level ??" Zombified Corpses, Centurions, Flamethrowers and Thalnos together. Compared with
+  the Pandaria 5.4.8 database, this one had 18 permanent Empowering Spirits (59893, level 100 to 101).
+  Those are Thalnos's summons and should only appear during his fight. It also had 6 Fuel Tanks (59706)
+  that should only drop from dead Flamethrowers, and 30 Frenzied Spirits instead of 12. Purifiers were
+  20 instead of 40 and Zealots 13 instead of 24. There were two stray Durand copies (60106 and the
+  Dashing Strike stalker 60107), and Thalnos and Durand wandered (random movement, 10 yards).
+- **Changed:** the SQL replaces every creature on map 1004 with the Pandaria set (167 spawns, guids
+  1004000001 and up). Two spawns from this database stay because they belong to its quest chain: the
+  entrance Hooded Crusader (64827, quests 31513 and 31514) and the Blade of the Anointed at the pool
+  (64854). It also adds Korloff's patrol path and the two drunk Judicators in the graveyard hall.
+  Gameobjects were already the same as Pandaria's and are untouched.
+- **Status:** untested in game.
+
+#### "Level ??" Zombified Corpses
+- **Found:** Zombified Corpse (59771), Fallen Crusader (59884), Empowered Zombie (59930), Evicted Soul
+  (59974) and Spirit of Redemption (58592) only had a `creature_template_scaling` row for difficulty 0.
+  The dungeon runs as difficulty 1, so they got no scaling and rolled a random level between 31 and 90.
+- **Changed:** the SQL copies their difficulty 0 rows to difficulty 1 (level 1 to 100, scaled to you).
+- **Status:** untested in game.
+
+#### Fuel Tanks glowed but did nothing
+- **Found** (reported by Four): Fuel Tanks have the spell-click flag and `npc_spellclick_spells` row
+  (114953), but their SmartAI had nothing to do on a click.
+- **Changed:** `npc_scm_fuel_tank`: clicking it blows it up with Barrel Explosion (114952, 10 yards) and
+  it despawns. New `conditions` rows make the explosion hit creatures only, never players or other
+  tanks. Scarlet Flamethrowers (`npc_scarlet_flamethrower`) now drop a Fuel Tank when they die (it lasts
+  5 minutes), and burn the dead with their flamethrower (115506) out of combat.
+- **Status:** untested in game.
+
+#### Graveyard trash
+- **Changed:**
+  - **Pile of Corpses** (`npc_pile_of_corpses`) raises a Zombified Corpse every 10 seconds (114951) until
+    it is destroyed. It doesn't move or fight back, and its zombies vanish when it dies.
+  - **Zombified Corpses** get faction 1962, which is hostile to players and to the Crusade. When a
+    Centurion hits one, it fights back and falls 3 to 5 seconds later.
+  - **Scarlet Centurions** (`npc_scarlet_centurion`) cut down zombies within 10 yards while no player is
+    fighting them. Against players they Cleave (115519) every 5 to 6 seconds and use Retaliation
+    (115511) once, at 20% health.
+  - **Frenzied Spirits** (`npc_frenzied_spirit`) stack Frenzied Spirit (115524, more damage and size)
+    every 3 to 4 seconds in combat. Pandaria stacks it every 1 to 1.5 seconds; that is slowed here for
+    solo play.
+  - **The entrance Hooded Crusader** warns "Destroy the Piles of Corpses to stop the Zombified
+    Corpses!" (raid warning) the first time a player comes within 30 yards.
+- **Status:** untested in game.
+
+#### Scarlet Zealots
+- **Changed:** `npc_scarlet_zealot` replaces their SmartAI:
+  - Smite (111010) on a random player every 4 to 6 seconds.
+  - Heal (111008) on the most hurt Scarlet within 40 yards every 9 to 14 seconds.
+  - Resurrection (111670) on a dead Fanatic, Purifier, Zealot, Judicator or Initiate within 30 yards
+    every 15 to 25 seconds. The body gets up when the cast finishes.
+  - When one dies it leaves a Spirit of Redemption (58592) for 12 seconds. The spirit can't be
+    attacked and keeps healing (111024) the most hurt Scarlet.
+- **Status:** untested in game.
+
+#### Thalnos the Soulrender had no fight
+- **Found:** Thalnos (59789) had no script and no SmartAI rows.
+- **Changed:** `boss_thalnos_the_soulrender`:
+  - Spirit Gale (115289) on a random player every 7.5 to 13 seconds.
+  - Raise Fallen Crusader (115139), a 5-second channel that raises a Fallen Crusader (59884) every
+    second. The Crusaders cast Mind Rot (115144) every 3.5 to 4.2 seconds. First at 6.5 seconds, then
+    20 seconds after each Empowering Spirits.
+  - Evict Soul (115297) every 25 seconds, on someone other than the tank when there is one. The
+    Evicted Soul (59974) it spawns copies its player's looks and attacks them.
+  - Empowering Spirits (115147) every 40 seconds. Each spirit turns into an Empowered Zombie (59930)
+    after 5 seconds unless it is killed first.
+  - His yells and the two raid warnings come from the Pandaria database. All his adds despawn when he
+    dies or resets.
+  - New `spell_areatrigger` / `areatrigger_template` 220 rows: the pool Spirit Gale leaves (3 yards)
+    puts its damage-over-time (115291) on players standing in it. The 3-yard size is a guess: neither
+    database had this data.
+  - The Graveyard Door (211844) opens when he dies.
+- **Status:** untested in game.
+
+#### Brother Korloff had no fight
+- **Found:** Korloff (59223) had no script and no SmartAI rows.
+- **Changed:** `boss_brother_korloff`:
+  - Flying Kick every 25 seconds: he leaps at a player more than 5 yards away (or the tank), knocking
+    them back (114488). Where he lands, Firestorm Kick (113764) burns everyone around him for 6 seconds.
+  - Blazing Fists (114807), a 6-second channel of punches at the tank, every 20 seconds.
+  - Rising Flame (114410), +10% damage for every 10% of health he loses.
+  - Below 50% health he leaves Scorched Earth (59507, burning ground, 114464) where he walks; each
+    patch lasts 30 seconds.
+  - He patrols his room (Pandaria path), and the cathedral door (210564) opens when he dies.
+- **Status:** untested in game.
+
+#### Commander Durand and High Inquisitor Whitemane
+- **Found:** Durand (60040) had no script. Whitemane (3977) still ran the old Cathedral script for the
+  Mograine fight (`boss_high_inquisitor_whitemane`), and her lines were the old ones.
+- **Changed:** `boss_commander_durand` and `boss_high_inquisitor_whitemane_mop`:
+  - Durand uses Flash of Steel (115629) six times in a row on the farthest player, every 21 to 26
+    seconds. He also uses Dashing Strike three times, every 24 seconds: line damage (115739) to a
+    random player, then he comes out behind them.
+  - When Durand "dies" the first time he only feigns it. Whitemane's door (210563) opens and she walks
+    out and fights at range: Holy Smite (114848), Heal (36678) on herself, and Mass Resurrection
+    (113134) every 20 seconds while dead Scarlet trash lies within 80 yards.
+  - At 50% health she casts Deep Sleep (9256) on everyone near and a shield on herself. She then walks
+    to Durand and raises him with Scarlet Resurrection (9232; a new `conditions` row lets it target
+    Durand). From then on both fight until dead, and she heals Durand when he is lower than her.
+  - A wipe resets both. When both are dead, the Hooded Crusader (64842) comes out of her room.
+- **Status:** untested in game.
+
+#### "Unto Dust Thou Shalt Return" couldn't be finished
+- **Found** (reported by Four): the Blades of the Anointed said "Requires High Inquisitor Whitemane's
+  corpse". That is a spell focus (gameobject 214291) Whitemane is meant to leave when she dies, with
+  spell 126789, and nothing cast it. Even with it there, the Blades' spells (126787, 126843) only send
+  an event (33000 / 33001) that nothing handles, so there was no quest credit.
+- **Changed:** Whitemane casts 126789 as she dies. New `spell_scm_blades_of_the_anointed`
+  (`spell_script_names` for both spells) gives the quest credit (64835 for quest 31514, 64840 for
+  31516) when the Blades are used at her corpse. The Hooded Crusader who appears after the fight
+  (64842) now also takes quest 31514 (`creature_questender`), as well as the entrance crusader.
+- **Status:** untested in game. Until it is in, `.quest complete 31514` finishes the quest.
+
+#### Instance script
+- **Changed:** `instance_scarlet_monastery` was registered for the old map 189, which no longer exists
+  in 8.3.7. It is now registered for map 1004. It keeps the Headless Horseman and Pumpkin Shrine data,
+  and adds boss states for Thalnos, Korloff, Durand and Whitemane and the three doors.
+- **Status:** builds; untested in game. The Headless Horseman script itself is still the old map 189 one
+  (its flight path is in old coordinates), so summoning him at the Pumpkin Shrine is not expected to
+  work yet.
+
+## 2026-10-23
+
+### Scarlet Halls and Scarlet Monastery: getting in and out
+
+Found in Four's first visit.
+
+#### The Dungeon Finder dropped you outside Scarlet Halls
+- **Found** (reported by Four): queueing for Scarlet Halls put you on map 1001 at 1610.83, -323.43,
+  18.67, with no ground under you. That is the old Armory entrance (map 189). `lfg_dungeon_template`
+  row 163 (now Scarlet Halls, normal) was never moved to the new map. Row 164 (Scarlet Monastery,
+  normal) had the right x and y but the old Cathedral height, 18.67 instead of 0.99.
+- **Changed:** new `sql/fixes/world/2026_10_23_01_scarlet_entrances_exits.sql` sets 163 and heroic 473
+  to 837.23, 615.755, 12.8115 (facing 4.75989). Four picked that spot with `.gps`, a few yards back
+  from the Pandaria 5.4.8 value (836.666, 605.141). (Their first `.gps` gave the selected crusader's
+  spot instead.) It sets 164 to 1124.64, 512.467, 0.989549
+  (facing 1.5708), the Pandaria value. Heroic Scarlet Monastery (474) has no row and uses the door's
+  target, which was already right.
+- **Status:** the Dungeon Finder put Four inside Scarlet Halls on 2026-10-23 (old spot). The moved spot
+  is untested.
+- **Changed** (Four's request, 2026-10-24): new `sql/fixes/world/2026_10_24_02_scarlet_halls_arrival.sql`
+  moves the arrival spot for 163, 473 and the door's `world_safe_locs` 4077 to Four's new `.gps`:
+  821.987, 608.059, 13.5985, facing 0.021594 (into the hall).
+- **Status:** untested in game.
+
+#### The Scarlet Halls door outside did nothing
+- **Found:** area trigger 614 (the Scarlet Halls door) points at WorldSafeLoc 4077, and that row was
+  missing from `world_safe_locs`. The core skips a teleport whose target is missing, at startup.
+- **Changed:** the same SQL adds `world_safe_locs` 4077: map 1001, the same spot as the Dungeon Finder
+  (837.23, 615.755, 12.8115). This core reads `Facing` as radians (`ObjectMgr::LoadWorldSafeLocs`), so
+  it is 4.75989.
+- **Status:** loads without errors; walking through the door is untested.
+
+#### No way out of either dungeon
+- **Found** (reported by Four): once inside Scarlet Monastery you couldn't walk out. `areatrigger_teleport`
+  had no exit row for either new map. The Pandaria database has them as triggers 7801 and 7802.
+- **Changed:** the same SQL adds 7801 (Scarlet Halls exit, to WorldSafeLoc 3626, 2869.32, -820.82,
+  160.33) and 7802 (Scarlet Monastery exit, to 3623, 2915.34, -801.58, 160.33). Both are the courtyard
+  spots the old wings used.
+- **Status:** the core loads 614, 7801 and 7802 without errors (Four's `Errors.log`, 2026-10-23).
+  Walking through them is untested.
+
+#### Two Hooded Crusaders on top of each other at the Scarlet Halls entrance
+- **Found** (reported by Four): two quest givers stood on the same spot. One offered Rank and File
+  and Just for Safekeeping, Of Course; the other showed the same quests greyed out. 64738 (guid
+  13241581) gives the normal quests 31490 and 31493 (from level 26). 64764 (guid 13241582) gives the
+  heroic copies 31495 and 31497 (level 90). Both spawned in normal and heroic (`spawnDifficulties` 1,2).
+- **Changed:** new `sql/fixes/world/2026_10_23_02_scarlet_halls_hooded_crusaders.sql`: 64738 spawns
+  only in normal (1), 64764 only in heroic (2).
+- **Status:** confirmed in game by Four on 2026-10-23 (one crusader in normal).
+
+#### Starving Hounds kept you knocked down
+- **Found** (reported by Four): after the first Starving Hound (58876) pack jumped you, you lay on the
+  floor and never got up; only `.combatstop` freed you. The hounds cast Hungry Dog (111582) every 12 to
+  15 seconds. It is a 30-second channel that stuns its target and ends early only if the hound is
+  interrupted. That's a group mechanic (someone else knocks the dog off you), and with four hounds per
+  pack a solo player stayed stunned.
+- **Changed:** new `sql/fixes/world/2026_10_23_03_scarlet_halls_hounds.sql` replaces the hound's SmartAI.
+  Every 20 to 25 seconds in combat it runs actionlist 5887600: cast Hungry Dog on its target, then 4
+  seconds later interrupt its own Hungry Dog channel, which removes the stun.
+- **Status:** replaced the same day by the C++ hound in `scarlet-halls.patch` (below), which keeps the
+  4-second cap. `2026_10_23_05` removes this action list again.
+
+#### Angry Hounds showed as neutral
+- **Found** (reported by Four): Angry Hound (58674) was level 1 with faction 7 (neutral creature). It
+  is an elite with its own loot table, and the Pandaria 5.4.8 database has it hostile at level 30.
+- **Changed:** the same SQL sets faction 14, level 29 to 90, matching the Starving Hounds next to it.
+- **Status:** untested in game.
+
+#### Codex of the Crusade almost never dropped
+- **Found** (reported by Four): Flameweaver Koegler (59150) didn't drop the Codex of the Crusade for
+  "Just for Safekeeping, Of Course". The normal item 87267 (quest 31493) had `Chance` 1 and
+  `QuestRequired` 0. The heroic item 87268 (quest 31497) used loot mode 2, which this core never turns on.
+- **Changed:** new `sql/fixes/world/2026_10_23_04_scarlet_halls_codex.sql` sets both to `Chance` 100,
+  `QuestRequired` 1, `LootMode` 1: they drop every kill, only for players on the quest.
+- **Status:** untested in game.
+
+### Scarlet Halls: the events and bosses
+
+Four called Scarlet Halls done on 2026-10-24, after five runs. The per-fix statuses below say which
+parts were seen working in game.
+
+Found in Four's first full run (2026-10-23). Most of Scarlet Halls had no working script in this core:
+the instance had no instance script, the bosses ran short stubs, and the events had neither scripts nor
+the creatures they need. New `tools/bfa/scarlet-halls.patch` ports the Pandaria 5.4.8 scripts
+(`src/server/scripts/EasternKingdoms/ScarletHalls/`: `scarlet_halls.cpp` is new, the instance script,
+the header and the three boss files are rewritten, and the script loader registers them). New
+`sql/fixes/world/2026_10_23_05_scarlet_halls_rework.sql` supplies the spawns, yells and bindings.
+Trash that already had working SmartAI (Myrmidons, Evangelists, Evokers, Scholars, Pupils and others)
+keeps it.
+
+#### The dungeon had no instance script
+- **Found:** `instance_template` for map 1001 had no script, and the core had none to register: no
+  boss states, so no doors and nothing to tell the codex crusader that Koegler died.
+- **Changed:** the patch's `instance_scarlet_halls` tracks the three bosses and Lindon's gauntlet, and
+  opens Lindon's gate (212160) and Braun's fire wall (210097) when they die. Herod's Door (210480)
+  closes while Harlan is fought. The SQL sets the instance script.
+- **Status:** untested in game.
+
+#### Half the dungeon's creatures were missing
+- **Found:** map 1001 had 84 spawns, a partial and slightly shifted set. Braun's six Obedient Hounds,
+  the ten Scarlet Guardians and Sergeant Verdone at his exit, the stakes, buckets of dog food, archery
+  targets, cannons and all 71 Books were missing, and so were Lindon's gate, Braun's fire wall and the
+  heroes' statues in Harlan's room. The only door was the old Armory's Herod's Door (101854).
+- **Changed:** the SQL replaces every map 1001 spawn except the two entrance Hooded Crusaders with the
+  Pandaria set: 253 creatures (guids 1001000001+, with the 20 patrol paths) and 27 gameobjects. The
+  challenge mode door and orb, the herbs and a second portal are left out.
+- **Status:** the SQL runs twice without errors on a copy of this database. Untested in game.
+
+#### Commander Lindon's archery hall had no event
+- **Found** (reported by Four): Lindon (59191) and his Master Archers (59175) were neutral (faction 7)
+  and just stood there to be tanked.
+- **Changed:** they are hostile (14). When Lindon sees you, his archers shoot Piercing Arrow down the
+  hall and he uses Shield Breaker on anyone within 18 yards. Click a Reinforced Archery Target to carry
+  it as a shield: Heroic Defense, 75% less damage taken but slower and no attacking. Stepping into the
+  hall (area trigger 7532) sets off a line of Exploding Shots on the floor. Within 10 yards of Lindon
+  the volleys stop and the whole crew draws blades; Heroic Defense drops then, and past the hall.
+  Simplified: the archery target walks just ahead of you instead of riding on you as a vehicle.
+- **Found** (Four's run, 2026-10-23): the archery target trailed behind, didn't cut the arrows' damage,
+  and kept following after Lindon died. Heroic Defense was never applied: its first effect makes the
+  player a vehicle for the target, and cast on a player that isn't one it never landed.
+- **Changed:** the target adds the aura directly, walks 2 yards in front of you (you're slowed by 65%
+  while carrying it), and goes back on its stand as soon as the aura is gone. It can't be picked up
+  once Lindon is dead.
+- **Found** (Four's second run, 2026-10-23): Heroic Defense now works (slowed, arrows hit for less),
+  but the target still walked behind you. It used the follow movement, which stops moving whenever it
+  is within 3 yards of you, so once behind you it stayed there.
+- **Changed:** every quarter second the target runs to the point 2.5 yards in front of you and turns
+  to face the way you face.
+- **Found** (Four's third run, 2026-10-23): the target now stays in front (seen in Four's video). But
+  after Lindon's Shield Breaker knocked Four down, the character was invisible except for the weapons,
+  floating and oversized, even back in Stormwind, until `.unaura all`. Shield Breaker (125492) fires
+  two shells: 125507 knocks you down and strips Heroic Defense (meant), and 125493 transforms its
+  targets into Invisible Man (64188) with no time limit. 125493 picks targets by creature entry, and
+  with no conditions row the core falls back to every enemy within 13 yards, so it hit the player.
+- **Changed:** new `sql/fixes/world/2026_10_23_06_scarlet_halls_shield_breaker.sql` limits 125493 to
+  the Reinforced Archery Target (59163). After the knockdown the target goes back on its stand.
+- **Found** (Four's fourth run, 2026-10-23): the target still trailed the player, bullseye towards
+  the player. Four's source turned out to still hold the `ea91d85` version of the patch (the two
+  updates before this one never reached the build), so the quarter-second positioning above was never
+  tried in game.
+- **Changed:** the target now moves every 0.1 seconds at 1.5 times your speed, stays in front of you
+  (further ahead while you walk), and keeps its facing while it moves.
+- **Found** (Four's fifth run, 2026-10-24): it now leads, but too far out and with the bullseye towards
+  the player. The bullseye is on the front of the model after all (the old follow movement had turned
+  the model to face the player).
+- **Changed:** it faces the way you face, bullseye towards the archers, about 1 yard in front of you
+  (plus a little while you walk).
+- **Status:** Four got past Lindon on 2026-10-23; the volleys, the exploding floor and the melee
+  switch weren't reported on. Heroic Defense confirmed by Four on 2026-10-23, leading confirmed on
+  2026-10-24. The distance, facing and Shield Breaker fixes are untested. Lindon has no loot table (`lootid` 0 here and in the
+  Pandaria 5.4.8 database), so he drops nothing.
+
+#### Starving and Angry Hounds, and the dog food buckets
+- **Found:** the buckets of dog food did nothing and the Angry Hounds weren't chained.
+- **Changed:** Starving Hounds (58876) are C++ now, Hungry Dog still capped at 4 seconds. Click a Bucket
+  of Meaty Dog Food (65379), then throw it (out of combat) next to a Vigilant Watchman: he is pinned
+  down and every hound within 20 yards turns on him, then sits down to eat. Angry Hounds (58674) are
+  chained to their stakes and only attack when you come within 5 yards, or when attacked.
+- **Found** (Four's run, 2026-10-23): an Angry Hound attacked from stealth stayed passive, and one that
+  had aggroed ran back to its stake and reset when you stepped back.
+- **Changed:** an attack wakes the hound, and when you go past the end of its chain (8 yards from the
+  stake) it waits at the stake still in combat instead of resetting, and comes back at you when you're
+  in reach.
+- **Found** (Four's second run, 2026-10-23): the hounds now fight back, but they still went back to
+  the stake when you stepped away. Once a hound is in the fight its chain should be broken.
+- **Changed:** when a hound is attacked or attacks you, the Leashed aura comes off and it chases you
+  like any other hound. The chain-length limit is gone. A hound that resets is chained again.
+- **Found** (Four's third run, 2026-10-23): the hound still showed the Chained debuff ("Chained to a
+  post. Always attacks nearest enemy.") after being hit. That is a separate aura, Chained (111641),
+  from `creature_template_addon`; only Leashed (103169) was being removed. Also, a hound that pulled
+  itself by you walking up to it should stay chained: only an attack breaks the chain.
+- **Changed:** the first damage, or a hostile spell such as a stun, removes Chained and Leashed and
+  frees the hound to chase you anywhere. Until then it is chained: it attacks anyone within 5 yards
+  but waits at its post, still in combat, for anyone past 8 yards. A hound that resets gets Chained
+  back.
+- **Status:** confirmed by Four on 2026-10-24 ("Angry Hound is fixed").
+
+#### Houndmaster Braun
+- **Found** (reported by Four): melee, Death Blossom and Bloody Mess only; an easy fight.
+- **Changed:** Piercing Throw every 7 to 9 seconds, Death Blossom as a leap that spins where it lands,
+  one Obedient Hound called at 90, 80, 70 and 60%, Bloody Rage at 50%. At 15% his own hounds turn on
+  him: he stops fighting, is eaten, and dies 12 to 15 seconds later with the kill credited to you. The
+  hounds then run to his exit and kill the guards there.
+- **Status:** confirmed by Four on 2026-10-23 (yells, hounds, kill credit, the guards at the exit).
+
+#### Armsmaster Harlan
+- **Found** (reported by Four): melee and Dragon's Reach only.
+- **Changed:** Call for Help every 20 to 25 seconds (two Scarlet Defenders in Heavy Armor run in along
+  the balconies; break the armor and they are Unarmored), Heroic Leap to the middle of the room
+  followed by Blades of Light spinning round it (every second, damage to everyone within 8 yards), and
+  Berserker Rage at 50%. Simplified: Blades of Light doesn't pick players up.
+- **Status:** confirmed by Four on 2026-10-23 (yells, Call for Help, bonus objective).
+
+#### Flameweaver Koegler meleed too much
+- **Found** (reported by Four): far too much melee for a caster, and Quickened Mind (113682) didn't make
+  his casts instant. Its cast-time cut is a spell modifier, which only reaches player spell families.
+- **Changed:** he casts back to back: Pyroblast, Fireball Volley every 13.5 seconds, and Book Burner on
+  a book case (it burns and hurts anyone in front of him). Quickened Mind now gives him three instant
+  casts. Every 30 seconds he teleports to the middle and channels Greater Dragon's Breath for 10
+  seconds, a cone that sweeps round the room.
+- **Status:** confirmed by Four on 2026-10-23: "All scripts fired off successfully".
+
+#### The Hooded Crusader never came for the codex
+- **Changed:** the crusader outside the library stays hidden until Koegler dies, then walks in and asks
+  for the codex.
+- **Status:** confirmed by Four on 2026-10-23 (codex dropped, quest turned in, dungeon complete).
+
+#### Smaller things
+- **Changed:** 22 yells and emotes for Braun, Harlan, Koegler, Lindon, the archery target and the
+  crusader (none existed). Scarlet Treasurers drop a pile of Gold Coins. The Scarlet Cannons get their
+  Cannoneers, who fire Cannon Blast at players in the courtyard.
+- **Status:** yells and the Treasurer's gold untested in game.
+
+#### The cannons only made smoke
+- **Found** (Four's run, 2026-10-23): the Scarlet Cannoneers (59293) stood inside the cannons and
+  could only hurt you in melee. They were summoned on the cannon's own spot. Their shell was fired by
+  the cannon (58726), which is a level 1 friendly stalker, so its 15-yard Cannon Blast (111569) found
+  no enemies to hit.
+- **Changed:** the cannoneer fires the shell himself, at a random player within 40 yards every 3 to
+  5 seconds, so it hits at his level. The shell only hits within 3 yards of where it lands and takes a
+  moment to fly, so he leads a moving target by its speed and the flight time. He stands 2 yards
+  behind the gun (Ready Cannon, 113933, put him out at the muzzle).
+- **Found** (Four's fifth run, 2026-10-24): the shells now land and hurt ("the cannon shots work"),
+  but the cannoneers stood in front of the muzzles. The stalker faces the breech end of its gun, not
+  the muzzle.
+- **Changed:** each cannoneer stands beside the breech (1.5 yards towards it and 1.3 yards out to the
+  side, stopping short of any wall), facing the way the gun fires.
+- **Status:** cannon damage confirmed by Four on 2026-10-24; the new standing spot is untested.
+
+#### Trash dropped almost nothing
+- **Found** (reported by Four, 2026-10-23/24): "some enemies only drop money", loot "not the same
+  density". These are the Mists of Pandaria versions of the Scarlet mobs, and their loot tables were
+  built for heroic: most rows are heroic-only (LootMode 2, a mode the core never gives creatures), and
+  the normal rows add up to 29-47% for one item per kill, with no world-drop reference tables. The
+  Pandaria 5.4.8 database splits them the same way. Deadmines trash, for comparison, has 90-330% plus
+  reference drops, and the old Classic Scarlet Monastery mobs still in the database about 55% (not
+  counting quest items) plus 25-45% of reference drops.
+- **Changed:** new `sql/fixes/world/2026_10_24_01_scarlet_trash_loot.sql` adds the normal-mode loot of
+  a Classic Scarlet mob of the same level to each trash mob: Scarlet Augur (4284) for the 11 Scarlet
+  Halls humanoids, Scarlet Monk (4540) for the 7 Scarlet Monastery humanoids, Haunting Phantasm
+  (6427) for the Frenzied Spirits. Quest-only rows are skipped and rows a mob already had are kept, so
+  a Scarlet Myrmidon goes from about 34% to 49% for an item plus 26 reference tables (cloth, greens,
+  recipes). Bosses and the hounds are unchanged. 1,868 rows; the file can be run again.
+- **Status:** untested in game. The "You don't have permission to loot that corpse" messages are not
+  explained yet.
+
+#### Dying sent you to Westfall
+- **Found** (Four's run, 2026-10-24): after dying to Braun, the spirit healer was at Sentinel Hill in
+  Westfall. Neither Scarlet Halls (zone 6052) nor Scarlet Monastery (zone 6109) had a row in
+  `graveyard_zone`, so the core fell back to its default Alliance graveyard.
+- **Changed:** new `sql/fixes/world/2026_10_24_00_scarlet_graveyards.sql` links both zones to the
+  Scarlet Monastery graveyard in Tirisfal Glades (`world_safe_locs` 1874), as the Pandaria 5.4.8
+  database does.
+- **Status:** untested in game.
+
+#### To pick up these fixes
+New patch on top of the others: apply it and rebuild. It adds a new source file (`scarlet_halls.cpp`),
+so CMake has to re-run its configure step once (`cmake build`, which keeps your settings); without it
+the link fails with `undefined reference to AddSC_scarlet_halls()`. Then the SQL, and restart
+`worldserver`.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/scarlet-halls.patch | git apply
+sudo cmake build
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_01_scarlet_entrances_exits.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_02_scarlet_halls_hooded_crusaders.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_03_scarlet_halls_hounds.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_04_scarlet_halls_codex.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_05_scarlet_halls_rework.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_23_06_scarlet_halls_shield_breaker.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_24_00_scarlet_graveyards.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_24_01_scarlet_trash_loot.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_24_02_scarlet_halls_arrival.sql | mysql -u root -p bfa_world
+```
+
 ## 2026-10-19
 
 ### World: Sewer Beast (Stormwind canals)
@@ -37,6 +623,129 @@ git -C ../tools-repo pull
 mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_19_06_stormwind_sewer_beast.sql
 ```
 Then restart worldserver.
+
+### Gnomeregan
+
+Merged to `main` with PR #16 on 2026-10-23. Found in a survey before the first run and in Four's run.
+
+#### Blastmaster Emi Shortfuse couldn't be talked to; Electrocutioner 6000 yelled twice
+- **Found:** Emi (7998) starts the trogg event from her gossip option "I am ready to begin." (menu
+  1080, `OptionNpcFlag` 1), but her `npcflag` was 2 (questgiver) and she has no quests, so there was
+  nothing to click. The Pandaria 5.4.8 world database has `npcflag` 1. Electrocutioner 6000 (6235) had
+  two "On Aggro - Say Line 0" SmartAI rows (ids 0 and 3, from two script versions).
+- **Changed:** new `sql/fixes/world/2026_10_19_08_gnomeregan_emi_electrocutioner.sql`:
+  `creature_template` 7998 `npcflag` 2 -> 1; `smart_scripts` 6235 id 3 deleted.
+- **Status:** Emi confirmed in game by Four on 2026-10-19 (her event ran to the end, Grubbis counted
+  for his objective). Electrocutioner untested.
+
+#### Way too many troggs in Emi's event
+- **Found** (reported by Four): Emi's event summons every trogg wave, her explosive charges (183410),
+  Grubbis and Chomper, and three red rockets at the end. The DB also had all of it spawned from the
+  start at the same spots (`VerifiedBuild` 0: a sniff of the event saved as spawns), so the two tunnels
+  emptied out on top of the waves.
+- **Changed:** new `sql/fixes/world/2026_10_19_09_gnomeregan_emi_event_prespawns.sql` deletes creature
+  guids 324522 to 324554 (30 Caverndeep Ambushers 6207, 1 Caverndeep Burrower 6206, Grubbis 7361,
+  Chomper 6215) and gameobject guids 189336 to 189339 (Explosive Charge 144065) and 189340, 189341
+  (red rockets 103820), with their `gameobject_addon` rows. The event still summons its own. The original
+  rows are in the world dump.
+- **Status:** untested in game.
+
+#### Stuck in combat after killing an Irradiated Pillager
+- **Found** (reported by Four): right after killing an Irradiated Pillager (6329), `.debug combat`
+  still listed it ("[PvE] Irradiated Pillager (SpawnID 324438)") and Four stayed in combat until
+  `.combatstop`. Two SmartAI rows (ids 2 and 5, two script versions) cast Radiation (9798) on death. In
+  8.3.7 that puts a permanent aura (duration index 21) on every enemy within 13 yards that triggers
+  Radiation (9770) damage every 3 s, cast by the dead Pillager, so each tick put the player back in
+  combat with the corpse.
+- **Changed:** new `sql/fixes/world/2026_10_19_10_gnomeregan_irradiated_pillager_death.sql` deletes
+  `smart_scripts` 6329 ids 2 and 5. The living Pillager's own Radiation auras (9769, and 9798 on 18
+  spawns, from `creature_addon` and On Reset) stay.
+- **Status:** untested in game.
+
+#### Mekgineer Thermaplugg: bombs from the Gnome Faces, one Knock Away
+- **Found** (reported by Four): Thermaplugg (7800) used Knock Away very often. Walking Bombs (7915)
+  appeared in the middle of the room and then under him wherever he stood, never from the Gnome Faces
+  on the walls. One bomb stood below a face before the fight, and bombs kept meleeing after they had
+  detonated. Kill credit and the Gnomeregan achievement worked. His SmartAI mixed two script versions:
+  two rows each with ids 3 and 5, Knock Away three times (10101 twice, 11130 once), bombs summoned on
+  himself and at one fixed spot, and broken links. The bomb's Detonation row linked to id 3, which
+  doesn't exist, so its despawn never ran.
+- **Changed:** new `sql/fixes/world/2026_10_19_11_gnomeregan_thermaplugg.sql`:
+  - Thermaplugg's `smart_scripts` rewritten: Knock Away (10101) every 12 to 15 s; every 12 to 16 s
+    one of six action lists (780000 to 780005, picked at random) summons a Walking Bomb (despawns
+    after 60 s) in front of one of the six Gnome Face pedestals: 15 yards from the Gnome Face
+    gameobject towards the centre of the six faces (-522.75, 670.10), at z -325.0. The first version
+    put them 40% of the way to the faces' buttons, inside the pedestals, and Four saw none. Four's
+    `.gps` in front of Gnome Face 06's pedestal (-553.38, 643.70, floor -327.27) is 1.8 yards from
+    that face's spot. The yells, Pound (74720), Steam Blast (93655) and Welding Beam (52778) are as before.
+  - Walking Bomb: Detonation (4043) now links to the despawn; a summoned bomb joins the fight
+    against everyone in the instance (`SET_IN_COMBAT_WITH_ZONE`).
+  - The bomb spawned from the start, creature guid 324517, is deleted.
+  - The faces' buttons (142214 to 142219) still do nothing.
+- **Status:** confirmed in game by Four on 2026-10-19 (bombs walk out in front of the faces).
+
+#### To pick up the Gnomeregan fixes
+SQL only, then restart `worldserver` (templates and SmartAI load at startup).
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_08_gnomeregan_emi_electrocutioner.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_09_gnomeregan_emi_event_prespawns.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_10_gnomeregan_irradiated_pillager_death.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_11_gnomeregan_thermaplugg.sql | mysql -u root -p bfa_world
+```
+
+### The Stockade
+
+Merged to `main` with PR #16 on 2026-10-23.
+
+#### Lord Overheat's Fiery Core didn't always drop
+- **Found** (reported by Four): the first kill of Lord Overheat (46264) gave no Lord Overheat's Fiery
+  Core (62305) for "By Fire Be Saved!" (27737); after `.respawn`, a second kill dropped it. The loot row
+  only drops for players on the quest (`QuestRequired` 1), but its `Chance` was 36.5696, so roughly two
+  kills in three dropped nothing for the quest.
+- **Changed:** new `sql/fixes/world/2026_10_19_07_stockade_overheat_core.sql`: `creature_loot_template`
+  46264 / 62305 `Chance` 36.5696 -> 100.
+- **Status:** confirmed in game by Four on 2026-10-23 (the core dropped on the first kill, on an alt).
+  The dungeon objectives were fine: `.debug scenario` showed Lord
+  Overheat's objective at progress 2 (both kills counted), and the one-step objectives finished
+  with the achievement after Hogger. What looked missing was most likely just the core quest.
+
+#### To pick up the core fix
+SQL only, then restart `worldserver` (it loads loot tables at startup).
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_19_07_stockade_overheat_core.sql | mysql -u root -p bfa_world
+```
+
+### Crash: picking open a lockbox or junkbox
+
+Merged to `main` with PR #16 on 2026-10-23.
+
+- **Found** (reported by Four): Pick Lock on a Battered Junkbox (16882, looted in The Stockade) crashed
+  the worldserver at once, and the client was disconnected. Four's gdb backtrace: `SIGSEGV` in
+  `GameObject::GetGOInfo (this=0x0)` called from `Spell::EffectOpenLock` at `SpellEffects.cpp:1936`.
+  Upstream commit 9d1bf0d ("Core/CPP: Fix Mining Gain Skill") added a gathering skill-up block at the
+  end of `EffectOpenLock` that reads `gameObjTarget->GetGOInfo()` without checking `gameObjTarget`.
+  When the lock is on an item, `gameObjTarget` is null, so every item lock opened with a spell (rogue
+  Pick Lock, and any key or spell that opens an item lock) crashes the server. Still in upstream HEAD
+  (51fad1a) at the time of writing. The junkbox loot tables are fine.
+- **Changed:** new `tools/bfa/open-lock-crash.patch` (`src/server/game/Spells/SpellEffects.cpp`): that
+  block now runs only when the target is a gameobject (`goInfo` is null for an item). Opening chests and
+  gathering nodes is unchanged.
+- **Status:** confirmed in game by Four on 2026-10-19 (Battered Junkbox picks open, no crash).
+
+#### To pick up the lockbox crash fix
+A new patch on top of the others, the build and a restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/open-lock-crash.patch | git apply
+grep -c "Pick Lock on a junkbox" src/server/game/Spells/SpellEffects.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1. Then restart `worldserver`.
 
 ### World: Stormwind (Innkeeper Allison, stray spawns, Miss Danna's tour)
 

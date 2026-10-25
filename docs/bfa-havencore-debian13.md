@@ -106,6 +106,9 @@ git apply ../tools-repo/tools/bfa/blackfathom-layouts.patch
 git apply ../tools-repo/tools/bfa/dungeon-spell-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale-quest-xp.patch
 git apply ../tools-repo/tools/bfa/spell-corrections.patch
+git apply ../tools-repo/tools/bfa/open-lock-crash.patch
+git apply ../tools-repo/tools/bfa/scarlet-halls.patch
+git apply ../tools-repo/tools/bfa/scarlet-monastery.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -251,6 +254,21 @@ the objective list on the right of the screen (Wailing Caverns has "Muyoh escort
 and criteria live in the client's db2 files, not the world database. Typed inside a dungeon, the command
 lists each step, its criteria, what each one waits for (criteria type and the creature, event or spell
 id) and the group's progress, so a missing credit can be traced. It changes nothing in game.
+
+`scarlet-halls.patch` ports the Pandaria 5.4.8 Scarlet Halls scripts: the instance script (boss states,
+doors, the Hooded Crusader who comes for the codex), Commander Lindon's archery hall, the kennel
+hounds and buckets of dog food, and the three bosses. It needs
+`sql/fixes/world/2026_10_23_05_scarlet_halls_rework.sql`, which brings in the spawns the dungeon was
+missing and binds the scripts.
+
+`scarlet-monastery.patch` does the same for Scarlet Monastery: the graveyard trash (Piles of Corpses,
+Zombified Corpses, Centurions, Flamethrowers and their clickable Fuel Tanks), the Zealots, Thalnos,
+Korloff, and Durand with Whitemane. It also adds the quest credit for the Blades of the Anointed, and
+replaces the classic Headless Horseman script (map 189, which this client no longer has) with the
+Monastery graveyard version: during Hallow's End the Pumpkin Shrine there summons him. It needs
+`sql/fixes/world/2026_10_24_03_scarlet_monastery_rework.sql`, which swaps in the Pandaria spawns,
+`2026_10_24_04_scarlet_monastery_fuel_tank_burning_man.sql`, `2026_10_24_05_headless_horseman.sql` and
+`2026_10_24_06_scarlet_fuel_tank_encounters.sql`.
 
 `wailing-caverns-fixes.patch` makes Muyoh's escort send the scenario event (582) behind the "Muyoh
 escorted" objective when she reaches Naralex. The rest of the Wailing Caverns fixes are SQL, under
@@ -559,8 +577,15 @@ git apply ../tools-repo/tools/bfa/blackfathom-layouts.patch
 git apply ../tools-repo/tools/bfa/dungeon-spell-fixes.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale-quest-xp.patch
 git apply ../tools-repo/tools/bfa/spell-corrections.patch
+git apply ../tools-repo/tools/bfa/open-lock-crash.patch
+git apply ../tools-repo/tools/bfa/scarlet-halls.patch
+git apply ../tools-repo/tools/bfa/scarlet-monastery.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
+
+When an update adds a source file (`scarlet-halls.patch` adds `scarlet_halls.cpp`, `scarlet-monastery.patch` adds four), run `cmake build`
+once before building: CMake only finds new files when it configures, and the link fails with an
+`undefined reference` otherwise. It keeps the settings you configured with.
 
 `git checkout -- .` throws away every change to upstream's files, so keep your own edits somewhere else.
 `git apply -R` would only work if the patch hadn't changed since it was applied, and the pull may have

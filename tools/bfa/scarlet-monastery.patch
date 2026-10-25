@@ -1,0 +1,3122 @@
+diff --git a/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_brother_korloff.cpp b/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_brother_korloff.cpp
+new file mode 100644
+index 0000000..270fc74
+--- /dev/null
++++ b/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_brother_korloff.cpp
+@@ -0,0 +1,187 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Brother Korloff (Scarlet Monastery, map 1004), ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "ScriptMgr.h"
++#include "InstanceScript.h"
++#include "MotionMaster.h"
++#include "ScriptedCreature.h"
++#include "TemporarySummon.h"
++#include "scarlet_monastery.h"
++
++enum KorloffSpells
++{
++    SPELL_BLAZING_FISTS          = 114807, // 6 s channel, a fiery punch cone every second
++    SPELL_FIRESTORM_KICK         = 113764, // fire around him every second after he lands
++    SPELL_RISING_FLAME           = 114410, // +10% damage for every 10% health lost
++    SPELL_FLYING_KICK            = 114488, // knockback and damage on the target he jumps at
++    SPELL_TRIGGER_SCORCHED_EARTH = 114464, // the burning ground left by the trigger
++};
++
++enum KorloffEvents
++{
++    EVENT_BLAZING_FISTS          = 1,
++    EVENT_FLYING_KICK,
++    EVENT_FIRESTORM_END,
++    EVENT_SCORCHED_EARTH,
++};
++
++enum KorloffTexts
++{
++    TALK_AGGRO                   = 0, // I will break you.
++    TALK_DEATH                   = 1, // You are like... piece of iron...
++    TALK_KICK                    = 2, // If you die, you die.
++    TALK_FISTS                   = 3, // My fists are scarlet... with your blood!
++};
++
++uint32 const PointFlyingKick = 1;
++
++struct boss_brother_korloff : public BossAI
++{
++    boss_brother_korloff(Creature* creature) : BossAI(creature, DATA_BROTHER_KORLOFF), _lastFlameHealth(100.0f), _scorched(false) { }
++
++    void Reset() override
++    {
++        _Reset();
++        _lastFlameHealth = 100.0f;
++        _scorched = false;
++        me->SetReactState(REACT_AGGRESSIVE);
++    }
++
++    void JustEngagedWith(Unit* who) override
++    {
++        BossAI::JustEngagedWith(who);
++        Talk(TALK_AGGRO);
++        events.ScheduleEvent(EVENT_FLYING_KICK, 10000);
++        events.ScheduleEvent(EVENT_BLAZING_FISTS, 20000);
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        _JustDied();
++        Talk(TALK_DEATH);
++    }
++
++    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
++    {
++        // below half health he sets the floor on fire wherever he walks
++        if (!_scorched && me->HealthBelowPctDamaged(50, damage))
++        {
++            _scorched = true;
++            events.ScheduleEvent(EVENT_SCORCHED_EARTH, 1000);
++        }
++    }
++
++    void MovementInform(uint32 type, uint32 pointId) override
++    {
++        if (type != EFFECT_MOTION_TYPE || pointId != PointFlyingKick)
++            return;
++
++        // landed: Firestorm Kick, then back to the tank
++        DoCast(me, SPELL_FIRESTORM_KICK, true);
++        events.ScheduleEvent(EVENT_FIRESTORM_END, 6000);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        if (!UpdateVictim())
++            return;
++
++        events.Update(diff);
++
++        // Rising Flame: another stack for every 10% of health he loses
++        if (_lastFlameHealth - me->GetHealthPct() >= 10.0f)
++        {
++            _lastFlameHealth -= 10.0f;
++            DoCast(me, SPELL_RISING_FLAME, true);
++        }
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        while (uint32 eventId = events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_BLAZING_FISTS:
++                    Talk(TALK_FISTS);
++                    DoCastVictim(SPELL_BLAZING_FISTS);
++                    events.ScheduleEvent(EVENT_BLAZING_FISTS, 20000);
++                    break;
++                case EVENT_FLYING_KICK:
++                {
++                    Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, [this](Unit* u) { return u->GetTypeId() == TYPEID_PLAYER && u->GetDistance2d(me) > 5.0f; });
++                    if (!target)
++                        target = me->GetVictim();
++                    if (target)
++                    {
++                        Talk(TALK_KICK);
++                        me->SetReactState(REACT_PASSIVE);
++                        me->AttackStop();
++                        DoCast(target, SPELL_FLYING_KICK, true);
++                        me->GetMotionMaster()->MoveJump(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), me->GetOrientation(), 30.0f, 8.0f, PointFlyingKick);
++                    }
++                    events.ScheduleEvent(EVENT_FLYING_KICK, 25000);
++                    break;
++                }
++                case EVENT_FIRESTORM_END:
++                    me->SetReactState(REACT_AGGRESSIVE);
++                    if (Unit* victim = me->GetVictim())
++                        AttackStart(victim);
++                    break;
++                case EVENT_SCORCHED_EARTH:
++                    if (me->isMoving())
++                        me->SummonCreature(NPC_SCORCHED_EARTH, me->GetPosition(), TEMPSUMMON_TIMED_DESPAWN, 30000);
++                    events.ScheduleEvent(EVENT_SCORCHED_EARTH, 1000);
++                    break;
++                default:
++                    break;
++            }
++
++            if (me->HasUnitState(UNIT_STATE_CASTING))
++                return;
++        }
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    float _lastFlameHealth;
++    bool _scorched;
++};
++
++// Scorched Earth 59507: a patch of burning ground left in Korloff's footsteps
++struct npc_scorched_earth : public ScriptedAI
++{
++    npc_scorched_earth(Creature* creature) : ScriptedAI(creature) { }
++
++    void IsSummonedBy(Unit* /*summoner*/) override
++    {
++        me->SetReactState(REACT_PASSIVE);
++        me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
++        DoCast(me, SPELL_TRIGGER_SCORCHED_EARTH, true);
++    }
++
++    void UpdateAI(uint32 /*diff*/) override { }
++};
++
++void AddSC_boss_brother_korloff()
++{
++    RegisterCreatureAIWithFactory(boss_brother_korloff, GetScarletMonasteryAI);
++    RegisterCreatureAI(npc_scorched_earth);
++}
+diff --git a/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_durand_and_whitemane.cpp b/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_durand_and_whitemane.cpp
+new file mode 100644
+index 0000000..b3b74dd
+--- /dev/null
++++ b/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_durand_and_whitemane.cpp
+@@ -0,0 +1,538 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Commander Durand and High Inquisitor Whitemane (Scarlet Monastery, map 1004),
++ * ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
++ * Durand fights first. When he falls he only feigns death: Whitemane steps out of her door and
++ * fights. At half health she puts the party to sleep, walks to Durand and raises him, and from
++ * then on both fight until dead. Whitemane's death leaves the corpse marker the Blades of the
++ * Anointed need for "Unto Dust Thou Shalt Return".
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "ScriptMgr.h"
++#include "InstanceScript.h"
++#include "Map.h"
++#include "MotionMaster.h"
++#include "ObjectAccessor.h"
++#include "Player.h"
++#include "ScriptedCreature.h"
++#include "SpellInfo.h"
++#include "SpellMgr.h"
++#include "SpellScript.h"
++#include "scarlet_monastery.h"
++
++enum DurandWhitemaneSpells
++{
++    SPELL_FLASH_OF_STEEL            = 115629, // Durand: charge and strike, six times in a row
++    SPELL_DASHING_STRIKE            = 115739, // Durand: damages everyone in a line to the target
++
++    SPELL_POWER_WORD_SHIELD         = 22187,  // Whitemane
++    SPELL_HOLY_SMITE                = 114848,
++    SPELL_HEAL                      = 36678,
++    SPELL_MASS_RESURRECTION         = 113134,
++    SPELL_DEEP_SLEEP                = 9256,
++    SPELL_SCARLET_RESURRECTION      = 9232,
++    SPELL_SUMMON_CORPSE_FOCUS       = 126789, // "High Inquisitor Whitemane's Corpse Spell Focus" for the Blades
++    SPELL_WHITEMANE_KILL_CREDIT     = 132022, // server-side spell, not in the client data
++
++    SPELL_BLADES_OF_THE_ANOINTED    = 126787, // the quest item, both versions of the quest
++    SPELL_BLADES_OF_THE_ANOINTED_2  = 126843,
++};
++
++enum DurandWhitemaneEvents
++{
++    EVENT_FLASH_OF_STEEL            = 1,
++    EVENT_DASHING_STRIKE,
++
++    EVENT_SMITE                     = 1,
++    EVENT_HEAL,
++    EVENT_MASS_RESURRECTION,
++    EVENT_MASS_RESURRECTION_DONE,
++    EVENT_RAISE_DURAND,
++    EVENT_DURAND_RISES,
++};
++
++enum DurandWhitemaneTexts
++{
++    TALK_DURAND_AGGRO               = 0, // My legend begins NOW!
++    TALK_DURAND_STRIKE              = 1, // My blade is peerless!
++
++    TALK_WHITEMANE_AGGRO            = 0, // You shall pay for this treachery!
++    TALK_WHITEMANE_DEATH            = 1, // Mograine...
++    TALK_WHITEMANE_SLAY             = 2, // The Light has spoken!
++    TALK_WHITEMANE_RESURRECT        = 3, // Arise, my champion!
++};
++
++enum DurandWhitemaneMisc
++{
++    POINT_WHITEMANE_INTRO           = 1,
++    POINT_WHITEMANE_DURAND          = 2,
++
++    NPC_UNTO_DUST_CREDIT            = 64835, // quest 31514
++    NPC_UNTO_DUST_CREDIT_2          = 64840, // quest 31516
++};
++
++struct boss_commander_durand : public BossAI
++{
++    boss_commander_durand(Creature* creature) : BossAI(creature, DATA_COMMANDER_DURAND), _feigning(false), _raised(false) { }
++
++    void Reset() override
++    {
++        _Reset();
++        _feigning = false;
++        _raised = false;
++        _flashCount = 0;
++        _dashCount = 0;
++        me->SetReactState(REACT_AGGRESSIVE);
++        me->SetStandState(UNIT_STAND_STATE_STAND);
++        me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
++    }
++
++    void JustEngagedWith(Unit* who) override
++    {
++        BossAI::JustEngagedWith(who);
++        Talk(TALK_DURAND_AGGRO);
++        ScheduleFight();
++    }
++
++    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
++    {
++        if (_feigning)
++        {
++            damage = 0;
++            return;
++        }
++
++        if (_raised || damage < me->GetHealth())
++            return;
++
++        Creature* whitemane = FindWhitemane();
++        if (!whitemane || !whitemane->IsAlive() || instance->GetBossState(DATA_HIGH_INQUISITOR_WHITEMANE) == DONE)
++            return;
++
++        // first death: he only feigns it, and Whitemane comes out
++        damage = 0;
++        _feigning = true;
++        events.Reset();
++        me->InterruptNonMeleeSpells(false);
++        me->RemoveAllAuras();
++        me->AttackStop();
++        me->StopMoving();
++        me->SetReactState(REACT_PASSIVE);
++        me->SetHealth(1);
++        me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
++        me->SetStandState(UNIT_STAND_STATE_DEAD);
++
++        if (whitemane->IsAIEnabled)
++            whitemane->AI()->DoAction(ACTION_WHITEMANE_INTRO);
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        _JustDied();
++        // killed outright (no feign): Whitemane still has to come out, or the fight can't go on
++        if (Creature* whitemane = FindWhitemane())
++            if (whitemane->IsAlive() && whitemane->IsAIEnabled)
++                whitemane->AI()->DoAction(ACTION_WHITEMANE_INTRO);
++    }
++
++    void DoAction(int32 action) override
++    {
++        switch (action)
++        {
++            case ACTION_DURAND_REVIVE:
++                if (!_feigning)
++                    break;
++                _feigning = false;
++                _raised = true;
++                me->SetStandState(UNIT_STAND_STATE_STAND);
++                me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
++                me->SetFullHealth();
++                me->SetReactState(REACT_AGGRESSIVE);
++                ScheduleFight();
++                if (Player* player = me->SelectNearestPlayer(80.0f))
++                    AttackStart(player);
++                break;
++            case ACTION_DURAND_RESET:
++                if (_feigning || me->IsInCombat())
++                    EnterEvadeMode(EVADE_REASON_OTHER);
++                break;
++            default:
++                break;
++        }
++    }
++
++    void EnterEvadeMode(EvadeReason why) override
++    {
++        // lying "dead" while Whitemane fights: she decides when this is over
++        if (_feigning && instance->GetBossState(DATA_HIGH_INQUISITOR_WHITEMANE) == IN_PROGRESS)
++            return;
++
++        _feigning = false;
++        BossAI::EnterEvadeMode(why);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        if (_feigning)
++            return;
++
++        if (!UpdateVictim())
++            return;
++
++        events.Update(diff);
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        while (uint32 eventId = events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_FLASH_OF_STEEL:
++                    if (Unit* target = SelectTarget(SELECT_TARGET_MAXDISTANCE, 0, 60.0f, true))
++                        DoCast(target, SPELL_FLASH_OF_STEEL);
++                    if (++_flashCount < 6)
++                        events.ScheduleEvent(EVENT_FLASH_OF_STEEL, urand(500, 1000));
++                    else
++                    {
++                        _flashCount = 0;
++                        events.ScheduleEvent(EVENT_FLASH_OF_STEEL, urand(21000, 26000));
++                    }
++                    break;
++                case EVENT_DASHING_STRIKE:
++                    if (_dashCount == 0)
++                        Talk(TALK_DURAND_STRIKE);
++                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 40.0f, true))
++                    {
++                        // cut through everyone between him and the target, then come out behind it
++                        DoCast(target, SPELL_DASHING_STRIKE, true);
++                        Position dest = target->GetPosition();
++                        target->MovePositionToFirstCollision(dest, 3.0f, target->GetRelativeAngle(me) + float(M_PI));
++                        me->NearTeleportTo(dest.GetPositionX(), dest.GetPositionY(), dest.GetPositionZ(), me->GetAngle(target));
++                    }
++                    if (++_dashCount < 3)
++                        events.ScheduleEvent(EVENT_DASHING_STRIKE, urand(700, 1000));
++                    else
++                    {
++                        _dashCount = 0;
++                        events.ScheduleEvent(EVENT_DASHING_STRIKE, urand(24000, 25000));
++                    }
++                    break;
++                default:
++                    break;
++            }
++
++            if (me->HasUnitState(UNIT_STATE_CASTING))
++                return;
++        }
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    Creature* FindWhitemane()
++    {
++        if (Creature* whitemane = instance->GetCreature(DATA_HIGH_INQUISITOR_WHITEMANE))
++            return whitemane;
++        return me->FindNearestCreature(NPC_WHITEMANE, 150.0f);
++    }
++
++    void ScheduleFight()
++    {
++        events.Reset();
++        _flashCount = 0;
++        _dashCount = 0;
++        events.ScheduleEvent(EVENT_FLASH_OF_STEEL, 9000);
++        events.ScheduleEvent(EVENT_DASHING_STRIKE, urand(24000, 25000));
++    }
++
++    bool _feigning;
++    bool _raised;
++    uint8 _flashCount = 0;
++    uint8 _dashCount = 0;
++};
++
++struct boss_high_inquisitor_whitemane_mop : public BossAI
++{
++    boss_high_inquisitor_whitemane_mop(Creature* creature) : BossAI(creature, DATA_HIGH_INQUISITOR_WHITEMANE), _raising(false), _raised(false), _introStarted(false) { }
++
++    void Reset() override
++    {
++        _Reset();
++        _raising = false;
++        _raised = false;
++        _introStarted = false;
++        _raiseEvents.Reset();
++        // waits behind her door until Durand falls
++        me->SetReactState(REACT_PASSIVE);
++        me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
++    }
++
++    void DoAction(int32 action) override
++    {
++        // only her own flag decides: she can already count as in combat while waiting behind the door
++        if (action != ACTION_WHITEMANE_INTRO || _introStarted)
++            return;
++
++        _introStarted = true;
++        instance->SetBossState(DATA_HIGH_INQUISITOR_WHITEMANE, IN_PROGRESS); // opens her door
++        me->GetMotionMaster()->MovePoint(POINT_WHITEMANE_INTRO, WhitemaneIntroPos);
++    }
++
++    void MovementInform(uint32 type, uint32 pointId) override
++    {
++        if (type != POINT_MOTION_TYPE)
++            return;
++
++        switch (pointId)
++        {
++            case POINT_WHITEMANE_INTRO:
++                me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
++                me->SetReactState(REACT_AGGRESSIVE);
++                if (Player* player = me->SelectNearestPlayer(80.0f))
++                    AttackStart(player);
++                else
++                    EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
++                break;
++            case POINT_WHITEMANE_DURAND:
++                _raiseEvents.RescheduleEvent(EVENT_RAISE_DURAND, 100);
++                break;
++            default:
++                break;
++        }
++    }
++
++    void JustEngagedWith(Unit* who) override
++    {
++        BossAI::JustEngagedWith(who);
++        Talk(TALK_WHITEMANE_AGGRO);
++        events.ScheduleEvent(EVENT_SMITE, 500);
++        events.ScheduleEvent(EVENT_HEAL, urand(9000, 13000));
++        events.ScheduleEvent(EVENT_MASS_RESURRECTION, 20000);
++    }
++
++    void AttackStart(Unit* target) override
++    {
++        // a caster: she keeps her distance
++        if (target && me->Attack(target, false))
++            me->GetMotionMaster()->MoveChase(target, 25.0f);
++    }
++
++    void KilledUnit(Unit* victim) override
++    {
++        if (victim->GetTypeId() == TYPEID_PLAYER)
++            Talk(TALK_WHITEMANE_SLAY);
++    }
++
++    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
++    {
++        if (_raising && damage >= me->GetHealth())
++            damage = me->GetHealth() - 1;
++
++        if (_raised || _raising || !me->HealthBelowPctDamaged(50, damage))
++            return;
++
++        Creature* durand = instance->GetCreature(DATA_COMMANDER_DURAND);
++        if (!durand || !durand->IsAlive())
++            return;
++
++        // half health: everyone sleeps while she raises her champion
++        _raising = true;
++        events.Reset();
++        me->InterruptNonMeleeSpells(true);
++        me->SetReactState(REACT_PASSIVE);
++        me->AttackStop();
++        DoCastAOE(SPELL_DEEP_SLEEP, true);
++        DoCast(me, SPELL_POWER_WORD_SHIELD, true);
++        me->GetMotionMaster()->Clear();
++        me->GetMotionMaster()->MovePoint(POINT_WHITEMANE_DURAND, durand->GetPositionX() + frand(-1.5f, 1.5f), durand->GetPositionY() + frand(-0.8f, 0.8f), durand->GetPositionZ());
++        // in case the walk is cut short
++        _raiseEvents.ScheduleEvent(EVENT_RAISE_DURAND, 8000);
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        _JustDied();
++        Talk(TALK_WHITEMANE_DEATH);
++        DoCast(me, SPELL_SUMMON_CORPSE_FOCUS, true);
++        // the "Scarlet Monastery" achievements (637, 6761) want every player to be the target of her
++        // kill credit spell; the spell doesn't exist here, so give the criteria directly
++        instance->DoUpdateCriteria(CRITERIA_TYPE_BE_SPELL_TARGET, SPELL_WHITEMANE_KILL_CREDIT, 0, me);
++    }
++
++    void EnterEvadeMode(EvadeReason why) override
++    {
++        _raising = false;
++        _raised = false;
++        _raiseEvents.Reset();
++        BossAI::EnterEvadeMode(why);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        // the raise runs while she is passive, so it has its own timers ahead of the victim check
++        _raiseEvents.Update(diff);
++        while (uint32 eventId = _raiseEvents.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_RAISE_DURAND:
++                    _raiseEvents.CancelEvent(EVENT_RAISE_DURAND);
++                    if (Creature* durand = instance->GetCreature(DATA_COMMANDER_DURAND))
++                    {
++                        me->StopMoving();
++                        me->SetFacingToObject(durand);
++                        Talk(TALK_WHITEMANE_RESURRECT);
++                        DoCast(durand, SPELL_SCARLET_RESURRECTION, true);
++                    }
++                    _raiseEvents.ScheduleEvent(EVENT_DURAND_RISES, 2000);
++                    break;
++                case EVENT_DURAND_RISES:
++                    _raising = false;
++                    _raised = true;
++                    instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_DEEP_SLEEP);
++                    if (Creature* durand = instance->GetCreature(DATA_COMMANDER_DURAND))
++                        if (durand->IsAIEnabled)
++                            durand->AI()->DoAction(ACTION_DURAND_REVIVE);
++                    me->SetReactState(REACT_AGGRESSIVE);
++                    if (Player* player = me->SelectNearestPlayer(80.0f))
++                        AttackStart(player);
++                    events.ScheduleEvent(EVENT_SMITE, 500);
++                    events.ScheduleEvent(EVENT_HEAL, urand(15000, 16000));
++                    events.ScheduleEvent(EVENT_MASS_RESURRECTION, 10000);
++                    break;
++                case EVENT_MASS_RESURRECTION_DONE:
++                    RaiseTheFallen();
++                    break;
++                default:
++                    break;
++            }
++        }
++
++        if (_raising)
++            return;
++
++        events.Update(diff);
++
++        if (!UpdateVictim())
++            return;
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        while (uint32 eventId = events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_SMITE:
++                    DoCastVictim(SPELL_HOLY_SMITE);
++                    events.ScheduleEvent(EVENT_SMITE, urand(2600, 3000));
++                    break;
++                case EVENT_HEAL:
++                {
++                    Creature* durand = _raised ? instance->GetCreature(DATA_COMMANDER_DURAND) : nullptr;
++                    if (durand && durand->IsAlive() && durand->GetHealthPct() < me->GetHealthPct())
++                        DoCast(durand, SPELL_HEAL);
++                    else
++                        DoCast(me, SPELL_HEAL);
++                    events.ScheduleEvent(EVENT_HEAL, urand(9000, 13000));
++                    break;
++                }
++                case EVENT_MASS_RESURRECTION:
++                    if (HasFallenToRaise())
++                    {
++                        DoCast(me, SPELL_MASS_RESURRECTION);
++                        if (SpellInfo const* info = sSpellMgr->GetSpellInfo(SPELL_MASS_RESURRECTION))
++                            _raiseEvents.ScheduleEvent(EVENT_MASS_RESURRECTION_DONE, info->CalcCastTime() + 200);
++                    }
++                    events.ScheduleEvent(EVENT_MASS_RESURRECTION, 20000);
++                    break;
++                default:
++                    break;
++            }
++
++            if (me->HasUnitState(UNIT_STATE_CASTING))
++                return;
++        }
++    }
++
++private:
++    std::list<Creature*> FallenScarlet() const
++    {
++        std::list<Creature*> fallen;
++        for (uint32 entry : { NPC_SCARLET_FANATIC, NPC_SCARLET_PURIFIER, NPC_SCARLET_ZEALOT, NPC_SCARLET_JUDICATOR, NPC_SCARLET_INITIATE })
++        {
++            std::list<Creature*> list;
++            me->GetCreatureListWithEntryInGrid(list, entry, 80.0f);
++            for (Creature* c : list)
++                if (!c->IsAlive())
++                    fallen.push_back(c);
++        }
++        return fallen;
++    }
++
++    bool HasFallenToRaise() const { return !FallenScarlet().empty(); }
++
++    // Mass Resurrection: the dead Crusade in the cathedral get back up
++    void RaiseTheFallen()
++    {
++        if (!me->IsAlive())
++            return;
++
++        for (Creature* corpse : FallenScarlet())
++        {
++            corpse->setDeathState(JUST_RESPAWNED);
++            if (corpse->IsAIEnabled)
++                if (Player* player = corpse->SelectNearestPlayer(100.0f))
++                    corpse->AI()->AttackStart(player);
++        }
++    }
++
++    EventMap _raiseEvents;
++    bool _raising;
++    bool _raised;
++    bool _introStarted;
++};
++
++// Blades of the Anointed 126787 / 126843: used at Whitemane's corpse (spell focus), they lay her to rest
++class spell_scm_blades_of_the_anointed : public SpellScript
++{
++    PrepareSpellScript(spell_scm_blades_of_the_anointed);
++
++    // credit before target selection: the item's dummy effect has no nearby target to hit
++    void HandleBeforeCast()
++    {
++        if (Player* player = GetCaster()->ToPlayer())
++        {
++            player->KilledMonsterCredit(NPC_UNTO_DUST_CREDIT);
++            player->KilledMonsterCredit(NPC_UNTO_DUST_CREDIT_2);
++        }
++    }
++
++    void Register() override
++    {
++        BeforeCast += SpellCastFn(spell_scm_blades_of_the_anointed::HandleBeforeCast);
++    }
++};
++
++void AddSC_boss_durand_and_whitemane()
++{
++    RegisterCreatureAIWithFactory(boss_commander_durand, GetScarletMonasteryAI);
++    RegisterCreatureAIWithFactory(boss_high_inquisitor_whitemane_mop, GetScarletMonasteryAI);
++    RegisterSpellScript(spell_scm_blades_of_the_anointed);
++}
+diff --git a/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_headless_horseman.cpp b/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_headless_horseman.cpp
+index 0968145..0b392d0 100644
+--- a/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_headless_horseman.cpp
++++ b/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_headless_horseman.cpp
+@@ -1,6 +1,9 @@
+ /*
+  * 2026 BFA-HavenCore
+  *
++ * The Headless Horseman (Hallow's End, Scarlet Monastery graveyard, map 1004), ported from the
++ * Pandaria 5.4.8 project (GPL v2 or later). The classic script flew over map 189, which is gone.
++ *
+  * This program is free software; you can redistribute it and/or modify it
+  * under the terms of the GNU General Public License as published by the
+  * Free Software Foundation, either version 3 of the License, or
+@@ -11,17 +14,10 @@
+  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+  * more details.
+  *
+- * You should have received a copy of the GNU General Public License along
++ * You should have received a copy of the GNU General Public License
+  * with this program. If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-/* ScriptData
+-SDName: Boss_Headless_Horseman
+-SD%Complete:
+-SDComment:
+-SDCategory: Scarlet Monastery
+-EndScriptData */
+-
+ #include "ScriptMgr.h"
+ #include "GameObject.h"
+ #include "Group.h"
+@@ -31,903 +27,551 @@ EndScriptData */
+ #include "MotionMaster.h"
+ #include "ObjectAccessor.h"
+ #include "Player.h"
+-#include "scarlet_monastery.h"
+ #include "ScriptedCreature.h"
++#include "ScriptedGossip.h"
+ #include "SpellInfo.h"
++#include "SpellScript.h"
+ #include "TemporarySummon.h"
++#include "scarlet_monastery.h"
++#include <type_traits>
+ 
+-//this texts are already used by 3975 and 3976
+-enum Says
++enum HorsemanTexts
+ {
+-    SAY_LOST_HEAD               = 0,
+-    SAY_PLAYER_DEATH            = 1,
+-
+-    SAY_ENTRANCE                = 0,
+-    SAY_REJOINED                = 1,
+-    SAY_CONFLAGRATION           = 2,
+-    SAY_SPROUTING_PUMPKINS      = 3,
+-    SAY_DEATH                   = 4,
++    SAY_ENTRANCE                = 0, // It is over, your search is done...
++    SAY_REJOINED                = 1, // Here's my body, fit and pure!...
++    SAY_CONFLAGRATION           = 2, // Harken, cur! Tis you I spurn!...
++    SAY_SPROUTING_PUMPKINS      = 3, // Soldiers arise, stand and fight!...
++    SAY_PLAYER_DEATH            = 4, // Your body lies beaten, battered and broken!...
++    SAY_DEATH                   = 5, // This end have I reached before...
++
++    SAY_LOST_HEAD               = 0, // Head: Get over here, you idiot!
+ };
+ 
+-uint32 RandomLaugh[] = {11965, 11975, 11976};
++enum HorsemanEntries
++{
++    NPC_SIR_THOMAS              = 23904,
++};
+ 
+-enum Entry
++enum HorsemanSpells
+ {
+-    HH_MOUNTED                  = 23682,
+-    HH_DISMOUNTED               = 23800,
+-    HEAD                        = 23775,
+-    PULSING_PUMPKIN             = 23694,
+-    PUMPKIN_FIEND               = 23545,
+-    HELPER                      = 23686,
+-    WISP_INVIS                  = 24034
++    SPELL_PUMPKIN_LIFE_CYCLE                         = 42280,
++    SPELL_SPROUTING                                  = 42281,
++    SPELL_SPROUT_BODY                                = 42285, // turns the pumpkin into a Pumpkin Fiend
++    SPELL_HEADLESS_HORSEMAN_SUMMON_PUMPKIN_PULSE     = 42290,
++    SPELL_HEADLESS_HORSEMAN_PUMPKIN_LIFE_CYCLE_DEATH = 42291,
++    SPELL_HEADLESS_HORSEMAN_PUMPKIN_AURA             = 42294,
++    SPELL_HORSEMANS_SUMMON                           = 42394,
++    SPELL_SUMMON_PUMPKIN_BURST_DELAY                 = 52236, // 8 s, then 42394 throws the pumpkins
++
++    SPELL_IMMUNED                                    = 42556,
++    SPELL_BODY_REGEN                                 = 42403, // 4% health a second, unhorsed model
++    SPELL_CONFUSED                                   = 43105,
++    SPELL_HEAL_BODY                                  = 43306,
++    SPELL_CLEAVE                                     = 42587,
++    SPELL_WHIRLWIND                                  = 43116,
++    SPELL_CONFLAGRATION                              = 42380,
++    SPELL_BURNING                                    = 42971,
++
++    SPELL_FLYING_HEAD                                = 42399,
++    SPELL_HEAD                                       = 42413,
++    SPELL_HEAD_LANDS                                 = 42400,
++    SPELL_RHYME_BIG                                  = 42909,
+ };
+ 
+-enum Spells
++enum HorsemanEvents
+ {
+-    SPELL_CLEAVE                = 42587,
+-    SPELL_CONFLAGRATION         = 42380,       //Phase 2, can't find real spell(Dim Fire?)
+- // SPELL_CONFL_SPEED           = 22587,       //8% increase speed, value 22587 from SPELL_CONFLAGRATION mains that spell?
+-    SPELL_SUMMON_PUMPKIN        = 42394,
+-
+-    SPELL_WHIRLWIND             = 43116,
+-    SPELL_IMMUNE                = 42556,
+-    SPELL_BODY_REGEN            = 42403,
+-    SPELL_CONFUSE               = 43105,
+-
+-    SPELL_FLYING_HEAD           = 42399,       //visual flying head
+-    SPELL_HEAD                  = 42413,       //visual buff, "head"
+-    SPELL_HEAD_IS_DEAD          = 42428,       //at killing head, Phase 3
+-
+-    SPELL_PUMPKIN_AURA          = 42280,
+-    SPELL_PUMPKIN_AURA_GREEN    = 42294,
+-    SPELL_SQUASH_SOUL           = 42514,
+-    SPELL_SPROUTING             = 42281,
+-    SPELL_SPROUT_BODY           = 42285,
+-
+-    //Effects
+-    SPELL_RHYME_BIG             = 42909,
+- // SPELL_RHYME_SMALL           = 42910,
+-    SPELL_HEAD_SPEAKS           = 43129,
+-    SPELL_HEAD_LANDS            = 42400,
+-    SPELL_BODY_FLAME            = 42074,
+-    SPELL_HEAD_FLAME            = 42971,
+- // SPELL_ENRAGE_VISUAL         = 42438,       // he uses this spell?
+-    SPELL_WISP_BLUE             = 42821,
+-    SPELL_WISP_FLIGHT_PORT      = 42818,
+- // SPELL_WISP_INVIS            = 42823,
+-    SPELL_SMOKE                 = 42355,
+-    SPELL_DEATH                 = 42566       //not correct spell
++    EVENT_RHYME_1               = 1,
++    EVENT_RHYME_2,
++    EVENT_RHYME_3,
++    EVENT_RHYME_4,
++    EVENT_RISE,
++    EVENT_LANDED,
++
++    EVENT_LAUGH,
++    EVENT_CLEAVE,
++    EVENT_CONFLAGRATION,
++    EVENT_SUMMON_PUMPKINS,
+ };
+ 
+-Position const FlightPoint[]=
++enum HorsemanMisc
+ {
+-    {1754.00f, 1346.00f, 17.50f},
+-    {1765.00f, 1347.00f, 19.00f},
+-    {1784.00f, 1346.80f, 25.40f},
+-    {1803.30f, 1347.60f, 33.00f},
+-    {1824.00f, 1350.00f, 42.60f},
+-    {1838.80f, 1353.20f, 49.80f},
+-    {1852.00f, 1357.60f, 55.70f},
+-    {1861.30f, 1364.00f, 59.40f},
+-    {1866.30f, 1374.80f, 61.70f},
+-    {1864.00f, 1387.30f, 63.20f},
+-    {1854.80f, 1399.40f, 64.10f},
+-    {1844.00f, 1406.90f, 64.10f},
+-    {1824.30f, 1411.40f, 63.30f},
+-    {1801.00f, 1412.30f, 60.40f},
+-    {1782.00f, 1410.10f, 55.50f},
+-    {1770.50f, 1405.20f, 50.30f},
+-    {1765.20f, 1400.70f, 46.60f},
+-    {1761.40f, 1393.40f, 41.70f},
+-    {1759.10f, 1386.70f, 36.60f},
+-    {1757.80f, 1378.20f, 29.00f},
+-    {1758.00f, 1367.00f, 19.51f}
++    TYPE_STARTER_GUID           = 100,
++    TYPE_HEAD_KILLER_GUID       = 101,
++    ACTION_SWITCH_PHASE         = 1,
++    POINT_INTRO_END             = 1,
++    LFG_DUNGEON_HEADLESS_HORSEMAN = 285,
+ };
+ 
+-Position const Spawn[]=
++// he rises from the soil beside the Pumpkin Shrine and circles the graveyard before landing
++Position const HorsemanSpawnPos = { 1088.6f, 611.917f, -3.5879f, 0.479457f };
++Position const HorsemanIntroPath[] =
+ {
+-    {1776.27f, 1348.74f, 19.20f},       //spawn point for pumpkin shrine mob
+-    {1765.28f, 1347.46f, 17.55f}     //spawn point for smoke
++    { 1090.87f, 612.515f,  1.70744f },
++    { 1117.40f, 619.834f, 13.6145f  },
++    { 1119.23f, 639.365f, 17.8851f  },
++    { 1097.53f, 647.213f, 13.5981f  },
++    { 1079.05f, 641.185f,  5.83353f },
++    { 1073.47f, 629.922f,  0.767164f },
+ };
++Position const SirThomasPos = { 1118.27f, 617.449f, 1.2174f, 4.42471f };
+ 
+-static char const* Text[]=
++uint32 const HorsemanLaughs[] = { 11965, 11975, 11976 };
++
++char const* const SummonRhyme[] =
+ {
+     "Horseman rise...",
+     "Your time is nigh...",
+     "You felt death once...",
+-    "Now, know demise!"
++    "Now, know demise!",
+ };
+ 
+-class npc_wisp_invis : public CreatureScript
++struct boss_headless_horseman : public ScriptedAI
+ {
+-public:
+-    npc_wisp_invis() : CreatureScript("npc_wisp_invis") { }
++    boss_headless_horseman(Creature* creature) : ScriptedAI(creature), _summons(me), _instance(creature->GetInstanceScript()), _phase(0) { }
+ 
+-    CreatureAI* GetAI(Creature* creature) const override
++    void Reset() override
+     {
+-        return GetScarletMonasteryAI<npc_wisp_invisAI>(creature);
++        _summons.DespawnAll();
++        events.Reset();
++        _phase = 0;
++        DoCast(me, SPELL_HEAD, true);
+     }
+ 
+-    struct npc_wisp_invisAI : public ScriptedAI
++    void IsSummonedBy(Unit* /*summoner*/) override
+     {
+-        npc_wisp_invisAI(Creature* creature) : ScriptedAI(creature)
+-        {
+-            Creaturetype = delay = _spell = _spell2 = 0;
+-        }
+-
+-        uint32 Creaturetype;
+-        uint32 delay;
+-        uint32 _spell;
+-        uint32 _spell2;
+-        void Reset() override { }
+-        void JustEngagedWith(Unit* /*who*/) override { }
+-        void SetType(uint32 _type)
+-        {
+-            switch (Creaturetype = _type)
+-            {
+-                case 1:
+-                    _spell = SPELL_PUMPKIN_AURA_GREEN;
+-                    break;
+-                case 2:
+-                    delay = 15000;
+-                    _spell = SPELL_BODY_FLAME;
+-                    _spell2 = SPELL_DEATH;
+-                    break;
+-                case 3:
+-                    delay = 15000;
+-                    _spell = SPELL_SMOKE;
+-                    break;
+-                case 4:
+-                    delay = 7000;
+-                    _spell2 = SPELL_WISP_BLUE;
+-                    break;
+-            }
+-            if (_spell)
+-                DoCast(me, _spell);
+-        }
+-
+-        void SpellHit(Unit* /*caster*/, const SpellInfo* spell) override
+-        {
+-            if (spell->Id == SPELL_WISP_FLIGHT_PORT && Creaturetype == 4)
+-                me->SetDisplayId(2027);
+-        }
+-
+-        void MoveInLineOfSight(Unit* who) override
+-        {
+-            if (!who || Creaturetype != 1 || !who->isTargetableForAttack())
+-                return;
+-
+-            if (me->IsWithinDist(who, 0.1f, false) && !who->HasAura(SPELL_SQUASH_SOUL))
+-                DoCast(who, SPELL_SQUASH_SOUL);
+-        }
+-
+-        void UpdateAI(uint32 diff) override
+-        {
+-            if (delay)
+-            {
+-                if (delay <= diff)
+-                {
+-                    me->RemoveAurasDueToSpell(SPELL_SMOKE);
+-                    if (_spell2)
+-                        DoCast(me, _spell2);
+-                    delay = 0;
+-                } else delay -= diff;
+-            }
+-        }
+-    };
+-};
++        // hidden in the ground while the summoner recites the rhyme
++        me->SetVisible(false);
++        me->SetReactState(REACT_PASSIVE);
++        me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
++        _introEvents.ScheduleEvent(EVENT_RHYME_1, 1000);
++    }
+ 
+-class npc_head : public CreatureScript
+-{
+-public:
+-    npc_head() : CreatureScript("npc_head") { }
++    void SetGUID(ObjectGuid guid, int32 type) override
++    {
++        if (type == TYPE_STARTER_GUID)
++            _starterGUID = guid;
++        else if (type == TYPE_HEAD_KILLER_GUID)
++            _headKillerGUID = guid;
++    }
+ 
+-    CreatureAI* GetAI(Creature* creature) const override
++    void MovementInform(uint32 type, uint32 pointId) override
+     {
+-        return GetScarletMonasteryAI<npc_headAI>(creature);
++        if (type == EFFECT_MOTION_TYPE && pointId == POINT_INTRO_END)
++            _introEvents.ScheduleEvent(EVENT_LANDED, 1000);
+     }
+ 
+-    struct npc_headAI : public ScriptedAI
++    void JustEngagedWith(Unit* /*who*/) override
+     {
+-        npc_headAI(Creature* creature) : ScriptedAI(creature)
+-        {
+-            Initialize();
+-        }
++        events.ScheduleEvent(EVENT_LAUGH, 5000);
++        events.ScheduleEvent(EVENT_CLEAVE, 3000);
++    }
+ 
+-        void Initialize()
+-        {
+-            Phase = 0;
+-            bodyGUID.Clear();
+-            die = false;
+-            withbody = true;
+-            wait = 1000;
+-            laugh = urand(15000, 30000);
+-        }
++    void KilledUnit(Unit* victim) override
++    {
++        if (victim->GetTypeId() == TYPEID_PLAYER)
++            Talk(SAY_PLAYER_DEATH);
++    }
+ 
+-        ObjectGuid bodyGUID;
++    void JustSummoned(Creature* summon) override
++    {
++        _summons.Summon(summon);
++    }
+ 
+-        uint32 Phase;
+-        uint32 laugh;
+-        uint32 wait;
++    void SummonedCreatureDespawn(Creature* summon) override
++    {
++        _summons.Despawn(summon);
++    }
+ 
+-        bool withbody;
+-        bool die;
++    void EnterEvadeMode(EvadeReason /*why*/) override
++    {
++        // a wipe: he goes back into the ground and the shrine can be used again
++        _summons.DespawnAll();
++        if (_instance)
++            _instance->SetBossState(DATA_HORSEMAN_EVENT, FAIL);
++        me->DespawnOrUnsummon();
++    }
+ 
+-        void Reset() override
+-        {
+-            Initialize();
+-        }
++    void JustDied(Unit* /*killer*/) override
++    {
++        Talk(SAY_DEATH);
++        _summons.DespawnAll();
++        DoCast(me, SPELL_BURNING, true);
++        me->SummonCreature(NPC_SIR_THOMAS, SirThomasPos, TEMPSUMMON_TIMED_DESPAWN, 60 * IN_MILLISECONDS);
++
++        if (_instance)
++            _instance->SetBossState(DATA_HORSEMAN_EVENT, DONE);
++
++        // the Hallow's End dungeon finder queue is finished by this kill
++        Map::PlayerList const& players = me->GetMap()->GetPlayers();
++        for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++            if (Player* player = itr->GetSource())
++                if (Group* group = player->GetGroup())
++                    if (group->isLFGGroup())
++                    {
++                        sLFGMgr->FinishDungeon(group->GetGUID(), LFG_DUNGEON_HEADLESS_HORSEMAN, me->GetMap());
++                        break;
++                    }
++    }
+ 
+-        void JustEngagedWith(Unit* /*who*/) override { }
++    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
++    {
++        if (_phase == 0 || _phase > 3)
++            return;
+ 
+-        void SaySound(uint8 textEntry, Unit* target = nullptr)
++        if (me->HasAura(SPELL_BODY_REGEN))
+         {
+-            Talk(textEntry, target);
+-
+-            //DoCast(me, SPELL_HEAD_SPEAKS, true);
+-            if (Creature* speaker = DoSpawnCreature(HELPER, 0, 0, 0, 0, TEMPSUMMON_TIMED_DESPAWN, 1000))
+-                speaker->CastSpell(speaker, SPELL_HEAD_SPEAKS, false);
+-            laugh += 3000;
++            damage = 0;
++            return;
+         }
+ 
+-        void DamageTaken(Unit* /*done_by*/, uint32 &damage) override
+-        {
+-            if (withbody)
+-                return;
++        if (damage < me->GetHealth())
++            return;
+ 
+-            switch (Phase)
+-            {
+-                case 1:
+-                    if (me->HealthBelowPctDamaged(67, damage))
+-                        Disappear();
+-                    break;
+-                case 2:
+-                    if (me->HealthBelowPctDamaged(34, damage))
+-                        Disappear();
+-                    break;
+-                case 3:
+-                    if (damage >= me->GetHealth())
+-                    {
+-                        die = true;
+-                        withbody = true;
+-                        wait = 300;
+-                        damage = me->GetHealth() - me->CountPctFromMaxHealth(1);
+-                        me->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+-                        me->StopMoving();
+-                        //me->GetMotionMaster()->MoveIdle();
+-                        DoCast(me, SPELL_HEAD_IS_DEAD);
+-                    }
+-                    break;
+-            }
+-        }
+-
+-        void SpellHit(Unit* caster, const SpellInfo* spell) override
+-        {
+-            if (!withbody)
+-                return;
++        // the body can't die: it loses its head, which the players have to beat down instead
++        damage = me->GetHealth() - 1;
+ 
+-            if (spell->Id == SPELL_FLYING_HEAD)
+-            {
+-                if (Phase < 3)
+-                    ++Phase;
+-                else
+-                    Phase = 3;
+-
+-                withbody = false;
+-                if (!bodyGUID)
+-                    bodyGUID = caster->GetGUID();
+-                me->RemoveAllAuras();
+-                me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+-                DoCast(me, SPELL_HEAD_LANDS, true);
+-                DoCast(me, SPELL_HEAD, false);
+-                SaySound(SAY_LOST_HEAD);
+-                me->GetMotionMaster()->Clear(false);
+-                me->GetMotionMaster()->MoveFleeing(caster->GetVictim());
+-            }
+-        }
++        DoCast(me, SPELL_IMMUNED, true);
++        DoCast(me, SPELL_BODY_REGEN, true);
++        DoCast(me, SPELL_CONFUSED, true);
+ 
+-        void Disappear();
+-        void UpdateAI(uint32 diff) override
++        if (Creature* head = me->SummonCreature(NPC_HEAD, me->GetRandomNearPosition(20.0f), TEMPSUMMON_MANUAL_DESPAWN))
+         {
+-            if (!withbody)
++            head->AI()->SetData(0, _phase);
++            switch (_phase)
+             {
+-                if (wait <= diff)
+-                {
+-                    wait = 1000;
+-                    if (!me->GetVictim())
+-                        return;
+-                    me->GetMotionMaster()->Clear(false);
+-                    me->GetMotionMaster()->MoveFleeing(me->GetVictim());
+-                }
+-                else wait -= diff;
+-
+-                if (laugh <= diff)
+-                {
+-                    laugh = urand(15000, 30000);
+-                    DoPlaySoundToSet(me, RandomLaugh[urand(0, 2)]);
+-                    //DoCast(me, SPELL_HEAD_SPEAKS, true); //this spell remove buff "head"
+-                    Creature* speaker = DoSpawnCreature(HELPER, 0, 0, 0, 0, TEMPSUMMON_TIMED_DESPAWN, 1000);
+-                    if (speaker)
+-                        speaker->CastSpell(speaker, SPELL_HEAD_SPEAKS, false);
+-                }
+-                else laugh -= diff;
+-            }
+-            else
+-            {
+-                if (die)
+-                {
+-                    if (wait <= diff)
+-                    {
+-                        die = false;
+-                        if (Unit* body = ObjectAccessor::GetUnit(*me, bodyGUID))
+-                            body->KillSelf();
+-                        me->KillSelf();
+-                    }
+-                    else wait -= diff;
+-                }
++                case 2: head->SetHealth(uint32(head->GetMaxHealth() * 2 / 3)); break;
++                case 3: head->SetHealth(uint32(head->GetMaxHealth() / 3)); break;
++                default: break;
+             }
+         }
+-    };
+-};
+ 
+-class boss_headless_horseman : public CreatureScript
+-{
+-public:
+-    boss_headless_horseman() : CreatureScript("boss_headless_horseman") { }
++        me->RemoveAurasDueToSpell(SPELL_HEAD);
++    }
+ 
+-    CreatureAI* GetAI(Creature* creature) const override
++    void SpellHit(Unit* /*caster*/, SpellInfo const* spell) override
+     {
+-        return GetScarletMonasteryAI<boss_headless_horsemanAI>(creature);
++        if (spell->Id == SPELL_HORSEMANS_SUMMON)
++            Talk(SAY_SPROUTING_PUMPKINS);
+     }
+ 
+-    struct boss_headless_horsemanAI : public ScriptedAI
++    void DoAction(int32 action) override
+     {
+-        boss_headless_horsemanAI(Creature* creature) : ScriptedAI(creature)
+-        {
+-            Initialize();
+-            instance = creature->GetInstanceScript();
+-            id = 0;
+-            whirlwind = 0;
+-            wp_reached = false;
+-        }
+-
+-        void Initialize()
+-        {
+-            Phase = 1;
+-            conflagrate = 15000;
+-            summonadds = 15000;
+-            laugh = urand(16000, 20000);
+-            cleave = 2000;
+-            regen = 1000;
+-            burn = 6000;
+-            count = 0;
+-            say_timer = 3000;
+-
+-            withhead = true;
+-            returned = true;
+-            burned = false;
+-            IsFlying = false;
+-        }
+-
+-        InstanceScript* instance;
++        if (action != ACTION_SWITCH_PHASE)
++            return;
+ 
+-        ObjectGuid headGUID;
+-        ObjectGuid PlayerGUID;
++        // the head took enough damage: it flies back and the next phase starts
++        me->RemoveAllAuras();
++        DoCast(me, SPELL_HEAL_BODY, true);
++        DoCast(me, SPELL_HEAD, true);
+ 
+-        uint32 Phase;
+-        uint32 id;
+-        uint32 count;
+-        uint32 say_timer;
+-
+-        uint32 conflagrate;
+-        uint32 summonadds;
+-        uint32 cleave;
+-        uint32 regen;
+-        uint32 whirlwind;
+-        uint32 laugh;
+-        uint32 burn;
+-
+-        bool withhead;
+-        bool returned;
+-        bool IsFlying;
+-        bool wp_reached;
+-        bool burned;
+-
+-        void Reset() override
++        ++_phase;
++        if (_phase > 3)
+         {
+-            Initialize();
+-            DoCast(me, SPELL_HEAD);
+-            if (!headGUID.IsEmpty())
+-            {
+-                if (Creature* Head = ObjectAccessor::GetCreature((*me), headGUID))
+-                    Head->DespawnOrUnsummon();
+-
+-                headGUID.Clear();
+-            }
+-
+-            me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
+-            //instance->SetBossState(DATA_HORSEMAN_EVENT, NOT_STARTED);
++            Player* killer = ObjectAccessor::GetPlayer(*me, _headKillerGUID);
++            if (killer && killer->IsInMap(me))
++                killer->Kill(me);
++            else
++                me->KillSelf();
++            return;
+         }
+ 
+-        void FlyMode()
++        Talk(SAY_REJOINED);
++        if (_phase == 2)
++            events.ScheduleEvent(EVENT_CONFLAGRATION, 4000);
++        else if (_phase == 3)
+         {
+-            me->SetVisible(false);
+-            me->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+-            me->SetDisableGravity(true);
+-            me->SetSpeedRate(MOVE_WALK, 5.0f);
+-            wp_reached = false;
+-            count = 0;
+-            say_timer = 3000;
+-            id = 0;
+-            Phase = 0;
++            events.CancelEvent(EVENT_CONFLAGRATION);
++            events.ScheduleEvent(EVENT_SUMMON_PUMPKINS, 1000);
+         }
++    }
+ 
+-        void MovementInform(uint32 type, uint32 i) override
++    void UpdateIntro(uint32 diff)
++    {
++        _introEvents.Update(diff);
++        while (uint32 eventId = _introEvents.ExecuteEvent())
+         {
+-            if (type != POINT_MOTION_TYPE || !IsFlying || i != id)
+-                return;
+-
+-            wp_reached = true;
+-
+-            switch (id)
++            switch (eventId)
+             {
+-                case 0:
++                case EVENT_RHYME_1:
++                case EVENT_RHYME_2:
++                case EVENT_RHYME_3:
++                case EVENT_RHYME_4:
++                    if (Player* player = ObjectAccessor::GetPlayer(*me, _starterGUID))
++                        player->Say(SummonRhyme[eventId - EVENT_RHYME_1], LANG_UNIVERSAL);
++                    _introEvents.ScheduleEvent(eventId == EVENT_RHYME_4 ? uint32(EVENT_RISE) : eventId + 1, eventId == EVENT_RHYME_4 ? 100 : 3000);
++                    break;
++                case EVENT_RISE:
++                    Talk(SAY_ENTRANCE);
++                    DoCast(me, SPELL_RHYME_BIG, true);
+                     me->SetVisible(true);
++                    me->SetDisableGravity(true);
++                    me->GetMotionMaster()->MoveSmoothPath(POINT_INTRO_END, HorsemanIntroPath, std::extent<decltype(HorsemanIntroPath)>::value, false, true, 10.0f);
+                     break;
+-                case 1:
++                case EVENT_LANDED:
+                 {
+-                    if (Creature* smoke = me->SummonCreature(HELPER, Spawn[1], TEMPSUMMON_TIMED_DESPAWN, 20000))
+-                        ENSURE_AI(npc_wisp_invis::npc_wisp_invisAI, smoke->AI())->SetType(3);
+-                    DoCast(me, SPELL_RHYME_BIG);
+-                    break;
+-                }
+-                case 6:
+-                    instance->SetData(DATA_PUMPKIN_SHRINE, 0);   //hide gameobject
+-                    break;
+-                case 19:
++                    Position const& end = HorsemanIntroPath[std::extent<decltype(HorsemanIntroPath)>::value - 1];
+                     me->SetDisableGravity(false);
+-                    break;
+-                case 20:
+-                {
+-                    Phase = 1;
+-                    IsFlying = false;
+-                    wp_reached = false;
+-                    me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+-                    SaySound(SAY_ENTRANCE);
+-                    if (Unit* player = ObjectAccessor::GetUnit(*me, PlayerGUID))
+-                        DoStartMovement(player);
++                    me->SetHomePosition(end.GetPositionX(), end.GetPositionY(), end.GetPositionZ(), me->GetOrientation());
++                    me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
++                    me->SetReactState(REACT_AGGRESSIVE);
++                    _phase = 1;
++                    DoZoneInCombat(me, 100.0f);
++                    // nobody left to fight: back into the ground
++                    if (!me->IsInCombat())
++                        EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
+                     break;
+                 }
++                default:
++                    break;
+             }
+-            ++id;
+-        }
+-
+-        void JustEngagedWith(Unit* /*who*/) override
+-        {
+-            instance->SetBossState(DATA_HORSEMAN_EVENT, IN_PROGRESS);
+-            DoZoneInCombat();
+-        }
+-
+-        void AttackStart(Unit* who) override
+-        {
+-            ScriptedAI::AttackStart(who);
+-        }
+-
+-        void MoveInLineOfSight(Unit* who) override
+-        {
+-            if (withhead && Phase != 0)
+-                ScriptedAI::MoveInLineOfSight(who);
+-        }
+-
+-        void KilledUnit(Unit* player) override
+-        {
+-            if (player->GetTypeId() == TYPEID_PLAYER)
+-            {
+-                if (withhead)
+-                    SaySound(SAY_PLAYER_DEATH);
+-                //maybe possible when player dies from conflagration
+-                else if (Creature* Head = ObjectAccessor::GetCreature((*me), headGUID))
+-                    ENSURE_AI(npc_head::npc_headAI, Head->AI())->SaySound(SAY_PLAYER_DEATH);
+-            }
+-        }
+-
+-        void SaySound(uint8 textEntry, Unit* target = nullptr)
+-        {
+-            Talk(textEntry, target);
+-            laugh += 4000;
+-        }
+-
+-        Player* SelectRandomPlayer(float range = 0.0f, bool checkLoS = true)
+-        {
+-            Map::PlayerList const &PlayerList = me->GetMap()->GetPlayers();
+-            if (PlayerList.isEmpty())
+-                return nullptr;
+-
+-            std::list<Player*> temp;
+-            for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
+-                if ((me->IsWithinLOSInMap(i->GetSource()) || !checkLoS) && me->GetVictim() != i->GetSource() &&
+-                    me->IsWithinDistInMap(i->GetSource(), range) && i->GetSource()->IsAlive())
+-                    temp.push_back(i->GetSource());
+-
+-            if (!temp.empty())
+-            {
+-                std::list<Player*>::const_iterator j = temp.begin();
+-                advance(j, rand32() % temp.size());
+-                return (*j);
+-            }
+-            return nullptr;
+-        }
+-
+-        void SpellHitTarget(Unit* unit, const SpellInfo* spell) override
+-        {
+-            if (spell->Id == SPELL_CONFLAGRATION && unit->HasAura(SPELL_CONFLAGRATION))
+-                SaySound(SAY_CONFLAGRATION, unit);
+         }
++    }
+ 
+-        void JustDied(Unit* /*killer*/) override
++    void UpdateAI(uint32 diff) override
++    {
++        if (_phase == 0)
+         {
+-            me->StopMoving();
+-            //me->GetMotionMaster()->MoveIdle();
+-            SaySound(SAY_DEATH);
+-            if (Creature* flame = DoSpawnCreature(HELPER, 0, 0, 0, 0, TEMPSUMMON_TIMED_DESPAWN, 60000))
+-                flame->CastSpell(flame, SPELL_BODY_FLAME, false);
+-            if (Creature* wisp = DoSpawnCreature(WISP_INVIS, 0, 0, 0, 0, TEMPSUMMON_TIMED_DESPAWN, 60000))
+-                ENSURE_AI(npc_wisp_invis::npc_wisp_invisAI, wisp->AI())->SetType(4);
+-            instance->SetBossState(DATA_HORSEMAN_EVENT, DONE);
+-
+-            Map::PlayerList const& players = me->GetMap()->GetPlayers();
+-            if (!players.isEmpty())
+-            {
+-                if (Group* group = players.begin()->GetSource()->GetGroup())
+-                    if (group->isLFGGroup())
+-                        sLFGMgr->FinishDungeon(group->GetGUID(), 285, me->GetMap());
+-            }
++            UpdateIntro(diff);
++            return;
+         }
+ 
+-        void SpellHit(Unit* caster, const SpellInfo* spell) override
+-        {
+-            if (withhead)
+-                return;
+-
+-            if (spell->Id == SPELL_FLYING_HEAD)
+-            {
+-                if (Phase < 3)
+-                    ++Phase;
+-                else
+-                    Phase = 3;
+-                withhead = true;
+-                me->RemoveAllAuras();
+-                me->SetName("Headless Horseman");
+-                me->SetFullHealth();
+-                SaySound(SAY_REJOINED);
+-                DoCast(me, SPELL_HEAD);
+-                caster->GetMotionMaster()->Clear(false);
+-                caster->GetMotionMaster()->MoveFollow(me, 6, float(urand(0, 5)));
+-            }
+-        }
++        if (!UpdateVictim())
++            return;
+ 
+-        void DamageTaken(Unit* /*done_by*/, uint32 &damage) override
++        if (me->HasAura(SPELL_BODY_REGEN))
+         {
+-            if (damage >= me->GetHealth() && withhead)
++            // nobody finished the head in time: it comes back without a phase change
++            if (me->IsFullHealth())
+             {
+-                withhead = false;
+-                returned = false;
+-                damage = me->GetHealth() - me->CountPctFromMaxHealth(1);
+                 me->RemoveAllAuras();
+-                me->SetName("Headless Horseman, Unhorsed");
+-
+-                if (!headGUID)
+-                    headGUID = DoSpawnCreature(HEAD, float(rand32() % 6), float(rand32() % 6), 0, 0, TEMPSUMMON_DEAD_DESPAWN, 0)->GetGUID();
++                DoCast(me, SPELL_HEAD, true);
+ 
+-                Unit* Head = ObjectAccessor::GetUnit(*me, headGUID);
+-                if (Head && Head->IsAlive())
++                if (Creature* head = me->FindNearestCreature(NPC_HEAD, 250.0f, true))
+                 {
+-                    Head->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+-                    //Head->CastSpell(Head, SPELL_HEAD_INVIS, false);
+-                    me->InterruptNonMeleeSpells(false);
+-                    DoCast(me, SPELL_IMMUNE, true);
+-                    DoCast(me, SPELL_BODY_REGEN, true);
+-                    DoCast(Head, SPELL_FLYING_HEAD, true);
+-                    DoCast(me, SPELL_CONFUSE, false);                     //test
+-                    whirlwind = urand(4000, 8000);
+-                    regen = 0;
++                    head->SetFullHealth();
++                    head->RemoveAllAuras();
++                    head->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
++                    head->DespawnOrUnsummon(3000);
++                    head->CastSpell(me, SPELL_FLYING_HEAD, true);
+                 }
+             }
++            else if (!me->HasAura(SPELL_WHIRLWIND) && me->GetHealthPct() > 10.0f)
++                DoCast(me, SPELL_WHIRLWIND, true);
++            return;
+         }
+ 
+-        void UpdateAI(uint32 diff) override
+-        {
+-            if (withhead)
+-            {
+-                switch (Phase)
+-                {
+-                    case 0:
+-                    {
+-                        if (!IsFlying)
+-                        {
+-                            if (say_timer <= diff)
+-                            {
+-                                say_timer = 3000;
+-                                Player* player = SelectRandomPlayer(100.0f, false);
+-                                if (count < 3)
+-                                {
+-                                    if (player)
+-                                        player->Say(Text[count], LANG_UNIVERSAL);
+-                                }
+-                                else
+-                                {
+-                                    DoCast(me, SPELL_RHYME_BIG);
+-                                    if (player)
+-                                    {
+-                                        player->Say(Text[count], LANG_UNIVERSAL);
+-                                        player->HandleEmoteCommand(ANIM_EMOTE_SHOUT);
+-                                    }
+-                                    wp_reached = true;
+-                                    IsFlying = true;
+-                                    count = 0;
+-                                    break;
+-                                }
+-                                ++count;
+-                            }
+-                            else say_timer -= diff;
+-                        }
+-                        else
+-                        {
+-                            if (wp_reached)
+-                            {
+-                                wp_reached = false;
+-                                me->GetMotionMaster()->Clear(false);
+-                                me->GetMotionMaster()->MovePoint(id, FlightPoint[id]);
+-                            }
+-                        }
+-                    }
+-                    break;
+-                    case 1:
+-                        if (burned)
+-                            break;
+-                        if (burn <= diff)
+-                        {
+-                            if (Creature* flame = me->SummonCreature(HELPER, Spawn[0], TEMPSUMMON_TIMED_DESPAWN, 17000))
+-                                ENSURE_AI(npc_wisp_invis::npc_wisp_invisAI, flame->AI())->SetType(2);
+-                            burned = true;
+-                        }
+-                        else burn -= diff;
+-                        break;
+-                    case 2:
+-                        if (conflagrate <= diff)
+-                        {
+-                            if (Unit* player = SelectRandomPlayer(30.0f))
+-                                DoCast(player, SPELL_CONFLAGRATION, false);
+-                            conflagrate = urand(10000, 16000);
+-                        }
+-                        else conflagrate -= diff;
+-                        break;
+-                    case 3:
+-                        if (summonadds <= diff)
+-                        {
+-                            me->InterruptNonMeleeSpells(false);
+-                            DoCast(me, SPELL_SUMMON_PUMPKIN);
+-                            SaySound(SAY_SPROUTING_PUMPKINS);
+-                            summonadds = urand(25000, 35000);
+-                        }
+-                        else summonadds -= diff;
+-                        break;
+-                }
++        events.Update(diff);
+ 
+-                if (laugh <= diff)
+-                {
+-                    laugh = urand(11000, 22000);
+-                    DoPlaySoundToSet(me, RandomLaugh[rand32() % 3]);
+-                }
+-                else laugh -= diff;
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
+ 
+-                if (UpdateVictim())
+-                {
+-                    DoMeleeAttackIfReady();
+-                    if (cleave <= diff)
+-                    {
+-                        DoCastVictim(SPELL_CLEAVE);
+-                        cleave = urand(2000, 6000);       //1 cleave per 2.0f-6.0fsec
+-                    }
+-                    else cleave -= diff;
+-                }
+-            }
+-            else
++        while (uint32 eventId = events.ExecuteEvent())
++        {
++            switch (eventId)
+             {
+-                if (regen <= diff)
+-                {
+-                    regen = 1000;                   //"body calls head"
+-                    if (me->IsFullHealth() && !returned)
+-                    {
+-                        if (Phase > 1)
+-                            --Phase;
+-                        else
+-                            Phase = 1;
+-                        Creature* Head = ObjectAccessor::GetCreature((*me), headGUID);
+-                        if (Head && Head->IsAlive())
+-                        {
+-                            ENSURE_AI(npc_head::npc_headAI, Head->AI())->Phase = Phase;
+-                            ENSURE_AI(npc_head::npc_headAI, Head->AI())->Disappear();
+-                        }
+-                        return;
+-                    }
+-                }
+-                else regen -= diff;
+-
+-                if (whirlwind <= diff)
++                case EVENT_LAUGH:
++                    DoPlaySoundToSet(me, HorsemanLaughs[urand(0, 2)]);
++                    events.ScheduleEvent(EVENT_LAUGH, urand(11000, 22000));
++                    break;
++                case EVENT_CLEAVE:
++                    DoCastVictim(SPELL_CLEAVE);
++                    events.ScheduleEvent(EVENT_CLEAVE, urand(2000, 6000));
++                    break;
++                case EVENT_CONFLAGRATION:
+                 {
+-                    whirlwind = urand(4000, 8000);
+-                    if (urand(0, 1))
+-                    {
+-                        me->RemoveAurasDueToSpell(SPELL_CONFUSE);
+-                        DoCast(me, SPELL_WHIRLWIND, true);
+-                        DoCast(me, SPELL_CONFUSE);
+-                    }
+-                    else
+-                        me->RemoveAurasDueToSpell(SPELL_WHIRLWIND);
++                    // someone other than the tank if there is anyone, so solo it lands on the tank
++                    Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 1, 30.0f, true);
++                    if (!target)
++                        target = me->GetVictim();
++                    if (target)
++                        DoCast(target, SPELL_CONFLAGRATION);
++                    Talk(SAY_CONFLAGRATION);
++                    events.ScheduleEvent(EVENT_CONFLAGRATION, urand(8000, 12000));
++                    break;
+                 }
+-                else whirlwind -= diff;
++                case EVENT_SUMMON_PUMPKINS:
++                    DoCast(me, SPELL_SUMMON_PUMPKIN_BURST_DELAY, true);
++                    events.ScheduleEvent(EVENT_SUMMON_PUMPKINS, 15000);
++                    break;
++                default:
++                    break;
+             }
+         }
+-    };
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    SummonList _summons;
++    InstanceScript* _instance;
++    EventMap _introEvents;
++    ObjectGuid _starterGUID;
++    ObjectGuid _headKillerGUID;
++    uint8 _phase;
+ };
+ 
+-class npc_pulsing_pumpkin : public CreatureScript
++struct npc_head : public ScriptedAI
+ {
+-public:
+-    npc_pulsing_pumpkin() : CreatureScript("npc_pulsing_pumpkin") { }
++    npc_head(Creature* creature) : ScriptedAI(creature), _phase(1), _done(false) { }
++
++    void Reset() override { }
+ 
+-    CreatureAI* GetAI(Creature* creature) const override
++    void IsSummonedBy(Unit* /*summoner*/) override
+     {
+-        return GetScarletMonasteryAI<npc_pulsing_pumpkinAI>(creature);
++        me->SetReactState(REACT_PASSIVE);
++        me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_STUNNED | UNIT_FLAG_NOT_SELECTABLE));
++        me->GetMotionMaster()->MoveRandom(30.0f);
++        DoCast(me, SPELL_HEAD, true);
++        DoCast(me, SPELL_HEAD_LANDS, true);
++        Talk(SAY_LOST_HEAD);
+     }
+ 
+-    struct npc_pulsing_pumpkinAI : public ScriptedAI
++    void SetData(uint32 /*type*/, uint32 data) override
+     {
+-        npc_pulsing_pumpkinAI(Creature* creature) : ScriptedAI(creature)
+-        {
+-            sprouted = false;
+-        }
+-
+-        bool sprouted;
+-        ObjectGuid debuffGUID;
++        _phase = data;
++    }
+ 
+-        void Reset() override
+-        {
+-            float x, y, z;
+-            me->GetPosition(x, y, z);   //this visual aura some under ground
+-            me->SetPosition(x, y, z + 0.35f, 0.0f);
+-            debuffGUID.Clear();
+-            Despawn();
+-            Creature* debuff = DoSpawnCreature(HELPER, 0, 0, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 14500);
+-            if (debuff)
+-            {
+-                debuff->SetDisplayId(me->GetDisplayId());
+-                debuff->CastSpell(debuff, SPELL_PUMPKIN_AURA_GREEN, false);
+-                ENSURE_AI(npc_wisp_invis::npc_wisp_invisAI, debuff->AI())->SetType(1);
+-                debuffGUID = debuff->GetGUID();
+-            }
+-            sprouted = false;
+-            DoCast(me, SPELL_PUMPKIN_AURA, true);
+-            DoCast(me, SPELL_SPROUTING);
+-            me->AddUnitFlag(UNIT_FLAG_STUNNED);
+-        }
++    void JustEngagedWith(Unit* /*who*/) override { }
+ 
+-        void JustEngagedWith(Unit* /*who*/) override { }
++    void DamageTaken(Unit* attacker, uint32& damage) override
++    {
++        if (_done)
++        {
++            damage = 0;
++            return;
++        }
++
++        // phase 1 ends at 66%, phase 2 at 33%, phase 3 when the head would die
++        int32 healthPct = _phase == 1 ? 66 : _phase == 2 ? 33 : 1;
++        if (!me->HealthBelowPctDamaged(healthPct, damage) && damage < me->GetHealth())
++            return;
++
++        damage = 0;
++        _done = true;
++        me->RemoveAllAuras();
++        me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
++        me->DespawnOrUnsummon(3000);
++
++        TempSummon* summon = me->ToTempSummon();
++        Unit* summoner = summon ? summon->GetSummoner() : nullptr;
++        Creature* horseman = summoner ? summoner->ToCreature() : nullptr;
++        if (!horseman || !horseman->IsAIEnabled)
++            return;
++
++        if (_phase < 3)
++            DoCast(horseman, SPELL_FLYING_HEAD, true);
++        if (attacker)
++            if (Player* player = attacker->GetCharmerOrOwnerPlayerOrPlayerItself())
++                horseman->AI()->SetGUID(player->GetGUID(), TYPE_HEAD_KILLER_GUID);
++        horseman->AI()->DoAction(ACTION_SWITCH_PHASE);
++    }
+ 
+-        void SpellHit(Unit* /*caster*/, const SpellInfo* spell) override
+-        {
+-            if (spell->Id == SPELL_SPROUTING)
+-            {
+-                sprouted = true;
+-                me->RemoveAllAuras();
+-                me->RemoveUnitFlag(UNIT_FLAG_STUNNED);
+-                DoCast(me, SPELL_SPROUT_BODY, true);
+-                me->UpdateEntry(PUMPKIN_FIEND);
+-                DoStartMovement(me->GetVictim());
+-            }
+-        }
++    void UpdateAI(uint32 /*diff*/) override { }
+ 
+-        void Despawn()
+-        {
+-            if (!debuffGUID)
+-                return;
++private:
++    uint32 _phase;
++    bool _done;
++};
+ 
+-            Unit* debuff = ObjectAccessor::GetUnit(*me, debuffGUID);
+-            if (debuff)
+-            {
+-                debuff->SetVisible(false);
+-                debuffGUID.Clear();
+-            }
+-        }
++// thrown by Horseman's Summon in phase 3; sprouts into a Pumpkin Fiend unless it is killed first
++struct npc_pulsing_pumpkin : public ScriptedAI
++{
++    npc_pulsing_pumpkin(Creature* creature) : ScriptedAI(creature) { }
+ 
+-        void JustDied(Unit* /*killer*/) override
+-        {
+-            if (!sprouted)
+-                Despawn();
+-        }
++    void Reset() override { }
+ 
+-        void MoveInLineOfSight(Unit* who) override
+-        {
+-            if (!who || !me->IsValidAttackTarget(who) || me->GetVictim())
+-                return;
++    void IsSummonedBy(Unit* /*summoner*/) override
++    {
++        me->SetReactState(REACT_PASSIVE);
++        me->NearTeleportTo(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() + 0.5f, me->GetOrientation());
++        DoCast(me, SPELL_PUMPKIN_LIFE_CYCLE, true);
++        DoCast(me, SPELL_HEADLESS_HORSEMAN_SUMMON_PUMPKIN_PULSE, true);
++        DoCast(me, SPELL_HEADLESS_HORSEMAN_PUMPKIN_AURA, true);
++        DoCast(me, SPELL_SPROUTING);
++    }
+ 
+-            AddThreat(who, 0.0f);
+-            if (sprouted)
+-                DoStartMovement(who);
+-        }
++    void JustEngagedWith(Unit* /*who*/) override { }
+ 
+-        void UpdateAI(uint32 /*diff*/) override
+-        {
+-            if (sprouted && UpdateVictim())
+-                DoMeleeAttackIfReady();
+-        }
+-    };
+-};
++    void UpdateAI(uint32 /*diff*/) override
++    {
++        if (me->HasReactState(REACT_PASSIVE) || !UpdateVictim())
++            return;
+ 
+-enum LooselyTurnedSoil
+-{
+-    QUEST_CALL_THE_HEADLESS_HORSEMAN = 11405
++        DoMeleeAttackIfReady();
++    }
+ };
+ 
+-class go_loosely_turned_soil : public GameObjectScript
++class go_pumpkin_shrine : public GameObjectScript
+ {
+ public:
+-    go_loosely_turned_soil() : GameObjectScript("go_loosely_turned_soil") { }
++    go_pumpkin_shrine() : GameObjectScript("go_pumpkin_shrine") { }
+ 
+-    bool OnGossipHello(Player* player, GameObject* /*go*/) override
++    static bool CanCall(GameObject* go)
+     {
+-        if (InstanceScript* instance = player->GetInstanceScript())
+-            if (instance->GetBossState(DATA_HORSEMAN_EVENT) == IN_PROGRESS || player->GetQuestStatus(QUEST_CALL_THE_HEADLESS_HORSEMAN) != QUEST_STATUS_COMPLETE)
+-                return true;
+-
+-        return false;
++        InstanceScript* instance = go->GetInstanceScript();
++        if (!instance)
++            return false;
++        EncounterState state = instance->GetBossState(DATA_HORSEMAN_EVENT);
++        return state != IN_PROGRESS && state != DONE;
+     }
+ 
+-    bool OnQuestReward(Player* player, GameObject* go, Quest const* /*quest*/, uint32 /*opt*/) override
++    bool OnGossipHello(Player* player, GameObject* go) override
+     {
+-        if (InstanceScript* instance = go->GetInstanceScript())
+-            if (instance->GetBossState(DATA_HORSEMAN_EVENT) == IN_PROGRESS)
+-                return false;
++        player->PrepareQuestMenu(go->GetGUID());
++        if (CanCall(go))
++            AddGossipItemFor(player, GOSSIP_MENU_PUMPKIN_SHRINE, 0, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
++        SendGossipMenuFor(player, player->GetGossipTextId(GOSSIP_MENU_PUMPKIN_SHRINE, go), go->GetGUID());
++        return true;
++    }
+ 
+-        player->AreaExploredOrEventHappens(11405);
+-        if (Creature* horseman = go->SummonCreature(HH_MOUNTED, FlightPoint[20], TEMPSUMMON_MANUAL_DESPAWN, 0))
+-        {
+-            ENSURE_AI(boss_headless_horseman::boss_headless_horsemanAI, horseman->AI())->PlayerGUID = player->GetGUID();
+-            ENSURE_AI(boss_headless_horseman::boss_headless_horsemanAI, horseman->AI())->FlyMode();
+-        }
++    bool OnGossipSelect(Player* player, GameObject* go, uint32 /*sender*/, uint32 action) override
++    {
++        CloseGossipMenuFor(player);
++        if (action != GOSSIP_ACTION_INFO_DEF || !CanCall(go))
++            return true;
++
++        go->GetInstanceScript()->SetBossState(DATA_HORSEMAN_EVENT, IN_PROGRESS);
++        if (Creature* horseman = go->SummonCreature(NPC_HORSEMAN, HorsemanSpawnPos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5 * MINUTE * IN_MILLISECONDS))
++            horseman->AI()->SetGUID(player->GetGUID(), TYPE_STARTER_GUID);
++        else
++            go->GetInstanceScript()->SetBossState(DATA_HORSEMAN_EVENT, FAIL);
+         return true;
+     }
++
++private:
++    static uint32 const GOSSIP_MENU_PUMPKIN_SHRINE = 8891;
+ };
+ 
+-void npc_head::npc_headAI::Disappear()
++// the pumpkin finishes sprouting: it becomes a Pumpkin Fiend and joins the fight
++class spell_sprouting : public SpellScript
+ {
+-    if (withbody)
+-        return;
++    PrepareSpellScript(spell_sprouting);
+ 
+-    if (!bodyGUID.IsEmpty())
++    void HandleScript(SpellEffIndex /*effIndex*/)
+     {
+-        Creature* body = ObjectAccessor::GetCreature((*me), bodyGUID);
+-        if (body && body->IsAlive())
+-        {
+-            withbody = true;
+-            me->RemoveAllAuras();
+-            body->RemoveAurasDueToSpell(SPELL_IMMUNE);//hack, SpellHit doesn't calls if body has immune aura
+-            DoCast(body, SPELL_FLYING_HEAD);
+-            me->SetFullHealth();
+-            me->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+-            me->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+-            me->GetMotionMaster()->MoveIdle();
+-            ENSURE_AI(boss_headless_horseman::boss_headless_horsemanAI, body->AI())->returned = true;
+-        }
++        Creature* pumpkin = GetHitCreature();
++        if (!pumpkin)
++            return;
++
++        pumpkin->RemoveAurasDueToSpell(SPELL_PUMPKIN_LIFE_CYCLE);
++        pumpkin->RemoveAurasDueToSpell(SPELL_HEADLESS_HORSEMAN_PUMPKIN_AURA);
++        pumpkin->CastSpell(pumpkin, SPELL_HEADLESS_HORSEMAN_PUMPKIN_LIFE_CYCLE_DEATH, true);
++        pumpkin->CastSpell(pumpkin, SPELL_SPROUT_BODY, true);
++        pumpkin->SetReactState(REACT_AGGRESSIVE);
++        pumpkin->SetInCombatWithZone();
+     }
+-}
++
++    void Register() override
++    {
++        OnEffectHitTarget += SpellEffectFn(spell_sprouting::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
++    }
++};
+ 
+ void AddSC_boss_headless_horseman()
+ {
+-    new boss_headless_horseman();
+-    new npc_head();
+-    new npc_pulsing_pumpkin();
+-    new npc_wisp_invis();
+-    new go_loosely_turned_soil();
++    RegisterCreatureAIWithFactory(boss_headless_horseman, GetScarletMonasteryAI);
++    RegisterCreatureAIWithFactory(npc_head, GetScarletMonasteryAI);
++    RegisterCreatureAIWithFactory(npc_pulsing_pumpkin, GetScarletMonasteryAI);
++    new go_pumpkin_shrine();
++    RegisterSpellScript(spell_sprouting);
+ }
+diff --git a/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_thalnos_the_soulrender.cpp b/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_thalnos_the_soulrender.cpp
+new file mode 100644
+index 0000000..a21421d
+--- /dev/null
++++ b/src/server/scripts/EasternKingdoms/ScarletMonastery/boss_thalnos_the_soulrender.cpp
+@@ -0,0 +1,270 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Thalnos the Soulrender (Scarlet Monastery, map 1004), ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "ScriptMgr.h"
++#include "InstanceScript.h"
++#include "ObjectAccessor.h"
++#include "Player.h"
++#include "ScriptedCreature.h"
++#include "TemporarySummon.h"
++#include "scarlet_monastery.h"
++
++enum ThalnosSpells
++{
++    SPELL_SPIRIT_GALE               = 115289, // missile; the pool it leaves is areatrigger 220 (SQL)
++    SPELL_RAISE_FALLEN_CRUSADER     = 115139, // 5 s channel, a Fallen Crusader every second
++    SPELL_EVICT_SOUL                = 115297,
++    SPELL_SUMMON_EMPOWERING_SPIRITS = 115147,
++    SPELL_SPIRIT_GALE_AURA          = 115291,
++
++    SPELL_MIND_ROT                  = 115144, // Fallen Crusader
++    SPELL_CLONE_ME                  = 45204,  // Evicted Soul takes its player's looks
++};
++
++enum ThalnosEvents
++{
++    EVENT_SPIRIT_GALE               = 1,
++    EVENT_RAISE_FALLEN_CRUSADER,
++    EVENT_EVICT_SOUL,
++    EVENT_EMPOWERING_SPIRITS,
++
++    EVENT_MIND_ROT                  = 1,
++    EVENT_EMPOWER                   = 1,
++};
++
++enum ThalnosTexts
++{
++    TALK_AGGRO                      = 0, // My endless agony shall be yours, as well!
++    TALK_RAISE                      = 1, // No rest... for the angry dead!
++    TALK_EVICT                      = 2, // Seek out a vessel... and return!
++    TALK_SPIRITS                    = 3, // Claim a body, and wreak terrible vengeance!
++    TALK_DEATH                      = 4, // Can this be... the end, at last...?
++    TALK_EVICT_SOUL_ANN             = 5,
++    TALK_EMPOWERING_SPIRITS_ANN     = 6,
++};
++
++struct boss_thalnos_the_soulrender : public BossAI
++{
++    boss_thalnos_the_soulrender(Creature* creature) : BossAI(creature, DATA_THALNOS_THE_SOULRENDER) { }
++
++    void Reset() override
++    {
++        _Reset();
++        DespawnAdds();
++        me->SetReactState(REACT_AGGRESSIVE);
++        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_SPIRIT_GALE_AURA);
++    }
++
++    void JustEngagedWith(Unit* who) override
++    {
++        BossAI::JustEngagedWith(who);
++        Talk(TALK_AGGRO);
++        events.ScheduleEvent(EVENT_SPIRIT_GALE, 1500);
++        events.ScheduleEvent(EVENT_RAISE_FALLEN_CRUSADER, urand(6500, 7000));
++        events.ScheduleEvent(EVENT_EVICT_SOUL, urand(25000, 26000));
++        events.ScheduleEvent(EVENT_EMPOWERING_SPIRITS, urand(40000, 42000));
++    }
++
++    void EnterEvadeMode(EvadeReason why) override
++    {
++        DespawnAdds();
++        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_SPIRIT_GALE_AURA);
++        BossAI::EnterEvadeMode(why);
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        _JustDied();
++        Talk(TALK_DEATH);
++        DespawnAdds();
++        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_SPIRIT_GALE_AURA);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        if (!UpdateVictim())
++            return;
++
++        events.Update(diff);
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        while (uint32 eventId = events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_SPIRIT_GALE:
++                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100.0f, true))
++                        DoCast(target, SPELL_SPIRIT_GALE);
++                    events.ScheduleEvent(EVENT_SPIRIT_GALE, urand(7500, 13000));
++                    break;
++                case EVENT_RAISE_FALLEN_CRUSADER:
++                    Talk(TALK_RAISE);
++                    DoCast(me, SPELL_RAISE_FALLEN_CRUSADER);
++                    break;
++                case EVENT_EVICT_SOUL:
++                {
++                    Talk(TALK_EVICT);
++                    Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, NonTankTargetSelector(me));
++                    if (!target)
++                        target = me->GetVictim();
++                    if (target)
++                    {
++                        Talk(TALK_EVICT_SOUL_ANN, target);
++                        DoCast(target, SPELL_EVICT_SOUL);
++                    }
++                    events.ScheduleEvent(EVENT_EVICT_SOUL, urand(25000, 26000));
++                    break;
++                }
++                case EVENT_EMPOWERING_SPIRITS:
++                    Talk(TALK_SPIRITS);
++                    Talk(TALK_EMPOWERING_SPIRITS_ANN);
++                    DoCastAOE(SPELL_SUMMON_EMPOWERING_SPIRITS);
++                    events.ScheduleEvent(EVENT_EMPOWERING_SPIRITS, urand(40000, 42000));
++                    events.ScheduleEvent(EVENT_RAISE_FALLEN_CRUSADER, 20000);
++                    break;
++                default:
++                    break;
++            }
++
++            if (me->HasUnitState(UNIT_STATE_CASTING))
++                return;
++        }
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    // the Evicted Souls are summoned by the players' own aura, so they are not in the boss's summon list
++    void DespawnAdds()
++    {
++        summons.DespawnAll();
++        for (uint32 entry : { NPC_FALLEN_CRUSADER, NPC_EMPOWERING_SPIRIT, NPC_EMPOWERED_ZOMBIE, NPC_EVICTED_SOUL })
++        {
++            std::list<Creature*> adds;
++            me->GetCreatureListWithEntryInGrid(adds, entry, 200.0f);
++            for (Creature* add : adds)
++                add->DespawnOrUnsummon();
++        }
++    }
++};
++
++// Fallen Crusader 59884: rises around Thalnos and rots the mind of whoever it hits
++struct npc_fallen_crusader : public ScriptedAI
++{
++    npc_fallen_crusader(Creature* creature) : ScriptedAI(creature) { }
++
++    void IsSummonedBy(Unit* /*summoner*/) override
++    {
++        DoZoneInCombat();
++    }
++
++    void JustEngagedWith(Unit* /*who*/) override
++    {
++        _events.ScheduleEvent(EVENT_MIND_ROT, urand(3500, 4200));
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        if (!UpdateVictim())
++            return;
++
++        _events.Update(diff);
++
++        if (_events.ExecuteEvent() == EVENT_MIND_ROT)
++        {
++            DoCastVictim(SPELL_MIND_ROT);
++            _events.ScheduleEvent(EVENT_MIND_ROT, urand(3500, 4200));
++        }
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    EventMap _events;
++};
++
++// Empowering Spirit 59893: kill it within 5 seconds or it becomes an Empowered Zombie
++struct npc_empowering_spirit : public ScriptedAI
++{
++    npc_empowering_spirit(Creature* creature) : ScriptedAI(creature) { }
++
++    void IsSummonedBy(Unit* /*summoner*/) override
++    {
++        me->SetReactState(REACT_PASSIVE);
++        SetCombatMovement(false);
++        _events.ScheduleEvent(EVENT_EMPOWER, 5000);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++
++        if (_events.ExecuteEvent() == EVENT_EMPOWER)
++        {
++            InstanceScript* instance = me->GetInstanceScript();
++            Creature* thalnos = instance ? instance->GetCreature(DATA_THALNOS_THE_SOULRENDER) : nullptr;
++            if (thalnos && thalnos->IsAlive() && thalnos->IsInCombat())
++                thalnos->SummonCreature(NPC_EMPOWERED_ZOMBIE, me->GetPosition(), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5000);
++            me->DespawnOrUnsummon();
++        }
++    }
++
++private:
++    EventMap _events;
++};
++
++// Evicted Soul 59974: a hostile copy of the player whose soul Thalnos evicted
++struct npc_evicted_soul : public ScriptedAI
++{
++    npc_evicted_soul(Creature* creature) : ScriptedAI(creature) { }
++
++    void IsSummonedBy(Unit* summoner) override
++    {
++        Player* player = summoner->ToPlayer();
++        if (!player)
++            player = me->SelectNearestPlayer(60.0f);
++        if (!player)
++            return;
++
++        if (InstanceScript* instance = me->GetInstanceScript())
++            if (Creature* thalnos = instance->GetCreature(DATA_THALNOS_THE_SOULRENDER))
++                me->SetFaction(thalnos->getFaction());
++
++        player->CastSpell(me, SPELL_CLONE_ME, true);
++        AttackStart(player);
++    }
++
++    void UpdateAI(uint32 /*diff*/) override
++    {
++        if (!UpdateVictim())
++            return;
++
++        DoMeleeAttackIfReady();
++    }
++};
++
++void AddSC_boss_thalnos_the_soulrender()
++{
++    RegisterCreatureAIWithFactory(boss_thalnos_the_soulrender, GetScarletMonasteryAI);
++    RegisterCreatureAI(npc_fallen_crusader);
++    RegisterCreatureAI(npc_empowering_spirit);
++    RegisterCreatureAI(npc_evicted_soul);
++}
+diff --git a/src/server/scripts/EasternKingdoms/ScarletMonastery/instance_scarlet_monastery.cpp b/src/server/scripts/EasternKingdoms/ScarletMonastery/instance_scarlet_monastery.cpp
+index 5aa3c7b..055fb64 100644
+--- a/src/server/scripts/EasternKingdoms/ScarletMonastery/instance_scarlet_monastery.cpp
++++ b/src/server/scripts/EasternKingdoms/ScarletMonastery/instance_scarlet_monastery.cpp
+@@ -20,18 +20,32 @@
+ #include "GameObject.h"
+ #include "InstanceScript.h"
+ #include "Map.h"
++#include "MotionMaster.h"
+ #include "scarlet_monastery.h"
+ 
+ DoorData const doorData[] =
+ {
+-    { GO_HIGH_INQUISITORS_DOOR, DATA_MOGRAINE_AND_WHITE_EVENT, DOOR_TYPE_ROOM , BOUNDARY_NONE },
+-    { 0,                        0,                             DOOR_TYPE_ROOM , BOUNDARY_NONE } // END
++    { GO_HIGH_INQUISITORS_DOOR, DATA_MOGRAINE_AND_WHITE_EVENT,  DOOR_TYPE_ROOM,       BOUNDARY_NONE },
++    { GO_THALNOS_EXIT,          DATA_THALNOS_THE_SOULRENDER,    DOOR_TYPE_PASSAGE,    BOUNDARY_NONE },
++    { GO_KORLOFF_EXIT,          DATA_BROTHER_KORLOFF,           DOOR_TYPE_PASSAGE,    BOUNDARY_NONE },
++    { GO_WHITEMANE_ENTRANCE,    DATA_HIGH_INQUISITOR_WHITEMANE, DOOR_TYPE_SPAWN_HOLE, BOUNDARY_NONE },
++    { 0,                        0,                              DOOR_TYPE_ROOM,       BOUNDARY_NONE } // END
++};
++
++ObjectData const creatureData[] =
++{
++    { NPC_THALNOS_THE_SOULRENDER, DATA_THALNOS_THE_SOULRENDER    },
++    { NPC_BROTHER_KORLOFF,        DATA_BROTHER_KORLOFF           },
++    { NPC_COMMANDER_DURAND,       DATA_COMMANDER_DURAND          },
++    { NPC_WHITEMANE,              DATA_HIGH_INQUISITOR_WHITEMANE },
++    { NPC_HOODED_CRUSADER_OUTRO,  DATA_HOODED_CRUSADER_OUTRO     },
++    { 0,                          0                              } // END
+ };
+ 
+ class instance_scarlet_monastery : public InstanceMapScript
+ {
+     public:
+-        instance_scarlet_monastery() : InstanceMapScript(SMScriptName, 189) { }
++        instance_scarlet_monastery() : InstanceMapScript(SMScriptName, 1004) { }
+ 
+         struct instance_scarlet_monastery_InstanceMapScript : public InstanceScript
+         {
+@@ -40,6 +54,7 @@ class instance_scarlet_monastery : public InstanceMapScript
+                 SetHeaders(DataHeader);
+                 SetBossNumber(EncounterCount);
+                 LoadDoorData(doorData);
++                LoadObjectData(creatureData, nullptr);
+ 
+                 HorsemanAdds.clear();
+             }
+@@ -52,6 +67,9 @@ class instance_scarlet_monastery : public InstanceMapScript
+                         PumpkinShrineGUID = go->GetGUID();
+                         break;
+                     case GO_HIGH_INQUISITORS_DOOR:
++                    case GO_THALNOS_EXIT:
++                    case GO_KORLOFF_EXIT:
++                    case GO_WHITEMANE_ENTRANCE:
+                         AddDoor(go, true);
+                         break;
+                     default:
+@@ -64,6 +82,9 @@ class instance_scarlet_monastery : public InstanceMapScript
+                 switch (go->GetEntry())
+                 {
+                     case GO_HIGH_INQUISITORS_DOOR:
++                    case GO_THALNOS_EXIT:
++                    case GO_KORLOFF_EXIT:
++                    case GO_WHITEMANE_ENTRANCE:
+                         AddDoor(go, false);
+                         break;
+                     default:
+@@ -73,8 +94,15 @@ class instance_scarlet_monastery : public InstanceMapScript
+ 
+             void OnCreatureCreate(Creature* creature) override
+             {
++                InstanceScript::OnCreatureCreate(creature);
++
+                 switch (creature->GetEntry())
+                 {
++                    case NPC_HOODED_CRUSADER_OUTRO:
++                        // waits behind Whitemane's door until she and Durand are dead
++                        if (!WhitemaneEncounterDone())
++                            creature->SetVisible(false);
++                        break;
+                     case NPC_HORSEMAN:
+                         HorsemanGUID = creature->GetGUID();
+                         break;
+@@ -130,6 +158,21 @@ class instance_scarlet_monastery : public InstanceMapScript
+                             HandleGameObject(PumpkinShrineGUID, false);
+                         }
+                         break;
++                    case DATA_HIGH_INQUISITOR_WHITEMANE:
++                        // a wipe on Whitemane puts Durand back on his feet for the next try
++                        if (state == FAIL || state == NOT_STARTED)
++                            if (Creature* durand = GetCreature(DATA_COMMANDER_DURAND))
++                                if (durand->IsAlive() && durand->IsAIEnabled)
++                                    durand->AI()->DoAction(ACTION_DURAND_RESET);
++                        /* fallthrough */
++                    case DATA_COMMANDER_DURAND:
++                        if (state == DONE && WhitemaneEncounterDone())
++                            if (Creature* crusader = GetCreature(DATA_HOODED_CRUSADER_OUTRO))
++                            {
++                                crusader->SetVisible(true);
++                                crusader->GetMotionMaster()->MovePoint(0, WhitemaneIntroPos);
++                            }
++                        break;
+                     default:
+                         break;
+                 }
+@@ -149,7 +192,12 @@ class instance_scarlet_monastery : public InstanceMapScript
+                     default:
+                         break;
+                 }
+-                return ObjectGuid::Empty;
++                return InstanceScript::GetGuidData(type);
++            }
++
++            bool WhitemaneEncounterDone() const
++            {
++                return GetBossState(DATA_COMMANDER_DURAND) == DONE && GetBossState(DATA_HIGH_INQUISITOR_WHITEMANE) == DONE;
+             }
+ 
+         protected:
+diff --git a/src/server/scripts/EasternKingdoms/ScarletMonastery/scarlet_monastery.cpp b/src/server/scripts/EasternKingdoms/ScarletMonastery/scarlet_monastery.cpp
+new file mode 100644
+index 0000000..40c9724
+--- /dev/null
++++ b/src/server/scripts/EasternKingdoms/ScarletMonastery/scarlet_monastery.cpp
+@@ -0,0 +1,506 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Scarlet Monastery (map 1004) trash, ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ * Trash that already has working SmartAI in this database (Purifier, Judicator, Fanatic, Initiate)
++ * keeps it; this file covers the graveyard and the Zealots.
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "ScriptMgr.h"
++#include "InstanceScript.h"
++#include "MotionMaster.h"
++#include "ObjectAccessor.h"
++#include "Player.h"
++#include "ScriptedCreature.h"
++#include "SpellInfo.h"
++#include "TemporarySummon.h"
++#include "scarlet_monastery.h"
++
++enum SMTrashSpells
++{
++    SPELL_FLAMETHROWER        = 115506,
++    SPELL_FUEL_BARREL         = 114875, // the tank's glow
++    SPELL_BARREL_EXPLOSION    = 114952, // 10 yards, hits creatures only (conditions)
++    SPELL_FRENZIED_SPIRIT     = 115524,
++    SPELL_PILE_OF_CORPSES     = 114951, // raises a Zombified Corpse every 10 s
++    SPELL_CLEAVE              = 115519,
++    SPELL_RETALIATION         = 115511,
++    SPELL_SMITE               = 111010,
++    SPELL_HEAL                = 111008,
++    SPELL_RESURRECTION        = 111670,
++    SPELL_REDEMPTION_HEAL     = 111024,
++};
++
++enum SMTrashEvents
++{
++    EVENT_FLAMETHROWER        = 1,
++    EVENT_FRENZY,
++    EVENT_CLEAVE,
++    EVENT_FIGHT_ZOMBIE,
++    EVENT_ZOMBIE_FALL,
++    EVENT_SMITE,
++    EVENT_HEAL,
++    EVENT_RESURRECTION,
++};
++
++enum SMTrashTexts
++{
++    TALK_PILES_OF_CORPSES     = 0, // Destroy the Piles of Corpses to stop the Zombified Corpses!
++};
++
++// Lowest-health Scarlet within range, for the healers
++static Creature* FindHurtScarlet(Creature* me, float range)
++{
++    Creature* lowest = nullptr;
++    for (uint32 entry : { NPC_SCARLET_FANATIC, NPC_SCARLET_PURIFIER, NPC_SCARLET_ZEALOT, NPC_SCARLET_JUDICATOR, NPC_SCARLET_INITIATE, NPC_SCARLET_CENTURION })
++    {
++        std::list<Creature*> list;
++        me->GetCreatureListWithEntryInGrid(list, entry, range);
++        for (Creature* c : list)
++            if (c->IsAlive() && c->GetHealthPct() < 100.0f && (!lowest || c->GetHealthPct() < lowest->GetHealthPct()))
++                lowest = c;
++    }
++    return lowest;
++}
++
++// Hooded Crusader 64827 at the entrance: warns about the Piles of Corpses as the first player walks in
++struct npc_scm_hooded_crusader : public ScriptedAI
++{
++    npc_scm_hooded_crusader(Creature* creature) : ScriptedAI(creature), _announced(false) { }
++
++    void MoveInLineOfSight(Unit* who) override
++    {
++        if (_announced || who->GetTypeId() != TYPEID_PLAYER || who->ToPlayer()->IsGameMaster() || !me->IsWithinDistInMap(who, 30.0f))
++            return;
++
++        _announced = true;
++        Talk(TALK_PILES_OF_CORPSES, who);
++    }
++
++    void UpdateAI(uint32 /*diff*/) override { }
++
++private:
++    bool _announced;
++};
++
++// Scarlet Flamethrower 59705: burns the graveyard dead out of combat, and leaves a Fuel Tank behind when killed
++struct npc_scarlet_flamethrower : public ScriptedAI
++{
++    npc_scarlet_flamethrower(Creature* creature) : ScriptedAI(creature) { }
++
++    void Reset() override
++    {
++        _events.Reset();
++        _events.ScheduleEvent(EVENT_FLAMETHROWER, urand(1500, 2000));
++    }
++
++    void JustEngagedWith(Unit* /*who*/) override
++    {
++        _events.Reset();
++        _events.ScheduleEvent(EVENT_FLAMETHROWER, urand(1500, 2000));
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        me->SummonCreature(NPC_FUEL_TANK, me->GetPositionX() + frand(-2.0f, 2.0f), me->GetPositionY() + frand(-1.5f, 1.5f), me->GetPositionZ(), me->GetOrientation(), TEMPSUMMON_TIMED_DESPAWN, 300000);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++
++        if (!me->IsInCombat())
++        {
++            if (_events.ExecuteEvent() == EVENT_FLAMETHROWER)
++            {
++                DoCast(me, SPELL_FLAMETHROWER);
++                _events.ScheduleEvent(EVENT_FLAMETHROWER, urand(6000, 8000));
++            }
++            return;
++        }
++
++        if (!UpdateVictim())
++            return;
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        if (_events.ExecuteEvent() == EVENT_FLAMETHROWER)
++        {
++            DoCastVictim(SPELL_FLAMETHROWER);
++            _events.ScheduleEvent(EVENT_FLAMETHROWER, urand(10000, 16000));
++        }
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    EventMap _events;
++};
++
++// Fuel Tank 59706: click it (npc_spellclick_spells 114953) or hit it, and it blows up, burning the Scarlet around it
++struct npc_scm_fuel_tank : public ScriptedAI
++{
++    npc_scm_fuel_tank(Creature* creature) : ScriptedAI(creature), _exploded(false) { }
++
++    void Reset() override
++    {
++        me->SetReactState(REACT_PASSIVE);
++        // the template flags it unselectable, which also blocks the click
++        me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
++        if (!me->HasAura(SPELL_FUEL_BARREL))
++            DoCast(me, SPELL_FUEL_BARREL, true);
++    }
++
++    void OnSpellClick(Unit* /*clicker*/, bool& /*result*/) override
++    {
++        Explode();
++    }
++
++    void DamageTaken(Unit* attacker, uint32& damage) override
++    {
++        damage = 0;
++        // the click may not register in this client, so any hit from a player sets it off too
++        if (attacker && attacker->GetCharmerOrOwnerPlayerOrPlayerItself())
++            Explode();
++    }
++
++    void UpdateAI(uint32 /*diff*/) override { }
++
++private:
++    void Explode()
++    {
++        if (_exploded)
++            return;
++
++        _exploded = true;
++        me->RemoveNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
++        DoCast(me, SPELL_BARREL_EXPLOSION, true);
++        me->DespawnOrUnsummon(500);
++    }
++
++    bool _exploded;
++};
++
++// Frenzied Spirit 60033: works itself into a frenzy, stacking damage and size every few seconds
++struct npc_frenzied_spirit : public ScriptedAI
++{
++    npc_frenzied_spirit(Creature* creature) : ScriptedAI(creature) { }
++
++    void Reset() override
++    {
++        _events.Reset();
++        me->RemoveAurasDueToSpell(SPELL_FRENZIED_SPIRIT);
++    }
++
++    void JustEngagedWith(Unit* /*who*/) override
++    {
++        _events.ScheduleEvent(EVENT_FRENZY, 2000);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        if (!UpdateVictim())
++            return;
++
++        _events.Update(diff);
++
++        if (_events.ExecuteEvent() == EVENT_FRENZY)
++        {
++            DoCast(me, SPELL_FRENZIED_SPIRIT, true);
++            _events.ScheduleEvent(EVENT_FRENZY, urand(3000, 4000));
++        }
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    EventMap _events;
++};
++
++// Pile of Corpses 59722: raises Zombified Corpses until it is destroyed; it can't move or fight back
++struct npc_pile_of_corpses : public ScriptedAI
++{
++    npc_pile_of_corpses(Creature* creature) : ScriptedAI(creature), _summons(creature)
++    {
++        SetCombatMovement(false);
++    }
++
++    void Reset() override
++    {
++        me->SetReactState(REACT_PASSIVE);
++        if (!me->HasAura(SPELL_PILE_OF_CORPSES))
++            DoCast(me, SPELL_PILE_OF_CORPSES, true);
++    }
++
++    void JustSummoned(Creature* summon) override
++    {
++        _summons.Summon(summon);
++    }
++
++    void SummonedCreatureDespawn(Creature* summon) override
++    {
++        _summons.Despawn(summon);
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        _summons.DespawnAll();
++    }
++
++    void UpdateAI(uint32 /*diff*/) override
++    {
++        UpdateVictim();
++    }
++
++private:
++    SummonList _summons;
++};
++
++// Scarlet Centurion 59746: cuts down the Zombified Corpses near it while no player is around
++struct npc_scarlet_centurion : public ScriptedAI
++{
++    npc_scarlet_centurion(Creature* creature) : ScriptedAI(creature), _retaliated(false) { }
++
++    void Reset() override
++    {
++        _events.Reset();
++        _events.ScheduleEvent(EVENT_FIGHT_ZOMBIE, 1500);
++        _retaliated = false;
++    }
++
++    void JustEngagedWith(Unit* who) override
++    {
++        if (who->GetEntry() == NPC_ZOMBIFIED_CORPSE)
++            return;
++
++        _events.Reset();
++        _events.ScheduleEvent(EVENT_CLEAVE, urand(2000, 4000));
++    }
++
++    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
++    {
++        if (!_retaliated && me->HealthBelowPctDamaged(20, damage))
++        {
++            _retaliated = true;
++            DoCast(me, SPELL_RETALIATION, true);
++        }
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++
++        if (_events.ExecuteEvent() == EVENT_FIGHT_ZOMBIE)
++        {
++            if (!me->IsInCombat())
++                if (Creature* zombie = me->FindNearestCreature(NPC_ZOMBIFIED_CORPSE, 10.0f))
++                    AttackStart(zombie);
++            _events.ScheduleEvent(EVENT_FIGHT_ZOMBIE, urand(5000, 6000));
++        }
++
++        if (!UpdateVictim())
++            return;
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        if (_events.ExecuteEvent() == EVENT_CLEAVE)
++        {
++            DoCastVictim(SPELL_CLEAVE);
++            _events.ScheduleEvent(EVENT_CLEAVE, urand(5000, 6000));
++        }
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    EventMap _events;
++    bool _retaliated;
++};
++
++// Zombified Corpse 59771: hostile to the Crusade (faction 1962). A Centurion's blow finishes it a few seconds later.
++struct npc_zombified_corpse : public ScriptedAI
++{
++    npc_zombified_corpse(Creature* creature) : ScriptedAI(creature), _falling(false) { }
++
++    void DamageTaken(Unit* attacker, uint32& /*damage*/) override
++    {
++        if (_falling || !attacker || attacker->GetTypeId() == TYPEID_PLAYER || attacker->IsControlledByPlayer())
++            return;
++
++        _falling = true;
++        AttackStart(attacker);
++        _events.ScheduleEvent(EVENT_ZOMBIE_FALL, urand(3000, 5000));
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++
++        if (_events.ExecuteEvent() == EVENT_ZOMBIE_FALL)
++        {
++            me->DisappearAndDie();
++            return;
++        }
++
++        if (!UpdateVictim())
++            return;
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    EventMap _events;
++    bool _falling;
++};
++
++// Scarlet Zealot 58590: smites, heals the Crusade, raises its dead and leaves a Spirit of Redemption behind
++struct npc_scarlet_zealot : public ScriptedAI
++{
++    npc_scarlet_zealot(Creature* creature) : ScriptedAI(creature) { }
++
++    void Reset() override
++    {
++        _events.Reset();
++        _resurrectGUID.Clear();
++    }
++
++    void JustEngagedWith(Unit* /*who*/) override
++    {
++        _events.ScheduleEvent(EVENT_SMITE, urand(1000, 3000));
++        _events.ScheduleEvent(EVENT_HEAL, 10000);
++        _events.ScheduleEvent(EVENT_RESURRECTION, 15000);
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        me->SummonCreature(NPC_SPIRIT_OF_REDEMPTION, me->GetPositionX() + frand(-2.0f, 2.0f), me->GetPositionY() + frand(-1.5f, 1.5f), me->GetPositionZ(), me->GetOrientation(), TEMPSUMMON_TIMED_DESPAWN, 12000);
++    }
++
++    void OnSuccessfulSpellCast(SpellInfo const* spell) override
++    {
++        if (spell->Id != SPELL_RESURRECTION)
++            return;
++
++        Creature* corpse = ObjectAccessor::GetCreature(*me, _resurrectGUID);
++        _resurrectGUID.Clear();
++        if (!corpse || corpse->IsAlive())
++            return;
++
++        corpse->setDeathState(JUST_RESPAWNED);
++        if (corpse->IsAIEnabled)
++            if (Unit* victim = me->GetVictim())
++                corpse->AI()->AttackStart(victim);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        if (!UpdateVictim())
++            return;
++
++        _events.Update(diff);
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        while (uint32 eventId = _events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_SMITE:
++                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 40.0f, true))
++                        DoCast(target, SPELL_SMITE);
++                    _events.ScheduleEvent(EVENT_SMITE, urand(4000, 6000));
++                    return;
++                case EVENT_HEAL:
++                    if (Creature* hurt = FindHurtScarlet(me, 40.0f))
++                        DoCast(hurt, SPELL_HEAL);
++                    else if (me->GetHealthPct() < 100.0f)
++                        DoCast(me, SPELL_HEAL);
++                    _events.ScheduleEvent(EVENT_HEAL, urand(9000, 14000));
++                    return;
++                case EVENT_RESURRECTION:
++                    if (Creature* corpse = FindScarletCorpse())
++                    {
++                        _resurrectGUID = corpse->GetGUID();
++                        me->SetFacingToObject(corpse);
++                        DoCast(corpse, SPELL_RESURRECTION);
++                    }
++                    _events.ScheduleEvent(EVENT_RESURRECTION, urand(15000, 25000));
++                    return;
++                default:
++                    break;
++            }
++        }
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    Creature* FindScarletCorpse() const
++    {
++        for (uint32 entry : { NPC_SCARLET_FANATIC, NPC_SCARLET_PURIFIER, NPC_SCARLET_ZEALOT, NPC_SCARLET_JUDICATOR, NPC_SCARLET_INITIATE })
++        {
++            std::list<Creature*> list;
++            me->GetCreatureListWithEntryInGrid(list, entry, 30.0f);
++            for (Creature* c : list)
++                if (!c->IsAlive() && !c->IsSummon())
++                    return c;
++        }
++        return nullptr;
++    }
++
++    EventMap _events;
++    ObjectGuid _resurrectGUID;
++};
++
++// Spirit of Redemption 58592: a dead Zealot's spirit, healing the Crusade for 12 seconds
++struct npc_scm_spirit_of_redemption : public ScriptedAI
++{
++    npc_scm_spirit_of_redemption(Creature* creature) : ScriptedAI(creature)
++    {
++        SetCombatMovement(false);
++    }
++
++    void Reset() override
++    {
++        me->SetReactState(REACT_PASSIVE);
++        me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
++    }
++
++    void UpdateAI(uint32 /*diff*/) override
++    {
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        if (Creature* hurt = FindHurtScarlet(me, 40.0f))
++            DoCast(hurt, SPELL_REDEMPTION_HEAL);
++    }
++};
++
++void AddSC_scarlet_monastery()
++{
++    RegisterCreatureAI(npc_scm_hooded_crusader);
++    RegisterCreatureAI(npc_scarlet_flamethrower);
++    RegisterCreatureAI(npc_scm_fuel_tank);
++    RegisterCreatureAI(npc_frenzied_spirit);
++    RegisterCreatureAI(npc_pile_of_corpses);
++    RegisterCreatureAI(npc_scarlet_centurion);
++    RegisterCreatureAI(npc_zombified_corpse);
++    RegisterCreatureAI(npc_scarlet_zealot);
++    RegisterCreatureAI(npc_scm_spirit_of_redemption);
++}
+diff --git a/src/server/scripts/EasternKingdoms/ScarletMonastery/scarlet_monastery.h b/src/server/scripts/EasternKingdoms/ScarletMonastery/scarlet_monastery.h
+index 266e5b3..b141b01 100644
+--- a/src/server/scripts/EasternKingdoms/ScarletMonastery/scarlet_monastery.h
++++ b/src/server/scripts/EasternKingdoms/ScarletMonastery/scarlet_monastery.h
+@@ -19,11 +19,12 @@
+ #define SCARLET_M_
+ 
+ #include "CreatureAIImpl.h"
++#include "Position.h"
+ 
+ #define SMScriptName "instance_scarlet_monastery"
+ #define DataHeader "SM"
+ 
+-uint32 const EncounterCount = 10;
++uint32 const EncounterCount = 19;
+ 
+ enum SMDataTypes
+ {
+@@ -42,7 +43,15 @@ enum SMDataTypes
+     DATA_HIGH_INQUISITOR_FAIRBANKS  = 11,
+     DATA_HOUNDMASTER_LOKSEY         = 12,
+     DATA_INTERROGATOR_VISHAS        = 13,
+-    DATA_SCORN                      = 14
++    DATA_SCORN                      = 14,
++
++    // Scarlet Monastery since Mists of Pandaria (map 1004)
++    DATA_THALNOS_THE_SOULRENDER     = 15,
++    DATA_BROTHER_KORLOFF            = 16,
++    DATA_COMMANDER_DURAND           = 17,
++    DATA_HIGH_INQUISITOR_WHITEMANE  = 18,
++
++    DATA_HOODED_CRUSADER_OUTRO      = 20
+ };
+ 
+ enum SMCreatureIds
+@@ -53,15 +62,68 @@ enum SMCreatureIds
+ 
+     NPC_HORSEMAN                    = 23682,
+     NPC_HEAD                        = 23775,
+-    NPC_PUMPKIN                     = 23694
++    NPC_PUMPKIN                     = 23694,
++
++    NPC_THALNOS_THE_SOULRENDER      = 59789,
++    NPC_BROTHER_KORLOFF             = 59223,
++    NPC_COMMANDER_DURAND            = 60040,
++    NPC_SCARLET_FANATIC             = 58555,
++    NPC_SCARLET_PURIFIER            = 58569,
++    NPC_SCARLET_ZEALOT              = 58590,
++    NPC_SCARLET_JUDICATOR           = 58605,
++    NPC_SCARLET_INITIATE            = 58783,
++    NPC_SCARLET_CENTURION           = 59746,
++    NPC_SCARLET_FLAMETHROWER        = 59705,
++    NPC_FUEL_TANK                   = 59706,
++    NPC_PILE_OF_CORPSES             = 59722,
++    NPC_ZOMBIFIED_CORPSE            = 59771,
++    NPC_FRENZIED_SPIRIT             = 60033,
++    NPC_SPIRIT_OF_REDEMPTION        = 58592,
++    NPC_FALLEN_CRUSADER             = 59884,
++    NPC_EMPOWERING_SPIRIT           = 59893,
++    NPC_EMPOWERED_ZOMBIE            = 59930,
++    NPC_EVICTED_SOUL                = 59974,
++    NPC_SCORCHED_EARTH              = 59507,
++    NPC_HOODED_CRUSADER_ENTRANCE    = 64827,
++    NPC_HOODED_CRUSADER_OUTRO       = 64842
+ };
+ 
+ enum SMGameObjectIds
+ {
+     GO_HIGH_INQUISITORS_DOOR        = 104600,
+-    GO_PUMPKIN_SHRINE               = 186267
++    GO_PUMPKIN_SHRINE               = 186267,
++
++    GO_THALNOS_EXIT                 = 211844, // Graveyard Door
++    GO_KORLOFF_EXIT                 = 210564, // cathedral door
++    GO_WHITEMANE_ENTRANCE           = 210563  // Whitemane's door behind Durand
+ };
+ 
++enum SMActions
++{
++    ACTION_WHITEMANE_INTRO          = 1,
++    ACTION_DURAND_REVIVE            = 2,
++    ACTION_DURAND_RESET             = 3,
++};
++
++// Whitemane walks out of her door to here when Durand falls
++Position const WhitemaneIntroPos = { 740.48f, 606.35f, 15.027f, 6.26f };
++
++// The Scarlet trash that Zealots and Whitemane can raise from the dead
++inline bool IsRaisableScarlet(uint32 entry)
++{
++    switch (entry)
++    {
++        case NPC_SCARLET_FANATIC:
++        case NPC_SCARLET_PURIFIER:
++        case NPC_SCARLET_ZEALOT:
++        case NPC_SCARLET_JUDICATOR:
++        case NPC_SCARLET_INITIATE:
++            return true;
++        default:
++            return false;
++    }
++}
++
+ template<typename AI>
+ inline AI* GetScarletMonasteryAI(Creature* creature)
+ {
+diff --git a/src/server/scripts/EasternKingdoms/eastern_kingdoms_script_loader.cpp b/src/server/scripts/EasternKingdoms/eastern_kingdoms_script_loader.cpp
+index cd7c751..babfa82 100644
+--- a/src/server/scripts/EasternKingdoms/eastern_kingdoms_script_loader.cpp
++++ b/src/server/scripts/EasternKingdoms/eastern_kingdoms_script_loader.cpp
+@@ -113,6 +113,10 @@ void AddSC_boss_houndmaster_loksey();
+ void AddSC_boss_interrogator_vishas();
+ void AddSC_boss_scorn();
+ void AddSC_instance_scarlet_monastery();
++void AddSC_scarlet_monastery();
++void AddSC_boss_thalnos_the_soulrender();
++void AddSC_boss_brother_korloff();
++void AddSC_boss_durand_and_whitemane();
+ void AddSC_boss_mograine_and_whitemane();
+ void AddSC_boss_darkmaster_gandling();          //Scholomance
+ void AddSC_boss_death_knight_darkreaver();
+@@ -361,6 +365,10 @@ void AddEasternKingdomsScripts()
+     AddSC_boss_interrogator_vishas();
+     AddSC_boss_scorn();
+     AddSC_instance_scarlet_monastery();
++    AddSC_scarlet_monastery();
++    AddSC_boss_thalnos_the_soulrender();
++    AddSC_boss_brother_korloff();
++    AddSC_boss_durand_and_whitemane();
+     AddSC_boss_mograine_and_whitemane();
+     AddSC_boss_darkmaster_gandling();           //Scholomance
+     AddSC_boss_death_knight_darkreaver();
