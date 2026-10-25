@@ -39,6 +39,26 @@ The grep prints 1. Then restart `worldserver` and log in again.
 
 ## 2026-10-25
 
+### Razorfen Kraul: Hunter Bonetusk only shot, and held no weapon
+
+From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_01_razorfen_kraul_bonetusk.sql`.
+
+- **Found** (reported by Four): Bonetusk (75001) only used Shoot, had no weapon in his hands, and a
+  Boar Spirit next to him died at once. His SmartAI fired Shoot (150879) every 1-2 seconds at any
+  range up to 20 yards, so it kept him busy whenever his other spells came up. Volley (150904) only
+  has dummy effects that need a spell script this core lacks, and Stampede (150917) triggers spell
+  132660, which isn't in the client's spell data. His speech rows point at texts that don't exist.
+  None of the Warlords bosses had an equipment row. The Boar Spirit (6021, guid 325407) belonged
+  to Aggem Thorncurse, the classic boss Bonetusk replaced.
+- **Changed:**
+  - New SmartAI: he chases and melees, Shoots at 5-30 yards, channels Barrage (150881, interrupting
+    his current cast), uses Multi-Shot (21390) on a random player, and at 50% health three Raging
+    Agam'ar (4514) charge in around his target, standing in for the broken Stampede.
+  - Equipment: Bonetusk gets the Razorfen Beastmaster's dagger and bow (2184, 2551); Warlord Ramtusk
+    (74462) gets the classic Overlord Ramtusk's two axes (5286).
+  - The Boar Spirit spawn is deleted.
+- **Status:** waiting on Four's test.
+
 ### Razorfen Kraul: pre-run check
 
 Before Four's first run. All SQL, in `sql/fixes/world/2026_10_25_00_razorfen_kraul.sql`; no rebuild.
