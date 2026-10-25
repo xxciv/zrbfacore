@@ -39,6 +39,18 @@ The grep prints 1. Then restart `worldserver` and log in again.
 
 ## 2026-10-25
 
+### Razorfen Kraul: Agathelos the Raging healed to full mid-fight
+
+From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_03_razorfen_kraul_agathelos.sql`.
+
+- **Found** (reported by Four, who had to use `.die`): Agathelos (4422) casts Left for Dead (8555),
+  which hits and then forces the target to feign death (8359). Feign death drops the player from his
+  threat list, so a solo player leaves him with nobody to fight and he evades back to full health.
+  No other creature uses it.
+- **Changed:** the Left for Dead row (id 6) is deleted. He keeps Rushing Charge, Frenzy at 60% and
+  40%, Rampage and Call for Help.
+- **Status:** waiting on Four's test.
+
 ### Razorfen Kraul: Warlord Ramtusk only meleed
 
 From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_02_razorfen_kraul_ramtusk.sql`.
