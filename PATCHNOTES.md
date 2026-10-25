@@ -3,6 +3,40 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-25
+
+### World: battle pet slots stayed locked after Battle Pet Training
+
+On PR #15 (world fixes), not merged yet.
+
+- **Found** (reported by Four): after paying a Battle Pet Trainer for Battle Pet Training (spell
+  119467, 10 gold from `npc_trainer`), the first battle slot in the Pet Journal stayed unusable, so no
+  pet could be slotted.
+- **Cause:** 119467 is a passive spell whose only effect is 201 (`SPELL_EFFECT_ENABLE_BATTLE_PETS`,
+  checked in Four's SpellEffect.db2/SpellMisc.db2). The core casts it when it is learned and again at
+  every login, and the effect sends `SMSG_PET_BATTLE_SLOT_UPDATES` to tell the client which slots are
+  open. The core wrote that packet in the wrong order: the slot list first, then the `NewSlotUnlocked`
+  and `AutoSlotted` bits. The 8.3.7 client reads the two bits first (TrinityCore's 8.3.7 code,
+  tag TDB837.20101, writes them first), so it misread every slot in the packet. The same packet goes
+  out when the Newbie (7433) and Just a Pup (6566) achievements unlock slots 2 and 3.
+- **Changed:** new `tools/bfa/battle-pet-slots.patch`
+  (`src/server/game/Server/Packets/BattlePetPackets.cpp`, `SlotUpdates::Write`): the two bits and
+  the flush now come before the slots. Nothing else in the packet changed. The other battle pet
+  packets (journal, pet updates, set slot) already match 8.3.7, as do their opcode numbers. No SQL.
+- **Status:** not tested in game yet.
+
+#### To pick up the battle pet slot fix
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-slots.patch | git apply
+grep -c "the two bits before the slots" src/server/game/Server/Packets/BattlePetPackets.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1. Then restart `worldserver` and log in again.
+
 ## 2026-10-24
 
 ### Maraudon: first test run (Noxxion, Gizlock, Vyletongue)
