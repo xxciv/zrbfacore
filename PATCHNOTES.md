@@ -3,6 +3,40 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-25
+
+### World: battle pet slots stayed locked after Battle Pet Training
+
+Merged to `main` with PR #15 on 2026-10-25.
+
+- **Found** (reported by Four): after paying a Battle Pet Trainer for Battle Pet Training (spell
+  119467, 10 gold from `npc_trainer`), the first battle slot in the Pet Journal stayed unusable, so no
+  pet could be slotted.
+- **Cause:** 119467 is a passive spell whose only effect is 201 (`SPELL_EFFECT_ENABLE_BATTLE_PETS`,
+  checked in Four's SpellEffect.db2/SpellMisc.db2). The core casts it when it is learned and again at
+  every login, and the effect sends `SMSG_PET_BATTLE_SLOT_UPDATES` to tell the client which slots are
+  open. The core wrote that packet in the wrong order: the slot list first, then the `NewSlotUnlocked`
+  and `AutoSlotted` bits. The 8.3.7 client reads the two bits first (TrinityCore's 8.3.7 code,
+  tag TDB837.20101, writes them first), so it misread every slot in the packet. The same packet goes
+  out when the Newbie (7433) and Just a Pup (6566) achievements unlock slots 2 and 3.
+- **Changed:** new `tools/bfa/battle-pet-slots.patch`
+  (`src/server/game/Server/Packets/BattlePetPackets.cpp`, `SlotUpdates::Write`): the two bits and
+  the flush now come before the slots. Nothing else in the packet changed. The other battle pet
+  packets (journal, pet updates, set slot) already match 8.3.7, as do their opcode numbers. No SQL.
+- **Status:** confirmed in game by Four on 2026-10-25.
+
+#### To pick up the battle pet slot fix
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-slots.patch | git apply
+grep -c "the two bits before the slots" src/server/game/Server/Packets/BattlePetPackets.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1. Then restart `worldserver` and log in again.
+
 ## 2026-10-24
 
 ### Maraudon: first test run (Noxxion, Gizlock, Vyletongue)
@@ -590,6 +624,39 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_24_02_scarlet_halls
 ```
 
 ## 2026-10-19
+
+### World: Sewer Beast (Stormwind canals)
+
+Merged to `main` with PR #15 on 2026-10-25.
+
+#### The Sewer Beast walks the canal pathways
+- **Found** (reported by Four): the Sewer Beast (3581, rare crocolisk), guid 308329, walked the canal
+  walkways instead of staying under water. It has three spawns, pooled by core update
+  `2026_09_09_00_world_sewer_beast.sql` so only one is up at a time; that update also set
+  `MovementType` 1 and `spawndist` 25 on all three. Two of the spawn points are at walkway height:
+  308329 at (-8583.18, 522.841, 92.7076) (the walkway guards next to it stand at z 92.71) and 10604700
+  at (-8781.6, 488.886, 92.6396). Only 52499 (-8560.69, 486.619, 85.8912) is on the canal floor. Random
+  movement in this core goes in a straight line to a random point up to `spawndist` away and up to 10
+  yards higher, so even from the floor a 25 yard wander reaches the walkways.
+- **Changed:** new `sql/fixes/world/2026_10_19_06_stormwind_sewer_beast.sql`, using the
+  alexkulya/pandaria_5.4.8 world database as the reference (same three spawns, the two floor ones
+  standing still):
+  - 10604700 moves to Pandaria's position for it, (-8783.6, 487.416, 85.8914), orientation 0.528863, on
+    the canal floor.
+  - 308329 is removed (`creature`, `creature_addon`, `pool_creature`): no data checked has a canal floor
+    position for it. The pool keeps 52499 and 10604700, one up at a time.
+  - Every Sewer Beast: `MovementType` 1 -> 0, `spawndist` 25 -> 0 (standing still, as in the Pandaria
+    data).
+- **Status:** confirmed in game by Four on 2026-10-19.
+
+### To pick up the Sewer Beast fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_19_06_stormwind_sewer_beast.sql
+```
+Then restart worldserver.
 
 ### Gnomeregan
 

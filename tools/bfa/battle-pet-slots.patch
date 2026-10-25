@@ -1,0 +1,21 @@
+diff --git a/src/server/game/Server/Packets/BattlePetPackets.cpp b/src/server/game/Server/Packets/BattlePetPackets.cpp
+--- a/src/server/game/Server/Packets/BattlePetPackets.cpp
++++ b/src/server/game/Server/Packets/BattlePetPackets.cpp
+@@ -357,13 +357,14 @@ WorldPacket const* WorldPackets::BattlePet::RequestFailed::Write()
+ WorldPacket const* WorldPackets::BattlePet::SlotUpdates::Write()
+ {
+     _worldPacket << static_cast<uint32>(Slots.size());
+-    for (auto const& map : Slots)
+-        _worldPacket << map;
+-
++    // 8.3.7 sends the two bits before the slots, not after
+     _worldPacket.WriteBit(NewSlotUnlocked);
+     _worldPacket.WriteBit(AutoSlotted);
+     _worldPacket.FlushBits();
+ 
++    for (auto const& map : Slots)
++        _worldPacket << map;
++
+     return &_worldPacket;
+ }
+ 
