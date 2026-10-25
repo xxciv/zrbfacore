@@ -23,7 +23,7 @@ On PR #15 (world fixes), not merged yet.
   (`src/server/game/Server/Packets/BattlePetPackets.cpp`, `SlotUpdates::Write`): the two bits and
   the flush now come before the slots. Nothing else in the packet changed. The other battle pet
   packets (journal, pet updates, set slot) already match 8.3.7, as do their opcode numbers. No SQL.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-10-25.
 
 #### To pick up the battle pet slot fix
 A new patch on top of the others, the build and a restart. The patches you already applied are
