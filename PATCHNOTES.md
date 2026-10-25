@@ -37,6 +37,154 @@ sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target insta
 ```
 The grep prints 1. Then restart `worldserver` and log in again.
 
+## 2026-10-25
+
+### Razorfen Kraul: second run (Bonetusk's Barrage and boars, Groyat's Sonic Charge, Charlga's binding)
+
+From Four's second run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_06_razorfen_kraul_second_run.sql`.
+
+- **Found** (reported by Four):
+  - Hunter Bonetusk's Barrage did nothing, and his boars stayed up after he died. They are elites,
+    so killing them one by one is slower than racing Bonetusk. Barrage (150881) is a channel whose
+    damage comes from a periodic spell (150884) fired from an aura on Bonetusk; this core casts that
+    spell at Bonetusk himself, not at his channel target, so it never hits anyone.
+  - Groyat's Sonic Charge (151454) only moved him. After the leap it lays 12 damaging area triggers
+    (spell 151407, areatriggers 1465-1476), and none of those are in the database.
+  - Charlga still cast Elemental Binding too often.
+- **Changed:**
+  - Bonetusk: Barrage replaced by Aimed Shot (27632) at his target every 12-16 seconds (first after
+    6-9), plus Serpent Sting (31975) on a random player every 12-15 seconds (first after 3-5). His
+    three boars are now three different Agam'ar, Raging (4514), plain (4511) and Rotting (4512), so
+    each can be found again by entry, and all three despawn when he dies.
+  - Groyat: right after Sonic Charge he casts its damage spell (151429) on his target.
+  - Charlga: Elemental Binding every 25-30 seconds instead of 15-20.
+  - Sonic Field: nothing new. `2026_10_25_04` already swapped it for Sonic Burst (8281).
+- **Status:** confirmed in game by Four on the third run (2026-10-25): Bonetusk, Groyat and Charlga
+  "all perfect".
+
+### Razorfen Kraul: Charlga Razorflank only cast Elemental Binding
+
+From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_05_razorfen_kraul_charlga.sql`.
+
+- **Found** (reported by Four: one melee hit, then Elemental Binding for the rest of the fight; credit,
+  loot, scenario and achievement fine): her SmartAI recast Elemental Binding (151583, root plus
+  damage over time) every 6 seconds after the first 10. Crystalline Command (151534) only has a dummy
+  effect this core doesn't script, and two rows both said an aggro line.
+- **Changed:** rows 2, 3, 4 and 6 replaced. Elemental Binding on a random player every 15-20 seconds,
+  Chain Bolt (8292) at her target every 6-9 seconds, Renew (8362) on herself below 50% health. Her
+  speech and the death event that wakes the Spirit of Agamaggan stay. Her classic Purity (8361) is
+  left out because it makes her immune to all damage.
+- **Status:** confirmed better in game by Four on the second run (2026-10-25), but Binding still came
+  too often; slowed to 25-30 seconds in `2026_10_25_06`, confirmed on the third run.
+
+### Razorfen Kraul: Groyat's Sonic Field did nothing
+
+From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_04_razorfen_kraul_groyat.sql`.
+
+- **Found** (reported by Four: Sonic Charge, melee and Drain Life work, Sonic Field showed nothing;
+  credit and loot fine): Sonic Field (151432) has only a dummy effect, which needs a spell script
+  this core doesn't have.
+- **Changed:** that row (id 2) casts Sonic Burst (8281) instead, the classic Blind Hunter's attack:
+  weapon damage and a short silence within 13 yards, first after 6-8 seconds, then every 12-16.
+- **Status:** Groyat's spawn, credit, loot and fight confirmed in game by Four (2026-10-25, second
+  run). Sonic Charge damage added in `2026_10_25_06`; Sonic Burst and Sonic Charge confirmed on the
+  third run.
+
+### Razorfen Kraul: Agathelos the Raging healed to full mid-fight
+
+From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_03_razorfen_kraul_agathelos.sql`.
+
+- **Found** (reported by Four, who had to use `.die`): Agathelos (4422) casts Left for Dead (8555),
+  which hits and then forces the target to feign death (8359). Feign death drops the player from his
+  threat list, so a solo player leaves him with nobody to fight and he evades back to full health.
+  No other creature uses it.
+- **Changed:** the Left for Dead row (id 6) is deleted. He keeps Rushing Charge, Frenzy at 60% and
+  40%, Rampage and Call for Help.
+- **Status:** confirmed in game by Four on the second run (2026-10-25): the fight went well.
+
+### Razorfen Kraul: Warlord Ramtusk only meleed
+
+From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_02_razorfen_kraul_ramtusk.sql`.
+
+- **Found** (reported by Four): Ramtusk (74462) meleed and threw a single Spirit Axe. Spirit Axe
+  (151312) was his only spell, first after 8-12 seconds and then every 10-20; the rest of his script
+  was speech rows with no texts and a door opener aimed at a gameobject that isn't spawned. The axe's
+  odd texture is the spell's client-side visual, which the server can't change.
+- **Changed:** new SmartAI. Spirit Axe at a random player every 10-14 seconds (first after 6-8), plus
+  the kit of the classic Overlord Ramtusk he replaced: Battle Stance (7165) on reset, Battle Shout
+  (9128), and Thunderclap (15548) when a player is within 8 yards. His axes come from
+  `2026_10_25_01`.
+- **Not changed:** how hard he hits; difficulty is tuned through DungeonScale.
+- **Status:** confirmed good in game by Four on the second run (2026-10-25).
+
+### Razorfen Kraul: Hunter Bonetusk only shot, and held no weapon
+
+From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_01_razorfen_kraul_bonetusk.sql`.
+
+- **Found** (reported by Four): Bonetusk (75001) only used Shoot, had no weapon in his hands, and a
+  Boar Spirit next to him died at once. His SmartAI fired Shoot (150879) every 1-2 seconds at any
+  range up to 20 yards, so it kept him busy whenever his other spells came up. Volley (150904) only
+  has dummy effects that need a spell script this core lacks, and Stampede (150917) triggers spell
+  132660, which isn't in the client's spell data. His speech rows point at texts that don't exist.
+  None of the Warlords bosses had an equipment row. The Boar Spirit (6021, guid 325407) belonged
+  to Aggem Thorncurse, the classic boss Bonetusk replaced.
+- **Changed:**
+  - New SmartAI: he chases and melees, Shoots at 5-30 yards, channels Barrage (150881, interrupting
+    his current cast), uses Multi-Shot (21390) on a random player, and at 50% health three Raging
+    Agam'ar (4514) charge in around his target, standing in for the broken Stampede.
+  - Equipment: Bonetusk gets the Razorfen Beastmaster's dagger and bow (2184, 2551); Warlord Ramtusk
+    (74462) gets the classic Overlord Ramtusk's two axes (5286).
+  - The Boar Spirit spawn is deleted.
+- **Status:** tested by Four on the second run (2026-10-25): Barrage did nothing (replaced in
+  `2026_10_25_06`), and the boars came in but outlived him (they despawn with him since
+  `2026_10_25_06`). The `2026_10_25_06` changes were confirmed on the third run.
+
+### Razorfen Kraul: pre-run check
+
+Before Four's first run. All SQL, in `sql/fixes/world/2026_10_25_00_razorfen_kraul.sql`; no rebuild.
+
+#### Groyat, the Blind Hunter had no spawn
+- **Found:** the scenario (654) needs five kills: Hunter Bonetusk (75001), Roogug (74948), Warlord
+  Ramtusk (74462), Groyat (75247) and Charlga Razorflank (4421). The BFA spawns swap three classic
+  bosses for their Warlords versions (Aggem Thorncurse, Overlord Ramtusk and a Groundshaker), but
+  the classic Blind Hunter (4425) was left in Groyat's room, so the scenario could never finish.
+  Groyat also had no scaling row for difficulty 1.
+- **Changed:** spawn 52982 is now Groyat (75247), and he gets the scaling row.
+
+#### Two Roogugs
+- **Found:** the classic Roogug (6168, guid 325276) was still spawned besides the new one (74948).
+- **Changed:** the classic spawn is deleted.
+
+#### Dungeon encounters
+- **Found:** `instance_encounters` only had 438 Roogug, pointing at the classic Roogug, so no kill
+  completed a dungeon encounter or the dungeon finder entry.
+- **Changed:** the client's DungeonEncounter rows for map 47: 438 Roogug (now 74948), 1656 Hunter
+  Bonetusk, 1659 Warlord Ramtusk, 1660 Groyat, 1661 Charlga Razorflank (last boss of dungeon finder
+  entry 16).
+
+#### Double pets
+- **Found:** Razorfen Handler (4530), Beast Trainer (4531) and Beastmaster (4532) had two SmartAI
+  scripts mixed together, both summoning the pet on spawn.
+- **Changed:** the second summon row (id 12) is deleted, so each brings one pet.
+
+#### Nothing moved
+- **Found:** no waypoint paths and no wandering on map 47.
+- **Changed:** 5 paths from the Pandaria 5.4.8 database, 4 from the AzerothCore 3.3.5 database
+  (including Agathelos the Raging), and AzerothCore's wandering for 46 spawns, capped at 5 yards.
+  Matched by entry and position, or, where Cataclysm changed the creature on a spot, by the nearest
+  spawn within 5 yards. New path ids 47000001 and up.
+
+#### Not changed (yet)
+- Charlga's scenario kill (criteria 34444) has an extra condition, world state expression 5497.
+  Read from Four's WorldStateExpression.db2 (2026-10-25), it decodes to "1 == 1", which is always
+  true, so it needs no fix. Achievement 635 "Razorfen Kraul" is a plain kill of Charlga.
+- Classic leftovers that don't block anything: Death Speaker Jargba next to the new Roogug, Agathelos,
+  and two Earthcaller Halmgar spawns 5 yards apart (both also in the Pandaria database).
+
+**Status:** confirmed in game by Four over three runs (2026-10-25): Groyat's spawn, one Roogug,
+every boss's credit and loot, scenario 654 at state 3 and achievement 635. Four didn't report on the
+pets or the movement separately.
+
 ## 2026-10-24
 
 ### Maraudon: first test run (Noxxion, Gizlock, Vyletongue)
