@@ -37,6 +37,52 @@ sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target insta
 ```
 The grep prints 1. Then restart `worldserver` and log in again.
 
+## 2026-10-25
+
+### Razorfen Kraul: pre-run check
+
+Before Four's first run. All SQL, in `sql/fixes/world/2026_10_25_00_razorfen_kraul.sql`; no rebuild.
+
+#### Groyat, the Blind Hunter had no spawn
+- **Found:** the scenario (654) needs five kills: Hunter Bonetusk (75001), Roogug (74948), Warlord
+  Ramtusk (74462), Groyat (75247) and Charlga Razorflank (4421). The BFA spawns swap three classic
+  bosses for their Warlords versions (Aggem Thorncurse, Overlord Ramtusk and a Groundshaker), but
+  the classic Blind Hunter (4425) was left in Groyat's room, so the scenario could never finish.
+  Groyat also had no scaling row for difficulty 1.
+- **Changed:** spawn 52982 is now Groyat (75247), and he gets the scaling row.
+
+#### Two Roogugs
+- **Found:** the classic Roogug (6168, guid 325276) was still spawned besides the new one (74948).
+- **Changed:** the classic spawn is deleted.
+
+#### Dungeon encounters
+- **Found:** `instance_encounters` only had 438 Roogug, pointing at the classic Roogug, so no kill
+  completed a dungeon encounter or the dungeon finder entry.
+- **Changed:** the client's DungeonEncounter rows for map 47: 438 Roogug (now 74948), 1656 Hunter
+  Bonetusk, 1659 Warlord Ramtusk, 1660 Groyat, 1661 Charlga Razorflank (last boss of dungeon finder
+  entry 16).
+
+#### Double pets
+- **Found:** Razorfen Handler (4530), Beast Trainer (4531) and Beastmaster (4532) had two SmartAI
+  scripts mixed together, both summoning the pet on spawn.
+- **Changed:** the second summon row (id 12) is deleted, so each brings one pet.
+
+#### Nothing moved
+- **Found:** no waypoint paths and no wandering on map 47.
+- **Changed:** 5 paths from the Pandaria 5.4.8 database, 4 from the AzerothCore 3.3.5 database
+  (including Agathelos the Raging), and AzerothCore's wandering for 46 spawns, capped at 5 yards.
+  Matched by entry and position, or, where Cataclysm changed the creature on a spot, by the nearest
+  spawn within 5 yards. New path ids 47000001 and up.
+
+#### Not changed (yet)
+- Charlga's scenario kill (criteria 34444) has an extra condition, a world state expression (5497)
+  that the client data I have doesn't include. Achievement 635 "Razorfen Kraul" is a plain kill of
+  Charlga, so it isn't affected.
+- Classic leftovers that don't block anything: Death Speaker Jargba next to the new Roogug, Agathelos,
+  and two Earthcaller Halmgar spawns 5 yards apart (both also in the Pandaria database).
+
+**Status:** none of this has been tested in game yet.
+
 ## 2026-10-24
 
 ### Maraudon: first test run (Noxxion, Gizlock, Vyletongue)
