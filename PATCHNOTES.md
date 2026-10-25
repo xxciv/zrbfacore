@@ -39,6 +39,18 @@ The grep prints 1. Then restart `worldserver` and log in again.
 
 ## 2026-10-25
 
+### Razorfen Kraul: Groyat's Sonic Field did nothing
+
+From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_04_razorfen_kraul_groyat.sql`.
+
+- **Found** (reported by Four: Sonic Charge, melee and Drain Life work, Sonic Field showed nothing;
+  credit and loot fine): Sonic Field (151432) has only a dummy effect, which needs a spell script
+  this core doesn't have.
+- **Changed:** that row (id 2) casts Sonic Burst (8281) instead, the classic Blind Hunter's attack:
+  weapon damage and a short silence within 13 yards, first after 6-8 seconds, then every 12-16.
+- **Status:** Groyat's spawn, credit and loot confirmed in game by Four (2026-10-25); Sonic Burst
+  waiting on Four's test.
+
 ### Razorfen Kraul: Agathelos the Raging healed to full mid-fight
 
 From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_03_razorfen_kraul_agathelos.sql`.
