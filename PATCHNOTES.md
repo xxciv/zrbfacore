@@ -39,6 +39,20 @@ The grep prints 1. Then restart `worldserver` and log in again.
 
 ## 2026-10-25
 
+### Razorfen Kraul: Charlga Razorflank only cast Elemental Binding
+
+From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_05_razorfen_kraul_charlga.sql`.
+
+- **Found** (reported by Four: one melee hit, then Elemental Binding for the rest of the fight; credit,
+  loot, scenario and achievement fine): her SmartAI recast Elemental Binding (151583, root plus
+  damage over time) every 6 seconds after the first 10. Crystalline Command (151534) only has a dummy
+  effect this core doesn't script, and two rows both said an aggro line.
+- **Changed:** rows 2, 3, 4 and 6 replaced. Elemental Binding on a random player every 15-20 seconds,
+  Chain Bolt (8292) at her target every 6-9 seconds, Renew (8362) on herself below 50% health. Her
+  speech and the death event that wakes the Spirit of Agamaggan stay. Her classic Purity (8361) is
+  left out because it makes her immune to all damage.
+- **Status:** waiting on Four's test.
+
 ### Razorfen Kraul: Groyat's Sonic Field did nothing
 
 From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_04_razorfen_kraul_groyat.sql`.
