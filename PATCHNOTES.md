@@ -39,6 +39,21 @@ The grep prints 1. Then restart `worldserver` and log in again.
 
 ## 2026-10-25
 
+### Razorfen Kraul: Warlord Ramtusk only meleed
+
+From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_02_razorfen_kraul_ramtusk.sql`.
+
+- **Found** (reported by Four): Ramtusk (74462) meleed and threw a single Spirit Axe. Spirit Axe
+  (151312) was his only spell, first after 8-12 seconds and then every 10-20; the rest of his script
+  was speech rows with no texts and a door opener aimed at a gameobject that isn't spawned. The axe's
+  odd texture is the spell's client-side visual, which the server can't change.
+- **Changed:** new SmartAI. Spirit Axe at a random player every 10-14 seconds (first after 6-8), plus
+  the kit of the classic Overlord Ramtusk he replaced: Battle Stance (7165) on reset, Battle Shout
+  (9128), and Thunderclap (15548) when a player is within 8 yards. His axes come from
+  `2026_10_25_01`.
+- **Not changed:** how hard he hits; difficulty is tuned through DungeonScale.
+- **Status:** waiting on Four's test.
+
 ### Razorfen Kraul: Hunter Bonetusk only shot, and held no weapon
 
 From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_01_razorfen_kraul_bonetusk.sql`.
