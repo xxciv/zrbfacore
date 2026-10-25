@@ -75,9 +75,9 @@ Before Four's first run. All SQL, in `sql/fixes/world/2026_10_25_00_razorfen_kra
   spawn within 5 yards. New path ids 47000001 and up.
 
 #### Not changed (yet)
-- Charlga's scenario kill (criteria 34444) has an extra condition, a world state expression (5497)
-  that the client data I have doesn't include. Achievement 635 "Razorfen Kraul" is a plain kill of
-  Charlga, so it isn't affected.
+- Charlga's scenario kill (criteria 34444) has an extra condition, world state expression 5497.
+  Read from Four's WorldStateExpression.db2 (2026-10-25), it decodes to "1 == 1", which is always
+  true, so it needs no fix. Achievement 635 "Razorfen Kraul" is a plain kill of Charlga.
 - Classic leftovers that don't block anything: Death Speaker Jargba next to the new Roogug, Agathelos,
   and two Earthcaller Halmgar spawns 5 yards apart (both also in the Pandaria database).
 
