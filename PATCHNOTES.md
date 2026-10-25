@@ -98,7 +98,7 @@ From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_03_razo
   No other creature uses it.
 - **Changed:** the Left for Dead row (id 6) is deleted. He keeps Rushing Charge, Frenzy at 60% and
   40%, Rampage and Call for Help.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed in game by Four on the second run (2026-10-25): the fight went well.
 
 ### Razorfen Kraul: Warlord Ramtusk only meleed
 
