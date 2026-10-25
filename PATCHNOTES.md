@@ -59,7 +59,8 @@ From Four's second run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_06_raz
   - Groyat: right after Sonic Charge he casts its damage spell (151429) on his target.
   - Charlga: Elemental Binding every 25-30 seconds instead of 15-20.
   - Sonic Field: nothing new. `2026_10_25_04` already swapped it for Sonic Burst (8281).
-- **Status:** waiting on Four's test.
+- **Status:** confirmed in game by Four on the third run (2026-10-25): Bonetusk, Groyat and Charlga
+  "all perfect".
 
 ### Razorfen Kraul: Charlga Razorflank only cast Elemental Binding
 
@@ -74,7 +75,7 @@ From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_05_razo
   speech and the death event that wakes the Spirit of Agamaggan stay. Her classic Purity (8361) is
   left out because it makes her immune to all damage.
 - **Status:** confirmed better in game by Four on the second run (2026-10-25), but Binding still came
-  too often; slowed to 25-30 seconds in `2026_10_25_06`.
+  too often; slowed to 25-30 seconds in `2026_10_25_06`, confirmed on the third run.
 
 ### Razorfen Kraul: Groyat's Sonic Field did nothing
 
@@ -86,7 +87,8 @@ From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_04_razo
 - **Changed:** that row (id 2) casts Sonic Burst (8281) instead, the classic Blind Hunter's attack:
   weapon damage and a short silence within 13 yards, first after 6-8 seconds, then every 12-16.
 - **Status:** Groyat's spawn, credit, loot and fight confirmed in game by Four (2026-10-25, second
-  run). Sonic Charge damage added in `2026_10_25_06`.
+  run). Sonic Charge damage added in `2026_10_25_06`; Sonic Burst and Sonic Charge confirmed on the
+  third run.
 
 ### Razorfen Kraul: Agathelos the Raging healed to full mid-fight
 
@@ -135,7 +137,7 @@ From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_01_razo
   - The Boar Spirit spawn is deleted.
 - **Status:** tested by Four on the second run (2026-10-25): Barrage did nothing (replaced in
   `2026_10_25_06`), and the boars came in but outlived him (they despawn with him since
-  `2026_10_25_06`).
+  `2026_10_25_06`). The `2026_10_25_06` changes were confirmed on the third run.
 
 ### Razorfen Kraul: pre-run check
 
@@ -179,7 +181,9 @@ Before Four's first run. All SQL, in `sql/fixes/world/2026_10_25_00_razorfen_kra
 - Classic leftovers that don't block anything: Death Speaker Jargba next to the new Roogug, Agathelos,
   and two Earthcaller Halmgar spawns 5 yards apart (both also in the Pandaria database).
 
-**Status:** none of this has been tested in game yet.
+**Status:** confirmed in game by Four over three runs (2026-10-25): Groyat's spawn, one Roogug,
+every boss's credit and loot, scenario 654 at state 3 and achievement 635. Four didn't report on the
+pets or the movement separately.
 
 ## 2026-10-24
 
