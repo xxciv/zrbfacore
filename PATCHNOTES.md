@@ -39,6 +39,28 @@ The grep prints 1. Then restart `worldserver` and log in again.
 
 ## 2026-10-25
 
+### Razorfen Kraul: second run (Bonetusk's Barrage and boars, Groyat's Sonic Charge, Charlga's binding)
+
+From Four's second run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_06_razorfen_kraul_second_run.sql`.
+
+- **Found** (reported by Four):
+  - Hunter Bonetusk's Barrage did nothing, and his boars stayed up after he died. They are elites,
+    so killing them one by one is slower than racing Bonetusk. Barrage (150881) is a channel whose
+    damage comes from a periodic spell (150884) fired from an aura on Bonetusk; this core casts that
+    spell at Bonetusk himself, not at his channel target, so it never hits anyone.
+  - Groyat's Sonic Charge (151454) only moved him. After the leap it lays 12 damaging area triggers
+    (spell 151407, areatriggers 1465-1476), and none of those are in the database.
+  - Charlga still cast Elemental Binding too often.
+- **Changed:**
+  - Bonetusk: Barrage replaced by Aimed Shot (27632) at his target every 12-16 seconds (first after
+    6-9), plus Serpent Sting (31975) on a random player every 12-15 seconds (first after 3-5). His
+    three boars are now three different Agam'ar, Raging (4514), plain (4511) and Rotting (4512), so
+    each can be found again by entry, and all three despawn when he dies.
+  - Groyat: right after Sonic Charge he casts its damage spell (151429) on his target.
+  - Charlga: Elemental Binding every 25-30 seconds instead of 15-20.
+  - Sonic Field: nothing new. `2026_10_25_04` already swapped it for Sonic Burst (8281).
+- **Status:** waiting on Four's test.
+
 ### Razorfen Kraul: Charlga Razorflank only cast Elemental Binding
 
 From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_05_razorfen_kraul_charlga.sql`.
@@ -51,7 +73,8 @@ From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_05_razo
   Chain Bolt (8292) at her target every 6-9 seconds, Renew (8362) on herself below 50% health. Her
   speech and the death event that wakes the Spirit of Agamaggan stay. Her classic Purity (8361) is
   left out because it makes her immune to all damage.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed better in game by Four on the second run (2026-10-25), but Binding still came
+  too often; slowed to 25-30 seconds in `2026_10_25_06`.
 
 ### Razorfen Kraul: Groyat's Sonic Field did nothing
 
@@ -62,8 +85,8 @@ From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_04_razo
   this core doesn't have.
 - **Changed:** that row (id 2) casts Sonic Burst (8281) instead, the classic Blind Hunter's attack:
   weapon damage and a short silence within 13 yards, first after 6-8 seconds, then every 12-16.
-- **Status:** Groyat's spawn, credit and loot confirmed in game by Four (2026-10-25); Sonic Burst
-  waiting on Four's test.
+- **Status:** Groyat's spawn, credit, loot and fight confirmed in game by Four (2026-10-25, second
+  run). Sonic Charge damage added in `2026_10_25_06`.
 
 ### Razorfen Kraul: Agathelos the Raging healed to full mid-fight
 
@@ -90,7 +113,7 @@ From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_02_razo
   (9128), and Thunderclap (15548) when a player is within 8 yards. His axes come from
   `2026_10_25_01`.
 - **Not changed:** how hard he hits; difficulty is tuned through DungeonScale.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed good in game by Four on the second run (2026-10-25).
 
 ### Razorfen Kraul: Hunter Bonetusk only shot, and held no weapon
 
@@ -110,7 +133,9 @@ From Four's first run, 2026-10-25. SQL only: `sql/fixes/world/2026_10_25_01_razo
   - Equipment: Bonetusk gets the Razorfen Beastmaster's dagger and bow (2184, 2551); Warlord Ramtusk
     (74462) gets the classic Overlord Ramtusk's two axes (5286).
   - The Boar Spirit spawn is deleted.
-- **Status:** waiting on Four's test.
+- **Status:** tested by Four on the second run (2026-10-25): Barrage did nothing (replaced in
+  `2026_10_25_06`), and the boars came in but outlived him (they despawn with him since
+  `2026_10_25_06`).
 
 ### Razorfen Kraul: pre-run check
 
