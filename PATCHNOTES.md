@@ -3,6 +3,47 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-26
+
+### Pet battles: summoned pets show as Murkimus, released pets come back
+
+Open on branch `claude/project-thread-cwgt5u` (not merged yet).
+
+- **Found** (reported by Four): summoning Black Lamb, Stormwind Rat or Cat from the Pet Journal
+  spawned Murkimus the Gladiator. A Black Lamb released from the journal kept showing up again.
+- **Cause, Murkimus:** pets with no summon spell of their own are summoned with spell 118301
+  (Summon Battle Pet), whose MiscValue is a placeholder creature, 40721 Murkimus the Gladiator
+  (TrinityCore 8.3.7 notes the same). The core used that creature as is. It also never set the
+  player's `SummonedBattlePetGUID`, so the summon was not tied to the journal pet at all.
+- **Cause, released pets:** on login the core loaded only the first row of each species from
+  `account_battlepet` and silently skipped the rest. Extra copies stayed in the DB, hidden, and
+  one of them showed up again after a release and relog. Releasing the last copy of a species
+  was also silently refused.
+- **Changed:** new `tools/bfa/battle-pet-journal.patch`:
+  - `Player.cpp` `SummonBattlePet`: sets `SummonedBattlePetGUID` and the last summoned pet before
+    casting, and remembers the spawned critter. `UnsummonCurrentBattlePetIfAny` clears it.
+  - `SpellEffects.cpp` `EffectSummonType`: for 118301 the creature is the journal pet's species
+    `CreatureID` instead of 40721.
+  - `Object.cpp` (companion summon): uses the pet's own display model when it has one.
+  - `Player.cpp` `_LoadPetBattles`: loads every copy of a species.
+  - `BattlePetHandler.cpp`: release works on the last copy too, dismisses the pet if it is out
+    and clears it from a battle slot. Clicking summon on a pet whose critter is gone now summons
+    it instead of doing nothing.
+  - No SQL.
+- **Status:** waiting for Four to test.
+
+#### To pick up the pet journal fix
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-journal.patch | git apply
+grep -c "Murkimus" src/server/game/Spells/SpellEffects.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1. Then restart `worldserver` and log in again.
+
 ## 2026-10-25
 
 ### World: battle pet slots stayed locked after Battle Pet Training

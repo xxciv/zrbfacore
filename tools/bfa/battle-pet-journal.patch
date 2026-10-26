@@ -1,0 +1,110 @@
+diff --git a/src/server/game/Entities/Object/Object.cpp b/src/server/game/Entities/Object/Object.cpp
+index 3d28789..17c7dfb 100644
+--- a/src/server/game/Entities/Object/Object.cpp
++++ b/src/server/game/Entities/Object/Object.cpp
+@@ -1867,6 +1867,8 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
+                         summon->SetWildBattlePetLevel(battlePet->Level);
+                         summon->SetFaction(player->getFaction());
+                         summon->SetFullHealth();
++                        if (battlePet->DisplayModelID)
++                            summon->SetDisplayId(battlePet->DisplayModelID);
+                     }
+ 
+     summon->SetVisibleBySummonerOnly(visibleBySummonerOnly);
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index ae42d5d..7eb14bc 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -31175,11 +31175,16 @@ uint32 Player::GetUnlockedPetBattleSlot()
+ void Player::UnsummonCurrentBattlePetIfAny(bool p_Unvolontary)
+ {
+     if (!_battlePetSummon)
++    {
++        SetSummonedBattlePetGUID(ObjectGuid::Empty);
+         return;
++    }
+ 
+     if (!p_Unvolontary)
+         _lastSummonedBattlePet = 0;
+ 
++    SetSummonedBattlePetGUID(ObjectGuid::Empty);
++
+     if (Creature* pet = GetSummonedBattlePet())
+     {
+         pet->DespawnOrUnsummon();
+@@ -31215,7 +31220,17 @@ void Player::SummonBattlePet(ObjectGuid journalID)
+     if (!speciesEntry)
+         return;
+ 
++    // the summon spell reads the journal pet from SummonedBattlePetGUID: 118301's MiscValue is Murkimus (40721)
++    SetSummonedBattlePetGUID(journalID);
++    _lastSummonedBattlePet = journalID.GetCounter();
+     CastSpell(this, speciesEntry->SummonSpellID ? speciesEntry->SummonSpellID : uint32(118301));
++
++    if (Creature* critter = ObjectAccessor::GetCreature(*this, GetCritterGUID()))
++        if (critter->GetBattlePetCompanionGUID() == journalID)
++            _battlePetSummon = critter->GetGUID();
++
++    if (!_battlePetSummon)
++        SetSummonedBattlePetGUID(ObjectGuid::Empty);
+ }
+ 
+ Creature* Player::GetSummonedBattlePet()
+@@ -31417,8 +31432,8 @@ bool Player::_LoadPetBattles(PreparedQueryResult result)
+         {
+             auto BattlePetPtr = std::make_shared<BattlePet>();
+             BattlePetPtr->Load(result->Fetch());
+-            if (!alreadyKnownPet.insert(BattlePetPtr->Species).second)
+-                continue;
++            // load every copy of a species (up to 3 are allowed); skipping them hid pets that were still in the DB
++            alreadyKnownPet.insert(BattlePetPtr->Species);
+ 
+             _battlePets.emplace(BattlePetPtr->JournalID, BattlePetPtr);
+ 
+diff --git a/src/server/game/Handlers/BattlePetHandler.cpp b/src/server/game/Handlers/BattlePetHandler.cpp
+index e368e4f..6a7d324 100644
+--- a/src/server/game/Handlers/BattlePetHandler.cpp
++++ b/src/server/game/Handlers/BattlePetHandler.cpp
+@@ -33,7 +33,7 @@ void WorldSession::HandleBattlePetSummon(WorldPackets::BattlePet::BattlePetGuidR
+     if (_player->IsOnVehicle() || _player->IsSitState())
+         return;
+ 
+-    if (_player->GetSummonedBattlePetGUID() == packet.BattlePetGUID)
++    if (_player->GetSummonedBattlePetGUID() == packet.BattlePetGUID && _player->GetSummonedBattlePet())
+     {
+         _player->UnsummonCurrentBattlePetIfAny(false);
+         return;
+@@ -632,8 +632,12 @@ void WorldSession::HandleBattlePetDelete(WorldPackets::BattlePet::BattlePetGuidR
+         return;
+     }
+ 
+-    if (_player->GetBattlePetCountForSpecies(battlePet->Species) <= 1)
+-        return;
++    if (_player->GetSummonedBattlePetGUID() == packet.BattlePetGUID)
++        _player->UnsummonCurrentBattlePetIfAny(false);
++
++    for (auto& slotPet : _player->_battlePetCombatTeam)
++        if (slotPet && slotPet->JournalID == packet.BattlePetGUID)
++            slotPet.reset();
+ 
+     SendBattlePetDeleted(packet.BattlePetGUID);
+     battlePet->Remove(nullptr);
+diff --git a/src/server/game/Spells/SpellEffects.cpp b/src/server/game/Spells/SpellEffects.cpp
+index 607eb38..7be08bc 100644
+--- a/src/server/game/Spells/SpellEffects.cpp
++++ b/src/server/game/Spells/SpellEffects.cpp
+@@ -2110,6 +2110,14 @@ void Spell::EffectSummonType(SpellEffIndex effIndex)
+         return;
+ 
+     uint32 entry = effectInfo->MiscValue;
++
++    // Summon Battle Pet: MiscValue is a placeholder (Murkimus the Gladiator), the creature comes from the journal pet
++    if (m_spellInfo->Id == 118301)
++        if (Player* player = m_caster->ToPlayer())
++            if (std::shared_ptr<BattlePet> battlePet = player->GetBattlePet(player->GetSummonedBattlePetGUID()))
++                if (BattlePetSpeciesEntry const* species = sBattlePetSpeciesStore.LookupEntry(battlePet->Species))
++                    entry = species->CreatureID;
++
+     if (!entry)
+         return;
+ 
