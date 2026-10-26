@@ -30,12 +30,16 @@ Open on branch `claude/project-thread-cwgt5u` (not merged yet).
     is set to the pet's journal max health. Wild pet templates have tiny health modifiers (Black Lamb
     60649 has `HealthModifier` 0.01), which gave 0 health, so the summon showed up dead.
   - `Player.cpp` `_LoadPetBattles`: loads every copy of a species.
-  - `BattlePetHandler.cpp`: release works on the last copy too, dismisses the pet if it is out
+  - `BattlePetHandler.cpp`: release no longer checks species flag 0x8. The core calls it
+    `NOT_RELEASABLE`, but in 8.3.7 0x8 is Capturable (TrinityCore's `BattlePetSpeciesFlags`), so
+    every wild pet such as the Black Lamb was refused and stayed in the DB (second version still
+    brought the lamb back on every relog). Release also works on the last copy, dismisses the pet if it is out
     and clears it from a battle slot. Clicking summon on a pet whose critter is gone now summons
     it instead of doing nothing.
   - No SQL.
-- **Status:** first version (2cc26f6) summoned the right creature but dead and battleable; second
-  version waiting for Four to test.
+- **Status:** first version (2cc26f6) summoned the right creature but dead and battleable. Second
+  version (bb1835b): summons confirmed in game by Four on 2026-10-26, released Black Lamb still came
+  back. Third version (release flag check removed) waiting for Four to test.
 
 #### To pick up the pet journal fix
 A new patch on top of the others, the build and a restart. The patches you already applied are
@@ -44,7 +48,7 @@ unchanged.
 cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
 git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-journal.patch | git apply
-grep -c "near-zero HealthModifier" src/server/game/Spells/SpellEffects.cpp
+grep -c "is Capturable in 8.3.7" src/server/game/Handlers/BattlePetHandler.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
 The grep prints 1. Then restart `worldserver` and log in again.
