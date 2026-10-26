@@ -39,7 +39,8 @@ Open on branch `claude/project-thread-cwgt5u` (not merged yet).
   - No SQL.
 - **Status:** first version (2cc26f6) summoned the right creature but dead and battleable. Second
   version (bb1835b): summons confirmed in game by Four on 2026-10-26, released Black Lamb still came
-  back. Third version (release flag check removed) waiting for Four to test.
+  back. Third version (release flag check removed): release confirmed in game by Four on
+  2026-10-26. Summons and release both done.
 
 #### To pick up the pet journal fix
 A new patch on top of the others, the build and a restart. The patches you already applied are
