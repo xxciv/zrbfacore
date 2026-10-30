@@ -7,6 +7,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### Core: skinning refused after learning Cataclysm Skinning
 
+Merged to `main` with PR #22 on 2026-10-30.
+
 - **Found** (reported by Four): Delotha could no longer skin creatures well within her skill, such as
   a Redridge Fox (43083, level 15-16, needs 50). The DB had Skinning (393) 1/75, Cataclysm Skinning
   (2561) 1/75 and Classic Skinning (2564, the "Skinning 162/300" line) 162/300.
@@ -19,7 +21,7 @@ to do to pick it up (rebuild, restart, run SQL).
   new `SyncParentProfessionSkill` sets the profession skill to the value, max and tier of its highest
   expansion skill. `UpdateSkillPro` and the end of `SetSkill` call it instead of copying the skill
   that changed. No SQL. Compiles with GCC 13 on the full patch chain.
-- **Status:** not yet tested in game. `.setskill 393 162 300` fixes Delotha at once without the patch.
+- **Status:** confirmed in game by Four on 2026-10-30: skinning works again.
 
 #### To pick up the skinning fix
 `profession-skill-sync.patch` changed, so swap the old version for the new one, then build and

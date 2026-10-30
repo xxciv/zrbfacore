@@ -136,7 +136,7 @@ every skill-up too, in `Player::UpdateSkillPro` (`Player.cpp`). Verified in game
 with Classic Herbalism. The profession skill follows the highest of its expansion skills, not the one
 that changed last: upstream copied whichever expansion skill was set last, so learning Cataclysm
 Skinning (1/75) dropped Skinning to 1 and the server refused to skin anything (skinning is checked
-against the profession skill too). A character from before the patch catches up at its next skill-up,
+against the profession skill too; fix verified in game). A character from before the patch catches up at its next skill-up,
 or at once with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning), using the value of
 its highest expansion skill.
 
