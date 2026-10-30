@@ -7,7 +7,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### World: 248 creatures had no creature type (Sap failed on Bloodscalp Warriors)
 
-On PR #23 (world fixes), not merged yet.
+Merged to `main` with PR #23 on 2026-10-30.
 
 - **Found** (reported by Four): Sap didn't work on a Bloodscalp Warrior (587, guid 183856,
   Stranglethorn), a humanoid.
@@ -34,7 +34,7 @@ On PR #23 (world fixes), not merged yet.
 
 ### World: Bloodscalp Tusks for Hunt for Yenniku almost never dropped
 
-On PR #23 (world fixes), not merged yet.
+Merged to `main` with PR #23 on 2026-10-30.
 
 - **Found** while checking Bloodscalp loot for Four: Hunt for Yenniku (26298) needs 6 Bloodscalp
   Tusks (3901) from any Bloodscalp troll. All 11 Bloodscalp types have the tusk as a quest drop, but
