@@ -5,6 +5,37 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-30
 
+### World: 236 creatures had no creature type (Sap failed on Bloodscalp Warriors)
+
+On the world fixes branch, not merged yet.
+
+- **Found** (reported by Four): Sap didn't work on a Bloodscalp Warrior (587, guid 183856,
+  Stranglethorn), a humanoid.
+- **Cause:** in the BFA dump, 236 `creature_template` rows (entries 3 to 660) have `type` 0 ("None")
+  and the real creature type in the `family` column. 587 has type 0, family 7, where 7 is Humanoid.
+  A creature of type 0 is not a Humanoid, Beast or Undead to the core, so every spell limited to a
+  creature type fails on it: Sap, Polymorph, Hibernate, Shackle Undead, Banish, Turn Evil, Scare Beast
+  and others. The 20 beasts in the list also lost their pet family.
+- **Changed:** `sql/fixes/world/2026_10_30_00_creature_type_from_family.sql` sets `type` and
+  `family` from the Pandaria 5.4.8 world DB, which agrees with the shifted value for all 236:
+  - Humanoid (type 7): 193 creatures, including Bloodscalp Warrior 587, Hogger 448, Kobold Vermin 6,
+    Defias Smuggler 95. Family 0.
+  - Undead (6): 15, including Flesh Eater 3 and Skeletal Warrior 48. Elemental (4): 3, including
+    Rock Elemental 92. Mechanical (9): 3. Dragonkin (2): 1. Critter (8): 1. Family 0 for all.
+  - Beast (1) with their family: wolves (1) 118, 213, 521, 565; spiders (3) 442, 471, 505, 539, 569,
+    574, 616; boars (5) 113, 119, 330, 345, 454, 524; carrion birds (7) 154, 199, 462.
+  - Only rows still at type 0 change, so it is safe to run twice. The revert line is in the file.
+- **Status:** not tested in game yet.
+
+#### To pick up the creature type fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_30_00_creature_type_from_family.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
 ### Core: skinning refused after learning Cataclysm Skinning
 
 Merged to `main` with PR #22 on 2026-10-30.
