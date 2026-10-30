@@ -3,6 +3,38 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-30
+
+### Core: skinning refused after learning Cataclysm Skinning
+
+- **Found** (reported by Four): Delotha could no longer skin creatures well within her skill, such as
+  a Redridge Fox (43083, level 15-16, needs 50). The DB had Skinning (393) 1/75, Cataclysm Skinning
+  (2561) 1/75 and Classic Skinning (2564, the "Skinning 162/300" line) 162/300.
+- **Cause:** the skinning cast check (`Spell::CheckCast`, `SPELL_EFFECT_SKINNING`) reads the profession
+  skill 393. `Player::SetSkill` (upstream) and `Player::UpdateSkillPro` (our
+  `profession-skill-sync.patch`) both copied whichever expansion skill changed last into it, so
+  learning Cataclysm Skinning at 1 set Skinning to 1/75. Herbalism (182) and Mining (186) had the same
+  flaw: learning a second expansion tier would have turned their nodes orange or refused them again.
+- **Changed:** `tools/bfa/profession-skill-sync.patch` (`src/server/game/Entities/Player/Player.cpp`):
+  new `SyncParentProfessionSkill` sets the profession skill to the value, max and tier of its highest
+  expansion skill. `UpdateSkillPro` and the end of `SetSkill` call it instead of copying the skill
+  that changed. No SQL. Compiles with GCC 13 on the full patch chain.
+- **Status:** not yet tested in game. `.setskill 393 162 300` fixes Delotha at once without the patch.
+
+#### To pick up the skinning fix
+`profession-skill-sync.patch` changed, so swap the old version for the new one, then build and
+restart. The other patches you applied are unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin main
+git -C ../tools-repo show origin/main:tools/bfa/profession-skill-sync.patch | git apply -R && echo "old patch removed"
+git -C ../tools-repo fetch origin claude/project-thread-2e6el5
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/profession-skill-sync.patch | git apply && echo "new patch applied"
+grep -c SyncParentProfessionSkill src/server/game/Entities/Player/Player.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+Both echo lines print, and the grep prints 3. Then restart `worldserver`.
+
 ## 2026-10-25
 
 ### World: battle pet slots stayed locked after Battle Pet Training

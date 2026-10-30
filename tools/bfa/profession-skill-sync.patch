@@ -1,17 +1,76 @@
 diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
-index 00e6114..9879dd0 100644
+index 00e6114..4902612 100644
 --- a/src/server/game/Entities/Player/Player.cpp
 +++ b/src/server/game/Entities/Player/Player.cpp
-@@ -5826,6 +5826,12 @@ bool Player::UpdateSkillPro(uint16 skillId, int32 chance, uint32 step)
+@@ -5781,6 +5781,40 @@ bool Player::UpdateFishingSkill()
+     return false;
+ }
+ 
++// The parent profession skill (Herbalism, Mining, Skinning, ...) is what the client checks gathering nodes
++// against and what the skinning cast check reads. Keep it at the highest of its expansion skills, so learning
++// or raising a lower one (Cataclysm Skinning 1) doesn't drag it below the one the player actually uses.
++static void SyncParentProfessionSkill(Player* player, uint32 parentSkillId)
++{
++    std::vector<SkillLineEntry const*> const* childSkillLines = sDB2Manager.GetSkillLinesForParentSkill(parentSkillId);
++    if (!childSkillLines)
++        return;
++
++    SkillLineEntry const* best = nullptr;
++    uint16 bestValue = 0;
++    for (SkillLineEntry const* childSkillLine : *childSkillLines)
++    {
++        if (childSkillLine->ParentTierIndex <= 0)
++            continue;
++
++        uint16 value = player->GetPureSkillValue(childSkillLine->ID);
++        if (value > bestValue)
++        {
++            best = childSkillLine;
++            bestValue = value;
++        }
++    }
++
++    if (!best)
++        return;
++
++    uint16 bestMax = player->GetPureMaxSkillValue(best->ID);
++    if (player->GetPureSkillValue(parentSkillId) != bestValue ||
++        player->GetPureMaxSkillValue(parentSkillId) != bestMax ||
++        player->GetSkillStep(parentSkillId) != best->ParentTierIndex)
++        player->SetSkill(parentSkillId, best->ParentTierIndex, bestValue, bestMax);
++}
++
+ bool Player::UpdateSkillPro(uint16 skillId, int32 chance, uint32 step)
+ {
+     // levels sync. with spell requirement for skill levels to learn
+@@ -5826,6 +5860,11 @@ bool Player::UpdateSkillPro(uint16 skillId, int32 chance, uint32 step)
      if (itr->second.uState != SKILL_NEW)
          itr->second.uState = SKILL_CHANGED;
  
-+    // Keep the parent profession skill in step with this expansion skill, as SetSkill does: the client
-+    // checks gathering nodes (requirement and color) against the parent.
++    // Keep the parent profession skill in step with this expansion skill, as SetSkill does.
 +    if (SkillLineEntry const* skillEntry = sSkillLineStore.LookupEntry(skillId))
 +        if (skillEntry->ParentSkillLineID && skillEntry->ParentTierIndex > 0)
-+            SetSkill(skillEntry->ParentSkillLineID, skillEntry->ParentTierIndex, new_value, max);
++            SyncParentProfessionSkill(this, skillEntry->ParentSkillLineID);
 +
      for (uint32 bsl : bonusSkillLevels)
      {
          if (value < bsl && new_value >= bsl)
+@@ -6134,17 +6173,7 @@ SetSkill(skillEntry->ParentSkillLineID, skillEntry->ParentTierIndex, std::max<ui
+         if (SkillLineEntry const* skillEntry = sSkillLineStore.LookupEntry(id))
+         {
+             if (skillEntry->ParentSkillLineID && skillEntry->ParentTierIndex > 0)
+-            {
+-                uint16 parentValue = newVal;
+-                uint16 parentMax = maxVal;
+-
+-                if (GetPureSkillValue(skillEntry->ParentSkillLineID) != parentValue ||
+-                    GetPureMaxSkillValue(skillEntry->ParentSkillLineID) != parentMax ||
+-                    GetSkillStep(skillEntry->ParentSkillLineID) != skillEntry->ParentTierIndex)
+-                {
+-                    SetSkill(skillEntry->ParentSkillLineID, skillEntry->ParentTierIndex, parentValue, parentMax);
+-                }
+-            }
++                SyncParentProfessionSkill(this, skillEntry->ParentSkillLineID);
+         }
+     }
+ }
