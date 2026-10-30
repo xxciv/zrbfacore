@@ -29,7 +29,8 @@ On PR #23 (world fixes), not merged yet.
   - Left alone: Tall Strider 105 and five Draenor creatures (75533, 75703, 75763, 76120, 77140) that
     also have type 0 with a family, because Pandaria has nothing to check them against.
   - Only rows still at type 0 change, so it is safe to run twice. The revert line is in the file.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-10-30 (Sap works on Bloodscalp Warriors). The game
+  client caches creature types: delete the `Cache` folder in the WoW folder after running the SQL.
 
 ### World: Bloodscalp Tusks for Hunt for Yenniku almost never dropped
 
