@@ -29,9 +29,8 @@ restart. The other patches you applied are unchanged.
 ```
 cd ~/bfa/source
 git -C ../tools-repo fetch origin main
-git -C ../tools-repo show origin/main:tools/bfa/profession-skill-sync.patch | git apply -R && echo "old patch removed"
-git -C ../tools-repo fetch origin claude/project-thread-2e6el5
-git -C ../tools-repo show FETCH_HEAD:tools/bfa/profession-skill-sync.patch | git apply && echo "new patch applied"
+git -C ../tools-repo show b83c110:tools/bfa/profession-skill-sync.patch | git apply -R && echo "old patch removed"
+git -C ../tools-repo show origin/main:tools/bfa/profession-skill-sync.patch | git apply && echo "new patch applied"
 grep -c SyncParentProfessionSkill src/server/game/Entities/Player/Player.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
