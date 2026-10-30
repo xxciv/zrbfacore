@@ -48,7 +48,7 @@ On PR #23 (world fixes), not merged yet.
   Shaman 697), and the three items for Sacred to the Bloodscalp (60270-60272, about 11% each on the
   Scavenger 702). Their normal loot (cloth, food such as Mutton Chop, potions, greens, greys) is there
   too: 123 to 302 rows per Bloodscalp.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-10-30.
 
 #### To pick up the creature type and Bloodscalp Tusk fixes
 SQL only, no rebuild:
