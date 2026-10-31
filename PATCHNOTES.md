@@ -3,6 +3,31 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-31
+
+### World: Bloodlord Mandokir never leaves the Rebel Camp after his quest
+
+- **Found** (reported by Four): after turning in "Bloodlord Mandokir" (quest 26748) in the Rebel
+  Camp, a friendly Bloodlord Mandokir (43989, no DB GUID, faction 35) stays there for good and
+  stands in front of another NPC.
+- **Cause:** the quest's reward spell 82340 summons 43989 (SummonProperties 492, infinite duration).
+  The quest giver 42790 itself is despawned by `npc_bloodlord_mandokir`, but the summon has no script
+  at all, so nothing ever removes it. The Horde version (quest 26334 at Grom'gol, reward spell 79783)
+  summons 42799 the same way and has the same problem.
+- **Changed:** `sql/fixes/world/2026_10_31_00_mandokir_reward_summon_despawn.sql` adds one
+  `smart_scripts` row each for 43989 and 42799 (there were none): event 54 (just summoned), action 41
+  (force despawn) after 5000 ms, target self. `AIName` stays `SmartAI`.
+- **Status:** waiting for Four to test.
+
+#### To pick up the Mandokir fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_00_mandokir_reward_summon_despawn.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`. The restart also removes the Mandokir already standing in the camp.
+
 ## 2026-10-30
 
 ### World: critters and wild battle pets stacked on one spot, and none of them wander
