@@ -53,6 +53,23 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_06_warsong_demol
 ```
 Then restart `worldserver`.
 
+### World: two Spirit Healers stacked at Nightsong graveyard
+
+- **Found** (reported by Four): the Nightsong graveyard near Raynewood Tower in Ashenvale
+  (`world_safe_locs` 1427) has two Spirit Healers (6491) on the same spot.
+- **Changed:** `sql/fixes/world/2026_10_31_07_nightsong_spirit_healer_duplicate.sql` deletes spawn
+  371367 (and any `creature_addon` row for it). Spawn 129879 stays.
+- **Status:** waiting for Four to test.
+
+#### To pick up the Spirit Healer fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_07_nightsong_spirit_healer_duplicate.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
 ### World: Bloodlord Mandokir never leaves the Rebel Camp after his quest
 
 Merged to `main` with PR #25 on 2026-10-31.
