@@ -3,11 +3,159 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-10-31
+
+### World: Bloodlord Mandokir never leaves the Rebel Camp after his quest
+
+Merged to `main` with PR #25 on 2026-10-31.
+
+- **Found** (reported by Four): after turning in "Bloodlord Mandokir" (quest 26748) in the Rebel
+  Camp, a friendly Bloodlord Mandokir (43989, no DB GUID, faction 35) stays there for good and
+  stands in front of another NPC.
+- **Cause:** the quest's reward spell 82340 summons 43989 (SummonProperties 492, infinite duration).
+  The quest giver 42790 itself is despawned by `npc_bloodlord_mandokir`, but the summon has no script
+  at all, so nothing ever removes it. The Horde version (quest 26334 at Grom'gol, reward spell 79783)
+  summons 42799 the same way and has the same problem.
+- **Changed:** `sql/fixes/world/2026_10_31_00_mandokir_reward_summon_despawn.sql` adds one
+  `smart_scripts` row each for 43989 and 42799 (there were none): event 54 (just summoned), action 41
+  (force despawn) after 5000 ms, target self. `AIName` stays `SmartAI`.
+- **Status:** confirmed in game by Four on 2026-10-31 (new character, Mandokir vanished after the turn-in).
+
+#### To pick up the Mandokir fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_00_mandokir_reward_summon_despawn.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`. The restart also removes the Mandokir already standing in the camp.
+
+## 2026-10-30
+
+### World: critters and wild battle pets stacked on one spot, and none of them wander
+
+Merged to `main` with PR #24 on 2026-10-31.
+
+- **Found** (reported by Four): in Stranglethorn a Beetle (61319, wild battle pet, guid 10647972),
+  a Tree Python (49722, guid 10647911) and a Lizard Hatchling (50479, guid 10648091) stood on the
+  same spot (-11459.5, -273.45, 42.9962) without moving.
+- **Cause:** the BFA dump has a block of 8,460 critter and wild battle pet spawns added without sniff
+  data (VerifiedBuild 0, orientation 0, respawn 120 s, MovementType 0, spawndist 0). 596 of their
+  spots carry 2 to 5 creatures on exactly the same coordinates (1,275 spawns), and none of the block
+  moves.
+- **Changed:** `sql/fixes/world/2026_10_30_02_critter_spawns_stacked_and_still.sql`:
+  - Each stacked spot becomes a pool that spawns one of its creatures at a time (`pool_template`
+    5100001 to 5100596, `max_limit` 1; `pool_creature` rows for the 1,275 guids, equal chance). The
+    Stranglethorn spot above is pool 5100506.
+  - The 8,188 spawns of the block that can walk (InhabitType has the ground bit) get `MovementType`
+    1 and `spawndist` 3.5 (was 0 and 0), the radius the core already uses for wild battle pets that
+    replace critters (`WildBattlePetMgr::ReplaceCreature`). The 272 flying-only or water-only ones stay put.
+  - Only critters (type 8) and the wild battle pet entries in `battlepet_spawn_relation` and
+    `battlepet_wild_zone_pool` (Max above 1) are touched, so pet vendor and pet tamer displays
+    (Darkmoon Faire, Booty Bay, Deepholm) are left alone. Sniffed critters outside the block are
+    unchanged. Safe to run twice; the revert lines are in the file.
+- **Status:** confirmed in game by Four on 2026-10-31.
+
+#### To pick up the critter spawn fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_30_02_critter_spawns_stacked_and_still.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
+### World: 248 creatures had no creature type (Sap failed on Bloodscalp Warriors)
+
+Merged to `main` with PR #23 on 2026-10-30.
+
+- **Found** (reported by Four): Sap didn't work on a Bloodscalp Warrior (587, guid 183856,
+  Stranglethorn), a humanoid.
+- **Cause:** in the BFA dump, 248 `creature_template` rows (mostly entries 3 to 660, plus a few later
+  ones) have `type` 0 ("None") and the real creature type in the `family` column. 587 has type 0,
+  family 7, where 7 is Humanoid. A creature of type 0 is not a Humanoid, Beast or Undead to the core,
+  so every spell limited to a creature type fails on it: Sap, Polymorph, Hibernate, Shackle Undead,
+  Banish, Turn Evil, Scare Beast and others. The tameable beasts in the list also lost their pet family.
+- **Changed:** `sql/fixes/world/2026_10_30_00_creature_type_from_family.sql` sets `type` and
+  `family` from the Pandaria 5.4.8 world DB, which agrees with the shifted value for all 248:
+  - Humanoid (type 7): 200 creatures, including Bloodscalp Warrior 587, Hogger 448, Kobold Vermin 6,
+    Defias Smuggler 95, the Westfall Bridge Workers 649-653. Family 0.
+  - Undead (6): 16, including Flesh Eater 3 and Skeletal Warrior 48. Elemental (4): 3, including
+    Rock Elemental 92. Mechanical (9): 3. Dragonkin (2): 1. Critter (8): 1. Giant (5): Sea Giant 90.
+    Not specified (10): Magma Trap 53086. Family 0 for all.
+  - Beast (1) with their family: wolves (1) 118, 213, 521, 565; spiders (3) 442, 471, 505, 539, 569,
+    574, 616; boars (5) 113, 119, 330, 345, 454, 524; carrion birds (7) 154, 199, 462; family 0 for
+    Kodo Beast 106 and Palomino 306.
+  - Left alone: Tall Strider 105 and five Draenor creatures (75533, 75703, 75763, 76120, 77140) that
+    also have type 0 with a family, because Pandaria has nothing to check them against.
+  - Only rows still at type 0 change, so it is safe to run twice. The revert line is in the file.
+- **Status:** confirmed in game by Four on 2026-10-30 (Sap works on Bloodscalp Warriors). The game
+  client caches creature types: delete the `Cache` folder in the WoW folder after running the SQL.
+
+### World: Bloodscalp Tusks for Hunt for Yenniku almost never dropped
+
+Merged to `main` with PR #23 on 2026-10-30.
+
+- **Found** while checking Bloodscalp loot for Four: Hunt for Yenniku (26298) needs 6 Bloodscalp
+  Tusks (3901) from any Bloodscalp troll. All 11 Bloodscalp types have the tusk as a quest drop, but
+  only Warriors 587 (36%) and Axe Throwers 694 (36.81%) drop it often. Shamans 697 have 10%, and
+  Scouts 588, Hunters 595, Berserkers 597, Witch Doctors 660, Headhunters 671, Beastmasters 699,
+  Mystics 701 and Scavengers 702 between 0.1% and 1.27%. The Pandaria world DB has 50% on all of them.
+- **Changed:** `sql/fixes/world/2026_10_30_01_bloodscalp_tusk_drop_rate.sql` sets `Chance` 50 on those
+  11 rows (`Item` 3901, `QuestRequired` 1) where it was lower. The old values are in the file.
+- **Checked, no change:** the other Bloodscalp quest drops are fine: Shrunken Head 1532 for
+  Headhunting (73-74% on 597, 660, 671), Bloodscalp Totem 23679 for Bloodscalp Insight (34.5% on the
+  Shaman 697), and the three items for Sacred to the Bloodscalp (60270-60272, about 11% each on the
+  Scavenger 702). Their normal loot (cloth, food such as Mutton Chop, potions, greens, greys) is there
+  too: 123 to 302 rows per Bloodscalp.
+- **Status:** confirmed in game by Four on 2026-10-30.
+
+#### To pick up the creature type and Bloodscalp Tusk fixes
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_30_00_creature_type_from_family.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_30_01_bloodscalp_tusk_drop_rate.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
+### Core: skinning refused after learning Cataclysm Skinning
+
+Merged to `main` with PR #22 on 2026-10-30.
+
+- **Found** (reported by Four): Delotha could no longer skin creatures well within her skill, such as
+  a Redridge Fox (43083, level 15-16, needs 50). The DB had Skinning (393) 1/75, Cataclysm Skinning
+  (2561) 1/75 and Classic Skinning (2564, the "Skinning 162/300" line) 162/300.
+- **Cause:** the skinning cast check (`Spell::CheckCast`, `SPELL_EFFECT_SKINNING`) reads the profession
+  skill 393. `Player::SetSkill` (upstream) and `Player::UpdateSkillPro` (our
+  `profession-skill-sync.patch`) both copied whichever expansion skill changed last into it, so
+  learning Cataclysm Skinning at 1 set Skinning to 1/75. Herbalism (182) and Mining (186) had the same
+  flaw: learning a second expansion tier would have turned their nodes orange or refused them again.
+- **Changed:** `tools/bfa/profession-skill-sync.patch` (`src/server/game/Entities/Player/Player.cpp`):
+  new `SyncParentProfessionSkill` sets the profession skill to the value, max and tier of its highest
+  expansion skill. `UpdateSkillPro` and the end of `SetSkill` call it instead of copying the skill
+  that changed. No SQL. Compiles with GCC 13 on the full patch chain.
+- **Status:** confirmed in game by Four on 2026-10-30: skinning works again.
+
+#### To pick up the skinning fix
+`profession-skill-sync.patch` changed, so swap the old version for the new one, then build and
+restart. The other patches you applied are unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin main
+git -C ../tools-repo show b83c110:tools/bfa/profession-skill-sync.patch | git apply -R && echo "old patch removed"
+git -C ../tools-repo show origin/main:tools/bfa/profession-skill-sync.patch | git apply && echo "new patch applied"
+grep -c SyncParentProfessionSkill src/server/game/Entities/Player/Player.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+Both echo lines print, and the grep prints 3. Then restart `worldserver`.
+
 ## 2026-10-26
 
 ### Pet battles: summoned pets show as Murkimus, released pets come back
 
-Open on branch `claude/project-thread-cwgt5u` (not merged yet).
+Merged to `main` with PR #21 on 2026-10-31.
 
 - **Found** (reported by Four): summoning Black Lamb, Stormwind Rat or Cat from the Pet Journal
   spawned Murkimus the Gladiator. A Black Lamb released from the journal kept showing up again.

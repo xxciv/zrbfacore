@@ -134,8 +134,12 @@ profession skill, which upstream only updates when a skill is set directly (trai
 Herbalism stayed where it was trained while Classic Herbalism rose, and nodes stayed orange and then
 refused ("Requires Herbalism 50" at Classic Herbalism 59). The patch updates the profession skill on
 every skill-up too, in `Player::UpdateSkillPro` (`Player.cpp`). Verified in game: Herbalism now rises
-with Classic Herbalism. A character from before the patch catches up at its next skill-up, or at once
-with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning).
+with Classic Herbalism. The profession skill follows the highest of its expansion skills, not the one
+that changed last: upstream copied whichever expansion skill was set last, so learning Cataclysm
+Skinning (1/75) dropped Skinning to 1 and the server refused to skin anything (skinning is checked
+against the profession skill too; fix verified in game). A character from before the patch catches up at its next skill-up,
+or at once with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning), using the value of
+its highest expansion skill.
 
 `deadmines-fixes.patch` collects the fixes for The Deadmines (map 36):
 
