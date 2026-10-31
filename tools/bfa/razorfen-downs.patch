@@ -1,0 +1,45 @@
+diff --git a/src/server/scripts/Kalimdor/RazorfenDowns/instance_razorfen_downs.cpp b/src/server/scripts/Kalimdor/RazorfenDowns/instance_razorfen_downs.cpp
+index ba225cd..d27669a 100644
+--- a/src/server/scripts/Kalimdor/RazorfenDowns/instance_razorfen_downs.cpp
++++ b/src/server/scripts/Kalimdor/RazorfenDowns/instance_razorfen_downs.cpp
+@@ -64,6 +64,14 @@ public:
+             summonCreature = 0;
+         }
+ 
++        // Warlords scenario 647, step "Death Speaker Blackthorn": its criteria (24957) waits for
++        // scenario event 38474, which nothing sends. Send it when Blackthorn dies.
++        void OnUnitDeath(Unit* unit) override
++        {
++            if (unit->GetEntry() == NPC_DEATH_SPEAKER_BLACKTHORN)
++                DoSendEventScenario(EVENT_BLACKTHORN_DEFEATED);
++        }
++
+         void OnGameObjectCreate(GameObject* gameObject) override
+         {
+             switch (gameObject->GetEntry())
+diff --git a/src/server/scripts/Kalimdor/RazorfenDowns/razorfen_downs.h b/src/server/scripts/Kalimdor/RazorfenDowns/razorfen_downs.h
+index 1a00fb3..b17eda5 100644
+--- a/src/server/scripts/Kalimdor/RazorfenDowns/razorfen_downs.h
++++ b/src/server/scripts/Kalimdor/RazorfenDowns/razorfen_downs.h
+@@ -49,7 +49,8 @@ enum RFDCreatureIds
+     NPC_WITHERED_BATTLE_BOAR               = 7333,
+     NPC_DEATHS_HEAD_GEOMANCER              = 7335,
+     NPC_WITHERED_QUILGUARD                 = 7329,
+-    NPC_PLAGUEMAW_THE_ROTTING              = 7356
++    NPC_PLAGUEMAW_THE_ROTTING              = 7356,
++    NPC_DEATH_SPEAKER_BLACKTHORN           = 74875
+ };
+ 
+ enum RFDGameObjectIds
+@@ -63,6 +64,11 @@ enum RFDGameObjectIds
+     GO_BELNISTRASZS_BRAZIER                = 152097
+ };
+ 
++enum RFDScenarioEvents
++{
++    EVENT_BLACKTHORN_DEFEATED              = 38474
++};
++
+ template<typename AI>
+ inline AI* GetRazorfenDownsAI(Creature* creature)
+ {

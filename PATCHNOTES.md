@@ -5,6 +5,127 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-31
 
+### Razorfen Downs: Lady Falther'ess still only meleed (and Ragglesnout never cast)
+
+From Four's first run, 2026-10-31. SQL only: `sql/fixes/world/2026_10_31_04_razorfen_downs_rare_guid_scripts.sql`.
+
+- **Found** (reported by Four after `2026_10_31_02`, which had loaded fine):
+  - Her spawn (guid 373575) and Ragglesnout's (373574) each had a per-spawn SmartAI row. It cast
+    Fel Hands (207101) out of combat, a Legion dummy aura that does nothing.
+  - A per-spawn script replaces the creature's own script entirely, so neither rare ever ran its
+    combat rows.
+  - Ragglesnout's own script also mixed two versions together.
+- **Changed:**
+  - Both per-spawn rows are deleted.
+  - Ragglesnout's second Shadow Word: Pain, Heal and Dominate Mind (ids 10-12) are deleted. He keeps
+    his bolt, Shadow Word: Pain, Heal and Dominate Mind once each.
+- **Not changed:** 40 more spawns elsewhere have the same Fel Hands row. 30 of them hide their
+  creature's own script: 14 in Kalimdor, 8 in the Eastern Kingdoms, 6 in Gnomeregan, 1 in Blackrock
+  Depths.
+- **Status:** waiting on Four's test.
+
+### Razorfen Downs: the idol room was a pile-up, and Withered Touch hit far too hard
+
+From Four's first run, 2026-10-31. SQL only: `sql/fixes/world/2026_10_31_03_razorfen_downs_idol_room.sql`.
+
+- **Found** (reported by Four):
+  - **Pile-up:** the room by Plaguemaw held 32 mobs, 12 of them Withered Battle Boars. 15 of them were
+    the Extinguishing the Idol event's waves saved as static spawns. They sit exactly on the three
+    Idol Room Spawners, in the event's pattern of a boar or two, a Geomancer and a Quilguard. The
+    Pandaria database has the same rows; the classic (AzerothCore) database has none.
+  - **Withered Touch:** the spell (11442) is a damage over time that scales very high here. Every
+    Withered Quilguard had it twice: an aura that procs it on melee hits (11441), and a cast every
+    17-19 seconds. Plaguemaw had the same pair (aura 12947 plus the cast). Classic Quilguards and
+    Plaguemaw had neither.
+  - **Double casting:** Death's Head Geomancers and Withered Spearhides had two script versions
+    mixed together, so they cast their spells twice as often.
+- **Changed:**
+  - The 15 leftover wave spawns are deleted. The room keeps its own mobs: 2 standing and 2
+    patrolling Battle Boars, 2 Spearhides (one patrolling), 2 Withered Warriors, a Geomancer, a
+    Battle Boar Horror, and Plaguemaw. The three spawners stay for the quest event.
+  - Withered Touch is removed from every Quilguard and from Plaguemaw, both the aura and the cast.
+    Quilguards keep Enrage at 30%, and Plaguemaw keeps Putrid Stench.
+  - The duplicate Geomancer and Spearhide rows are deleted.
+- **Status:** waiting on Four's test.
+
+### Razorfen Downs: Lady Falther'ess only meleed and rarely dropped an item
+
+From Four's first run, 2026-10-31. SQL only: `sql/fixes/world/2026_10_31_02_razorfen_downs_falther_ess.sql`.
+
+- **Found** (reported by Four: melee only, money only):
+  - Lady Falther'ess (14686) is set to use SmartAI but had no script rows.
+  - Her two items (23177, 23178) each rolled on their own at 20%, so 64% of kills dropped no item.
+  - One of the three Idol Room Spawners (guid 325229) was given random wandering by `2026_10_31_01`.
+    These are the invisible markers the Extinguishing the Idol event spawns its waves from.
+- **Changed:**
+  - She gets the classic combat set from the AzerothCore database: Ribbon of Souls (22743, damage
+    around her), Banshee Curse (17105) on a random player, and Banshee Shriek (16838, silence and
+    damage within 8 yards). Her classic disguise and Scourge Invasion start are left out.
+  - Her items share one group with the Pandaria chances (43% / 56%), so one always drops.
+  - That spawner no longer wanders.
+- **Status:** waiting on Four's test.
+
+### Razorfen Downs: pre-run check
+
+Before Four's first run. New `tools/bfa/razorfen-downs.patch` (build needed) and
+`sql/fixes/world/2026_10_31_01_razorfen_downs.sql`.
+
+#### None of the scenario bosses was spawned
+- **Found** (Four's `.debug scenario` on entering): scenario 647 has three steps. "Blackthorn's
+  Lieutenants" wants kills of Aarux (74412), Mordresh Fire Eye (74347) and Mushlump (74435); then
+  "Death Speaker Blackthorn" (74875); then Amnennar the Coldbringer (74434). Achievement 636 is a
+  kill of 74434 too. The BFA spawns are the Pandaria 5.4.8 set with the classic bosses (Tuten'kash
+  7355, Mordresh 7357, Glutton 8567, Amnennar 7358), so none of these could be killed and the
+  scenario was stuck on its first step.
+- **Changed:** four classic boss spots now hold the new bosses:
+  - Aarux replaces Tuten'kash (guid 325253), moved to 2511, 857, 47.68, the point his own script
+    lands him on.
+  - Mordresh 74347 replaces Mordresh 7357 on the same spot (325055).
+  - Mushlump replaces Glutton (325058).
+  - Blackthorn replaces Amnennar on his throne (324995). Blackthorn's script summons Amnennar 74434
+    where he dies.
+  - The classic bosses' auras and emote on those spots are removed, and the five get scaling rows
+    for the dungeon's difficulty (1). Before, they only had rows for difficulty 0.
+- **Not changed:** the gong event still works as before and summons the classic Tuten'kash, who gives
+  no scenario credit. Plaguemaw the Rotting, Ragglesnout and Lady Falther'ess stay as optional
+  classic bosses.
+
+#### Blackthorn's step could never complete
+- **Found:** the step's criteria (24957) waits for scenario event 38474. Nothing in this core sends
+  it: spells with a send-event effect don't reach the scenario here, and SmartAI has no action for it.
+- **Changed:** `razorfen-downs.patch` (`instance_razorfen_downs.cpp`, `razorfen_downs.h`): the
+  instance script sends event 38474 when Blackthorn dies.
+
+#### Boss scripts
+- **Found:**
+  - Aarux was friendly (faction 35). His script started him flying and unattackable until a dummy
+    spell from other NPCs hit him, and nothing in this database casts that spell.
+  - Mushlump and Blackthorn each had two script versions mixed together.
+  - Amnennar's summon despawned after 10 minutes even if he was alive, so a wipe could lose him for
+    good.
+- **Changed:**
+  - Aarux is hostile (faction 14) and keeps only Plagued Bite and Web Strand.
+  - Mushlump keeps one set: Smack Down, Tummy Ache and Putrid Funk.
+  - Blackthorn's duplicate death row is deleted.
+  - Amnennar now despawns 10 minutes after he dies, not 10 minutes after he appears.
+
+#### Dungeon encounters
+- **Found:** `instance_encounters` had no rows for map 129.
+- **Changed:** added the client's DungeonEncounter rows: 1662 Aarux, 1663 Mordresh, 1664 Mushlump,
+  1665 Blackthorn and 1666 Amnennar (last boss of dungeon finder entry 20).
+
+#### Nothing patrolled
+- **Found:** no waypoint paths on map 129 apart from Belnistrasz's, and only the roaches wandered.
+- **Changed:** 19 paths from the Pandaria database and 4 from the AzerothCore database. AzerothCore's
+  wandering is added for 10 spawns, capped at 5 yards. Spawns are matched by entry and position.
+  New path ids are 129000002 and up.
+
+#### Left as is
+- The idol room around Plaguemaw (32 mobs, 12 of them Withered Battle Boars) matches the Pandaria
+  database spawn for spawn; classic had 15 there. Four chose to keep it.
+
+**Status:** none of this has been tested in game yet.
+
 ### World: Bloodlord Mandokir never leaves the Rebel Camp after his quest
 
 Merged to `main` with PR #25 on 2026-10-31.
