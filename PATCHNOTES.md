@@ -5,6 +5,25 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-31
 
+### Razorfen Downs: Lady Falther'ess still only meleed (and Ragglesnout never cast)
+
+From Four's first run, 2026-10-31. SQL only: `sql/fixes/world/2026_10_31_04_razorfen_downs_rare_guid_scripts.sql`.
+
+- **Found** (reported by Four after `2026_10_31_02`, which had loaded fine):
+  - Her spawn (guid 373575) and Ragglesnout's (373574) each had a per-spawn SmartAI row. It cast
+    Fel Hands (207101) out of combat, a Legion dummy aura that does nothing.
+  - A per-spawn script replaces the creature's own script entirely, so neither rare ever ran its
+    combat rows.
+  - Ragglesnout's own script also mixed two versions together.
+- **Changed:**
+  - Both per-spawn rows are deleted.
+  - Ragglesnout's second Shadow Word: Pain, Heal and Dominate Mind (ids 10-12) are deleted. He keeps
+    his bolt, Shadow Word: Pain, Heal and Dominate Mind once each.
+- **Not changed:** 40 more spawns elsewhere have the same Fel Hands row. 30 of them hide their
+  creature's own script: 14 in Kalimdor, 8 in the Eastern Kingdoms, 6 in Gnomeregan, 1 in Blackrock
+  Depths.
+- **Status:** waiting on Four's test.
+
 ### Razorfen Downs: the idol room was a pile-up, and Withered Touch hit far too hard
 
 From Four's first run, 2026-10-31. SQL only: `sql/fixes/world/2026_10_31_03_razorfen_downs_idol_room.sql`.
