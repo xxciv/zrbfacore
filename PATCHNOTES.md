@@ -53,12 +53,22 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_06_warsong_demol
 ```
 Then restart `worldserver`.
 
-### World: two Spirit Healers stacked at Nightsong graveyard
+### World: Spirit Healers stacked on top of each other at 80 graveyards
 
 - **Found** (reported by Four): the Nightsong graveyard near Raynewood Tower in Ashenvale
-  (`world_safe_locs` 1427) has two Spirit Healers (6491) on the same spot.
-- **Changed:** `sql/fixes/world/2026_10_31_07_nightsong_spirit_healer_duplicate.sql` deletes spawn
-  371367 (and any `creature_addon` row for it). Spawn 129879 stays.
+  (`world_safe_locs` 1427) has two Spirit Healers (6491) on the same spot. Four asked to clear the
+  same doubling everywhere.
+- **Cause:** a block of added Spirit Healer spawns (mostly guids 371188-371416 and, on the Broken
+  Isles, 20549126-20549205) repeats graveyards that already had one. A scan of all 876 Spirit Healers
+  found 80 spots with two or three within 5 yards of each other, same phase and difficulty.
+- **Changed:**
+  - `sql/fixes/world/2026_10_31_07_nightsong_spirit_healer_duplicate.sql` deletes spawn 371367
+    (Nightsong). Spawn 129879 stays.
+  - `sql/fixes/world/2026_10_31_08_spirit_healer_duplicates.sql` deletes 85 spawns (Eastern Kingdoms 16,
+    Kalimdor 28, Outland 2, Pandaria 1, Broken Isles 38; 371367 is in the list too). Each spot keeps
+    one healer: the sniffed spawn where there is one (452538, 452539, 210117416, 210118234), otherwise
+    the lowest guid. None of the removed guids is in a pool, game event, formation or
+    `creature_addon` row.
 - **Status:** waiting for Four to test.
 
 #### To pick up the Spirit Healer fix
@@ -67,6 +77,7 @@ SQL only, no rebuild:
 cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_07_nightsong_spirit_healer_duplicate.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_08_spirit_healer_duplicates.sql | mysql -u root -p bfa_world
 ```
 Then restart `worldserver`.
 
