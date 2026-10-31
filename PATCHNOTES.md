@@ -27,7 +27,7 @@ On PR #24 (world fixes), not merged yet.
     `battlepet_wild_zone_pool` (Max above 1) are touched, so pet vendor and pet tamer displays
     (Darkmoon Faire, Booty Bay, Deepholm) are left alone. Sniffed critters outside the block are
     unchanged. Safe to run twice; the revert lines are in the file.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-10-31.
 
 #### To pick up the critter spawn fix
 SQL only, no rebuild:
