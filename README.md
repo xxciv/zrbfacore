@@ -68,6 +68,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   `2026_10_24_05_headless_horseman.sql` and `2026_10_24_06_scarlet_fuel_tank_encounters.sql`.
 - [`tools/bfa/battle-pet-slots.patch`](tools/bfa/battle-pet-slots.patch): fixes the packet that
   unlocks battle pet slots, so the first slot opens after Battle Pet Training and pets can be slotted.
+- [`tools/bfa/razorfen-downs.patch`](tools/bfa/razorfen-downs.patch): Razorfen Downs: Death Speaker
+  Blackthorn's death completes his scenario step. Needs `sql/fixes/world/2026_10_31_01_razorfen_downs.sql`.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.
