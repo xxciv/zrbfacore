@@ -5,6 +5,82 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-31
 
+### World: 37 creature spawns ignored their own scripts (junk "Fel Hands" spawn rows)
+
+- **Found** (Dungeon Fixes thread, while fixing Lady Falther'ess in Razorfen Downs): 44 creature
+  spawns carry a per-spawn SmartAI row (`entryorguid` = -guid) that casts Fel Hands (207101, a
+  Legion dummy aura with no effect) out of combat, comment `OOC - CS`.
+- **Cause:** a per-spawn script replaces the creature's own entry script entirely, so these spawns
+  only meleed. Examples: Warsong Demolishers (32850) never threw Flaming Balls or exploded,
+  Rampaging Owlbeasts (49245) never used Shred, Northwatch Guards (38636) never shot, Gnomeregan's
+  Dark Iron Land Mines (8035) never detonated, Dark Keeper Uggel (9439) never cast.
+- **Changed:** `sql/fixes/world/2026_10_31_05_fel_hands_spawn_scripts.sql`:
+  - Deletes the 207101 rows for 42 guids (the full list by map is in the file). Razorfen Downs
+    373574/373575 are left to `2026_10_31_04` (PR #26). 5 of the guids have no spawn; their rows go too.
+  - Northwatch Guard 38636 had two script versions mixed together: removes id 0 (event 0, Cast
+    Shoot), id 1 (event 2, Shield Block) and id 2 (event 0, Revenge), all with link 0, which duplicate
+    ids 4, 16 and 17. The linked ranged chain (ids 0-19) stays.
+  - Grishna Raven 20327 and Theldren 16059 have no entry script, so they only lose the dummy row.
+- **Status:** waiting for Four to test.
+
+#### To pick up the spawn script fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_05_fel_hands_spawn_scripts.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
+### World: Warsong Demolisher Flamethrower one-shots players
+
+- **Found** (reported by Four, testing the spawn script fix): a Warsong Demolisher (32850, level 23,
+  Ashenvale) killed Four with Flamethrower: 764 fire on hit, then 144 fire every second.
+- **Cause:** with its own script running again (entry above), row id 3 casts Flamethrower (65388)
+  within 20 yards every 14-19 s. 65388 is a vehicle weapon whose damage scales with the caster's level
+  by a large coefficient (about 38.6 per hit, 7.7 per tick).
+- **Changed:** `sql/fixes/world/2026_10_31_06_warsong_demolisher_flamethrower.sql` deletes that one
+  row (entry 32850, id 3, spell 65388). Flaming Ball (61865), the out-of-combat ball at trigger NPCs
+  (61864) and the death explosion (65417) stay.
+- **Status:** waiting for Four to test.
+
+#### To pick up the Flamethrower fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_06_warsong_demolisher_flamethrower.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
+### World: Spirit Healers stacked on top of each other at 80 graveyards
+
+- **Found** (reported by Four): the Nightsong graveyard near Raynewood Tower in Ashenvale
+  (`world_safe_locs` 1427) has two Spirit Healers (6491) on the same spot. Four asked to clear the
+  same doubling everywhere.
+- **Cause:** a block of added Spirit Healer spawns (mostly guids 371188-371416 and, on the Broken
+  Isles, 20549126-20549205) repeats graveyards that already had one. A scan of all 876 Spirit Healers
+  found 80 spots with two or three within 5 yards of each other, same phase and difficulty.
+- **Changed:**
+  - `sql/fixes/world/2026_10_31_07_nightsong_spirit_healer_duplicate.sql` deletes spawn 371367
+    (Nightsong). Spawn 129879 stays.
+  - `sql/fixes/world/2026_10_31_08_spirit_healer_duplicates.sql` deletes 85 spawns (Eastern Kingdoms 16,
+    Kalimdor 28, Outland 2, Pandaria 1, Broken Isles 38; 371367 is in the list too). Each spot keeps
+    one healer: the sniffed spawn where there is one (452538, 452539, 210117416, 210118234), otherwise
+    the lowest guid. None of the removed guids is in a pool, game event, formation or
+    `creature_addon` row.
+- **Status:** waiting for Four to test.
+
+#### To pick up the Spirit Healer fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_07_nightsong_spirit_healer_duplicate.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_08_spirit_healer_duplicates.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
 ### World: Bloodlord Mandokir never leaves the Rebel Camp after his quest
 
 Merged to `main` with PR #25 on 2026-10-31.
