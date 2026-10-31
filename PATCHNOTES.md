@@ -5,6 +5,30 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-31
 
+### Razorfen Downs: the idol room was a pile-up, and Withered Touch hit far too hard
+
+From Four's first run, 2026-10-31. SQL only: `sql/fixes/world/2026_10_31_03_razorfen_downs_idol_room.sql`.
+
+- **Found** (reported by Four):
+  - **Pile-up:** the room by Plaguemaw held 32 mobs, 12 of them Withered Battle Boars. 15 of them were
+    the Extinguishing the Idol event's waves saved as static spawns. They sit exactly on the three
+    Idol Room Spawners, in the event's pattern of a boar or two, a Geomancer and a Quilguard. The
+    Pandaria database has the same rows; the classic (AzerothCore) database has none.
+  - **Withered Touch:** the spell (11442) is a damage over time that scales very high here. Every
+    Withered Quilguard had it twice: an aura that procs it on melee hits (11441), and a cast every
+    17-19 seconds. Plaguemaw had the same pair (aura 12947 plus the cast). Classic Quilguards and
+    Plaguemaw had neither.
+  - **Double casting:** Death's Head Geomancers and Withered Spearhides had two script versions
+    mixed together, so they cast their spells twice as often.
+- **Changed:**
+  - The 15 leftover wave spawns are deleted. The room keeps its own mobs: 2 standing and 2
+    patrolling Battle Boars, 2 Spearhides (one patrolling), 2 Withered Warriors, a Geomancer, a
+    Battle Boar Horror, and Plaguemaw. The three spawners stay for the quest event.
+  - Withered Touch is removed from every Quilguard and from Plaguemaw, both the aura and the cast.
+    Quilguards keep Enrage at 30%, and Plaguemaw keeps Putrid Stench.
+  - The duplicate Geomancer and Spearhide rows are deleted.
+- **Status:** waiting on Four's test.
+
 ### Razorfen Downs: Lady Falther'ess only meleed and rarely dropped an item
 
 From Four's first run, 2026-10-31. SQL only: `sql/fixes/world/2026_10_31_02_razorfen_downs_falther_ess.sql`.
