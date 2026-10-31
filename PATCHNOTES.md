@@ -5,6 +5,33 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-31
 
+### World: 37 creature spawns ignored their own scripts (junk "Fel Hands" spawn rows)
+
+- **Found** (Dungeon Fixes thread, while fixing Lady Falther'ess in Razorfen Downs): 44 creature
+  spawns carry a per-spawn SmartAI row (`entryorguid` = -guid) that casts Fel Hands (207101, a
+  Legion dummy aura with no effect) out of combat, comment `OOC - CS`.
+- **Cause:** a per-spawn script replaces the creature's own entry script entirely, so these spawns
+  only meleed. Examples: Warsong Demolishers (32850) never threw Flaming Balls or exploded,
+  Rampaging Owlbeasts (49245) never used Shred, Northwatch Guards (38636) never shot, Gnomeregan's
+  Dark Iron Land Mines (8035) never detonated, Dark Keeper Uggel (9439) never cast.
+- **Changed:** `sql/fixes/world/2026_10_31_05_fel_hands_spawn_scripts.sql`:
+  - Deletes the 207101 rows for 42 guids (the full list by map is in the file). Razorfen Downs
+    373574/373575 are left to `2026_10_31_04` (PR #26). 5 of the guids have no spawn; their rows go too.
+  - Northwatch Guard 38636 had two script versions mixed together: removes id 0 (event 0, Cast
+    Shoot), id 1 (event 2, Shield Block) and id 2 (event 0, Revenge), all with link 0, which duplicate
+    ids 4, 16 and 17. The linked ranged chain (ids 0-19) stays.
+  - Grishna Raven 20327 and Theldren 16059 have no entry script, so they only lose the dummy row.
+- **Status:** waiting for Four to test.
+
+#### To pick up the spawn script fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_05_fel_hands_spawn_scripts.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
 ### World: Bloodlord Mandokir never leaves the Rebel Camp after his quest
 
 Merged to `main` with PR #25 on 2026-10-31.
