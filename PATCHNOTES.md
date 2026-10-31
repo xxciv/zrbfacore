@@ -7,7 +7,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### World: critters and wild battle pets stacked on one spot, and none of them wander
 
-On PR #24 (world fixes), not merged yet.
+Merged to `main` with PR #24 on 2026-10-31.
 
 - **Found** (reported by Four): in Stranglethorn a Beetle (61319, wild battle pet, guid 10647972),
   a Tree Python (49722, guid 10647911) and a Lizard Hatchling (50479, guid 10648091) stood on the
