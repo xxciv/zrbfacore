@@ -5,6 +5,39 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-30
 
+### World: critters and wild battle pets stacked on one spot, and none of them wander
+
+Merged to `main` with PR #24 on 2026-10-31.
+
+- **Found** (reported by Four): in Stranglethorn a Beetle (61319, wild battle pet, guid 10647972),
+  a Tree Python (49722, guid 10647911) and a Lizard Hatchling (50479, guid 10648091) stood on the
+  same spot (-11459.5, -273.45, 42.9962) without moving.
+- **Cause:** the BFA dump has a block of 8,460 critter and wild battle pet spawns added without sniff
+  data (VerifiedBuild 0, orientation 0, respawn 120 s, MovementType 0, spawndist 0). 596 of their
+  spots carry 2 to 5 creatures on exactly the same coordinates (1,275 spawns), and none of the block
+  moves.
+- **Changed:** `sql/fixes/world/2026_10_30_02_critter_spawns_stacked_and_still.sql`:
+  - Each stacked spot becomes a pool that spawns one of its creatures at a time (`pool_template`
+    5100001 to 5100596, `max_limit` 1; `pool_creature` rows for the 1,275 guids, equal chance). The
+    Stranglethorn spot above is pool 5100506.
+  - The 8,188 spawns of the block that can walk (InhabitType has the ground bit) get `MovementType`
+    1 and `spawndist` 3.5 (was 0 and 0), the radius the core already uses for wild battle pets that
+    replace critters (`WildBattlePetMgr::ReplaceCreature`). The 272 flying-only or water-only ones stay put.
+  - Only critters (type 8) and the wild battle pet entries in `battlepet_spawn_relation` and
+    `battlepet_wild_zone_pool` (Max above 1) are touched, so pet vendor and pet tamer displays
+    (Darkmoon Faire, Booty Bay, Deepholm) are left alone. Sniffed critters outside the block are
+    unchanged. Safe to run twice; the revert lines are in the file.
+- **Status:** confirmed in game by Four on 2026-10-31.
+
+#### To pick up the critter spawn fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_30_02_critter_spawns_stacked_and_still.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
 ### World: 248 creatures had no creature type (Sap failed on Bloodscalp Warriors)
 
 Merged to `main` with PR #23 on 2026-10-30.
