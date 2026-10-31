@@ -151,6 +151,57 @@ sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target insta
 ```
 Both echo lines print, and the grep prints 3. Then restart `worldserver`.
 
+## 2026-10-26
+
+### Pet battles: summoned pets show as Murkimus, released pets come back
+
+Merged to `main` with PR #21 on 2026-10-31.
+
+- **Found** (reported by Four): summoning Black Lamb, Stormwind Rat or Cat from the Pet Journal
+  spawned Murkimus the Gladiator. A Black Lamb released from the journal kept showing up again.
+- **Cause, Murkimus:** pets with no summon spell of their own are summoned with spell 118301
+  (Summon Battle Pet), whose MiscValue is a placeholder creature, 40721 Murkimus the Gladiator
+  (TrinityCore 8.3.7 notes the same). The core used that creature as is. It also never set the
+  player's `SummonedBattlePetGUID`, so the summon was not tied to the journal pet at all.
+- **Cause, released pets:** on login the core loaded only the first row of each species from
+  `account_battlepet` and silently skipped the rest. Extra copies stayed in the DB, hidden, and
+  one of them showed up again after a release and relog. Releasing the last copy of a species
+  was also silently refused.
+- **Changed:** new `tools/bfa/battle-pet-journal.patch`:
+  - `Player.cpp` `SummonBattlePet`: sets `SummonedBattlePetGUID` and the last summoned pet before
+    casting, and remembers the spawned critter. `UnsummonCurrentBattlePetIfAny` clears it.
+  - `SpellEffects.cpp` `EffectSummonType`: for 118301 the creature is the journal pet's species
+    `CreatureID` instead of 40721.
+  - `SpellEffects.cpp` companion summon, after the creature's level and NPC flags are set from its
+    template: when the critter is the journal pet, the wild battle flag is taken off again (first
+    version left the Stormwind Rat battleable), the pet's own display model is used, and its health
+    is set to the pet's journal max health. Wild pet templates have tiny health modifiers (Black Lamb
+    60649 has `HealthModifier` 0.01), which gave 0 health, so the summon showed up dead.
+  - `Player.cpp` `_LoadPetBattles`: loads every copy of a species.
+  - `BattlePetHandler.cpp`: release no longer checks species flag 0x8. The core calls it
+    `NOT_RELEASABLE`, but in 8.3.7 0x8 is Capturable (TrinityCore's `BattlePetSpeciesFlags`), so
+    every wild pet such as the Black Lamb was refused and stayed in the DB (second version still
+    brought the lamb back on every relog). Release also works on the last copy, dismisses the pet if it is out
+    and clears it from a battle slot. Clicking summon on a pet whose critter is gone now summons
+    it instead of doing nothing.
+  - No SQL.
+- **Status:** first version (2cc26f6) summoned the right creature but dead and battleable. Second
+  version (bb1835b): summons confirmed in game by Four on 2026-10-26, released Black Lamb still came
+  back. Third version (release flag check removed): release confirmed in game by Four on
+  2026-10-26. Summons and release both done.
+
+#### To pick up the pet journal fix
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-journal.patch | git apply
+grep -c "is Capturable in 8.3.7" src/server/game/Handlers/BattlePetHandler.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1. Then restart `worldserver` and log in again.
+
 ## 2026-10-25
 
 ### World: battle pet slots stayed locked after Battle Pet Training
