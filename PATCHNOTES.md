@@ -17,7 +17,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed:** `sql/fixes/world/2026_10_31_00_mandokir_reward_summon_despawn.sql` adds one
   `smart_scripts` row each for 43989 and 42799 (there were none): event 54 (just summoned), action 41
   (force despawn) after 5000 ms, target self. `AIName` stays `SmartAI`.
-- **Status:** waiting for Four to test.
+- **Status:** confirmed in game by Four on 2026-10-31 (new character, Mandokir vanished after the turn-in).
 
 #### To pick up the Mandokir fix
 SQL only, no rebuild:
