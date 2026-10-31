@@ -7,6 +7,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### World: Bloodlord Mandokir never leaves the Rebel Camp after his quest
 
+Merged to `main` with PR #25 on 2026-10-31.
+
 - **Found** (reported by Four): after turning in "Bloodlord Mandokir" (quest 26748) in the Rebel
   Camp, a friendly Bloodlord Mandokir (43989, no DB GUID, faction 35) stays there for good and
   stands in front of another NPC.
