@@ -32,6 +32,27 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_05_fel_hands_spa
 ```
 Then restart `worldserver`.
 
+### World: Warsong Demolisher Flamethrower one-shots players
+
+- **Found** (reported by Four, testing the spawn script fix): a Warsong Demolisher (32850, level 23,
+  Ashenvale) killed Four with Flamethrower: 764 fire on hit, then 144 fire every second.
+- **Cause:** with its own script running again (entry above), row id 3 casts Flamethrower (65388)
+  within 20 yards every 14-19 s. 65388 is a vehicle weapon whose damage scales with the caster's level
+  by a large coefficient (about 38.6 per hit, 7.7 per tick).
+- **Changed:** `sql/fixes/world/2026_10_31_06_warsong_demolisher_flamethrower.sql` deletes that one
+  row (entry 32850, id 3, spell 65388). Flaming Ball (61865), the out-of-combat ball at trigger NPCs
+  (61864) and the death explosion (65417) stay.
+- **Status:** waiting for Four to test.
+
+#### To pick up the Flamethrower fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_06_warsong_demolisher_flamethrower.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
 ### World: Bloodlord Mandokir never leaves the Rebel Camp after his quest
 
 Merged to `main` with PR #25 on 2026-10-31.
