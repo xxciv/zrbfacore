@@ -5,6 +5,32 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-01
 
+### World: Astranaar crowded by a siege that only belongs to its quests
+
+- **Found** (reported by Four): Astranaar is packed with soldiers, Horde Hellions and Wind Riders and
+  Throwers, while the town itself looks calm (no fires).
+- **Cause:** 193 spawns in Astranaar (area 415) belong to the Cataclysm siege quests but have no phase,
+  so everyone sees them all the time: Hellscream's Hellion 34163 (15), Watch Wind Rider 34160 (15),
+  Astranaar Skirmisher 34419 (23), Astranaar Sentinel 34494 (59), Astranaar Officer 34420 (5),
+  Astranaar Thrower 34132 (12) and 34492 (9), Thrower Bunny 34501 (9), fire bunnies 34123 (34),
+  Phase Q1 Generic Bunny JSB 34439 (12). The Pandaria DB has the same unphased spawns.
+- **Changed:** `sql/fixes/world/2026_11_01_01_astranaar_siege_quest_phase.sql` moves those 193 spawns
+  to phase 295 (in Phase.db2, normal phase, unused anywhere else in the DB) and adds `phase_area`
+  (415, 295) with `conditions` (source type 26) that turn it on while any siege quest is in progress or
+  complete: 13849 Astranaar's Burning!, 13853 Return Fire (Alliance), 13943 Breathing Room,
+  13947 Blastranaar! (Horde). The town guards (6087, 51770), vendors and Hellscream's Watch are
+  untouched. The revert line is in the file.
+- **Status:** waiting for Four to test.
+
+#### To pick up the Astranaar siege phase
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_01_astranaar_siege_quest_phase.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
 ### World: Astranaar flight master Daelyshia lies dead
 
 - **Found** (reported by Four): the Astranaar Hippogryph Master Daelyshia (4267, spawn 239983) lies
