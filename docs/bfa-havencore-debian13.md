@@ -110,6 +110,7 @@ git apply ../tools-repo/tools/bfa/open-lock-crash.patch
 git apply ../tools-repo/tools/bfa/scarlet-halls.patch
 git apply ../tools-repo/tools/bfa/scarlet-monastery.patch
 git apply ../tools-repo/tools/bfa/battle-pet-slots.patch
+git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -586,6 +587,7 @@ git apply ../tools-repo/tools/bfa/open-lock-crash.patch
 git apply ../tools-repo/tools/bfa/scarlet-halls.patch
 git apply ../tools-repo/tools/bfa/scarlet-monastery.patch
 git apply ../tools-repo/tools/bfa/battle-pet-slots.patch
+git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
