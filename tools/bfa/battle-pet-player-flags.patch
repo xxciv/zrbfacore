@@ -1,0 +1,35 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index a522021..3f2d490 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -31445,7 +31445,7 @@ bool Player::_LoadPetBattles(PreparedQueryResult result)
+ 
+     auto unlockedSlotCount = GetUnlockedPetBattleSlot();
+     if (unlockedSlotCount > 0)
+-        SetPlayerFlags(PLAYER_FLAGS_PET_BATTLES_UNLOCKED);
++        AddPlayerFlag(PLAYER_FLAGS_PET_BATTLES_UNLOCKED);
+ 
+     std::set<uint32> alreadyKnownPet;
+ 
+diff --git a/src/server/game/Handlers/BattlePetHandler.cpp b/src/server/game/Handlers/BattlePetHandler.cpp
+index 48badd9..3dc0ae1 100644
+--- a/src/server/game/Handlers/BattlePetHandler.cpp
++++ b/src/server/game/Handlers/BattlePetHandler.cpp
+@@ -811,7 +811,7 @@ void WorldSession::SendPetBattleSlotUpdates(bool newSlotUnlocked /*= false*/)
+     auto petSlots = _player->GetBattlePetCombatTeam();
+ 
+     if (unlockedSlotCount)
+-        _player->SetPlayerFlags(PLAYER_FLAGS_PET_BATTLES_UNLOCKED);
++        _player->AddPlayerFlag(PLAYER_FLAGS_PET_BATTLES_UNLOCKED);
+ 
+     WorldPackets::BattlePet::SlotUpdates updates;
+     updates.AutoSlotted = true;
+@@ -1367,7 +1367,7 @@ void WorldSession::SendBattlePetJournal()
+     auto petSlots = _player->GetBattlePetCombatTeam();
+ 
+     if (unlockedSlotCount)
+-        _player->SetPlayerFlags(PLAYER_FLAGS_PET_BATTLES_UNLOCKED);
++        _player->AddPlayerFlag(PLAYER_FLAGS_PET_BATTLES_UNLOCKED);
+ 
+     WorldPackets::BattlePet::BattlePetJournal responce;
+     responce.NumMaxPets = BATTLE_PET_MAX_JOURNAL_PETS;

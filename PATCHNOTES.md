@@ -3,7 +3,167 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-01
+
+### Core: dying never turned you into a proper ghost (battle pet code wiped player flags)
+
+- **Found** (reported by Four): after `.die` or a creature kill and Release Spirit, you arrive at the
+  graveyard as a "ghost" in a normal, living world. The Spirit Healer won't talk to you, there is no
+  corpse arrow, and the character screen shows you alive. Relogging doesn't fix it. A fall death
+  sometimes worked.
+- **Cause:** the server did make you a ghost (`.list auras` shows Ghost 8326 and wisp 20584), but three
+  battle pet functions *replace* all player flags with `PLAYER_FLAGS_PET_BATTLES_UNLOCKED` (0x400000)
+  instead of adding it: `Player::_LoadPetBattles` (login), `WorldSession::SendBattlePetJournal`
+  (login, teleports, every journal request) and `WorldSession::SendPetBattleSlotUpdates`. That wipes
+  `PLAYER_FLAGS_GHOST` (0x10), which is what the client uses for the grey world, Spirit Healer and
+  corpse arrow, and it was saved without the flag. They only run once a battle pet slot is unlocked,
+  so this started after the battle pet slot fix (2026-10-25).
+- **Changed:** new `tools/bfa/battle-pet-player-flags.patch` (applied after `battle-pet-journal.patch`):
+  `SetPlayerFlags(PLAYER_FLAGS_PET_BATTLES_UNLOCKED)` becomes `AddPlayerFlag(...)` in
+  `Player.cpp` (`_LoadPetBattles`) and `BattlePetHandler.cpp` (`SendPetBattleSlotUpdates`,
+  `SendBattlePetJournal`). This also stops AFK, DND and resting flags being cleared the same way.
+- **Status:** confirmed in game by Four (2026-11-01): death and release give a proper ghost again.
+- **Pick up:** rebuild with the new patch and restart worldserver:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-player-flags.patch | git apply
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+
+### World: Astranaar crowded by a siege that only belongs to its quests
+
+- **Found** (reported by Four): Astranaar is packed with soldiers, Horde Hellions and Wind Riders and
+  Throwers, while the town itself looks calm (no fires).
+- **Cause:** 193 spawns in Astranaar (area 415) belong to the Cataclysm siege quests but have no phase,
+  so everyone sees them all the time: Hellscream's Hellion 34163 (15), Watch Wind Rider 34160 (15),
+  Astranaar Skirmisher 34419 (23), Astranaar Sentinel 34494 (59), Astranaar Officer 34420 (5),
+  Astranaar Thrower 34132 (12) and 34492 (9), Thrower Bunny 34501 (9), fire bunnies 34123 (34),
+  Phase Q1 Generic Bunny JSB 34439 (12). The Pandaria DB has the same unphased spawns.
+- **Changed:** `sql/fixes/world/2026_11_01_01_astranaar_siege_quest_phase.sql` moves those 193 spawns
+  to phase 295 (in Phase.db2, normal phase, unused anywhere else in the DB) and adds `phase_area`
+  (415, 295) with `conditions` (source type 26) that turn it on while any siege quest is in progress or
+  complete: 13849 Astranaar's Burning!, 13853 Return Fire (Alliance), 13943 Breathing Room,
+  13947 Blastranaar! (Horde). The town guards (6087, 51770), vendors and Hellscream's Watch are
+  untouched. The revert line is in the file.
+- **Status:** confirmed in game by Four (2026-11-01): Astranaar is calm without the quest.
+
+#### To pick up the Astranaar siege phase
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_01_astranaar_siege_quest_phase.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
+### World: Astranaar flight master Daelyshia lies dead
+
+- **Found** (reported by Four): the Astranaar Hippogryph Master Daelyshia (4267, spawn 239983) lies
+  on the ground as a corpse and can't be talked to, so Astranaar has no Alliance flight master.
+- **Cause:** her BFA template was taken while she was dead in a war phase: `npcflag` 0, `unit_flags`
+  0x20040300 (stunned + feign death), `unit_flags2` 0x801 (feign death), `unit_flags3` 0x2000.
+- **Changed:** `sql/fixes/world/2026_11_01_00_astranaar_flight_master_daelyshia.sql` sets entry 4267 to
+  `npcflag` 8193 (gossip + flight master, as in the Pandaria DB), `unit_flags` 768, `unit_flags2`
+  2048, `unit_flags3` 0. Gossip menu 0 already has the "I want to travel fast" option.
+- **Status:** confirmed in game by Four (2026-11-01): Daelyshia is alive and offers flights.
+
+#### To pick up the flight master fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_00_astranaar_flight_master_daelyshia.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver` and delete the client's `Cache` folder (the client caches creature data).
+
 ## 2026-10-31
+
+### World: 37 creature spawns ignored their own scripts (junk "Fel Hands" spawn rows)
+
+- **Found** (Dungeon Fixes thread, while fixing Lady Falther'ess in Razorfen Downs): 44 creature
+  spawns carry a per-spawn SmartAI row (`entryorguid` = -guid) that casts Fel Hands (207101, a
+  Legion dummy aura with no effect) out of combat, comment `OOC - CS`.
+- **Cause:** a per-spawn script replaces the creature's own entry script entirely, so these spawns
+  only meleed. Examples: Warsong Demolishers (32850) never threw Flaming Balls or exploded,
+  Rampaging Owlbeasts (49245) never used Shred, Northwatch Guards (38636) never shot, Gnomeregan's
+  Dark Iron Land Mines (8035) never detonated, Dark Keeper Uggel (9439) never cast.
+- **Changed:** `sql/fixes/world/2026_10_31_05_fel_hands_spawn_scripts.sql`:
+  - Deletes the 207101 rows for 42 guids (the full list by map is in the file). Razorfen Downs
+    373574/373575 are left to `2026_10_31_04` (PR #26). 5 of the guids have no spawn; their rows go too.
+  - Northwatch Guard 38636 had two script versions mixed together: removes id 0 (event 0, Cast
+    Shoot), id 1 (event 2, Shield Block) and id 2 (event 0, Revenge), all with link 0, which duplicate
+    ids 4, 16 and 17. The linked ranged chain (ids 0-19) stays.
+  - Grishna Raven 20327 and Theldren 16059 have no entry script, so they only lose the dummy row.
+- **Status:** confirmed in game by Four (2026-11-01): Rampaging Owlbeasts in Hillsbrad cast Shred again.
+
+#### To pick up the spawn script fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_05_fel_hands_spawn_scripts.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
+### World: Warsong Demolisher Flamethrower one-shots players
+
+- **Found** (reported by Four, testing the spawn script fix): a Warsong Demolisher (32850, level 23,
+  Ashenvale) killed Four with Flamethrower: 764 fire on hit, then 144 fire every second.
+- **Cause:** with its own script running again (entry above), row id 3 casts Flamethrower (65388)
+  within 20 yards every 14-19 s. 65388 is a vehicle weapon whose damage scales with the caster's level
+  by a large coefficient (about 38.6 per hit, 7.7 per tick).
+- **Changed:** `sql/fixes/world/2026_10_31_06_warsong_demolisher_flamethrower.sql` deletes that one
+  row (entry 32850, id 3, spell 65388). Flaming Ball (61865), the out-of-combat ball at trigger NPCs
+  (61864) and the death explosion (65417) stay.
+- **Follow-up (2026-11-01):** Four found the demolishers then only meleed and stood still, and Flaming
+  Ball never fired. The same file now also deletes ids 0 and 1 (event 4 aggro, action 21 "stop combat
+  movement" with 0), so they chase their target instead of standing rooted.
+- **Follow-up 2 (2026-11-01):** after killing Four they never reset and kept swinging at the spot.
+  Row id 6 (on spawn, action 117 disable evade, linked to id 7 "set aggressive") is now a plain
+  "on spawn, set aggressive" (action 8, param 2, link 0) and id 7 is deleted, so they can evade and
+  leash again.
+- **Status:** confirmed in game by Four (2026-11-01): Demolishers no longer one-shot and leash home.
+
+#### To pick up the Flamethrower fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_06_warsong_demolisher_flamethrower.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
+### World: Spirit Healers doubled or tripled at 117 graveyards
+
+- **Found** (reported by Four): the Nightsong graveyard near Raynewood Tower in Ashenvale
+  (`world_safe_locs` 1427) has two Spirit Healers (6491) on the same spot, and Astranaar has three.
+  Four asked to clear the same doubling everywhere.
+- **Cause:** a block of added Spirit Healer spawns (mostly guids 371188-371416 and 375076-375097, and
+  on the Broken Isles 20549126-20549205) repeats graveyards that already had one. A scan of all 876
+  Spirit Healers found 117 graveyards with two or three within 25 yards of each other (height within
+  10), same phase and difficulty.
+- **Changed:**
+  - `sql/fixes/world/2026_10_31_07_nightsong_spirit_healer_duplicate.sql` deletes spawn 371367
+    (Nightsong). Spawn 129879 stays.
+  - `sql/fixes/world/2026_10_31_08_spirit_healer_duplicates.sql` deletes 132 spawns (Kalimdor 53,
+    Eastern Kingdoms 34, Broken Isles 40, Outland 2, Pandaria 2, Northrend 1; 371367 is in the list
+    too). Astranaar keeps 40868 (239931 and 371366 go). Each graveyard keeps one healer: the sniffed
+    spawn where there is one (452538, 452539, 210117416, 210118234), otherwise the lowest guid. None of
+    the removed guids is in a pool, game event, formation or `creature_addon` row. The first version
+    of this file (5-yard scan, 85 spawns) is a subset, so running the new one after it is fine.
+- **Status:** confirmed in game by Four (2026-11-01): Astranaar and Raynewood Tower each show one Spirit Healer.
+
+#### To pick up the Spirit Healer fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_07_nightsong_spirit_healer_duplicate.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_08_spirit_healer_duplicates.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
 
 ### World: Bloodlord Mandokir never leaves the Rebel Camp after his quest
 
