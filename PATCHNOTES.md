@@ -3,6 +3,28 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-01
+
+### World: Astranaar flight master Daelyshia lies dead
+
+- **Found** (reported by Four): the Astranaar Hippogryph Master Daelyshia (4267, spawn 239983) lies
+  on the ground as a corpse and can't be talked to, so Astranaar has no Alliance flight master.
+- **Cause:** her BFA template was taken while she was dead in a war phase: `npcflag` 0, `unit_flags`
+  0x20040300 (stunned + feign death), `unit_flags2` 0x801 (feign death), `unit_flags3` 0x2000.
+- **Changed:** `sql/fixes/world/2026_11_01_00_astranaar_flight_master_daelyshia.sql` sets entry 4267 to
+  `npcflag` 8193 (gossip + flight master, as in the Pandaria DB), `unit_flags` 768, `unit_flags2`
+  2048, `unit_flags3` 0. Gossip menu 0 already has the "I want to travel fast" option.
+- **Status:** waiting for Four to test.
+
+#### To pick up the flight master fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_00_astranaar_flight_master_daelyshia.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver` and delete the client's `Cache` folder (the client caches creature data).
+
 ## 2026-10-31
 
 ### World: 37 creature spawns ignored their own scripts (junk "Fel Hands" spawn rows)
