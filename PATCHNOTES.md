@@ -153,7 +153,7 @@ Then restart `worldserver`.
     spawn where there is one (452538, 452539, 210117416, 210118234), otherwise the lowest guid. None of
     the removed guids is in a pool, game event, formation or `creature_addon` row. The first version
     of this file (5-yard scan, 85 spawns) is a subset, so running the new one after it is fine.
-- **Status:** waiting for Four to test.
+- **Status:** confirmed in game by Four (2026-11-01): Astranaar and Raynewood Tower each show one Spirit Healer.
 
 #### To pick up the Spirit Healer fix
 SQL only, no rebuild:
