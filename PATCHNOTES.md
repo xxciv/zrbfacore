@@ -7,7 +7,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### Pet battles: wild battle pets missing from most zones
 
-Open on branch `claude/project-thread-cwgt5u` (not merged yet).
+Merged to `main` with PR #29 on 2026-11-01.
 
 - **Found** (reported by Four): Pet Tracker shows Forest Spiderling, Tree Python and Lizard
   Hatchling spawns in Northern Stranglethorn, but in game those were plain neutral critters
@@ -26,6 +26,7 @@ Open on branch `claude/project-thread-cwgt5u` (not merged yet).
   Mole. Every converted spawn is recorded in the new table `zr_wild_battlepet_conversion`, so it can
   be undone (the SQL file's header has the two lines). Running it twice converts nothing new.
   No core change.
+- **Docs:** guide section 9, "Pet battles".
 - **Status:** run on Four's live DB on 2026-11-01: 5,900 spawns converted in 86 zones (more than
   the dump estimate, which could not parse some templates). Confirmed in game by Four.
 
