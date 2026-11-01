@@ -25,7 +25,8 @@ to do to pick it up (rebuild, restart, run SQL).
   its old chance and the quest. `QuestRequired` stays 1, so nothing drops without the quest.
   Examples: Goldtooth 327 (61.86%), Princess 330 (66.87%), Jammal'an the Prophet 5710 (49.89%),
   Gahz'rilla 7273 (56.45%), Dockmaster 6846 (0.44%).
-- **Status:** waiting for Four to test.
+- **Status:** merged 2026-11-01 without a dedicated in-game test (the Esquivel case above is the same
+  change on 4 rows and was confirmed). Report any named quest mob that still misses its item.
 - **Pick up:** SQL only, no rebuild:
 
 ```
