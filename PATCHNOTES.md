@@ -21,8 +21,8 @@ Open on branch `claude/project-thread-cwgt5u` (not merged yet).
   whose battle pet template is a wild pet (type 14), it counts the pets already spawned in the zone
   (`creature.zoneId` or `areaId`) and converts random critter spawns of that zone into the battle
   pet until the zone's `Max` is reached or the critters run out. Critters with a per-spawn SmartAI
-  script are skipped. On the dump that is about 4,700 spawns in 81 zones; Northern Stranglethorn
-  gets 62 Tree Pythons, 54 Lizard Hatchlings, 8 more Beetles, 3 Crimson Moths and a Long-tailed
+  script are skipped. On the dump that is about 4,700 or more spawns in 81 zones; Northern Stranglethorn
+  gets 62 Tree Pythons, 54 Lizard Hatchlings, about 56 Forest Spiderlings (all its critters), 8 more Beetles, 3 Crimson Moths and a Long-tailed
   Mole. Every converted spawn is recorded in the new table `zr_wild_battlepet_conversion`, so it can
   be undone (the SQL file's header has the two lines). Running it twice converts nothing new.
   No core change.
