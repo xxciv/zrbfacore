@@ -96,7 +96,7 @@ Then restart `worldserver` and delete the client's `Cache` folder (the client ca
     Shoot), id 1 (event 2, Shield Block) and id 2 (event 0, Revenge), all with link 0, which duplicate
     ids 4, 16 and 17. The linked ranged chain (ids 0-19) stays.
   - Grishna Raven 20327 and Theldren 16059 have no entry script, so they only lose the dummy row.
-- **Status:** waiting for Four to test.
+- **Status:** confirmed in game by Four (2026-11-01): Rampaging Owlbeasts in Hillsbrad cast Shred again.
 
 #### To pick up the spawn script fix
 SQL only, no rebuild:
