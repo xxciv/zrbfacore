@@ -5,6 +5,60 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-01
 
+### World: quest items from one unique mob now always drop (508 items)
+
+- **Asked** (Four): if a named mob is the only source of a quest item, it should drop on every kill
+  while you're on the quest. Items that drop from many common mobs (hides, claws) stay random.
+- **How the list was picked** from the world dump (all INSERT blocks parsed):
+  - the item is a quest objective (`quest_objectives` Type 1) and the quest needs exactly 1;
+  - it only comes from `creature_loot_template` (no gameobject, container, pickpocket, skinning or
+    reference loot), with every row `QuestRequired` 1, `GroupId` 0, `Reference` 0;
+  - every creature that drops it has at most one spawn point. Creatures with no spawn (summoned by
+    events) count only when they are elite or their name is unique, so summoned generic mobs stay
+    random; 7 summoned named mobs were added by hand (Anaya Dawnrunner, Captain Halyndor, Saragosa,
+    Stalvan Mistmantle, Gardul Venomshiv, Jergosh the Invoker, Torturer Relyn);
+  - at most 6 creatures drop it, raids are left alone (13 items, e.g. AQ20 tokens, Nightbane), and
+    where several creatures drop it, rows under 10% are left alone (stray low-chance copies).
+- **Changed:** `sql/fixes/world/2026_11_01_03_unique_mob_quest_drops.sql` sets
+  `creature_loot_template.Chance` = 100 on 517 rows (508 items). Before: 58 rows were under 50%,
+  161 between 50% and 90%, 298 at 90% or more. Each row in the file has a comment with the creature,
+  its old chance and the quest. `QuestRequired` stays 1, so nothing drops without the quest.
+  Examples: Goldtooth 327 (61.86%), Princess 330 (66.87%), Jammal'an the Prophet 5710 (49.89%),
+  Gahz'rilla 7273 (56.45%), Dockmaster 6846 (0.44%).
+- **Status:** merged 2026-11-01 without a dedicated in-game test (the Esquivel case above is the same
+  change on 4 rows and was confirmed). Report any named quest mob that still misses its item.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_03_unique_mob_quest_drops.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: Chief Esquivel rarely drops the Whispering Blue Stone
+
+- **Found** (reported by Four): Chief Esquivel (43912, Kurzen compound cave in Northern
+  Stranglethorn) often dies without dropping the quest item for The Source of the Madness.
+- **Cause:** Whispering Blue Stone (item 60263, 1 needed for quest 26734) is a quest-only drop with
+  low chances on the four chiefs the quest sends you to: Chief Anders 43910 26.67%, Chief Gaulus
+  43911 13.86%, Chief Esquivel 43912 7.68%, Chief Miranda 43913 18.39%.
+- **Changed:** `sql/fixes/world/2026_11_01_02_whispering_blue_stone_kurzen_chiefs.sql` sets
+  `creature_loot_template.Chance` = 100 for item 60263 on 43910, 43911, 43912 and 43913 (QuestRequired
+  stays 1, so it only drops while you're on the quest). The regular Kurzen troops (939, 941, 942, 978,
+  979) keep their 1-5% chance.
+- **Status:** confirmed in game by Four (2026-11-01): Chief Esquivel dropped the stone.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_02_whispering_blue_stone_kurzen_chiefs.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ### Core: dying never turned you into a proper ghost (battle pet code wiped player flags)
 
 - **Found** (reported by Four): after `.die` or a creature kill and Release Spirit, you arrive at the
