@@ -45,6 +45,10 @@ Then restart `worldserver`.
 - **Follow-up (2026-11-01):** Four found the demolishers then only meleed and stood still, and Flaming
   Ball never fired. The same file now also deletes ids 0 and 1 (event 4 aggro, action 21 "stop combat
   movement" with 0), so they chase their target instead of standing rooted.
+- **Follow-up 2 (2026-11-01):** after killing Four they never reset and kept swinging at the spot.
+  Row id 6 (on spawn, action 117 disable evade, linked to id 7 "set aggressive") is now a plain
+  "on spawn, set aggressive" (action 8, param 2, link 0) and id 7 is deleted, so they can evade and
+  leash again.
 - **Status:** waiting for Four to test.
 
 #### To pick up the Flamethrower fix
