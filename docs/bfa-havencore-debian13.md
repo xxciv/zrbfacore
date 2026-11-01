@@ -558,6 +558,26 @@ grep -q '^Transmog.CollectOnPickup' ~/bfa/server/etc/worldserver.conf || sed -n 
 
 Set a value to 0 for stock 8.3.7 behavior, then `.reload config` or restart `worldserver`.
 
+### Pet battles
+
+Learn Battle Pet Training from a Battle Pet Trainer (for example in Stormwind or Orgrimmar) to open
+the first battle slot. The battle pet patches in step 3 fix the slot unlock, journal summons (pets
+appear as themselves instead of Murkimus the Gladiator) and releasing pets.
+
+The core never swaps critters for battle pets at runtime, so out of the box only the battle pets
+spawned directly in the world DB exist, and many zones have none of the species a pet tracker addon
+lists for them. Run this once after the world DB is installed and updated (after the first
+`worldserver` start), then restart `worldserver`:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_01_50_wild_battle_pet_spawns.sql
+```
+
+It turns critter spawns into their battle pet version per `battlepet_wild_zone_pool`, up to each
+zone's cap (about 5,900 spawns in 86 zones), and records every change in
+`zr_wild_battlepet_conversion` so it can be undone (see the file's header). Running it again changes
+nothing.
+
 ## 10. Updating
 
 ```sh

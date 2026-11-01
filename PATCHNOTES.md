@@ -3,6 +3,42 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-01 (pet battles)
+
+### Pet battles: wild battle pets missing from most zones
+
+Merged to `main` with PR #29 on 2026-11-01.
+
+- **Found** (reported by Four): Pet Tracker shows Forest Spiderling, Tree Python and Lizard
+  Hatchling spawns in Northern Stranglethorn, but in game those were plain neutral critters
+  (Lizard Hatchling 50479 at level 1, Forest Spiderling 50487 at level 90), not battle pets.
+- **Cause:** `battlepet_wild_zone_pool` lists, per zone, which critter becomes which battle pet and
+  how many pets the zone should have. The core's runtime swap (`Map::PopulateBattlePet`) is never
+  called anywhere, so only battle pets spawned directly in `creature` ever existed. Northern
+  Stranglethorn (area 33) had about 60 battle Beetles (61319) and 23 Strand Crabs (61312), but no
+  Tree Python (61318), Forest Spiderling (61320) or Lizard Hatchling (61321) battle pets.
+- **Changed:** new `sql/fixes/world/2026_11_01_50_wild_battle_pet_spawns.sql`. For each pool row
+  whose battle pet template is a wild pet (type 14), it counts the pets already spawned in the zone
+  (`creature.zoneId` or `areaId`) and converts random critter spawns of that zone into the battle
+  pet until the zone's `Max` is reached or the critters run out. Critters with a per-spawn SmartAI
+  script are skipped. On the dump that is about 4,700 or more spawns in 81 zones; Northern Stranglethorn
+  gets 62 Tree Pythons, 54 Lizard Hatchlings, about 56 Forest Spiderlings (all its critters), 8 more Beetles, 3 Crimson Moths and a Long-tailed
+  Mole. Every converted spawn is recorded in the new table `zr_wild_battlepet_conversion`, so it can
+  be undone (the SQL file's header has the two lines). Running it twice converts nothing new.
+  No core change.
+- **Docs:** guide section 9, "Pet battles".
+- **Status:** run on Four's live DB on 2026-11-01: 5,900 spawns converted in 86 zones (more than
+  the dump estimate, which could not parse some templates). Confirmed in game by Four.
+
+#### To pick up the wild battle pet spawns
+SQL only, then a restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_50_wild_battle_pet_spawns.sql | mysql -u root -p bfa_world
+```
+The last line prints the number of converted spawns and zones. Then restart `worldserver`.
+
 ## 2026-11-01
 
 ### World: quest items from one unique mob now always drop (508 items)
