@@ -26,7 +26,8 @@ Open on branch `claude/project-thread-cwgt5u` (not merged yet).
   Mole. Every converted spawn is recorded in the new table `zr_wild_battlepet_conversion`, so it can
   be undone (the SQL file's header has the two lines). Running it twice converts nothing new.
   No core change.
-- **Status:** waiting for Four to test.
+- **Status:** run on Four's live DB on 2026-11-01: 5,900 spawns converted in 86 zones (more than
+  the dump estimate, which could not parse some templates). Confirmed in game by Four.
 
 #### To pick up the wild battle pet spawns
 SQL only, then a restart.
