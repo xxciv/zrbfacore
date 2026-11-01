@@ -3,6 +3,39 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-01 (pet battles, slots)
+
+### Pet battles: second and third battle slots never unlock
+
+Open on branch `claude/project-thread-cwgt5u` (not merged yet).
+
+- **Found** (reported by Four): the second battle pet slot stayed locked ("complete Newbie") although
+  Four's pets are level 4 and 5.
+- **Cause:** slots 2 and 3 open with the achievements Newbie (7433, raise a pet to level 3) and Just a
+  Pup (6566, raise a pet to level 5) (`Player::GetUnlockedPetBattleSlot`). Their criteria are type 160
+  (`CRITERIA_TYPE_BATTLE_PET_LEVEL_UP`). The core sends that criteria type when a pet levels in a
+  battle or from a level item, but `CriteriaHandler::UpdateCriteria` listed it under "Not implemented
+  yet" and did nothing, so no pet level achievement could ever complete.
+- **Changed:** new `tools/bfa/battle-pet-level-achievements.patch`
+  (`src/server/game/Achievements/CriteriaHandler.cpp`): type 160 completes when the level reached is at
+  least the criteria's level. At every login the core rechecks all criteria with no level given; then
+  it checks the levels of the pets you own, so pets that are already high enough count. Added to
+  `IsCompletedCriteria` (done at 1). The existing achievement hook then sends the slot unlock. No SQL.
+- **Status:** waiting for Four to test.
+
+#### To pick up the pet level achievements
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-level-achievements.patch | git apply && echo "pet level patch applied"
+grep -c "Newbie (7433, level 3)" src/server/game/Achievements/CriteriaHandler.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1. Then restart `worldserver` and log in: Newbie and Just a Pup should pop and both
+slots open.
+
 ## 2026-11-01 (pet battles)
 
 ### Pet battles: wild battle pets missing from most zones

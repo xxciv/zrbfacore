@@ -1,0 +1,40 @@
+diff --git a/src/server/game/Achievements/CriteriaHandler.cpp b/src/server/game/Achievements/CriteriaHandler.cpp
+index 334bf8d..ffa46a9 100644
+--- a/src/server/game/Achievements/CriteriaHandler.cpp
++++ b/src/server/game/Achievements/CriteriaHandler.cpp
+@@ -649,6 +649,19 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
+             case CRITERIA_TYPE_BUY_BANK_SLOT:
+                 SetCriteriaProgress(criteria, referencePlayer->GetBankBagSlotCount(), referencePlayer);
+                 break;
++            case CRITERIA_TYPE_BATTLE_PET_LEVEL_UP:           // miscValue1 = level reached (0 = login recheck), Asset = level
++            {
++                // Newbie (7433, level 3) and Just a Pup (6566, level 5) unlock battle slots 2 and 3
++                bool reached = miscValue1 >= uint64(criteria->Entry->Asset.ID);
++                if (!miscValue1)
++                    for (auto const& battlePet : *referencePlayer->GetBattlePets())
++                        if (battlePet.second && battlePet.second->Level >= uint32(criteria->Entry->Asset.ID))
++                            reached = true;
++                if (!reached)
++                    continue;
++                SetCriteriaProgress(criteria, 1, referencePlayer);
++                break;
++            }
+             case CRITERIA_TYPE_GAIN_REPUTATION:
+             {
+                 int32 reputation = referencePlayer->GetReputationMgr().GetReputation(criteria->Entry->Asset.FactionID);
+@@ -808,7 +821,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
+             case CRITERIA_TYPE_COUNT_OF_LFR_QUEUE_BOOSTS_BY_TANK:
+             case CRITERIA_TYPE_CAPTURE_PET_IN_BATTLE:
+             case CRITERIA_TYPE_BATTLE_PET_WIN:
+-            case CRITERIA_TYPE_BATTLE_PET_LEVEL_UP:
+             case CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT:
+             case CRITERIA_TYPE_LEVEL_BATTLE_PET_CREDIT:
+             case CRITERIA_TYPE_ENTER_AREA:
+@@ -1278,6 +1290,7 @@ bool CriteriaHandler::IsCompletedCriteria(Criteria const* criteria, uint64 requi
+         case CRITERIA_TYPE_EXPLORE_AREA:
+         case CRITERIA_TYPE_RECRUIT_GARRISON_FOLLOWER:
+         case CRITERIA_TYPE_CAPTURE_SPECIFIC_BATTLEPET:
++        case CRITERIA_TYPE_BATTLE_PET_LEVEL_UP:
+         case CRITERIA_TYPE_HONOR_LEVEL_REACHED:
+         case CRITERIA_TYPE_PRESTIGE_REACHED:
+         case CRITERIA_TYPE_TRANSMOG_SET_UNLOCKED:
