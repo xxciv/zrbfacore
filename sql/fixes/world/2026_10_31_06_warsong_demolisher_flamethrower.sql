@@ -6,3 +6,9 @@
 -- tick every second. Remove that row. Flaming Ball (61865, id 2), the out-of-combat ball at trigger
 -- NPCs (61864, id 4) and the death explosion (65417, id 4) stay.
 DELETE FROM `smart_scripts` WHERE `entryorguid` = 32850 AND `source_type` = 0 AND `id` = 3 AND `action_param1` = 65388;
+
+-- Follow-up (Four, 2026-11-01): without Flamethrower the demolishers stood still and only meleed,
+-- and Flaming Ball never fires either. Rows id 0 and id 1 (both "Stop Moving on Aggro", event 4,
+-- action 21 with 0) root them in place for a ranged fight they cannot fight. Remove both so they
+-- chase their target like a normal melee mob.
+DELETE FROM `smart_scripts` WHERE `entryorguid` = 32850 AND `source_type` = 0 AND `id` IN (0, 1) AND `event_type` = 4 AND `action_type` = 21;

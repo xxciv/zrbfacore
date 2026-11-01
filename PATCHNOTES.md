@@ -42,6 +42,9 @@ Then restart `worldserver`.
 - **Changed:** `sql/fixes/world/2026_10_31_06_warsong_demolisher_flamethrower.sql` deletes that one
   row (entry 32850, id 3, spell 65388). Flaming Ball (61865), the out-of-combat ball at trigger NPCs
   (61864) and the death explosion (65417) stay.
+- **Follow-up (2026-11-01):** Four found the demolishers then only meleed and stood still, and Flaming
+  Ball never fired. The same file now also deletes ids 0 and 1 (event 4 aggro, action 21 "stop combat
+  movement" with 0), so they chase their target instead of standing rooted.
 - **Status:** waiting for Four to test.
 
 #### To pick up the Flamethrower fix
