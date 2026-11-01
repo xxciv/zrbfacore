@@ -5,6 +5,33 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-01
 
+### Core: dying never turned you into a proper ghost (battle pet code wiped player flags)
+
+- **Found** (reported by Four): after `.die` or a creature kill and Release Spirit, you arrive at the
+  graveyard as a "ghost" in a normal, living world. The Spirit Healer won't talk to you, there is no
+  corpse arrow, and the character screen shows you alive. Relogging doesn't fix it. A fall death
+  sometimes worked.
+- **Cause:** the server did make you a ghost (`.list auras` shows Ghost 8326 and wisp 20584), but three
+  battle pet functions *replace* all player flags with `PLAYER_FLAGS_PET_BATTLES_UNLOCKED` (0x400000)
+  instead of adding it: `Player::_LoadPetBattles` (login), `WorldSession::SendBattlePetJournal`
+  (login, teleports, every journal request) and `WorldSession::SendPetBattleSlotUpdates`. That wipes
+  `PLAYER_FLAGS_GHOST` (0x10), which is what the client uses for the grey world, Spirit Healer and
+  corpse arrow, and it was saved without the flag. They only run once a battle pet slot is unlocked,
+  so this started after the battle pet slot fix (2026-10-25).
+- **Changed:** new `tools/bfa/battle-pet-player-flags.patch` (applied after `battle-pet-journal.patch`):
+  `SetPlayerFlags(PLAYER_FLAGS_PET_BATTLES_UNLOCKED)` becomes `AddPlayerFlag(...)` in
+  `Player.cpp` (`_LoadPetBattles`) and `BattlePetHandler.cpp` (`SendPetBattleSlotUpdates`,
+  `SendBattlePetJournal`). This also stops AFK, DND and resting flags being cleared the same way.
+- **Status:** awaiting test in game.
+- **Pick up:** rebuild with the new patch and restart worldserver:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-player-flags.patch | git apply
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+
 ### World: Astranaar crowded by a siege that only belongs to its quests
 
 - **Found** (reported by Four): Astranaar is packed with soldiers, Horde Hellions and Wind Riders and
