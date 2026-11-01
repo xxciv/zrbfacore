@@ -47,7 +47,7 @@ sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target insta
   complete: 13849 Astranaar's Burning!, 13853 Return Fire (Alliance), 13943 Breathing Room,
   13947 Blastranaar! (Horde). The town guards (6087, 51770), vendors and Hellscream's Watch are
   untouched. The revert line is in the file.
-- **Status:** waiting for Four to test.
+- **Status:** confirmed in game by Four (2026-11-01): Astranaar is calm without the quest.
 
 #### To pick up the Astranaar siege phase
 SQL only, no rebuild:
@@ -67,7 +67,7 @@ Then restart `worldserver`.
 - **Changed:** `sql/fixes/world/2026_11_01_00_astranaar_flight_master_daelyshia.sql` sets entry 4267 to
   `npcflag` 8193 (gossip + flight master, as in the Pandaria DB), `unit_flags` 768, `unit_flags2`
   2048, `unit_flags3` 0. Gossip menu 0 already has the "I want to travel fast" option.
-- **Status:** waiting for Four to test.
+- **Status:** confirmed in game by Four (2026-11-01): Daelyshia is alive and offers flights.
 
 #### To pick up the flight master fix
 SQL only, no rebuild:
@@ -124,7 +124,7 @@ Then restart `worldserver`.
   Row id 6 (on spawn, action 117 disable evade, linked to id 7 "set aggressive") is now a plain
   "on spawn, set aggressive" (action 8, param 2, link 0) and id 7 is deleted, so they can evade and
   leash again.
-- **Status:** waiting for Four to test.
+- **Status:** confirmed in game by Four (2026-11-01): Demolishers no longer one-shot and leash home.
 
 #### To pick up the Flamethrower fix
 SQL only, no rebuild:
