@@ -22,7 +22,7 @@ to do to pick it up (rebuild, restart, run SQL).
   `SetPlayerFlags(PLAYER_FLAGS_PET_BATTLES_UNLOCKED)` becomes `AddPlayerFlag(...)` in
   `Player.cpp` (`_LoadPetBattles`) and `BattlePetHandler.cpp` (`SendPetBattleSlotUpdates`,
   `SendBattlePetJournal`). This also stops AFK, DND and resting flags being cleared the same way.
-- **Status:** awaiting test in game.
+- **Status:** confirmed in game by Four (2026-11-01): death and release give a proper ghost again.
 - **Pick up:** rebuild with the new patch and restart worldserver:
 
 ```
