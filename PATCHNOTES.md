@@ -5,6 +5,28 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-01
 
+### World: Chief Esquivel rarely drops the Whispering Blue Stone
+
+- **Found** (reported by Four): Chief Esquivel (43912, Kurzen compound cave in Northern
+  Stranglethorn) often dies without dropping the quest item for The Source of the Madness.
+- **Cause:** Whispering Blue Stone (item 60263, 1 needed for quest 26734) is a quest-only drop with
+  low chances on the four chiefs the quest sends you to: Chief Anders 43910 26.67%, Chief Gaulus
+  43911 13.86%, Chief Esquivel 43912 7.68%, Chief Miranda 43913 18.39%.
+- **Changed:** `sql/fixes/world/2026_11_01_02_whispering_blue_stone_kurzen_chiefs.sql` sets
+  `creature_loot_template.Chance` = 100 for item 60263 on 43910, 43911, 43912 and 43913 (QuestRequired
+  stays 1, so it only drops while you're on the quest). The regular Kurzen troops (939, 941, 942, 978,
+  979) keep their 1-5% chance.
+- **Status:** waiting for Four to test.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_02_whispering_blue_stone_kurzen_chiefs.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ### Core: dying never turned you into a proper ghost (battle pet code wiped player flags)
 
 - **Found** (reported by Four): after `.die` or a creature kill and Release Spirit, you arrive at the
