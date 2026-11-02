@@ -46,6 +46,11 @@ Open on branch `claude/project-thread-0g0n74` (not merged yet).
   0, so they couldn't be right-clicked and "Let's do battle!" never showed. Same file sets
   `npcflag` 0 -> 1 (gossip) for 139489, 141077, 115286, 124617, 115307.
 - **Not done:** the Shipwrecked Captive 98489 has a team but no spawn (no known position).
+- **Status:** Kwint confirmed in game by Four on 2026-11-02 (quest 52430 added with `.quest add`,
+  "Let's do battle!" shown, battle started with his team). The other tamers are not tested in game
+  yet; both SQL files loaded twice on a copy of the dump tables (MySQL 8.4) without errors. Needs
+  `battle-pet-trainers.patch` (PR #31) to start the fights.
+
 #### To pick up the tamer teams
 SQL only (run the two mysql blocks one at a time), then restart `worldserver`.
 ```
