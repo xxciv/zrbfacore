@@ -107,7 +107,8 @@ patches go on top of `battle-pet-level-achievements.patch`, achievements first.
     packet classes `AccountCriteriaUpdate` and `AllAccountCriteria`).
 - **Note:** wins and captures from before the patch were never recorded, so those counters start at
   0. Journal criteria (96) are rechecked at every login.
-- **Status:** compiled and checked against the full patch chain, not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-02 (win counter shows and updates live, PvP-only
+  achievements no longer earned from PvE).
 
 #### To pick up both patches
 Two new patches on top of the others, the build and a restart. The patches you already applied are
