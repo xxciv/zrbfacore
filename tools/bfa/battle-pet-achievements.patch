@@ -1,0 +1,96 @@
+diff --git a/src/server/game/Achievements/CriteriaHandler.cpp b/src/server/game/Achievements/CriteriaHandler.cpp
+index ffa46a9..8a1dbd2 100644
+--- a/src/server/game/Achievements/CriteriaHandler.cpp
++++ b/src/server/game/Achievements/CriteriaHandler.cpp
+@@ -649,6 +649,32 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
+             case CRITERIA_TYPE_BUY_BANK_SLOT:
+                 SetCriteriaProgress(criteria, referencePlayer->GetBankBagSlotCount(), referencePlayer);
+                 break;
++            case CRITERIA_TYPE_CAPTURE_PET_IN_BATTLE:         // miscValue1 = 1 per pet captured
++            case CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT:     // miscValue1 = 1 per pet captured
++            case CRITERIA_TYPE_BATTLE_PET_WIN:                // miscValue1 = 1 per battle won
++                if (!miscValue1)
++                    continue;
++                SetCriteriaProgress(criteria, miscValue1, referencePlayer, PROGRESS_ACCUMULATE);
++                break;
++            case CRITERIA_TYPE_LEVEL_BATTLE_PET_CREDIT:       // miscValue1 = species, miscValue2 = level earned in battle, Asset = level
++                if (!miscValue1 || miscValue2 < uint64(criteria->Entry->Asset.ID))
++                    continue;
++                SetCriteriaProgress(criteria, 1, referencePlayer, PROGRESS_ACCUMULATE);
++                break;
++            case CRITERIA_TYPE_ADD_BATTLE_PET_JOURNAL:        // miscValue1 = creature of the new pet (0 = login recheck), Asset = creature
++            {
++                bool known = miscValue1 && miscValue1 == uint64(criteria->Entry->Asset.ID);
++                if (!miscValue1)
++                    for (auto const& battlePet : *referencePlayer->GetBattlePets())
++                        if (battlePet.second)
++                            if (BattlePetSpeciesEntry const* species = sBattlePetSpeciesStore.LookupEntry(battlePet.second->Species))
++                                if (species->CreatureID == criteria->Entry->Asset.ID)
++                                    known = true;
++                if (!known)
++                    continue;
++                SetCriteriaProgress(criteria, 1, referencePlayer);
++                break;
++            }
+             case CRITERIA_TYPE_BATTLE_PET_LEVEL_UP:           // miscValue1 = level reached (0 = login recheck), Asset = level
+             {
+                 // Newbie (7433, level 3) and Just a Pup (6566, level 5) unlock battle slots 2 and 3
+@@ -819,10 +845,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
+             case CRITERIA_TYPE_LFR_VOTE_KICKS_NOT_INIT_BY_PLAYER:
+             case CRITERIA_TYPE_BE_KICKED_FROM_LFR:
+             case CRITERIA_TYPE_COUNT_OF_LFR_QUEUE_BOOSTS_BY_TANK:
+-            case CRITERIA_TYPE_CAPTURE_PET_IN_BATTLE:
+-            case CRITERIA_TYPE_BATTLE_PET_WIN:
+-            case CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT:
+-            case CRITERIA_TYPE_LEVEL_BATTLE_PET_CREDIT:
+             case CRITERIA_TYPE_ENTER_AREA:
+             case CRITERIA_TYPE_LEAVE_AREA:
+             case CRITERIA_TYPE_UPGRADE_GARRISON_BUILDING:
+@@ -846,7 +868,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
+             case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE:
+             case CRITERIA_TYPE_EARN_PET_BATTLE_ACHIEVEMENT_POINTS:
+             case CRITERIA_TYPE_RELEASE_SPIRIT:
+-            case CRITERIA_TYPE_ADD_BATTLE_PET_JOURNAL:
+             case CRITERIA_TYPE_GARRISON_COMPLETE_DUNGEON_ENCOUNTER:
+             case CRITERIA_TYPE_COMPLETE_LFG_DUNGEON:
+             case CRITERIA_TYPE_LFG_VOTE_KICKS_INITIATED_BY_PLAYER:
+@@ -1274,6 +1295,10 @@ bool CriteriaHandler::IsCompletedCriteria(Criteria const* criteria, uint64 requi
+         case CRITERIA_TYPE_CURRENCY:
+         case CRITERIA_TYPE_PLACE_GARRISON_BUILDING:
+         case CRITERIA_TYPE_COLLECT_BATTLEPET:
++        case CRITERIA_TYPE_CAPTURE_PET_IN_BATTLE:
++        case CRITERIA_TYPE_BATTLE_PET_WIN:
++        case CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT:
++        case CRITERIA_TYPE_LEVEL_BATTLE_PET_CREDIT:
+         case CRITERIA_TYPE_APPEARANCE_UNLOCKED_BY_SLOT:
+         case CRITERIA_TYPE_GAIN_PARAGON_REPUTATION:
+         case CRITERIA_TYPE_EARN_HONOR_XP:
+@@ -1291,6 +1316,7 @@ bool CriteriaHandler::IsCompletedCriteria(Criteria const* criteria, uint64 requi
+         case CRITERIA_TYPE_RECRUIT_GARRISON_FOLLOWER:
+         case CRITERIA_TYPE_CAPTURE_SPECIFIC_BATTLEPET:
+         case CRITERIA_TYPE_BATTLE_PET_LEVEL_UP:
++        case CRITERIA_TYPE_ADD_BATTLE_PET_JOURNAL:
+         case CRITERIA_TYPE_HONOR_LEVEL_REACHED:
+         case CRITERIA_TYPE_PRESTIGE_REACHED:
+         case CRITERIA_TYPE_TRANSMOG_SET_UNLOCKED:
+diff --git a/src/server/game/BattlePets/PetBattle.cpp b/src/server/game/BattlePets/PetBattle.cpp
+index 65da52c..061afdb 100644
+--- a/src/server/game/BattlePets/PetBattle.cpp
++++ b/src/server/game/BattlePets/PetBattle.cpp
+@@ -917,7 +917,7 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
+             if (winnerTeamID == currentTeamID)
+             {
+                 auto speciesInfo = sDB2Manager.GetSpeciesByCreatureID(InitialWildPetGUID.GetEntry());
+-                player->UpdateCriteria(CRITERIA_TYPE_BATTLE_PET_WIN, BattleType != PET_BATTLE_TYPE_PVE, 0, speciesInfo ? speciesInfo->ID : 0);
++                player->UpdateCriteria(CRITERIA_TYPE_BATTLE_PET_WIN, 1, BattleType != PET_BATTLE_TYPE_PVE, speciesInfo ? speciesInfo->ID : 0);
+                 /*if (speciesInfo)
+                     player->QuestObjectiveSatisfy(speciesInfo->ID, 1, QUEST_OBJECTIVE_DEFEATBATTLEPET, InitialWildPetGUID);*/
+             }
+@@ -952,6 +952,7 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
+                     player->UpdateCriteria(CRITERIA_TYPE_ADD_BATTLE_PET_JOURNAL, speciesInfo->CreatureID);
+                     player->UpdateCriteria(CRITERIA_TYPE_CAPTURE_SPECIFIC_BATTLEPET, speciesInfo->ID, 0, speciesInfo->ID);
+                     player->UpdateCriteria(CRITERIA_TYPE_CAPTURE_PET_IN_BATTLE, 1, Pets[Teams[currentTeamID]->CapturedPet]->Quality, speciesInfo->ID);
++                    player->UpdateCriteria(CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT, 1, Pets[Teams[currentTeamID]->CapturedPet]->Quality, speciesInfo->ID);
+                 }
+ 
+                 /// Quest progress for 12 x Got One!

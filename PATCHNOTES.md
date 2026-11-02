@@ -3,11 +3,90 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-02 (pet battles, tamers and achievements)
+
+Both entries below are open on branch `claude/project-thread-cwgt5u` (not merged yet). The two
+patches go on top of `battle-pet-level-achievements.patch`, achievements first.
+
+### Pet battles: tamers (Julia Stevens and others) cannot be battled
+
+- **Found** (reported by Four): Julia Stevens (64330, Goldshire) offers nothing to start a battle.
+  Beating the wild pets near her does not count for her quest.
+- **Cause:** the core has the tamers' teams (`battlepet_npc_team_member`, 1,509 NPC entries; Julia
+  has species 872 and 873 at level 2) and a trainer battle type (`PVE_BATTLE_PET_TRAINER`), but
+  nothing ever starts a battle against a tamer: `GetPetBattleTrainerTeam` is never called, no gossip
+  option exists, and the quest credit for winning was commented out in `PetBattle::Finish`. The quest
+  objective type that tamer quests use (11, `QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC`, 201 objectives
+  in the DB, for example quests 31316 and 31693 for Julia) was also missing from
+  `Player::IsQuestObjectiveComplete`, so even a credited objective could never complete the quest.
+- **Changed:** new `tools/bfa/battle-pet-trainers.patch`:
+  - `GossipDef.h`: new gossip option type `GOSSIP_OPTION_PET_BATTLE` (30) and option index 9001.
+  - `Player::PrepareGossipMenu`: adds **Let's do battle!** when the player has Battle Pet Training
+    (spell 119467), the NPC has a team in `battlepet_npc_team_member`, and an incomplete quest in the
+    log has a type 11 objective for this NPC that is not done yet (as on retail, no quest = no
+    battle).
+  - `Player::OnGossipSelect`: the option closes the dialog and calls the new
+    `WorldSession::StartPetBattleWithTrainer` (`BattlePetHandler.cpp`). It builds up to 3 tamer pets
+    from the team rows (level `minlevel`..`maxlevel`, quality `minquality`, a breed from
+    `breadsMask`, abilities `Ability1..3`, falling back to the species' own ability for an empty
+    one) and starts a PvE battle of type `PVE_BATTLE_PET_TRAINER` with the player's slotted pets. The
+    player stays in place, the tamer turns to face them, and the pets fight in between. Capturing is
+    already blocked for this type.
+  - `SendPetBattleInitialUpdate`: for tamer battles the tamer's entry and display are sent and the
+    tamer is no longer sent as the "wild pet" GUID.
+  - `PetBattle::Finish`: a win against a tamer calls the new `Player::PetBattleTrainerCredit`, which
+    sets every matching type 11 objective in the quest log and completes the quest when it can.
+  - `Player::IsQuestObjectiveComplete`: type 11 is a flag objective (done when set).
+  - `HandleGossipSelectOptionOpcode` (`NPCHandler.cpp`): accepts quest givers too. Julia's template
+    has only the quest giver flag (npcflag 2), so picking any gossip option on her was ignored. The
+    option is still checked against the menu that was sent.
+  - `BattlePetDataStore`: new `FindPetBattleTrainerTeam` (read only; the old getter inserts into the
+    map on a miss).
+  - Also fixed in `PetBattle::Finish`: the end-of-battle rewards ran once per pet in the winning team,
+    not once per battle. With 2 or 3 pets slotted, a captured pet was added to the journal 2 or 3
+    times, and "Learning the Ropes" (credit 65355) counted 2 or 3 times. They now run once, and the
+    "Learning the Ropes" credit needs a win.
+  - No SQL. 86 tamers have both a team and a type 11 quest. 27 newer tamers (Legion/BFA) have quests
+    but no team rows and still cannot be battled.
+- **Status:** compiled and checked against the full patch chain, not tested in game yet.
+
+### Pet battles: win, capture and journal achievements never progress
+
+- **Found** while fixing the slot unlocks: more pet battle criteria types were listed as "Not
+  implemented yet" in `CriteriaHandler::UpdateCriteria`.
+- **Cause:** criteria types 96 (`ADD_BATTLE_PET_JOURNAL`, a specific pet in the journal), 157
+  (`CAPTURE_PET_IN_BATTLE`), 158 (`BATTLE_PET_WIN`), 161 (`CAPTURE_BATTLE_PET_CREDIT`) and 162
+  (`LEVEL_BATTLE_PET_CREDIT`) did nothing, so achievements that count battle wins, captures or
+  specific pets never moved. The win call also passed "is PvP" as the counted value, which is 0 for
+  every PvE battle.
+- **Changed:** new `tools/bfa/battle-pet-achievements.patch`:
+  - `CriteriaHandler.cpp`: 157, 158 and 161 add 1 per capture or win and complete at the criteria's
+    amount. 162 counts a pet reaching the criteria's level in battle. 96 completes when a pet of the
+    criteria's creature is added, and at login if you already own one.
+  - `PetBattle.cpp`: a win now counts 1; a capture also sends type 161.
+  - No SQL.
+- **Note:** wins and captures from before the patch were never recorded, so those counters start at
+  0. Journal criteria (96) are rechecked at every login.
+- **Status:** compiled and checked against the full patch chain, not tested in game yet.
+
+#### To pick up both patches
+Two new patches on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-achievements.patch | git apply && echo "pet achievements patch applied"
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-trainers.patch | git apply && echo "pet tamers patch applied"
+grep -c "GOSSIP_OPTION_PET_BATTLE" src/server/game/Entities/Player/Player.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 2. Then restart `worldserver`.
+
 ## 2026-11-01 (pet battles, slots)
 
 ### Pet battles: second and third battle slots never unlock
 
-Open on branch `claude/project-thread-cwgt5u` (not merged yet).
+Merged to `main` with PR #30 on 2026-11-02.
 
 - **Found** (reported by Four): the second battle pet slot stayed locked ("complete Newbie") although
   Four's pets are level 4 and 5.

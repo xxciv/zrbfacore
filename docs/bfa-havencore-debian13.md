@@ -113,6 +113,8 @@ git apply ../tools-repo/tools/bfa/battle-pet-slots.patch
 git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
 git apply ../tools-repo/tools/bfa/battle-pet-player-flags.patch
 git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
+git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
+git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -579,6 +581,11 @@ zone's cap (about 5,900 spawns in 86 zones), and records every change in
 `zr_wild_battlepet_conversion` so it can be undone (see the file's header). Running it again changes
 nothing.
 
+Pet tamers (Julia Stevens, Marcus Jensen and the other trainers with a team in
+`battlepet_npc_team_member`) offer **Let's do battle!** in their dialog while you have their "defeat
+<tamer> in a pet battle" quest. Winning completes that objective. Without the quest the option does
+not appear, as on retail.
+
 ## 10. Updating
 
 ```sh
@@ -612,6 +619,8 @@ git apply ../tools-repo/tools/bfa/battle-pet-slots.patch
 git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
 git apply ../tools-repo/tools/bfa/battle-pet-player-flags.patch
 git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
+git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
+git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
