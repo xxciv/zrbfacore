@@ -40,6 +40,10 @@ patches go on top of `battle-pet-level-achievements.patch`, achievements first.
   - `HandleGossipSelectOptionOpcode` (`NPCHandler.cpp`): accepts quest givers too. Julia's template
     has only the quest giver flag (npcflag 2), so picking any gossip option on her was ignored. The
     option is still checked against the menu that was sent.
+  - The battle client draws its own copy of the tamer on the opponent's spot, so the real NPC
+    stood next to it (two Julias, reported by Four). `StartPetBattleWithTrainer` now hides the
+    real tamer (`SetVisible(false)`) and `PetBattle::Finish` shows it again for every ending (win,
+    loss, forfeit). The real tamer is hidden for everyone during the fight.
   - `BattlePetDataStore`: new `FindPetBattleTrainerTeam` (read only; the old getter inserts into the
     map on a miss).
   - Also fixed in `PetBattle::Finish`: the end-of-battle rewards ran once per pet in the winning team,
@@ -48,7 +52,8 @@ patches go on top of `battle-pet-level-achievements.patch`, achievements first.
     "Learning the Ropes" credit needs a win.
   - No SQL. 86 tamers have both a team and a type 11 quest. 27 newer tamers (Legion/BFA) have quests
     but no team rows and still cannot be battled.
-- **Status:** compiled and checked against the full patch chain, not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-02 (Julia Stevens battle and quest credit). The
+  hidden-tamer change came after that test and is not tested yet.
 
 ### Pet battles: win, capture and journal achievements never progress
 

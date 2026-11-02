@@ -1,5 +1,5 @@
 diff --git a/src/server/game/BattlePets/PetBattle.cpp b/src/server/game/BattlePets/PetBattle.cpp
-index 061afdb..136f1e8 100644
+index 061afdb..1600875 100644
 --- a/src/server/game/BattlePets/PetBattle.cpp
 +++ b/src/server/game/BattlePets/PetBattle.cpp
 @@ -913,56 +913,57 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
@@ -103,6 +103,18 @@ index 061afdb..136f1e8 100644
      }
  
      for (size_t currentTeamID = 0; currentTeamID < MAX_PET_BATTLE_TEAM; ++currentTeamID)
+@@ -990,6 +991,11 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
+             continue;
+         }
+ 
++        // zr: show the real tamer again (hidden in StartPetBattleWithTrainer while the client shows its own copy)
++        if (BattleType == PET_BATTLE_TYPE_PVE && PveBattleType == PVE_BATTLE_PET_TRAINER && currentTeamID == PET_BATTLE_PVE_TEAM_ID)
++            if (Unit* trainer = ObjectAccessor::FindUnit(Teams[currentTeamID]->OwnerGuid))
++                trainer->SetVisible(true);
++
+         if (BattleType == PET_BATTLE_TYPE_PVE && PveBattleType == PVE_BATTLE_PET_WILD)
+         {
+             for (size_t i = 0; i < Teams[currentTeamID]->TeamPetCount; ++i)
 diff --git a/src/server/game/Entities/Creature/GossipDef.h b/src/server/game/Entities/Creature/GossipDef.h
 index 2030675..5cee84f 100644
 --- a/src/server/game/Entities/Creature/GossipDef.h
@@ -280,7 +292,7 @@ index 6d730e5..03c4d98 100644
      BattlePetTemplateContainer _battlePetTemplateStore;
      BattlePetTemplateMap _battlePetTemplate;
 diff --git a/src/server/game/Handlers/BattlePetHandler.cpp b/src/server/game/Handlers/BattlePetHandler.cpp
-index 3dc0ae1..8701b2d 100644
+index 3dc0ae1..8cc9755 100644
 --- a/src/server/game/Handlers/BattlePetHandler.cpp
 +++ b/src/server/game/Handlers/BattlePetHandler.cpp
 @@ -27,6 +27,9 @@
@@ -293,7 +305,7 @@ index 3dc0ae1..8701b2d 100644
  
  void WorldSession::HandleBattlePetSummon(WorldPackets::BattlePet::BattlePetGuidRead& packet)
  {
-@@ -369,6 +372,166 @@ void WorldSession::HandlePetBattleRequestWild(WorldPackets::BattlePet::RequestWi
+@@ -369,6 +372,169 @@ void WorldSession::HandlePetBattleRequestWild(WorldPackets::BattlePet::RequestWi
      l_WildBattlePet = nullptr;
  }
  
@@ -432,6 +444,9 @@ index 3dc0ae1..8701b2d 100644
 +
 +    trainer->StopMoving();
 +    trainer->SetFacingToObject(_player);
++    // zr: the battle client shows its own copy of the tamer on the opponent's spot; hide the real one
++    // until PetBattle::Finish shows it again
++    trainer->SetVisible(false);
 +
 +    auto battle = sPetBattleSystem->CreateBattle();
 +
@@ -460,7 +475,7 @@ index 3dc0ae1..8701b2d 100644
  void WorldSession::HandleReplaceFrontPet(WorldPackets::BattlePet::ReplaceFrontPet& packet)
  {
      if (!_player->_petBattleId)
-@@ -860,7 +1023,8 @@ void WorldSession::SendPetBattleFinalizeLocation(PetBattleRequest* petBattleRequ
+@@ -860,7 +1026,8 @@ void WorldSession::SendPetBattleFinalizeLocation(PetBattleRequest* petBattleRequ
  
  void WorldSession::SendPetBattleInitialUpdate(PetBattle* petBattle)
  {
@@ -470,7 +485,7 @@ index 3dc0ae1..8701b2d 100644
          petBattle->InitialWildPetGUID = petBattle->Teams[PET_BATTLE_PVE_TEAM_ID]->OwnerGuid;
  
      WorldPackets::BattlePet::PetBattleInitialUpdate update;
-@@ -871,7 +1035,7 @@ void WorldSession::SendPetBattleInitialUpdate(PetBattle* petBattle)
+@@ -871,7 +1038,7 @@ void WorldSession::SendPetBattleInitialUpdate(PetBattle* petBattle)
  
      if (petBattle->BattleType == PET_BATTLE_TYPE_PVE && petBattle->PveBattleType == PVE_BATTLE_PET_TRAINER)
      {
