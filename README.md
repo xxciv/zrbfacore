@@ -70,6 +70,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   unlocks battle pet slots, so the first slot opens after Battle Pet Training and pets can be slotted.
 - [`tools/bfa/battle-pet-journal.patch`](tools/bfa/battle-pet-journal.patch): summoned journal pets
   appear as themselves instead of Murkimus the Gladiator, and released pets stay released.
+- [`tools/bfa/battle-pet-level-achievements.patch`](tools/bfa/battle-pet-level-achievements.patch): pet
+  level achievements (Newbie, Just a Pup) are awarded, which unlocks battle pet slots 2 and 3.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.
