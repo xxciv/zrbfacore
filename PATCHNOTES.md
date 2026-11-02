@@ -3,6 +3,64 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-02 (pet battles, tamer teams)
+
+### Pet battles: Legion and BFA pet tamers have no team
+
+Merged to `main` with PR #32 on 2026-11-02. The guide's "Pet battles" section now lists both SQL files.
+
+- **Found:** 23 Legion and BFA tamers that a quest asks you to beat in a pet battle had no rows in
+  `battlepet_npc_team_member`, so "Let's do battle!" (from `tools/bfa/battle-pet-trainers.patch`,
+  PR #31) had no team to put against you.
+- **Changed:** new `sql/fixes/world/2026_11_02_60_legion_bfa_tamer_teams.sql` adds 69 rows (3 pets
+  per tamer) for these tamers:
+  - BFA, Kul Tiras: Captain Hermes 139489, Eddie Fixit 140315, Dilbert McClint 140461, Fizzie
+    Sparkwhistle 140813, Michael Skarn 140880, Ellie Vern 141002, Leana Darkwind 141046, Kwint 141077,
+    Delia Hanako 141292, Burly 141479.
+  - BFA, Zandalar: Lozu 141529, Grady Prett 141799, Korval Darkbeard 141814, Keeyo 141879, Sizzik
+    141945, Kusa 142054, Karaga 142096, Talia Sparkbrow 142114, Zujai 142234.
+  - Legion: Crysa 115286, Environeer Bert 124617, Shipwrecked Captive 98489, Algalon the Observer 115307.
+  - Species, level (all 25) and quality come from the Rematch addon's target data, which was captured
+    from the real fights in game. Quality: BFA tamers rare (3), Crysa, Bert and the Shipwrecked Captive
+    epic (4), Algalon legendary (5).
+  - Abilities are each species' own abilities from `BattlePetSpeciesXAbility` (these tamer species
+    have exactly 3, or 2 for Eddie Fixit's Rocket Chicken, Sizzik's Clubber and Bert's Corporal
+    Hammer and M-37; the 3rd ability stays 0 there). Every row's `Comment` names the tamer, pet,
+    quality and abilities.
+  - `breadsMask` 8 (breed 3), like the existing Legion world quest tamer rows.
+  - The pets' own creatures (Chum 141094 etc.) were already in `creature_template` with models.
+- **Spawns:** Captain Hermes, Fizzie Sparkwhistle, Kwint, Korval Darkbeard, Crysa, Environeer Bert
+  and Algalon had no spawn at all. New `sql/fixes/world/2026_11_02_61_legion_bfa_tamer_spawns.sql`
+  adds one spawn each (guids 1157000001-1157000007). X/Y come from each tamer's world quest map
+  marker (`quest_poi_points`), Z and facing from Four's `.gps` on the spot:
+  - Captain Hermes 139489: map 1643, Drustvar, Crimson Coast (-1276.401, 4082.493, 1.894)
+  - Fizzie Sparkwhistle 140813: map 1643, Drustvar, Arom's Crossing (-212.0, 3115.0, 313.669)
+  - Kwint 141077: map 1643, Tiragarde Sound, on the sea floor (404.046, -1415.275, -53.367). The first
+    mid-water spot (z -12.275) showed the gossip cursor but right-click did nothing; Four moved him
+    down in game and the battle gossip appeared
+  - Korval Darkbeard 141814: map 1642, Nazmir, The Dreadmire (2164.170, 1178.665, 1.072)
+  - Crysa 115286: map 1, Northern Barrens (439.567, -3452.627, 92.388)
+  - Environeer Bert 124617: map 0, Dun Morogh, Gnomeregan entrance (-5146.244, 826.715, 287.386)
+  - Algalon the Observer 115307: map 571, Storm Peaks, Ulduar (9030.281, -1112.029, 1165.275)
+- **Gossip:** Captain Hermes, Kwint, Crysa, Environeer Bert and Algalon had `creature_template.npcflag`
+  0, so they couldn't be right-clicked and "Let's do battle!" never showed. Same file sets
+  `npcflag` 0 -> 1 (gossip) for 139489, 141077, 115286, 124617, 115307.
+- **Not done:** the Shipwrecked Captive 98489 has a team but no spawn (no known position).
+- **Status:** Kwint confirmed in game by Four on 2026-11-02 (quest 52430 added with `.quest add`,
+  "Let's do battle!" shown, battle started with his team). The other tamers are not tested in game
+  yet; both SQL files loaded twice on a copy of the dump tables (MySQL 8.4) without errors. Needs
+  `battle-pet-trainers.patch` (PR #31) to start the fights.
+
+#### To pick up the tamer teams
+SQL only (run the two mysql blocks one at a time), then restart `worldserver`.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-0g0n74
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_02_60_legion_bfa_tamer_teams.sql | mysql -u root -p bfa_world
+```
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_02_61_legion_bfa_tamer_spawns.sql | mysql -u root -p bfa_world
+```
 ## 2026-11-02 (core)
 
 ### Startup banner: zrbfacore, no foreign Discord or email
