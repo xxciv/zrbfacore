@@ -88,6 +88,14 @@ patches go on top of `battle-pet-level-achievements.patch`, achievements first.
     criteria's creature is added, and at login if you already own one.
   - `PetBattle.cpp`: a win now counts 1; a capture also sends type 161.
   - No SQL.
+  - Fix after Four's test (2026-11-02): the PvP-only win achievements check "is this a PvP battle"
+    (criteria modifier 90) against the first criteria value, which the patch had turned into "1 win".
+    So every PvE win passed it, and Four got No Time To Heal (6620, win 5 PvP battles in a row) from
+    wild battles. Modifier 90 now reads the second value ("is PvP", 1 or 0), so asset 1 = PvP only
+    (Pet Brawler 6595-6599, No Time To Heal) and asset 0 = PvE only. New
+    `sql/fixes/characters/2026_11_02_00_remove_pve_pvp_pet_achievement.sql` removes 6620 and the
+    progress on criteria 21525 and 22225 (worldserver stopped). Cat Fight (6594, criteria 19724) has
+    no modifier and counts every win.
 - **Note:** wins and captures from before the patch were never recorded, so those counters start at
   0. Journal criteria (96) are rechecked at every login.
 - **Status:** compiled and checked against the full patch chain, not tested in game yet.

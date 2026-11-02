@@ -1,5 +1,5 @@
 diff --git a/src/server/game/Achievements/CriteriaHandler.cpp b/src/server/game/Achievements/CriteriaHandler.cpp
-index ffa46a9..8a1dbd2 100644
+index ffa46a9..1feeb29 100644
 --- a/src/server/game/Achievements/CriteriaHandler.cpp
 +++ b/src/server/game/Achievements/CriteriaHandler.cpp
 @@ -649,6 +649,32 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
@@ -73,6 +73,17 @@ index ffa46a9..8a1dbd2 100644
          case CRITERIA_TYPE_HONOR_LEVEL_REACHED:
          case CRITERIA_TYPE_PRESTIGE_REACHED:
          case CRITERIA_TYPE_TRANSMOG_SET_UNLOCKED:
+@@ -2167,7 +2193,9 @@ bool CriteriaHandler::ModifierSatisfied(ModifierTreeEntry const* modifier, uint6
+                 return false;
+             break;
+         case CRITERIA_ADDITIONAL_CONDITION_PET_BATTLE_IS_PVP: // 90
+-            if (!miscValue1 || miscValue1 != reqValue)
++            // zr: BATTLE_PET_WIN sends 1 per win in miscValue1 and "is PvP" in miscValue2; asset 1 = PvP only
++            // (Pet Brawler 6595-6599, No Time To Heal 6620), asset 0 = PvE only
++            if (miscValue2 != reqValue)
+                 return false;
+             break;
+         case CRITERIA_ADDITIONAL_CONDITION_BATTLE_PET_SPECIES: // 91
 diff --git a/src/server/game/BattlePets/PetBattle.cpp b/src/server/game/BattlePets/PetBattle.cpp
 index 65da52c..061afdb 100644
 --- a/src/server/game/BattlePets/PetBattle.cpp
