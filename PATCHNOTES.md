@@ -29,18 +29,31 @@ Open on branch `claude/project-thread-0g0n74` (not merged yet).
     quality and abilities.
   - `breadsMask` 8 (breed 3), like the existing Legion world quest tamer rows.
   - The pets' own creatures (Chum 141094 etc.) were already in `creature_template` with models.
-- **Not done yet:** Captain Hermes, Fizzie Sparkwhistle, Kwint, Korval Darkbeard, Crysa, Environeer
-  Bert, Algalon and the Shipwrecked Captive have no spawn at all, so they can't be fought until
-  spawns are added (coming in a follow-up on this branch).
-- **Status:** SQL loaded twice on a copy of the dump tables (MySQL 8.4) without errors; not tested
-  in game. Needs `battle-pet-trainers.patch` (PR #31) to start the fights.
-
+- **Spawns:** Captain Hermes, Fizzie Sparkwhistle, Kwint, Korval Darkbeard, Crysa, Environeer Bert
+  and Algalon had no spawn at all. New `sql/fixes/world/2026_11_02_61_legion_bfa_tamer_spawns.sql`
+  adds one spawn each (guids 1157000001-1157000007). X/Y come from each tamer's world quest map
+  marker (`quest_poi_points`), Z and facing from Four's `.gps` on the spot:
+  - Captain Hermes 139489: map 1643, Drustvar, Crimson Coast (-1276.401, 4082.493, 1.894)
+  - Fizzie Sparkwhistle 140813: map 1643, Drustvar, Arom's Crossing (-212.0, 3115.0, 313.669)
+  - Kwint 141077: map 1643, Tiragarde Sound, underwater (403.344, -1405.641, -12.275); he can swim
+    (InhabitType 3), so he stays mid-water
+  - Korval Darkbeard 141814: map 1642, Nazmir, The Dreadmire (2164.170, 1178.665, 1.072)
+  - Crysa 115286: map 1, Northern Barrens (439.567, -3452.627, 92.388)
+  - Environeer Bert 124617: map 0, Dun Morogh, Gnomeregan entrance (-5146.244, 826.715, 287.386)
+  - Algalon the Observer 115307: map 571, Storm Peaks, Ulduar (9030.281, -1112.029, 1165.275)
+- **Gossip:** Captain Hermes, Kwint, Crysa, Environeer Bert and Algalon had `creature_template.npcflag`
+  0, so they couldn't be right-clicked and "Let's do battle!" never showed. Same file sets
+  `npcflag` 0 -> 1 (gossip) for 139489, 141077, 115286, 124617, 115307.
+- **Not done:** the Shipwrecked Captive 98489 has a team but no spawn (no known position).
 #### To pick up the tamer teams
-SQL only, then restart `worldserver`.
+SQL only (run the two mysql blocks one at a time), then restart `worldserver`.
 ```
 cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-0g0n74
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_02_60_legion_bfa_tamer_teams.sql | mysql -u root -p bfa_world
+```
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_02_61_legion_bfa_tamer_spawns.sql | mysql -u root -p bfa_world
 ```
 
 ## 2026-11-01 (pet battles, slots)
