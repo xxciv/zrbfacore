@@ -57,8 +57,7 @@ patches go on top of `battle-pet-level-achievements.patch`, achievements first.
   - No SQL. 86 tamers have both a team and a type 11 quest. 27 newer tamers (Legion/BFA) have quests
     but no team rows and still cannot be battled.
 - **Status:** confirmed in game by Four on 2026-11-02 (Julia Stevens battle and quest credit). The
-  hidden tamer during the fight works (confirmed 2026-11-02); showing her again afterwards is fixed
-  but not tested yet.
+  tamer is hidden during the fight and back right after it (confirmed 2026-11-02).
 
 ### Pet battles: win, capture and journal achievements never progress
 
