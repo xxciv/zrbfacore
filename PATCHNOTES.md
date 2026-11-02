@@ -20,7 +20,7 @@ patches go on top of `battle-pet-level-achievements.patch`, achievements first.
   matched by the `battlepet_info` creature of each species in the tamer's
   `battlepet_npc_team_member` rows. Only spawns that are still static are changed; undo line in the
   file header.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-02 (Fangs and Slither spread out at Julia).
 
 ### Pet battles: tamers (Julia Stevens and others) cannot be battled
 
