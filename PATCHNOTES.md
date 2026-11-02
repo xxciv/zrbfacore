@@ -3,6 +3,46 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-02 (pet battles, tamer teams)
+
+### Pet battles: Legion and BFA pet tamers have no team
+
+Open on branch `claude/project-thread-0g0n74` (not merged yet).
+
+- **Found:** 23 Legion and BFA tamers that a quest asks you to beat in a pet battle had no rows in
+  `battlepet_npc_team_member`, so "Let's do battle!" (from `tools/bfa/battle-pet-trainers.patch`,
+  PR #31) had no team to put against you.
+- **Changed:** new `sql/fixes/world/2026_11_02_60_legion_bfa_tamer_teams.sql` adds 69 rows (3 pets
+  per tamer) for these tamers:
+  - BFA, Kul Tiras: Captain Hermes 139489, Eddie Fixit 140315, Dilbert McClint 140461, Fizzie
+    Sparkwhistle 140813, Michael Skarn 140880, Ellie Vern 141002, Leana Darkwind 141046, Kwint 141077,
+    Delia Hanako 141292, Burly 141479.
+  - BFA, Zandalar: Lozu 141529, Grady Prett 141799, Korval Darkbeard 141814, Keeyo 141879, Sizzik
+    141945, Kusa 142054, Karaga 142096, Talia Sparkbrow 142114, Zujai 142234.
+  - Legion: Crysa 115286, Environeer Bert 124617, Shipwrecked Captive 98489, Algalon the Observer 115307.
+  - Species, level (all 25) and quality come from the Rematch addon's target data, which was captured
+    from the real fights in game. Quality: BFA tamers rare (3), Crysa, Bert and the Shipwrecked Captive
+    epic (4), Algalon legendary (5).
+  - Abilities are each species' own abilities from `BattlePetSpeciesXAbility` (these tamer species
+    have exactly 3, or 2 for Eddie Fixit's Rocket Chicken, Sizzik's Clubber and Bert's Corporal
+    Hammer and M-37; the 3rd ability stays 0 there). Every row's `Comment` names the tamer, pet,
+    quality and abilities.
+  - `breadsMask` 8 (breed 3), like the existing Legion world quest tamer rows.
+  - The pets' own creatures (Chum 141094 etc.) were already in `creature_template` with models.
+- **Not done yet:** Captain Hermes, Fizzie Sparkwhistle, Kwint, Korval Darkbeard, Crysa, Environeer
+  Bert, Algalon and the Shipwrecked Captive have no spawn at all, so they can't be fought until
+  spawns are added (coming in a follow-up on this branch).
+- **Status:** SQL loaded twice on a copy of the dump tables (MySQL 8.4) without errors; not tested
+  in game. Needs `battle-pet-trainers.patch` (PR #31) to start the fights.
+
+#### To pick up the tamer teams
+SQL only, then restart `worldserver`.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-0g0n74
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_02_60_legion_bfa_tamer_teams.sql | mysql -u root -p bfa_world
+```
+
 ## 2026-11-01 (pet battles, slots)
 
 ### Pet battles: second and third battle slots never unlock
