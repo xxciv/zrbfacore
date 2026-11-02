@@ -8,6 +8,20 @@ to do to pick it up (rebuild, restart, run SQL).
 Both entries below are open on branch `claude/project-thread-cwgt5u` (not merged yet). The two
 patches go on top of `battle-pet-level-achievements.patch`, achievements first.
 
+### Pet tamers: display pets stacked on top of each other
+
+- **Found** (reported by Four): Julia Stevens' pets Fangs (64334) and Slither (64335) stand on the
+  exact same spot (-9874.57, 98.49, Goldshire).
+- **Cause:** most pet tamers have their team spawned next to them as static creatures
+  (MovementType 0). For 40 tamers, two or three of those pets share one position (104 spawns).
+- **Changed:** new `sql/fixes/world/2026_11_02_51_pet_tamer_display_pets_wander.sql`: the 149 static
+  team pet spawns within 30 yards of the 53 pet tamers that have a "win a pet battle against
+  <tamer>" quest now wander within 2 yards of their spawn (MovementType 1, spawndist 2). Pets were
+  matched by the `battlepet_info` creature of each species in the tamer's
+  `battlepet_npc_team_member` rows. Only spawns that are still static are changed; undo line in the
+  file header.
+- **Status:** not tested in game yet.
+
 ### Pet battles: tamers (Julia Stevens and others) cannot be battled
 
 - **Found** (reported by Four): Julia Stevens (64330, Goldshire) offers nothing to start a battle.
