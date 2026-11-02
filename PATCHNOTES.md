@@ -7,7 +7,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### Pet battles: Legion and BFA pet tamers have no team
 
-Open on branch `claude/project-thread-0g0n74` (not merged yet).
+Merged to `main` with PR #32 on 2026-11-02. The guide's "Pet battles" section now lists both SQL files.
 
 - **Found:** 23 Legion and BFA tamers that a quest asks you to beat in a pet battle had no rows in
   `battlepet_npc_team_member`, so "Let's do battle!" (from `tools/bfa/battle-pet-trainers.patch`,
