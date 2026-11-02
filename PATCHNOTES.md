@@ -61,6 +61,44 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_02_60_legion_bfa_ta
 ```
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_02_61_legion_bfa_tamer_spawns.sql | mysql -u root -p bfa_world
 ```
+## 2026-11-02 (core)
+
+### Startup banner: zrbfacore, no foreign Discord or email
+
+Merged to `main` with PR #33 on 2026-11-02.
+
+- **Asked** (Four): the console header should say zrbfacore in lower case ASCII art, the line
+  `https://discord.gg/hTtSYh7WbQ | bfacore.reforged@gmail.com` should become "Based on HavenCore", and
+  no other Discord or email contacts that aren't ours should show.
+- **Where it lives:** the banner is `Trinity::Banner::Show` in `src/common/Banner.cpp`, which both
+  `worldserver` and `bnetserver` print at startup. The worldserver also logs
+  `BfaCore Reforged | bfacore.reforged@gmail.com` just before "ready..." (`src/server/worldserver/Main.cpp`,
+  `main`). Those are the only Discord or email contacts the servers print. The databases (world dump,
+  auth dump) have none.
+- **Changed:** new `tools/bfa/core-branding.patch`:
+  - `src/common/Banner.cpp`: the "BFA-HavenCore" art is replaced by "zrbfacore" in the same figlet font
+    (Big Money-ne). The Discord/email line is replaced by `Based on HavenCore`. The line
+    `World of Warcraft Emulator | Battle for Azeroth 8.3.7` stays.
+  - `src/server/worldserver/Main.cpp`: `BfaCore Reforged | bfacore.reforged@gmail.com` becomes
+    `zrbfacore | Based on HavenCore`.
+  - Not changed: the first banner line (`BfaCore rev. <hash> ...`, from `src/common/GitRevision.cpp`),
+    the default `Motd` in `worldserver.conf.dist`, and the Discord links in upstream's `README.md` and
+    `pull_request_template.md` (never shown by the servers). Author credits in source comments
+    (for example `WorldSocketMgr.h`) stay as they are.
+- **Status:** confirmed by Four on 2026-11-02: the new banner shows on the server and works.
+
+#### To pick up the new banner
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/core-branding.patch && echo "branding patch applied"
+grep -c "Based on HavenCore" src/common/Banner.cpp src/server/worldserver/Main.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1 for each file. Then restart `worldserver` (and `bnetserver`, which prints the same
+banner).
 
 ## 2026-11-01 (pet battles, slots)
 
