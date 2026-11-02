@@ -35,8 +35,9 @@ Open on branch `claude/project-thread-0g0n74` (not merged yet).
   marker (`quest_poi_points`), Z and facing from Four's `.gps` on the spot:
   - Captain Hermes 139489: map 1643, Drustvar, Crimson Coast (-1276.401, 4082.493, 1.894)
   - Fizzie Sparkwhistle 140813: map 1643, Drustvar, Arom's Crossing (-212.0, 3115.0, 313.669)
-  - Kwint 141077: map 1643, Tiragarde Sound, underwater (403.344, -1405.641, -12.275); he can swim
-    (InhabitType 3), so he stays mid-water
+  - Kwint 141077: map 1643, Tiragarde Sound, on the sea floor (404.046, -1415.275, -53.367). The first
+    mid-water spot (z -12.275) showed the gossip cursor but right-click did nothing; Four moved him
+    down in game and the battle gossip appeared
   - Korval Darkbeard 141814: map 1642, Nazmir, The Dreadmire (2164.170, 1178.665, 1.072)
   - Crysa 115286: map 1, Northern Barrens (439.567, -3452.627, 92.388)
   - Environeer Bert 124617: map 0, Dun Morogh, Gnomeregan entrance (-5146.244, 826.715, 287.386)
