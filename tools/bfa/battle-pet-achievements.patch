@@ -1,3 +1,68 @@
+diff --git a/src/server/game/Achievements/AchievementMgr.cpp b/src/server/game/Achievements/AchievementMgr.cpp
+index e687a47..41ccb74 100644
+--- a/src/server/game/Achievements/AchievementMgr.cpp
++++ b/src/server/game/Achievements/AchievementMgr.cpp
+@@ -406,6 +406,7 @@ void PlayerAchievementMgr::ResetCriteriaId(CriteriaTypes type, uint32 id)
+ void PlayerAchievementMgr::SendAllData(Player const* /*receiver*/) const
+ {
+     VisibleAchievementCheck filterInvisible;
++    WorldPackets::Achievement::AllAccountCriteria allAccountCriteria;
+     WorldPackets::Achievement::AllAchievementData achievementData;
+     achievementData.Data.Earned.reserve(_completedAchievements.size());
+     achievementData.Data.Progress.reserve(_criteriaProgress.size());
+@@ -438,8 +439,19 @@ void PlayerAchievementMgr::SendAllData(Player const* /*receiver*/) const
+         progress.TimeFromStart = 0;
+         progress.TimeFromCreate = 0;
+         achievementData.Data.Progress.push_back(progress);
++
++        // zr: account-wide criteria also go in the account packet, or the client shows them at 0
++        Criteria const* criteria = sCriteriaMgr->GetCriteria(itr->first);
++        if (criteria && criteria->FlagsCu & CRITERIA_FLAG_CU_ACCOUNT)
++        {
++            progress.Player = _owner->GetSession()->GetBattlenetAccountGUID();
++            allAccountCriteria.Progress.push_back(progress);
++        }
+     }
+ 
++    if (!allAccountCriteria.Progress.empty())
++        SendPacket(allAccountCriteria.Write());
++
+     SendPacket(achievementData.Write());
+ }
+ 
+@@ -614,10 +626,28 @@ bool PlayerAchievementMgr::ModifierTreeSatisfied(uint32 modifierTreeId) const
+ 
+ void PlayerAchievementMgr::SendCriteriaUpdate(Criteria const* criteria, CriteriaProgress const* progress, uint32 timeElapsed, bool timedCompleted) const
+ {
+-    OpcodeServer opcode = criteria->Entry->Type == CRITERIA_TYPE_COLLECT_BATTLEPET && (criteria->FlagsCu & CRITERIA_FLAG_CU_ACCOUNT)
+-        ? SMSG_ACCOUNT_CRITERIA_UPDATE
+-        : SMSG_CRITERIA_UPDATE;
+-    WorldPackets::Achievement::CriteriaUpdate criteriaUpdate(opcode);
++    // zr: account-wide achievements need the account packet (as TrinityCore 8.3.7); the core sent it only
++    // for "collect battle pets", and with the character packet's layout
++    if (criteria->FlagsCu & CRITERIA_FLAG_CU_ACCOUNT)
++    {
++        WorldPackets::Achievement::AccountCriteriaUpdate criteriaUpdate;
++
++        criteriaUpdate.Progress.Id = criteria->ID;
++        criteriaUpdate.Progress.Quantity = progress->Counter;
++        criteriaUpdate.Progress.Player = _owner->GetSession()->GetBattlenetAccountGUID();
++        criteriaUpdate.Progress.Flags = 0;
++        if (criteria->Entry->StartTimer)
++            criteriaUpdate.Progress.Flags = timedCompleted ? 1 : 0; // 1 is for keeping the counter at 0 in client
++
++        criteriaUpdate.Progress.Date = progress->Date;
++        criteriaUpdate.Progress.TimeFromStart = timeElapsed;
++        criteriaUpdate.Progress.TimeFromCreate = 0;
++
++        SendPacket(criteriaUpdate.Write());
++        return;
++    }
++
++    WorldPackets::Achievement::CriteriaUpdate criteriaUpdate;
+ 
+     criteriaUpdate.CriteriaID = criteria->ID;
+     criteriaUpdate.Quantity = progress->Counter;
 diff --git a/src/server/game/Achievements/CriteriaHandler.cpp b/src/server/game/Achievements/CriteriaHandler.cpp
 index ffa46a9..1feeb29 100644
 --- a/src/server/game/Achievements/CriteriaHandler.cpp
@@ -105,3 +170,70 @@ index 65da52c..061afdb 100644
                  }
  
                  /// Quest progress for 12 x Got One!
+diff --git a/src/server/game/Server/Packets/AchievementPackets.cpp b/src/server/game/Server/Packets/AchievementPackets.cpp
+index 488c42a..a427436 100644
+--- a/src/server/game/Server/Packets/AchievementPackets.cpp
++++ b/src/server/game/Server/Packets/AchievementPackets.cpp
+@@ -83,6 +83,29 @@ WorldPacket const* WorldPackets::Achievement::CriteriaUpdate::Write()
+     _worldPacket.AppendPackedTime(CurrentTime);
+     _worldPacket << uint32(ElapsedTime);
+     _worldPacket << uint32(CreationTime);
++    // zr: the 8.3.7 client reads this bit; without it the packet is short and the client drops it,
++    // so achievement progress never updated until relog
++    _worldPacket.WriteBit(RafAcceptanceID.has_value());
++    _worldPacket.FlushBits();
++
++    if (RafAcceptanceID)
++        _worldPacket << uint64(*RafAcceptanceID);
++
++    return &_worldPacket;
++}
++
++WorldPacket const* WorldPackets::Achievement::AccountCriteriaUpdate::Write()
++{
++    _worldPacket << Progress;
++
++    return &_worldPacket;
++}
++
++WorldPacket const* WorldPackets::Achievement::AllAccountCriteria::Write()
++{
++    _worldPacket << uint32(Progress.size());
++    for (WorldPackets::Achievement::CriteriaProgress const& progress : Progress)
++        _worldPacket << progress;
+ 
+     return &_worldPacket;
+ }
+diff --git a/src/server/game/Server/Packets/AchievementPackets.h b/src/server/game/Server/Packets/AchievementPackets.h
+index 807eabc..97f9360 100644
+--- a/src/server/game/Server/Packets/AchievementPackets.h
++++ b/src/server/game/Server/Packets/AchievementPackets.h
+@@ -89,6 +89,28 @@ namespace WorldPackets
+             time_t CurrentTime = time_t(0);
+             uint32 ElapsedTime = 0;
+             uint32 CreationTime = 0;
++            Optional<uint64> RafAcceptanceID; // zr: part of the 8.3.7 packet (TrinityCore 8.3.7)
++        };
++
++        // zr: progress of account-wide achievements (pet battles, collections) goes in these two (TrinityCore 8.3.7)
++        class AccountCriteriaUpdate final : public ServerPacket
++        {
++        public:
++            AccountCriteriaUpdate() : ServerPacket(SMSG_ACCOUNT_CRITERIA_UPDATE) { }
++
++            WorldPacket const* Write() override;
++
++            CriteriaProgress Progress;
++        };
++
++        class AllAccountCriteria final : public ServerPacket
++        {
++        public:
++            AllAccountCriteria() : ServerPacket(SMSG_ALL_ACCOUNT_CRITERIA) { }
++
++            WorldPacket const* Write() override;
++
++            std::vector<CriteriaProgress> Progress;
+         };
+ 
+         class CriteriaDeleted final : public ServerPacket

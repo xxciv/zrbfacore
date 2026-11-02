@@ -96,6 +96,15 @@ patches go on top of `battle-pet-level-achievements.patch`, achievements first.
     `sql/fixes/characters/2026_11_02_00_remove_pve_pvp_pet_achievement.sql` removes 6620 and the
     progress on criteria 21525 and 22225 (worldserver stopped). Cat Fight (6594, criteria 19724) has
     no modifier and counts every win.
+  - Fix after Four's test (2026-11-02): wins counted on the server (Cat Fight criteria 19724 at 7 in
+    `character_achievement_progress`) but the achievement window never showed progress. Two packet
+    bugs, both fixed as in TrinityCore 8.3.7: `SMSG_CRITERIA_UPDATE` (`AchievementPackets.cpp`,
+    `CriteriaUpdate::Write`) lacked the final RafAcceptanceID bit, so the packet was a byte short; and
+    account-wide achievements (all pet battle ones) need `SMSG_ACCOUNT_CRITERIA_UPDATE` with the
+    criteria-progress layout, which the core sent only for "collect battle pets" and with the
+    character layout. `PlayerAchievementMgr::SendCriteriaUpdate` now sends the account packet for every
+    account-wide criteria, and `SendAllData` also sends `SMSG_ALL_ACCOUNT_CRITERIA` at login (new
+    packet classes `AccountCriteriaUpdate` and `AllAccountCriteria`).
 - **Note:** wins and captures from before the patch were never recorded, so those counters start at
   0. Journal criteria (96) are rechecked at every login.
 - **Status:** compiled and checked against the full patch chain, not tested in game yet.
