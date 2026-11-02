@@ -68,11 +68,11 @@ Merged to `main` with PR #31 on 2026-11-02. The two patches go on top of
     not once per battle. With 2 or 3 pets slotted, a captured pet was added to the journal 2 or 3
     times, and "Learning the Ropes" (credit 65355) counted 2 or 3 times. They now run once, and the
     "Learning the Ropes" credit needs a win.
-  - No SQL. 86 tamers have both a team and a type 11 quest. 27 newer tamers (Legion/BFA) have quests
-    but no team rows and still cannot be battled.
+  - No SQL. 86 tamers have both a team and a type 11 quest. The 23 Legion/BFA tamers got their
+    teams with PR #32 (entry below).
 - **Status:** confirmed in game by Four on 2026-11-02 (Julia Stevens battle and quest credit; a
-  capture with several pets slotted adds 1 copy). The
-  tamer is hidden during the fight and back right after it (confirmed 2026-11-02).
+  capture with several pets slotted adds 1 copy; the tamer is hidden during the fight and back right
+  after it).
 
 ### Pet battles: win, capture and journal achievements never progress
 
@@ -123,6 +123,103 @@ grep -c "GOSSIP_OPTION_PET_BATTLE" src/server/game/Entities/Player/Player.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
 The grep prints 2. Then restart `worldserver`.
+## 2026-11-02 (pet battles, tamer teams)
+
+### Pet battles: Legion and BFA pet tamers have no team
+
+Merged to `main` with PR #32 on 2026-11-02. The guide's "Pet battles" section now lists both SQL files.
+
+- **Found:** 23 Legion and BFA tamers that a quest asks you to beat in a pet battle had no rows in
+  `battlepet_npc_team_member`, so "Let's do battle!" (from `tools/bfa/battle-pet-trainers.patch`,
+  PR #31) had no team to put against you.
+- **Changed:** new `sql/fixes/world/2026_11_02_60_legion_bfa_tamer_teams.sql` adds 69 rows (3 pets
+  per tamer) for these tamers:
+  - BFA, Kul Tiras: Captain Hermes 139489, Eddie Fixit 140315, Dilbert McClint 140461, Fizzie
+    Sparkwhistle 140813, Michael Skarn 140880, Ellie Vern 141002, Leana Darkwind 141046, Kwint 141077,
+    Delia Hanako 141292, Burly 141479.
+  - BFA, Zandalar: Lozu 141529, Grady Prett 141799, Korval Darkbeard 141814, Keeyo 141879, Sizzik
+    141945, Kusa 142054, Karaga 142096, Talia Sparkbrow 142114, Zujai 142234.
+  - Legion: Crysa 115286, Environeer Bert 124617, Shipwrecked Captive 98489, Algalon the Observer 115307.
+  - Species, level (all 25) and quality come from the Rematch addon's target data, which was captured
+    from the real fights in game. Quality: BFA tamers rare (3), Crysa, Bert and the Shipwrecked Captive
+    epic (4), Algalon legendary (5).
+  - Abilities are each species' own abilities from `BattlePetSpeciesXAbility` (these tamer species
+    have exactly 3, or 2 for Eddie Fixit's Rocket Chicken, Sizzik's Clubber and Bert's Corporal
+    Hammer and M-37; the 3rd ability stays 0 there). Every row's `Comment` names the tamer, pet,
+    quality and abilities.
+  - `breadsMask` 8 (breed 3), like the existing Legion world quest tamer rows.
+  - The pets' own creatures (Chum 141094 etc.) were already in `creature_template` with models.
+- **Spawns:** Captain Hermes, Fizzie Sparkwhistle, Kwint, Korval Darkbeard, Crysa, Environeer Bert
+  and Algalon had no spawn at all. New `sql/fixes/world/2026_11_02_61_legion_bfa_tamer_spawns.sql`
+  adds one spawn each (guids 1157000001-1157000007). X/Y come from each tamer's world quest map
+  marker (`quest_poi_points`), Z and facing from Four's `.gps` on the spot:
+  - Captain Hermes 139489: map 1643, Drustvar, Crimson Coast (-1276.401, 4082.493, 1.894)
+  - Fizzie Sparkwhistle 140813: map 1643, Drustvar, Arom's Crossing (-212.0, 3115.0, 313.669)
+  - Kwint 141077: map 1643, Tiragarde Sound, on the sea floor (404.046, -1415.275, -53.367). The first
+    mid-water spot (z -12.275) showed the gossip cursor but right-click did nothing; Four moved him
+    down in game and the battle gossip appeared
+  - Korval Darkbeard 141814: map 1642, Nazmir, The Dreadmire (2164.170, 1178.665, 1.072)
+  - Crysa 115286: map 1, Northern Barrens (439.567, -3452.627, 92.388)
+  - Environeer Bert 124617: map 0, Dun Morogh, Gnomeregan entrance (-5146.244, 826.715, 287.386)
+  - Algalon the Observer 115307: map 571, Storm Peaks, Ulduar (9030.281, -1112.029, 1165.275)
+- **Gossip:** Captain Hermes, Kwint, Crysa, Environeer Bert and Algalon had `creature_template.npcflag`
+  0, so they couldn't be right-clicked and "Let's do battle!" never showed. Same file sets
+  `npcflag` 0 -> 1 (gossip) for 139489, 141077, 115286, 124617, 115307.
+- **Not done:** the Shipwrecked Captive 98489 has a team but no spawn (no known position).
+- **Status:** Kwint confirmed in game by Four on 2026-11-02 (quest 52430 added with `.quest add`,
+  "Let's do battle!" shown, battle started with his team). The other tamers are not tested in game
+  yet; both SQL files loaded twice on a copy of the dump tables (MySQL 8.4) without errors. Needs
+  `battle-pet-trainers.patch` (PR #31) to start the fights.
+
+#### To pick up the tamer teams
+SQL only (run the two mysql blocks one at a time), then restart `worldserver`.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-0g0n74
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_02_60_legion_bfa_tamer_teams.sql | mysql -u root -p bfa_world
+```
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_02_61_legion_bfa_tamer_spawns.sql | mysql -u root -p bfa_world
+```
+
+## 2026-11-02 (core)
+
+### Startup banner: zrbfacore, no foreign Discord or email
+
+Merged to `main` with PR #33 on 2026-11-02.
+
+- **Asked** (Four): the console header should say zrbfacore in lower case ASCII art, the line
+  `https://discord.gg/hTtSYh7WbQ | bfacore.reforged@gmail.com` should become "Based on HavenCore", and
+  no other Discord or email contacts that aren't ours should show.
+- **Where it lives:** the banner is `Trinity::Banner::Show` in `src/common/Banner.cpp`, which both
+  `worldserver` and `bnetserver` print at startup. The worldserver also logs
+  `BfaCore Reforged | bfacore.reforged@gmail.com` just before "ready..." (`src/server/worldserver/Main.cpp`,
+  `main`). Those are the only Discord or email contacts the servers print. The databases (world dump,
+  auth dump) have none.
+- **Changed:** new `tools/bfa/core-branding.patch`:
+  - `src/common/Banner.cpp`: the "BFA-HavenCore" art is replaced by "zrbfacore" in the same figlet font
+    (Big Money-ne). The Discord/email line is replaced by `Based on HavenCore`. The line
+    `World of Warcraft Emulator | Battle for Azeroth 8.3.7` stays.
+  - `src/server/worldserver/Main.cpp`: `BfaCore Reforged | bfacore.reforged@gmail.com` becomes
+    `zrbfacore | Based on HavenCore`.
+  - Not changed: the first banner line (`BfaCore rev. <hash> ...`, from `src/common/GitRevision.cpp`),
+    the default `Motd` in `worldserver.conf.dist`, and the Discord links in upstream's `README.md` and
+    `pull_request_template.md` (never shown by the servers). Author credits in source comments
+    (for example `WorldSocketMgr.h`) stay as they are.
+- **Status:** confirmed by Four on 2026-11-02: the new banner shows on the server and works.
+
+#### To pick up the new banner
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/core-branding.patch && echo "branding patch applied"
+grep -c "Based on HavenCore" src/common/Banner.cpp src/server/worldserver/Main.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1 for each file. Then restart `worldserver` (and `bnetserver`, which prints the same
+banner).
 
 ## 2026-11-01 (pet battles, slots)
 

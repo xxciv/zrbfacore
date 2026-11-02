@@ -1,0 +1,46 @@
+diff --git a/src/common/Banner.cpp b/src/common/Banner.cpp
+index c8ed4e9..b10031e 100644
+--- a/src/common/Banner.cpp
++++ b/src/common/Banner.cpp
+@@ -23,17 +23,17 @@ void Trinity::Banner::Show(char const* applicationName, void(*log)(char const* t
+ {
+     log(Trinity::StringFormat("%s (%s)", GitRevision::GetFullVersion(), applicationName).c_str() );
+     log("<Ctrl-C> to stop.\n                                                                            ");
+-    log(" /$$$$$$$  /$$$$$$$$ /$$$$$$          /$$   /$$                                          /$$$$$$                               ");
+-    log("| $$__  $$| $$_____//$$__  $$        | $$  | $$                                         /$$__  $$                              ");
+-    log("| $$  \\ $$| $$     | $$  \\ $$        | $$  | $$  /$$$$$$  /$$    /$$ /$$$$$$  /$$$$$$$ | $$  \\__/  /$$$$$$   /$$$$$$   /$$$$$$ ");
+-    log("| $$$$$$$ | $$$$$  | $$$$$$$$ /$$$$$$| $$$$$$$$ |____  $$|  $$  /$$//$$__  $$| $$__  $$| $$       /$$__  $$ /$$__  $$ /$$__  $$");
+-    log("| $$__  $$| $$__/  | $$__  $$|______/| $$__  $$  /$$$$$$$ \\  $$/$$/| $$$$$$$$| $$  \\ $$| $$      | $$  \\ $$| $$  \\__/| $$$$$$$$");
+-    log("| $$  \\ $$| $$     | $$  | $$        | $$  | $$ /$$__  $$  \\  $$$/ | $$_____/| $$  | $$| $$    $$| $$  | $$| $$      | $$_____/");
+-    log("| $$$$$$$/| $$     | $$  | $$        | $$  | $$|  $$$$$$$   \\  $/  |  $$$$$$$| $$  | $$|  $$$$$$/|  $$$$$$/| $$      |  $$$$$$$");
+-    log("|_______/ |__/     |__/  |__/        |__/  |__/ \\_______/    \\_/    \\_______/|__/  |__/ \\______/  \\______/ |__/       \\_______/");
+-    log("                                                                                                                               ");
+-    log("      World of Warcraft Emulator | Battle for Azeroth 8.3.7                            ");
+-    log("   https://discord.gg/hTtSYh7WbQ | bfacore.reforged@gmail.com \n                        ");
++    log("                     /$$        /$$$$$$");
++    log("                    | $$       /$$__  $$");
++    log(" /$$$$$$$$  /$$$$$$ | $$$$$$$ | $$  \\__//$$$$$$   /$$$$$$$  /$$$$$$   /$$$$$$   /$$$$$$");
++    log("|____ /$$/ /$$__  $$| $$__  $$| $$$$   |____  $$ /$$_____/ /$$__  $$ /$$__  $$ /$$__  $$");
++    log("   /$$$$/ | $$  \\__/| $$  \\ $$| $$_/    /$$$$$$$| $$      | $$  \\ $$| $$  \\__/| $$$$$$$$");
++    log("  /$$__/  | $$      | $$  | $$| $$     /$$__  $$| $$      | $$  | $$| $$      | $$_____/");
++    log(" /$$$$$$$$| $$      | $$$$$$$/| $$    |  $$$$$$$|  $$$$$$$|  $$$$$$/| $$      |  $$$$$$$");
++    log("|________/|__/      |_______/ |__/     \\_______/ \\_______/ \\______/ |__/       \\_______/");
++    log("");
++    log("      World of Warcraft Emulator | Battle for Azeroth 8.3.7");
++    log("      Based on HavenCore\n");
+ 
+     if (logExtraInfo)
+         logExtraInfo();
+diff --git a/src/server/worldserver/Main.cpp b/src/server/worldserver/Main.cpp
+index 8242f13..11a9aa5 100644
+--- a/src/server/worldserver/Main.cpp
++++ b/src/server/worldserver/Main.cpp
+@@ -347,7 +347,7 @@ extern int main(int argc, char** argv)
+         TC_LOG_INFO("server.worldserver", "Starting up anti-freeze thread (%u seconds max stuck time)...", coreStuckTime);
+     }
+ 
+-    TC_LOG_INFO("server.worldserver", "BfaCore Reforged | bfacore.reforged@gmail.com");
++    TC_LOG_INFO("server.worldserver", "zrbfacore | Based on HavenCore");
+     TC_LOG_INFO("server.worldserver", "%s (worldserver-daemon) ready...", GitRevision::GetFullVersion());
+     
+     sScriptMgr->OnStartup();

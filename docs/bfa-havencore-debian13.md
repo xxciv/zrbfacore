@@ -113,6 +113,7 @@ git apply ../tools-repo/tools/bfa/battle-pet-slots.patch
 git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
 git apply ../tools-repo/tools/bfa/battle-pet-player-flags.patch
 git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
+git apply ../tools-repo/tools/bfa/core-branding.patch
 git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
 git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 ```
@@ -585,6 +586,25 @@ Pet tamers (Julia Stevens, Marcus Jensen and the other trainers with a team in
 `battlepet_npc_team_member`) offer **Let's do battle!** in their dialog while you have their "defeat
 <tamer> in a pet battle" quest. Winning completes that objective. Without the quest the option does
 not appear, as on retail.
+#### Legion and BFA pet tamers
+
+Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest
+(`battle-pet-trainers.patch`). The world DB had no team for the 23 Legion and BFA tamers and no spawn
+for 7 of them. Run these once (one line at a time), then restart `worldserver`:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_02_60_legion_bfa_tamer_teams.sql
+```
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_02_61_legion_bfa_tamer_spawns.sql
+```
+
+The first adds 69 team pets (level 25; rare for BFA, epic or legendary for the Legion ones). The
+second spawns Captain Hermes, Fizzie Sparkwhistle, Kwint, Korval Darkbeard, Crysa, Environeer Bert and
+Algalon, and gives the five that had none the gossip flag. The Shipwrecked Captive (98489) still has
+no spawn. Their world quests follow the normal rotation; to test one now, use
+`.quest add <quest id>` (Kwint is 52430), then right-click the tamer. If the client shows the talk
+cursor but nothing opens, you are probably more than about 5 yards away (easy underwater).
 
 ## 10. Updating
 
@@ -619,6 +639,7 @@ git apply ../tools-repo/tools/bfa/battle-pet-slots.patch
 git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
 git apply ../tools-repo/tools/bfa/battle-pet-player-flags.patch
 git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
+git apply ../tools-repo/tools/bfa/core-branding.patch
 git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
 git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
