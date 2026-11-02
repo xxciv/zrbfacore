@@ -1,0 +1,520 @@
+diff --git a/src/server/game/BattlePets/PetBattle.cpp b/src/server/game/BattlePets/PetBattle.cpp
+index 061afdb..11429f5 100644
+--- a/src/server/game/BattlePets/PetBattle.cpp
++++ b/src/server/game/BattlePets/PetBattle.cpp
+@@ -913,58 +913,66 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
+             }
+ 
+             currentPet->UpdateOriginalInstance(player);
++        }
+ 
+-            if (winnerTeamID == currentTeamID)
+-            {
+-                auto speciesInfo = sDB2Manager.GetSpeciesByCreatureID(InitialWildPetGUID.GetEntry());
+-                player->UpdateCriteria(CRITERIA_TYPE_BATTLE_PET_WIN, 1, BattleType != PET_BATTLE_TYPE_PVE, speciesInfo ? speciesInfo->ID : 0);
+-                /*if (speciesInfo)
+-                    player->QuestObjectiveSatisfy(speciesInfo->ID, 1, QUEST_OBJECTIVE_DEFEATBATTLEPET, InitialWildPetGUID);*/
+-            }
++        // zr: once per battle, not once per team pet (a 3-pet team counted 3 wins and added a captured pet 3 times)
++        if (winnerTeamID == currentTeamID)
++        {
++            auto speciesInfo = sDB2Manager.GetSpeciesByCreatureID(InitialWildPetGUID.GetEntry());
++            player->UpdateCriteria(CRITERIA_TYPE_BATTLE_PET_WIN, 1, BattleType != PET_BATTLE_TYPE_PVE, speciesInfo ? speciesInfo->ID : 0);
++            /*if (speciesInfo)
++                player->QuestObjectiveSatisfy(speciesInfo->ID, 1, QUEST_OBJECTIVE_DEFEATBATTLEPET, InitialWildPetGUID);*/
++        }
+ 
+-            if (BattleType == PET_BATTLE_TYPE_PVE && PveBattleType == PVE_BATTLE_PET_WILD)
+-            {
+-                /// Quest progress for 12 x Learning the Ropes
+-                player->KilledMonsterCredit(65355);
+-            }
++        if (BattleType == PET_BATTLE_TYPE_PVE && PveBattleType == PVE_BATTLE_PET_WILD && currentTeamID == winnerTeamID)
++        {
++            /// Quest progress for 12 x Learning the Ropes
++            player->KilledMonsterCredit(65355);
++        }
+ 
+-            if (BattleType == PET_BATTLE_TYPE_PVE && currentTeamID == winnerTeamID && Teams[currentTeamID]->CapturedPet != PET_BATTLE_NULL_ID)
++        if (BattleType == PET_BATTLE_TYPE_PVE && currentTeamID == winnerTeamID && Teams[currentTeamID]->CapturedPet != PET_BATTLE_NULL_ID)
++        {
++            if (Pets[Teams[currentTeamID]->CapturedPet]->Level >= 16 && Pets[Teams[currentTeamID]->CapturedPet]->Level <= 20)
++                Pets[Teams[currentTeamID]->CapturedPet]->Level -= 1;
++            else if (Pets[Teams[currentTeamID]->CapturedPet]->Level >= 21 && Pets[Teams[currentTeamID]->CapturedPet]->Level <= 25)
++                Pets[Teams[currentTeamID]->CapturedPet]->Level -= 2;
++
++            if (Pets[Teams[currentTeamID]->CapturedPet]->Health <= CalculatePct(Pets[Teams[currentTeamID]->CapturedPet]->InfoMaxHealth, 5))
++                if (auto achievement = sAchievementStore.LookupEntry(6571))
++                    player->CompletedAchievement(achievement);
++
++            Pets[Teams[currentTeamID]->CapturedPet]->UpdateStats();
++            Pets[Teams[currentTeamID]->CapturedPet]->Health = Pets[Teams[currentTeamID]->CapturedPet]->InfoMaxHealth;
++            Pets[Teams[currentTeamID]->CapturedPet]->Slot = PET_BATTLE_NULL_SLOT;
++            Pets[Teams[currentTeamID]->CapturedPet]->AddToPlayer(player);
++            player->_battlePets.emplace(Pets[Teams[currentTeamID]->CapturedPet]->JournalID, Pets[Teams[currentTeamID]->CapturedPet]);
++            player->UpdateCriteria(CRITERIA_TYPE_COLLECT_BATTLEPET);
++            player->GetSession()->SendBattlePetUpdates(Pets[Teams[currentTeamID]->CapturedPet].get(), true);
++
++            if (auto speciesInfo = sBattlePetSpeciesStore.LookupEntry(Pets[Teams[currentTeamID]->CapturedPet]->Species))
+             {
+-                if (Pets[Teams[currentTeamID]->CapturedPet]->Level >= 16 && Pets[Teams[currentTeamID]->CapturedPet]->Level <= 20)
+-                    Pets[Teams[currentTeamID]->CapturedPet]->Level -= 1;
+-                else if (Pets[Teams[currentTeamID]->CapturedPet]->Level >= 21 && Pets[Teams[currentTeamID]->CapturedPet]->Level <= 25)
+-                    Pets[Teams[currentTeamID]->CapturedPet]->Level -= 2;
+-
+-                if (Pets[Teams[currentTeamID]->CapturedPet]->Health <= CalculatePct(Pets[Teams[currentTeamID]->CapturedPet]->InfoMaxHealth, 5))
+-                    if (auto achievement = sAchievementStore.LookupEntry(6571))
+-                        player->CompletedAchievement(achievement);
+-
+-                Pets[Teams[currentTeamID]->CapturedPet]->UpdateStats();
+-                Pets[Teams[currentTeamID]->CapturedPet]->Health = Pets[Teams[currentTeamID]->CapturedPet]->InfoMaxHealth;
+-                Pets[Teams[currentTeamID]->CapturedPet]->Slot = PET_BATTLE_NULL_SLOT;
+-                Pets[Teams[currentTeamID]->CapturedPet]->AddToPlayer(player);
+-                player->_battlePets.emplace(Pets[Teams[currentTeamID]->CapturedPet]->JournalID, Pets[Teams[currentTeamID]->CapturedPet]);
+-                player->UpdateCriteria(CRITERIA_TYPE_COLLECT_BATTLEPET);
+-                player->GetSession()->SendBattlePetUpdates(Pets[Teams[currentTeamID]->CapturedPet].get(), true);
+-
+-                if (auto speciesInfo = sBattlePetSpeciesStore.LookupEntry(Pets[Teams[currentTeamID]->CapturedPet]->Species))
+-                {
+-                    player->UpdateCriteria(CRITERIA_TYPE_ADD_BATTLE_PET_JOURNAL, speciesInfo->CreatureID);
+-                    player->UpdateCriteria(CRITERIA_TYPE_CAPTURE_SPECIFIC_BATTLEPET, speciesInfo->ID, 0, speciesInfo->ID);
+-                    player->UpdateCriteria(CRITERIA_TYPE_CAPTURE_PET_IN_BATTLE, 1, Pets[Teams[currentTeamID]->CapturedPet]->Quality, speciesInfo->ID);
+-                    player->UpdateCriteria(CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT, 1, Pets[Teams[currentTeamID]->CapturedPet]->Quality, speciesInfo->ID);
+-                }
+-
+-                /// Quest progress for 12 x Got One!
+-                player->KilledMonsterCredit(65356);
++                player->UpdateCriteria(CRITERIA_TYPE_ADD_BATTLE_PET_JOURNAL, speciesInfo->CreatureID);
++                player->UpdateCriteria(CRITERIA_TYPE_CAPTURE_SPECIFIC_BATTLEPET, speciesInfo->ID, 0, speciesInfo->ID);
++                player->UpdateCriteria(CRITERIA_TYPE_CAPTURE_PET_IN_BATTLE, 1, Pets[Teams[currentTeamID]->CapturedPet]->Quality, speciesInfo->ID);
++                player->UpdateCriteria(CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT, 1, Pets[Teams[currentTeamID]->CapturedPet]->Quality, speciesInfo->ID);
+             }
+ 
+-            /*if (BattleType == PET_BATTLE_TYPE_PVE && PveBattleType == PVE_PETBATTLE_TRAINER && currentTeamID == winnerTeamID)
+-                if (auto trainer = ObjectAccessor::FindUnit(Teams[PET_BATTLE_PVE_TEAM_ID]->OwnerGuid)
+-                    player->QuestObjectiveSatisfy(trainer->GetEntry(), 1, QUEST_OBJECTIVE_PET_TRAINER_DEFEAT, trainer->GetGUID());*/
++            /// Quest progress for 12 x Got One!
++            player->KilledMonsterCredit(65356);
+         }
++
++        // zr: pet tamer battles credit "win a pet battle against <tamer>" quest objectives
++        if (BattleType == PET_BATTLE_TYPE_PVE && PveBattleType == PVE_BATTLE_PET_TRAINER && currentTeamID == winnerTeamID)
++            player->PetBattleTrainerCredit(Teams[PET_BATTLE_PVE_TEAM_ID]->OwnerGuid);
+     }
+ 
++    // zr: show the real tamer again (hidden in StartPetBattleWithTrainer while the client shows its own copy).
++    // Looked up through the player's map: ObjectAccessor::FindUnit only finds players and pets, never creatures.
++    if (BattleType == PET_BATTLE_TYPE_PVE && PveBattleType == PVE_BATTLE_PET_TRAINER && Teams[PET_BATTLE_TEAM_1] && Teams[PET_BATTLE_PVE_TEAM_ID])
++        if (Player* owner = ObjectAccessor::GetObjectInWorld(Teams[PET_BATTLE_TEAM_1]->PlayerGuid, static_cast<Player*>(nullptr)))
++            if (Creature* trainer = ObjectAccessor::GetCreature(*owner, Teams[PET_BATTLE_PVE_TEAM_ID]->OwnerGuid))
++                trainer->SetVisible(true);
++
+     for (size_t currentTeamID = 0; currentTeamID < MAX_PET_BATTLE_TEAM; ++currentTeamID)
+     {
+         if (!Teams[currentTeamID])
+diff --git a/src/server/game/Entities/Creature/GossipDef.h b/src/server/game/Entities/Creature/GossipDef.h
+index 2030675..5cee84f 100644
+--- a/src/server/game/Entities/Creature/GossipDef.h
++++ b/src/server/game/Entities/Creature/GossipDef.h
+@@ -31,6 +31,8 @@ class WorldSession;
+ #define GOSSIP_MAX_MENU_ITEMS               64
+ #define DEFAULT_GOSSIP_MESSAGE              0xffffff
+ 
++#define ZR_PET_BATTLE_GOSSIP_OPTION_INDEX 9001 // zr: option index of the tamer "Let's do battle!" gossip item
++
+ enum Gossip_Option
+ {
+     GOSSIP_OPTION_NONE                  = 0,                    //UNIT_NPC_FLAG_NONE                (0)
+@@ -62,6 +64,7 @@ enum Gossip_Option
+     GOSSIP_OPTION_ARTIFACT_RESPEC       = 27,                   //UNIT_NPC_FLAG_ARTIFACT_POWER_RESPEC
+     GOSSIP_OPTION_ALLIED_RACE_DETAILS   = 28,                   // SMSG_OPEN_ALLIED_RACE_DETAILS
+     GOSSIP_OPTION_SCENARIO              = 29,                   //UNIT_NPC_FLAG_GOSSIP
++    GOSSIP_OPTION_PET_BATTLE            = 30,                   // zr: pet tamer battle, added by Player::PrepareGossipMenu, never from DB
+     GOSSIP_OPTION_MAX
+ };
+ 
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index 3f2d490..3ff23d5 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -15594,6 +15594,16 @@ void Player::PrepareGossipMenu(WorldObject* source, uint32 menuId /*= 0*/, bool
+             menu->GetGossipMenu().AddGossipMenuItemData(itr->second.OptionIndex, itr->second.ActionMenuId, itr->second.ActionPoiId);
+         }
+     }
++
++    // zr: pet tamers offer a battle while a "win a pet battle against <tamer>" objective is open
++    if (Creature* trainer = source->ToCreature())
++    {
++        if (CanStartPetBattleWithTrainer(trainer))
++        {
++            menu->GetGossipMenu().AddMenuItem(ZR_PET_BATTLE_GOSSIP_OPTION_INDEX, GOSSIP_ICON_CHAT, "Let's do battle!", 0, GOSSIP_OPTION_PET_BATTLE, "", 0);
++            menu->GetGossipMenu().AddGossipMenuItemData(ZR_PET_BATTLE_GOSSIP_OPTION_INDEX, 0, 0);
++        }
++    }
+ }
+ 
+ void Player::SendPreparedGossip(WorldObject* source)
+@@ -15753,6 +15763,12 @@ void Player::OnGossipSelect(WorldObject* source, uint32 optionIndex, uint32 menu
+         case GOSSIP_OPTION_ALLIED_RACE_DETAILS:
+             GetSession()->SendOpenAlliedRaceDetails(guid, cost);
+             return;
++        case GOSSIP_OPTION_PET_BATTLE: // zr: pet tamer battles
++            PlayerTalkClass->SendCloseGossip();
++            if (Creature* trainer = source->ToCreature())
++                if (CanStartPetBattleWithTrainer(trainer))
++                    GetSession()->StartPetBattleWithTrainer(trainer);
++            break;
+     }
+ 
+     ModifyMoney(-cost);
+@@ -18044,6 +18060,72 @@ void Player::KilledMonsterCredit(uint32 entry, ObjectGuid guid /*= ObjectGuid::E
+     }
+ }
+ 
++// zr: pet tamer battles
++bool Player::HasOpenPetBattleTrainerObjective(uint32 trainerEntry) const
++{
++    for (uint8 i = 0; i < MAX_QUEST_LOG_SIZE; ++i)
++    {
++        uint32 questId = GetQuestSlotQuestId(i);
++        if (!questId)
++            continue;
++
++        Quest const* quest = sObjectMgr->GetQuestTemplate(questId);
++        if (!quest || GetQuestStatus(questId) != QUEST_STATUS_INCOMPLETE)
++            continue;
++
++        for (QuestObjective const& obj : quest->GetObjectives())
++            if (obj.Type == QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC && uint32(obj.ObjectID) == trainerEntry && !GetQuestObjectiveData(quest, obj.StorageIndex))
++                return true;
++    }
++
++    return false;
++}
++
++bool Player::CanStartPetBattleWithTrainer(Creature const* trainer)
++{
++    if (!trainer || !sWorld->getBoolConfig(CONFIG_PET_BATTLES) || !HasBattlePetTraining())
++        return false;
++
++    std::vector<BattlePetNpcTeamMember> const* team = sBattlePetDataStore->FindPetBattleTrainerTeam(trainer->GetEntry());
++    if (!team || team->empty())
++        return false;
++
++    return HasOpenPetBattleTrainerObjective(trainer->GetEntry());
++}
++
++void Player::PetBattleTrainerCredit(ObjectGuid trainerGuid)
++{
++    uint32 trainerEntry = trainerGuid.GetEntry();
++    if (!trainerEntry)
++        return;
++
++    for (uint8 i = 0; i < MAX_QUEST_LOG_SIZE; ++i)
++    {
++        uint32 questId = GetQuestSlotQuestId(i);
++        if (!questId)
++            continue;
++
++        Quest const* quest = sObjectMgr->GetQuestTemplate(questId);
++        if (!quest || GetQuestStatus(questId) != QUEST_STATUS_INCOMPLETE)
++            continue;
++
++        for (QuestObjective const& obj : quest->GetObjectives())
++        {
++            if (obj.Type != QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC || uint32(obj.ObjectID) != trainerEntry)
++                continue;
++
++            if (!GetQuestObjectiveData(quest, obj.StorageIndex))
++            {
++                SetQuestObjectiveData(obj, 1);
++                SendQuestUpdateAddCredit(quest, trainerGuid, obj, 1);
++            }
++        }
++
++        if (CanCompleteQuest(questId))
++            CompleteQuest(questId);
++    }
++}
++
+ void Player::KilledPlayerCredit()
+ {
+     uint16 addKillCount = 1;
+@@ -18474,6 +18556,7 @@ bool Player::IsQuestObjectiveComplete(QuestObjective const& objective) const
+             break;
+         case QUEST_OBJECTIVE_AREATRIGGER:
+         case QUEST_OBJECTIVE_CRITERIA_TREE:
++        case QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC: // zr: flag objective, set by PetBattleTrainerCredit
+             if (!GetQuestObjectiveData(quest, objective.StorageIndex))
+                 return false;
+             break;
+diff --git a/src/server/game/Entities/Player/Player.h b/src/server/game/Entities/Player/Player.h
+index e3ac4a8..a70f793 100644
+--- a/src/server/game/Entities/Player/Player.h
++++ b/src/server/game/Entities/Player/Player.h
+@@ -1543,6 +1543,9 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
+         void ItemRemovedQuestCheck(uint32 entry, uint32 count);
+         void KilledMonster(CreatureTemplate const* cInfo, ObjectGuid guid);
+         void KilledMonsterCredit(uint32 entry, ObjectGuid guid = ObjectGuid::Empty);
++        bool HasOpenPetBattleTrainerObjective(uint32 trainerEntry) const; // zr: pet tamer battles
++        bool CanStartPetBattleWithTrainer(Creature const* trainer);
++        void PetBattleTrainerCredit(ObjectGuid trainerGuid);
+         void KilledPlayerCredit();
+         void KillCreditGO(uint32 entry, ObjectGuid guid = ObjectGuid::Empty);
+         void TalkedToCreature(uint32 entry, ObjectGuid guid);
+diff --git a/src/server/game/Globals/BattlePetDataStore.cpp b/src/server/game/Globals/BattlePetDataStore.cpp
+index 016e954..a6b9606 100644
+--- a/src/server/game/Globals/BattlePetDataStore.cpp
++++ b/src/server/game/Globals/BattlePetDataStore.cpp
+@@ -339,3 +339,9 @@ std::vector<BattlePetNpcTeamMember> BattlePetDataStoreMgr::GetPetBattleTrainerTe
+ {
+     return _battlePetNpcTeamMembers[npcID];
+ }
++
++std::vector<BattlePetNpcTeamMember> const* BattlePetDataStoreMgr::FindPetBattleTrainerTeam(uint32 npcID) const
++{
++    auto itr = _battlePetNpcTeamMembers.find(npcID);
++    return itr != _battlePetNpcTeamMembers.end() ? &itr->second : nullptr;
++}
+diff --git a/src/server/game/Globals/BattlePetDataStore.h b/src/server/game/Globals/BattlePetDataStore.h
+index 6d730e5..03c4d98 100644
+--- a/src/server/game/Globals/BattlePetDataStore.h
++++ b/src/server/game/Globals/BattlePetDataStore.h
+@@ -63,6 +63,7 @@ public:
+     uint8 GetWeightForBreed(uint16 breedID);
+     uint8 GetRandomQuailty();
+     std::vector<BattlePetNpcTeamMember> GetPetBattleTrainerTeam(uint32 npcID);
++    std::vector<BattlePetNpcTeamMember> const* FindPetBattleTrainerTeam(uint32 npcID) const; // zr: no insert, safe from map threads
+ private:
+     BattlePetTemplateContainer _battlePetTemplateStore;
+     BattlePetTemplateMap _battlePetTemplate;
+diff --git a/src/server/game/Handlers/BattlePetHandler.cpp b/src/server/game/Handlers/BattlePetHandler.cpp
+index 3dc0ae1..8cc9755 100644
+--- a/src/server/game/Handlers/BattlePetHandler.cpp
++++ b/src/server/game/Handlers/BattlePetHandler.cpp
+@@ -27,6 +27,9 @@
+ #include "Player.h"
+ #include "PathGenerator.h"
+ #include "ObjectAccessor.h"
++#include "BattlePetDataStore.h"
++#include "ObjectMgr.h"
++#include "World.h"
+ 
+ void WorldSession::HandleBattlePetSummon(WorldPackets::BattlePet::BattlePetGuidRead& packet)
+ {
+@@ -369,6 +372,169 @@ void WorldSession::HandlePetBattleRequestWild(WorldPackets::BattlePet::RequestWi
+     l_WildBattlePet = nullptr;
+ }
+ 
++// zr: pet tamer battles. The core had the trainer team table (battlepet_npc_team_member) and the
++// trainer battle type, but nothing ever started a battle against a tamer. Called from the
++// "Let's do battle!" gossip option (Player::OnGossipSelect, GOSSIP_OPTION_PET_BATTLE).
++void WorldSession::StartPetBattleWithTrainer(Creature* trainer)
++{
++    if (!sWorld->getBoolConfig(CONFIG_PET_BATTLES) || !trainer || !_player->_petBattleId.IsEmpty())
++        return;
++
++    if (m_isPetBattleJournalLocked)
++    {
++        SendPetBattleRequestFailed(BATTLE_PET_REQUEST_NO_ACCOUNT_LOCK);
++        return;
++    }
++
++    std::vector<BattlePetNpcTeamMember> const* team = sBattlePetDataStore->FindPetBattleTrainerTeam(trainer->GetEntry());
++    if (!team || team->empty())
++        return;
++
++    if (sPetBattleSystem->GetRequest(_player->GetGUID()))
++        sPetBattleSystem->RemoveRequest(_player->GetGUID());
++
++    auto battleRequest = sPetBattleSystem->CreateRequest(_player->GetGUID());
++    battleRequest->RequestType = PET_BATTLE_TYPE_PVE;
++    battleRequest->OpponentGuid = trainer->GetGUID();
++    battleRequest->LocationResult = 0;
++
++    // Player stays where they are, the tamer stays where they are, the pets fight in between.
++    battleRequest->TeamPosition[PET_BATTLE_TEAM_1].Relocate(_player->GetPositionX(), _player->GetPositionY(), _player->GetPositionZ(), _player->GetAngle(trainer));
++    battleRequest->TeamPosition[PET_BATTLE_TEAM_2].Relocate(trainer->GetPositionX(), trainer->GetPositionY(), trainer->GetPositionZ(), trainer->GetAngle(_player));
++
++    float centerX = (_player->GetPositionX() + trainer->GetPositionX()) / 2.0f;
++    float centerY = (_player->GetPositionY() + trainer->GetPositionY()) / 2.0f;
++    float centerZ = std::max(_player->GetPositionZ(), trainer->GetPositionZ());
++    _player->UpdateAllowedPositionZ(centerX, centerY, centerZ);
++    battleRequest->PetBattleCenterPosition.Relocate(centerX, centerY, centerZ, _player->GetAngle(trainer));
++
++    auto canEnterResult = sPetBattleSystem->CanPlayerEnterInPetBattle(_player, battleRequest);
++    if (canEnterResult != BATTLE_PET_REQUEST_OK)
++    {
++        SendPetBattleRequestFailed(canEnterResult);
++        sPetBattleSystem->RemoveRequest(battleRequest->RequesterGuid);
++        return;
++    }
++
++    std::shared_ptr<BattlePetInstance> playerPets[MAX_PET_BATTLE_SLOTS];
++    std::shared_ptr<BattlePetInstance> trainerPets[MAX_PET_BATTLE_SLOTS];
++    size_t playerPetCount = 0;
++    size_t trainerPetCount = 0;
++
++    for (BattlePetNpcTeamMember const& member : *team)
++    {
++        if (trainerPetCount >= MAX_PET_BATTLE_SLOTS)
++            break;
++
++        BattlePetSpeciesEntry const* speciesInfo = sBattlePetSpeciesStore.LookupEntry(member.Specie);
++        if (!speciesInfo)
++            continue;
++
++        auto pet = std::make_shared<BattlePetInstance>();
++        pet->JournalID.Clear();
++        pet->Slot = trainerPetCount;
++        pet->NameTimeStamp = 0;
++        pet->Species = speciesInfo->ID;
++        pet->DisplayModelID = 0;
++        if (CreatureTemplate const* petTemplate = sObjectMgr->GetCreatureTemplate(speciesInfo->CreatureID))
++            if (CreatureModel const* model = petTemplate->GetFirstValidModel())
++                pet->DisplayModelID = model->CreatureDisplayID;
++        pet->XP = 0;
++        pet->Flags = 0;
++        pet->Health = 20000; // clamped to the real max health by PetBattle::AddPet
++
++        uint32 minLevel = std::max<uint32>(member.minlevel, 1);
++        uint32 maxLevel = std::max<uint32>(member.maxlevel, minLevel);
++        pet->Level = std::min<uint32>(urand(minLevel, maxLevel), BATTLE_PET_MAX_LEVEL);
++        pet->Breed = sBattlePetDataStore->GetRandomBreedID(member.BreedIDs);
++        pet->Quality = member.minquality;
++
++        // Abilities from the team table; a missing one falls back to the species' own ability for that slot
++        for (uint8 i = 0; i < MAX_PET_BATTLE_ABILITIES; ++i)
++            pet->Abilities[i] = member.Ability[i];
++
++        uint32 abilityLevels[MAX_PET_BATTLE_ABILITIES] = { };
++        for (auto const& speciesXAbilityInfo : sBattlePetSpeciesXAbilityStore)
++        {
++            if (speciesXAbilityInfo->BattlePetSpeciesID != pet->Species || speciesXAbilityInfo->RequiredLevel > pet->Level)
++                continue;
++
++            uint8 slot = speciesXAbilityInfo->SlotEnum;
++            if (slot >= MAX_PET_BATTLE_ABILITIES || member.Ability[slot])
++                continue;
++
++            if (!pet->Abilities[slot] || abilityLevels[slot] > speciesXAbilityInfo->RequiredLevel)
++            {
++                pet->Abilities[slot] = speciesXAbilityInfo->BattlePetAbilityID;
++                abilityLevels[slot] = speciesXAbilityInfo->RequiredLevel;
++            }
++        }
++
++        trainerPets[trainerPetCount++] = pet;
++    }
++
++    if (!trainerPetCount)
++    {
++        SendPetBattleRequestFailed(BATTLE_PET_REQUEST_TARGET_INVALID);
++        sPetBattleSystem->RemoveRequest(battleRequest->RequesterGuid);
++        return;
++    }
++
++    auto petSlots = _player->GetBattlePetCombatTeam();
++    for (size_t i = 0; i < MAX_PET_BATTLE_SLOTS; ++i)
++    {
++        if (!petSlots[i])
++            continue;
++
++        if (playerPetCount >= MAX_PET_BATTLE_SLOTS || playerPetCount >= _player->GetUnlockedPetBattleSlot())
++            break;
++
++        playerPets[playerPetCount] = std::make_shared<BattlePetInstance>();
++        playerPets[playerPetCount]->CloneFrom(petSlots[i]);
++        playerPets[playerPetCount]->Slot = playerPetCount;
++        playerPets[playerPetCount]->OriginalBattlePet = petSlots[i];
++
++        ++playerPetCount;
++    }
++
++    _player->AddUnitFlag(UNIT_FLAG_IMMUNE_TO_NPC);
++    _player->SetTarget(trainer->GetGUID());
++
++    SendPetBattleFinalizeLocation(battleRequest);
++
++    _player->SetFacingTo(_player->GetAngle(&battleRequest->TeamPosition[PET_BATTLE_TEAM_2]));
++    _player->SetRooted(true);
++
++    trainer->StopMoving();
++    trainer->SetFacingToObject(_player);
++    // zr: the battle client shows its own copy of the tamer on the opponent's spot; hide the real one
++    // until PetBattle::Finish shows it again
++    trainer->SetVisible(false);
++
++    auto battle = sPetBattleSystem->CreateBattle();
++
++    battle->Teams[PET_BATTLE_TEAM_1]->OwnerGuid = _player->GetGUID();
++    battle->Teams[PET_BATTLE_TEAM_1]->PlayerGuid = _player->GetGUID();
++    battle->Teams[PET_BATTLE_TEAM_2]->OwnerGuid = trainer->GetGUID();
++
++    for (size_t i = 0; i < MAX_PET_BATTLE_SLOTS; ++i)
++    {
++        if (playerPets[i])
++            battle->AddPet(PET_BATTLE_TEAM_1, playerPets[i]);
++
++        if (trainerPets[i])
++            battle->AddPet(PET_BATTLE_TEAM_2, trainerPets[i]);
++    }
++
++    battle->BattleType = PET_BATTLE_TYPE_PVE;
++    battle->PveBattleType = PVE_BATTLE_PET_TRAINER;
++
++    _player->_petBattleId = battle->ID;
++    battle->Begin();
++
++    sPetBattleSystem->RemoveRequest(battleRequest->RequesterGuid);
++}
++
+ void WorldSession::HandleReplaceFrontPet(WorldPackets::BattlePet::ReplaceFrontPet& packet)
+ {
+     if (!_player->_petBattleId)
+@@ -860,7 +1026,8 @@ void WorldSession::SendPetBattleFinalizeLocation(PetBattleRequest* petBattleRequ
+ 
+ void WorldSession::SendPetBattleInitialUpdate(PetBattle* petBattle)
+ {
+-    if (petBattle->BattleType == PET_BATTLE_TYPE_PVE)
++    // zr: a tamer is not a wild pet; the client must not take the tamer over as the enemy front pet
++    if (petBattle->BattleType == PET_BATTLE_TYPE_PVE && petBattle->PveBattleType != PVE_BATTLE_PET_TRAINER)
+         petBattle->InitialWildPetGUID = petBattle->Teams[PET_BATTLE_PVE_TEAM_ID]->OwnerGuid;
+ 
+     WorldPackets::BattlePet::PetBattleInitialUpdate update;
+@@ -871,7 +1038,7 @@ void WorldSession::SendPetBattleInitialUpdate(PetBattle* petBattle)
+ 
+     if (petBattle->BattleType == PET_BATTLE_TYPE_PVE && petBattle->PveBattleType == PVE_BATTLE_PET_TRAINER)
+     {
+-        if (auto trainer = ObjectAccessor::FindUnit(petBattle->InitialWildPetGUID))
++        if (auto trainer = ObjectAccessor::GetCreature(*_player, petBattle->Teams[PET_BATTLE_PVE_TEAM_ID]->OwnerGuid))
+         {
+             update.MsgData.NpcCreatureID = trainer->GetEntry();
+             update.MsgData.NpcDisplayID = trainer->GetDisplayId();
+diff --git a/src/server/game/Handlers/NPCHandler.cpp b/src/server/game/Handlers/NPCHandler.cpp
+index ddf44b3..d43e72d 100644
+--- a/src/server/game/Handlers/NPCHandler.cpp
++++ b/src/server/game/Handlers/NPCHandler.cpp
+@@ -378,7 +378,9 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPackets::NPC::GossipSelec
+     GameObject* go = nullptr;
+     if (packet.GossipUnit.IsCreatureOrVehicle())
+     {
+-        unit = GetPlayer()->GetNPCIfCanInteractWith(packet.GossipUnit, UNIT_NPC_FLAG_GOSSIP, UNIT_NPC_FLAG_2_NONE);
++        // zr: quest givers without the gossip flag (pet tamers) can show gossip options too; the option
++        // itself is still checked against the menu the player was sent (Player::OnGossipSelect)
++        unit = GetPlayer()->GetNPCIfCanInteractWith(packet.GossipUnit, NPCFlags(UNIT_NPC_FLAG_GOSSIP | UNIT_NPC_FLAG_QUESTGIVER), UNIT_NPC_FLAG_2_NONE);
+         if (!unit)
+         {
+             TC_LOG_DEBUG("network", "WORLD: HandleGossipSelectOptionOpcode - %s not found or you can't interact with him.", packet.GossipUnit.ToString().c_str());
+diff --git a/src/server/game/Server/WorldSession.h b/src/server/game/Server/WorldSession.h
+index 926f456..ce4c7c5 100644
+--- a/src/server/game/Server/WorldSession.h
++++ b/src/server/game/Server/WorldSession.h
+@@ -1992,6 +1992,7 @@ class TC_GAME_API WorldSession
+         void HandleBattlePetSummon(WorldPackets::BattlePet::BattlePetGuidRead& packet);
+         void HandleBattlePetUpdateNotify(WorldPackets::BattlePet::BattlePetGuidRead& packet);
+         void HandlePetBattleRequestWild(WorldPackets::BattlePet::RequestWild& packet);
++        void StartPetBattleWithTrainer(Creature* trainer);
+         void HandlePetBattleRequestUpdate(WorldPackets::BattlePet::RequestUpdate& packet);
+         void HandlePetBattleInput(WorldPackets::BattlePet::PetBattleInput& packet);
+         void HandlePetBattleFinalNotify(WorldPackets::BattlePet::NullCmsg& packet);

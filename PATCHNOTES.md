@@ -3,6 +3,126 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-02 (pet battles, tamers and achievements)
+
+Merged to `main` with PR #31 on 2026-11-02. The two patches go on top of
+`battle-pet-level-achievements.patch`, achievements first.
+
+### Pet tamers: display pets stacked on top of each other
+
+- **Found** (reported by Four): Julia Stevens' pets Fangs (64334) and Slither (64335) stand on the
+  exact same spot (-9874.57, 98.49, Goldshire).
+- **Cause:** most pet tamers have their team spawned next to them as static creatures
+  (MovementType 0). For 40 tamers, two or three of those pets share one position (104 spawns).
+- **Changed:** new `sql/fixes/world/2026_11_02_51_pet_tamer_display_pets_wander.sql`: the 149 static
+  team pet spawns within 30 yards of the 53 pet tamers that have a "win a pet battle against
+  <tamer>" quest now wander within 2 yards of their spawn (MovementType 1, spawndist 2). Pets were
+  matched by the `battlepet_info` creature of each species in the tamer's
+  `battlepet_npc_team_member` rows. Only spawns that are still static are changed; undo line in the
+  file header.
+- **Status:** confirmed in game by Four on 2026-11-02 (Fangs and Slither spread out at Julia).
+
+### Pet battles: tamers (Julia Stevens and others) cannot be battled
+
+- **Found** (reported by Four): Julia Stevens (64330, Goldshire) offers nothing to start a battle.
+  Beating the wild pets near her does not count for her quest.
+- **Cause:** the core has the tamers' teams (`battlepet_npc_team_member`, 1,509 NPC entries; Julia
+  has species 872 and 873 at level 2) and a trainer battle type (`PVE_BATTLE_PET_TRAINER`), but
+  nothing ever starts a battle against a tamer: `GetPetBattleTrainerTeam` is never called, no gossip
+  option exists, and the quest credit for winning was commented out in `PetBattle::Finish`. The quest
+  objective type that tamer quests use (11, `QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC`, 201 objectives
+  in the DB, for example quests 31316 and 31693 for Julia) was also missing from
+  `Player::IsQuestObjectiveComplete`, so even a credited objective could never complete the quest.
+- **Changed:** new `tools/bfa/battle-pet-trainers.patch`:
+  - `GossipDef.h`: new gossip option type `GOSSIP_OPTION_PET_BATTLE` (30) and option index 9001.
+  - `Player::PrepareGossipMenu`: adds **Let's do battle!** when the player has Battle Pet Training
+    (spell 119467), the NPC has a team in `battlepet_npc_team_member`, and an incomplete quest in the
+    log has a type 11 objective for this NPC that is not done yet (as on retail, no quest = no
+    battle).
+  - `Player::OnGossipSelect`: the option closes the dialog and calls the new
+    `WorldSession::StartPetBattleWithTrainer` (`BattlePetHandler.cpp`). It builds up to 3 tamer pets
+    from the team rows (level `minlevel`..`maxlevel`, quality `minquality`, a breed from
+    `breadsMask`, abilities `Ability1..3`, falling back to the species' own ability for an empty
+    one) and starts a PvE battle of type `PVE_BATTLE_PET_TRAINER` with the player's slotted pets. The
+    player stays in place, the tamer turns to face them, and the pets fight in between. Capturing is
+    already blocked for this type.
+  - `SendPetBattleInitialUpdate`: for tamer battles the tamer's entry and display are sent and the
+    tamer is no longer sent as the "wild pet" GUID.
+  - `PetBattle::Finish`: a win against a tamer calls the new `Player::PetBattleTrainerCredit`, which
+    sets every matching type 11 objective in the quest log and completes the quest when it can.
+  - `Player::IsQuestObjectiveComplete`: type 11 is a flag objective (done when set).
+  - `HandleGossipSelectOptionOpcode` (`NPCHandler.cpp`): accepts quest givers too. Julia's template
+    has only the quest giver flag (npcflag 2), so picking any gossip option on her was ignored. The
+    option is still checked against the menu that was sent.
+  - The battle client draws its own copy of the tamer on the opponent's spot, so the real NPC
+    stood next to it (two Julias, reported by Four). `StartPetBattleWithTrainer` now hides the
+    real tamer (`SetVisible(false)`) and `PetBattle::Finish` shows it again for every ending (win,
+    loss, forfeit). The real tamer is hidden for everyone during the fight. The first version looked
+    the tamer up with `ObjectAccessor::FindUnit`, which in this core never finds creatures, so Julia
+    stayed hidden until a `worldserver` restart (reported by Four); it now uses
+    `ObjectAccessor::GetCreature` on the player's map. If you log out in the middle of a tamer
+    battle, the tamer stays hidden until the next restart.
+  - `BattlePetDataStore`: new `FindPetBattleTrainerTeam` (read only; the old getter inserts into the
+    map on a miss).
+  - Also fixed in `PetBattle::Finish`: the end-of-battle rewards ran once per pet in the winning team,
+    not once per battle. With 2 or 3 pets slotted, a captured pet was added to the journal 2 or 3
+    times, and "Learning the Ropes" (credit 65355) counted 2 or 3 times. They now run once, and the
+    "Learning the Ropes" credit needs a win.
+  - No SQL. 86 tamers have both a team and a type 11 quest. The 23 Legion/BFA tamers got their
+    teams with PR #32 (entry below).
+- **Status:** confirmed in game by Four on 2026-11-02 (Julia Stevens battle and quest credit; a
+  capture with several pets slotted adds 1 copy; the tamer is hidden during the fight and back right
+  after it).
+
+### Pet battles: win, capture and journal achievements never progress
+
+- **Found** while fixing the slot unlocks: more pet battle criteria types were listed as "Not
+  implemented yet" in `CriteriaHandler::UpdateCriteria`.
+- **Cause:** criteria types 96 (`ADD_BATTLE_PET_JOURNAL`, a specific pet in the journal), 157
+  (`CAPTURE_PET_IN_BATTLE`), 158 (`BATTLE_PET_WIN`), 161 (`CAPTURE_BATTLE_PET_CREDIT`) and 162
+  (`LEVEL_BATTLE_PET_CREDIT`) did nothing, so achievements that count battle wins, captures or
+  specific pets never moved. The win call also passed "is PvP" as the counted value, which is 0 for
+  every PvE battle.
+- **Changed:** new `tools/bfa/battle-pet-achievements.patch`:
+  - `CriteriaHandler.cpp`: 157, 158 and 161 add 1 per capture or win and complete at the criteria's
+    amount. 162 counts a pet reaching the criteria's level in battle. 96 completes when a pet of the
+    criteria's creature is added, and at login if you already own one.
+  - `PetBattle.cpp`: a win now counts 1; a capture also sends type 161.
+  - No SQL.
+  - Fix after Four's test (2026-11-02): the PvP-only win achievements check "is this a PvP battle"
+    (criteria modifier 90) against the first criteria value, which the patch had turned into "1 win".
+    So every PvE win passed it, and Four got No Time To Heal (6620, win 5 PvP battles in a row) from
+    wild battles. Modifier 90 now reads the second value ("is PvP", 1 or 0), so asset 1 = PvP only
+    (Pet Brawler 6595-6599, No Time To Heal) and asset 0 = PvE only. New
+    `sql/fixes/characters/2026_11_02_00_remove_pve_pvp_pet_achievement.sql` removes 6620 and the
+    progress on criteria 21525 and 22225 (worldserver stopped). Cat Fight (6594, criteria 19724) has
+    no modifier and counts every win.
+  - Fix after Four's test (2026-11-02): wins counted on the server (Cat Fight criteria 19724 at 7 in
+    `character_achievement_progress`) but the achievement window never showed progress. Two packet
+    bugs, both fixed as in TrinityCore 8.3.7: `SMSG_CRITERIA_UPDATE` (`AchievementPackets.cpp`,
+    `CriteriaUpdate::Write`) lacked the final RafAcceptanceID bit, so the packet was a byte short; and
+    account-wide achievements (all pet battle ones) need `SMSG_ACCOUNT_CRITERIA_UPDATE` with the
+    criteria-progress layout, which the core sent only for "collect battle pets" and with the
+    character layout. `PlayerAchievementMgr::SendCriteriaUpdate` now sends the account packet for every
+    account-wide criteria, and `SendAllData` also sends `SMSG_ALL_ACCOUNT_CRITERIA` at login (new
+    packet classes `AccountCriteriaUpdate` and `AllAccountCriteria`).
+- **Note:** wins and captures from before the patch were never recorded, so those counters start at
+  0. Journal criteria (96) are rechecked at every login.
+- **Status:** confirmed in game by Four on 2026-11-02 (win counter shows and updates live, PvP-only
+  achievements no longer earned from PvE).
+
+#### To pick up both patches
+Two new patches on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-achievements.patch | git apply && echo "pet achievements patch applied"
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-trainers.patch | git apply && echo "pet tamers patch applied"
+grep -c "GOSSIP_OPTION_PET_BATTLE" src/server/game/Entities/Player/Player.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 2. Then restart `worldserver`.
 ## 2026-11-02 (pet battles, tamer teams)
 
 ### Pet battles: Legion and BFA pet tamers have no team
@@ -61,6 +181,7 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_02_60_legion_bfa_ta
 ```
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_02_61_legion_bfa_tamer_spawns.sql | mysql -u root -p bfa_world
 ```
+
 ## 2026-11-02 (core)
 
 ### Startup banner: zrbfacore, no foreign Discord or email
@@ -104,7 +225,7 @@ banner).
 
 ### Pet battles: second and third battle slots never unlock
 
-Open on branch `claude/project-thread-cwgt5u` (not merged yet).
+Merged to `main` with PR #30 on 2026-11-02.
 
 - **Found** (reported by Four): the second battle pet slot stayed locked ("complete Newbie") although
   Four's pets are level 4 and 5.

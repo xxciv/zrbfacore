@@ -114,6 +114,8 @@ git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
 git apply ../tools-repo/tools/bfa/battle-pet-player-flags.patch
 git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
 git apply ../tools-repo/tools/bfa/core-branding.patch
+git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
+git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -580,6 +582,17 @@ zone's cap (about 5,900 spawns in 86 zones), and records every change in
 `zr_wild_battlepet_conversion` so it can be undone (see the file's header). Running it again changes
 nothing.
 
+Pet tamers (Julia Stevens, Marcus Jensen and the other trainers with a team in
+`battlepet_npc_team_member`) offer **Let's do battle!** in their dialog while you have their "defeat
+<tamer> in a pet battle" quest. Winning completes that objective. Without the quest the option does
+not appear, as on retail.
+
+Most tamers have their team standing next to them, often several pets on one spot. This makes those
+pets wander within 2 yards of their spawn instead (run once, then restart `worldserver`):
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_02_51_pet_tamer_display_pets_wander.sql
+```
 #### Legion and BFA pet tamers
 
 Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest
@@ -634,6 +647,8 @@ git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
 git apply ../tools-repo/tools/bfa/battle-pet-player-flags.patch
 git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
 git apply ../tools-repo/tools/bfa/core-branding.patch
+git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
+git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
