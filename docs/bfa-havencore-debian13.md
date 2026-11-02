@@ -113,6 +113,7 @@ git apply ../tools-repo/tools/bfa/battle-pet-slots.patch
 git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
 git apply ../tools-repo/tools/bfa/battle-pet-player-flags.patch
 git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
+git apply ../tools-repo/tools/bfa/core-branding.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -612,6 +613,7 @@ git apply ../tools-repo/tools/bfa/battle-pet-slots.patch
 git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
 git apply ../tools-repo/tools/bfa/battle-pet-player-flags.patch
 git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
+git apply ../tools-repo/tools/bfa/core-branding.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
