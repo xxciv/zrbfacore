@@ -7,7 +7,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### Startup banner: zrbfacore, no foreign Discord or email
 
-Open on branch `claude/project-thread-z3fwbh` (not merged yet).
+Merged to `main` with PR #33 on 2026-11-02.
 
 - **Asked** (Four): the console header should say zrbfacore in lower case ASCII art, the line
   `https://discord.gg/hTtSYh7WbQ | bfacore.reforged@gmail.com` should become "Based on HavenCore", and
@@ -27,16 +27,15 @@ Open on branch `claude/project-thread-z3fwbh` (not merged yet).
     the default `Motd` in `worldserver.conf.dist`, and the Discord links in upstream's `README.md` and
     `pull_request_template.md` (never shown by the servers). Author credits in source comments
     (for example `WorldSocketMgr.h`) stay as they are.
-- **Status:** the patch applies cleanly after the full chain on upstream 2c13546, and the new banner
-  was printed from a test build of `Banner.cpp`. Not yet seen on Four's server.
+- **Status:** confirmed by Four on 2026-11-02: the new banner shows on the server and works.
 
 #### To pick up the new banner
 A new patch on top of the others, the build and a restart. The patches you already applied are
 unchanged.
 ```
 cd ~/bfa/source
-git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
-git -C ../tools-repo show FETCH_HEAD:tools/bfa/core-branding.patch | git apply && echo "branding patch applied"
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/core-branding.patch && echo "branding patch applied"
 grep -c "Based on HavenCore" src/common/Banner.cpp src/server/worldserver/Main.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
