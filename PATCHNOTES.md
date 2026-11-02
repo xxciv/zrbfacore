@@ -21,7 +21,8 @@ Open on branch `claude/project-thread-cwgt5u` (not merged yet).
   least the criteria's level. At every login the core rechecks all criteria with no level given; then
   it checks the levels of the pets you own, so pets that are already high enough count. Added to
   `IsCompletedCriteria` (done at 1). The existing achievement hook then sends the slot unlock. No SQL.
-- **Status:** waiting for Four to test.
+- **Status:** confirmed in game by Four on 2026-11-02 (Newbie and Just a Pup awarded, slots 2 and 3
+  open).
 
 #### To pick up the pet level achievements
 A new patch on top of the others, the build and a restart. The patches you already applied are
