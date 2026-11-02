@@ -595,7 +595,7 @@ mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_02_61_legi
 The first adds 69 team pets (level 25; rare for BFA, epic or legendary for the Legion ones). The
 second spawns Captain Hermes, Fizzie Sparkwhistle, Kwint, Korval Darkbeard, Crysa, Environeer Bert and
 Algalon, and gives the five that had none the gossip flag. The Shipwrecked Captive (98489) still has
-no spawn. Their world quests follow the normal rotation; to test one now, target nothing and use
+no spawn. Their world quests follow the normal rotation; to test one now, use
 `.quest add <quest id>` (Kwint is 52430), then right-click the tamer. If the client shows the talk
 cursor but nothing opens, you are probably more than about 5 yards away (easy underwater).
 
