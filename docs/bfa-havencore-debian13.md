@@ -586,6 +586,13 @@ Pet tamers (Julia Stevens, Marcus Jensen and the other trainers with a team in
 `battlepet_npc_team_member`) offer **Let's do battle!** in their dialog while you have their "defeat
 <tamer> in a pet battle" quest. Winning completes that objective. Without the quest the option does
 not appear, as on retail.
+
+Most tamers have their team standing next to them, often several pets on one spot. This makes those
+pets wander within 2 yards of their spawn instead (run once, then restart `worldserver`):
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_02_51_pet_tamer_display_pets_wander.sql
+```
 #### Legion and BFA pet tamers
 
 Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest
