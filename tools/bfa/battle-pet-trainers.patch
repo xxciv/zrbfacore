@@ -1,8 +1,8 @@
 diff --git a/src/server/game/BattlePets/PetBattle.cpp b/src/server/game/BattlePets/PetBattle.cpp
-index 061afdb..1600875 100644
+index 061afdb..11429f5 100644
 --- a/src/server/game/BattlePets/PetBattle.cpp
 +++ b/src/server/game/BattlePets/PetBattle.cpp
-@@ -913,56 +913,57 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
+@@ -913,58 +913,66 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
              }
  
              currentPet->UpdateOriginalInstance(player);
@@ -102,19 +102,16 @@ index 061afdb..1600875 100644
 +            player->PetBattleTrainerCredit(Teams[PET_BATTLE_PVE_TEAM_ID]->OwnerGuid);
      }
  
-     for (size_t currentTeamID = 0; currentTeamID < MAX_PET_BATTLE_TEAM; ++currentTeamID)
-@@ -990,6 +991,11 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
-             continue;
-         }
- 
-+        // zr: show the real tamer again (hidden in StartPetBattleWithTrainer while the client shows its own copy)
-+        if (BattleType == PET_BATTLE_TYPE_PVE && PveBattleType == PVE_BATTLE_PET_TRAINER && currentTeamID == PET_BATTLE_PVE_TEAM_ID)
-+            if (Unit* trainer = ObjectAccessor::FindUnit(Teams[currentTeamID]->OwnerGuid))
++    // zr: show the real tamer again (hidden in StartPetBattleWithTrainer while the client shows its own copy).
++    // Looked up through the player's map: ObjectAccessor::FindUnit only finds players and pets, never creatures.
++    if (BattleType == PET_BATTLE_TYPE_PVE && PveBattleType == PVE_BATTLE_PET_TRAINER && Teams[PET_BATTLE_TEAM_1] && Teams[PET_BATTLE_PVE_TEAM_ID])
++        if (Player* owner = ObjectAccessor::GetObjectInWorld(Teams[PET_BATTLE_TEAM_1]->PlayerGuid, static_cast<Player*>(nullptr)))
++            if (Creature* trainer = ObjectAccessor::GetCreature(*owner, Teams[PET_BATTLE_PVE_TEAM_ID]->OwnerGuid))
 +                trainer->SetVisible(true);
 +
-         if (BattleType == PET_BATTLE_TYPE_PVE && PveBattleType == PVE_BATTLE_PET_WILD)
-         {
-             for (size_t i = 0; i < Teams[currentTeamID]->TeamPetCount; ++i)
+     for (size_t currentTeamID = 0; currentTeamID < MAX_PET_BATTLE_TEAM; ++currentTeamID)
+     {
+         if (!Teams[currentTeamID])
 diff --git a/src/server/game/Entities/Creature/GossipDef.h b/src/server/game/Entities/Creature/GossipDef.h
 index 2030675..5cee84f 100644
 --- a/src/server/game/Entities/Creature/GossipDef.h

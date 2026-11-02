@@ -43,7 +43,11 @@ patches go on top of `battle-pet-level-achievements.patch`, achievements first.
   - The battle client draws its own copy of the tamer on the opponent's spot, so the real NPC
     stood next to it (two Julias, reported by Four). `StartPetBattleWithTrainer` now hides the
     real tamer (`SetVisible(false)`) and `PetBattle::Finish` shows it again for every ending (win,
-    loss, forfeit). The real tamer is hidden for everyone during the fight.
+    loss, forfeit). The real tamer is hidden for everyone during the fight. The first version looked
+    the tamer up with `ObjectAccessor::FindUnit`, which in this core never finds creatures, so Julia
+    stayed hidden until a `worldserver` restart (reported by Four); it now uses
+    `ObjectAccessor::GetCreature` on the player's map. If you log out in the middle of a tamer
+    battle, the tamer stays hidden until the next restart.
   - `BattlePetDataStore`: new `FindPetBattleTrainerTeam` (read only; the old getter inserts into the
     map on a miss).
   - Also fixed in `PetBattle::Finish`: the end-of-battle rewards ran once per pet in the winning team,
@@ -53,7 +57,8 @@ patches go on top of `battle-pet-level-achievements.patch`, achievements first.
   - No SQL. 86 tamers have both a team and a type 11 quest. 27 newer tamers (Legion/BFA) have quests
     but no team rows and still cannot be battled.
 - **Status:** confirmed in game by Four on 2026-11-02 (Julia Stevens battle and quest credit). The
-  hidden-tamer change came after that test and is not tested yet.
+  hidden tamer during the fight works (confirmed 2026-11-02); showing her again afterwards is fixed
+  but not tested yet.
 
 ### Pet battles: win, capture and journal achievements never progress
 
