@@ -5,6 +5,24 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-31
 
+### Razorfen Downs: Amnennar never appeared after Blackthorn died
+
+From Four's run, 2026-11-03. SQL only: `sql/fixes/world/2026_11_03_01_razorfen_downs_amnennar_summon.sql`.
+
+- **Found** (Four's `.debug scenario`): the first two steps completed. The three lieutenants were
+  done, and Blackthorn's step was at state 3, so `razorfen-downs.patch` works. But Amnennar never
+  appeared.
+  - Blackthorn's death row says a line and links to the row that summons Amnennar. That summon row
+    only runs through the link.
+  - None of the Warlords bosses has any creature_text, so SmartAI drops every "say" row at startup.
+    That took the start of the chain with it, so the summon never ran.
+  - Mushlump's death row (clearing his plague triggers) and Mordresh's (opening a GO) had the same
+    shape.
+- **Changed:**
+  - Blackthorn's summon row is now its own death event, and the say row is deleted.
+  - Mushlump's and Mordresh's death rows are fixed the same way.
+- **Status:** waiting on Four's test.
+
 ### Razorfen Downs: Koristrasza kept flying past
 
 From Four's run, 2026-11-03. SQL only: `sql/fixes/world/2026_11_03_00_razorfen_downs_koristrasza.sql`.
