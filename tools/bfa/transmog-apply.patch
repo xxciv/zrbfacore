@@ -1,0 +1,138 @@
+diff --git a/src/server/game/Handlers/TransmogrificationHandler.cpp b/src/server/game/Handlers/TransmogrificationHandler.cpp
+index 7650026..0d9b7ef 100644
+--- a/src/server/game/Handlers/TransmogrificationHandler.cpp
++++ b/src/server/game/Handlers/TransmogrificationHandler.cpp
+@@ -16,21 +16,30 @@
+  */
+ 
+ #include "WorldSession.h"
++#include "Chat.h"
+ #include "CollectionMgr.h"
+ #include "DB2Stores.h"
+ #include "Item.h"
+ #include "Log.h"
+ #include "ObjectMgr.h"
+ #include "Player.h"
++#include "StringFormat.h"
+ #include "TransmogrificationPackets.h"
++#include "World.h"
+ 
+ void WorldSession::HandleTransmogrifyItems(WorldPackets::Transmogrification::TransmogrifyItems& transmogrifyItems)
+ {
+     Player* player = GetPlayer();
++    // 8.3.7 has no transmogrify result packet, so a refused Apply otherwise does nothing visible.
++    auto refuse = [this](std::string const& reason)
++    {
++        ChatHandler(this).PSendSysMessage("Transmogrify refused: %s", reason.c_str());
++    };
+     // Validate
+     if (!player->GetNPCIfCanInteractWith(transmogrifyItems.Npc, UNIT_NPC_FLAG_TRANSMOGRIFIER, UNIT_NPC_FLAG_2_NONE))
+     {
+         TC_LOG_DEBUG("network", "WORLD: HandleTransmogrifyItems - %s not found or player can't interact with it.", transmogrifyItems.Npc.ToString().c_str());
++        refuse("the transmogrifier is out of reach.");
+         return;
+     }
+ 
+@@ -48,6 +57,7 @@ void WorldSession::HandleTransmogrifyItems(WorldPackets::Transmogrification::Tra
+         if (transmogItem.Slot >= EQUIPMENT_SLOT_END)
+         {
+             TC_LOG_DEBUG("network", "WORLD: HandleTransmogrifyItems - Player (%s, name: %s) tried to transmogrify wrong slot (%u) when transmogrifying items.", player->GetGUID().ToString().c_str(), player->GetName().c_str(), transmogItem.Slot);
++            refuse(Trinity::StringFormat("slot %u can't be transmogrified.", uint32(transmogItem.Slot)));
+             return;
+         }
+ 
+@@ -56,6 +66,7 @@ void WorldSession::HandleTransmogrifyItems(WorldPackets::Transmogrification::Tra
+         if (!itemTransmogrified)
+         {
+             TC_LOG_DEBUG("network", "WORLD: HandleTransmogrifyItems - Player (%s, name: %s) tried to transmogrify an invalid item in a valid slot (slot: %u).", player->GetGUID().ToString().c_str(), player->GetName().c_str(), transmogItem.Slot);
++            refuse(Trinity::StringFormat("nothing is equipped in slot %u.", uint32(transmogItem.Slot)));
+             return;
+         }
+ 
+@@ -65,6 +76,7 @@ void WorldSession::HandleTransmogrifyItems(WorldPackets::Transmogrification::Tra
+             if (!itemModifiedAppearance)
+             {
+                 TC_LOG_DEBUG("network", "WORLD: HandleTransmogrifyItems - %s, Name: %s tried to transmogrify using invalid appearance (%d).", player->GetGUID().ToString().c_str(), player->GetName().c_str(), transmogItem.ItemModifiedAppearanceID);
++                refuse(Trinity::StringFormat("appearance %d doesn't exist.", transmogItem.ItemModifiedAppearanceID));
+                 return;
+             }
+ 
+@@ -73,12 +85,19 @@ void WorldSession::HandleTransmogrifyItems(WorldPackets::Transmogrification::Tra
+             if (!hasAppearance)
+             {
+                 TC_LOG_DEBUG("network", "WORLD: HandleTransmogrifyItems - %s, Name: %s tried to transmogrify using appearance he has not collected (%d).", player->GetGUID().ToString().c_str(), player->GetName().c_str(), transmogItem.ItemModifiedAppearanceID);
++                refuse(Trinity::StringFormat("appearance %d (item %d) isn't collected.", transmogItem.ItemModifiedAppearanceID, itemModifiedAppearance->ItemID));
+                 return;
+             }
+             ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(itemModifiedAppearance->ItemID);
+-            if (player->CanUseItem(itemTemplate) != EQUIP_ERR_OK)
++            // Transmog.CollectAnyClass / CollectIgnoreLevel collect appearances this check would refuse, and the client offers
++            // every collected appearance, so Apply must accept what was collected. CanTransmogrifyItemWithItem still matches armor and weapon types.
++            bool const anyClass = sWorld->getBoolConfig(CONFIG_TRANSMOG_COLLECT_ANY_CLASS);
++            bool const ignoreLevel = anyClass || sWorld->getBoolConfig(CONFIG_TRANSMOG_COLLECT_IGNORE_LEVEL);
++            InventoryResult const useResult = itemTemplate ? player->CanUseItem(itemTemplate, ignoreLevel) : EQUIP_ERR_ITEM_NOT_FOUND;
++            if (!itemTemplate || (!anyClass && useResult != EQUIP_ERR_OK))
+             {
+                 TC_LOG_DEBUG("network", "WORLD: HandleTransmogrifyItems - %s, Name: %s tried to transmogrify using appearance he can never use (%d).", player->GetGUID().ToString().c_str(), player->GetName().c_str(), transmogItem.ItemModifiedAppearanceID);
++                refuse(Trinity::StringFormat("you can't use item %d (error %u), whose appearance this is.", itemModifiedAppearance->ItemID, uint32(useResult)));
+                 return;
+             }
+ 
+@@ -86,6 +105,7 @@ void WorldSession::HandleTransmogrifyItems(WorldPackets::Transmogrification::Tra
+             if (!Item::CanTransmogrifyItemWithItem(itemTransmogrified, itemModifiedAppearance))
+             {
+                 TC_LOG_DEBUG("network", "WORLD: HandleTransmogrifyItems - %s, Name: %s failed CanTransmogrifyItemWithItem (%u with appearance %d).", player->GetGUID().ToString().c_str(), player->GetName().c_str(), itemTransmogrified->GetEntry(), transmogItem.ItemModifiedAppearanceID);
++                refuse(Trinity::StringFormat("item %d's appearance doesn't fit item %u in slot %u.", itemModifiedAppearance->ItemID, itemTransmogrified->GetEntry(), uint32(transmogItem.Slot)));
+                 return;
+             }
+ 
+@@ -104,6 +124,7 @@ void WorldSession::HandleTransmogrifyItems(WorldPackets::Transmogrification::Tra
+             if (transmogItem.Slot != EQUIPMENT_SLOT_MAINHAND && transmogItem.Slot != EQUIPMENT_SLOT_OFFHAND)
+             {
+                 TC_LOG_DEBUG("network", "WORLD: HandleTransmogrifyItems - %s, Name: %s tried to transmogrify illusion into non-weapon slot (%u).", player->GetGUID().ToString().c_str(), player->GetName().c_str(), transmogItem.Slot);
++                refuse("illusions only go on weapons.");
+                 return;
+             }
+ 
+@@ -111,12 +132,14 @@ void WorldSession::HandleTransmogrifyItems(WorldPackets::Transmogrification::Tra
+             if (!illusion)
+             {
+                 TC_LOG_DEBUG("network", "WORLD: HandleTransmogrifyItems - %s, Name: %s tried to transmogrify illusion using invalid enchant (%d).", player->GetGUID().ToString().c_str(), player->GetName().c_str(), transmogItem.SpellItemEnchantmentID);
++                refuse(Trinity::StringFormat("illusion %d doesn't exist.", transmogItem.SpellItemEnchantmentID));
+                 return;
+             }
+ 
+             if (!illusion->ItemVisual || !(illusion->Flags & ENCHANTMENT_COLLECTABLE))
+             {
+                 TC_LOG_DEBUG("network", "WORLD: HandleTransmogrifyItems - %s, Name: %s tried to transmogrify illusion using not allowed enchant (%d).", player->GetGUID().ToString().c_str(), player->GetName().c_str(), transmogItem.SpellItemEnchantmentID);
++                refuse(Trinity::StringFormat("illusion %d isn't collectable.", transmogItem.SpellItemEnchantmentID));
+                 return;
+             }
+ 
+@@ -125,6 +148,7 @@ void WorldSession::HandleTransmogrifyItems(WorldPackets::Transmogrification::Tra
+                 if (!sConditionMgr->IsPlayerMeetingCondition(player, condition))
+                 {
+                     TC_LOG_DEBUG("network", "WORLD: HandleTransmogrifyItems - %s, Name: %s tried to transmogrify illusion using not collected enchant (%d).", player->GetGUID().ToString().c_str(), player->GetName().c_str(), transmogItem.SpellItemEnchantmentID);
++                    refuse(Trinity::StringFormat("illusion %d isn't collected.", transmogItem.SpellItemEnchantmentID));
+                     return;
+                 }
+             }
+@@ -132,6 +156,7 @@ void WorldSession::HandleTransmogrifyItems(WorldPackets::Transmogrification::Tra
+             if (illusion->ScalingClassRestricted > 0 && uint8(illusion->ScalingClassRestricted) != player->getClass())
+             {
+                 TC_LOG_DEBUG("network", "WORLD: HandleTransmogrifyItems - %s, Name: %s tried to transmogrify illusion using not allowed class enchant (%d).", player->GetGUID().ToString().c_str(), player->GetName().c_str(), transmogItem.SpellItemEnchantmentID);
++                refuse(Trinity::StringFormat("illusion %d is for another class.", transmogItem.SpellItemEnchantmentID));
+                 return;
+             }
+ 
+@@ -145,7 +170,10 @@ void WorldSession::HandleTransmogrifyItems(WorldPackets::Transmogrification::Tra
+     if (cost) // 0 cost if reverting look
+     {
+         if (!player->HasEnoughMoney(cost))
++        {
++            refuse(Trinity::StringFormat("it costs %u copper.", uint32(cost)));
+             return;
++        }
+         player->ModifyMoney(-cost);
+     }
+ 

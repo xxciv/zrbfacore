@@ -3,6 +3,45 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-03 (Transmog apply)
+
+On PR #13 (not merged yet). Core change in the new `tools/bfa/transmog-apply.patch`, applied after all
+the other patches. It needs `transmog-collection.patch`.
+
+### Apply at the transmogrifier did nothing
+- **Found** (reported by Four): Apply at the transmogrifier stopped doing anything. Every check in
+  `WorldSession::HandleTransmogrifyItems` (`TransmogrificationHandler.cpp`) ends the request with a
+  debug log line only, and one refused slot cancels the whole request, so a refusal looks like nothing
+  happening. One check, `Player::CanUseItem(itemTemplate)` on the item the appearance comes from,
+  refuses the very appearances `transmog-collection.patch` lets you collect: items above your level
+  (`Transmog.CollectIgnoreLevel`) and items your class, race or faction can't use
+  (`Transmog.CollectAnyClass`). The client offers every collected appearance, so picking one of those
+  breaks Apply for every slot. This is the likely cause but isn't confirmed; the new chat message will
+  say if it is something else.
+- **Changed:** `TransmogrificationHandler.cpp`, `HandleTransmogrifyItems`:
+  - With `Transmog.CollectAnyClass` 1 the `CanUseItem` check is skipped. With it 0 and
+    `Transmog.CollectIgnoreLevel` 1, it skips only the required level (`CanUseItem(itemTemplate, true)`).
+    With both 0 it is the stock check. `Item::CanTransmogrifyItemWithItem` is unchanged, so the
+    appearance still has to match the item's armor type, weapon type and slot.
+  - Every refusal now also prints `Transmogrify refused: <reason>` in chat: transmogrifier out of reach,
+    bad slot, nothing equipped, unknown or uncollected appearance, an item you can't use (with its
+    `InventoryResult`), an appearance that doesn't fit the item, illusion problems, or not enough money.
+  - No SQL, no new settings.
+- **Status:** compiled (`TransmogrificationHandler.cpp` built against all the other patches); not yet
+  tested in game.
+
+### To pick up the transmog apply fix
+This only adds a new patch, so the patches already applied stay as they are. Only one file changes, so
+the build is short. The patch is read straight from the PR branch, so `tools-repo` stays on `main`:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/transmog-collection-0qdzrj
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/transmog-apply.patch | git apply
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+Then type `server shutdown 1` in the worldserver console and start it again with
+`cd ~/bfa/server/bin && ./worldserver`.
+
 ## 2026-11-03 (Razorfen Downs)
 
 Merged to `main` with PR #26 on 2026-11-03.
