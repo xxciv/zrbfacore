@@ -695,6 +695,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_10_15_02_shadowfang_stone_sleepers.sql` | Shadowfang Keep's Stone Sleepers on the wall walk never waking: they now wake and attack when a player comes within 15 yards |
 | `2026_10_16_01_shadowfang_lesser_gargoyles.sql` | Shadowfang Keep's Lesser Gargoyles on the wall walk never attacking: they were flagged as civilians |
 | `2026_10_16_02_shadowfang_godfrey_text.sql` | Typos in Lord Godfrey's aggro and death yells |
+| `2026_11_03_20_holiday_emote_casts.sql` | Day of the Dead: `/dance` with Catrina gave no skeleton and no Dead Man's Party achievement (verified in game 2026-11-03). Winter Veil: `/kiss` on a Winter Reveler gave no Mistletoe (same cause, not tested yet). Both NPCs' emote spells had no target |
 
 ## 11. Status
 

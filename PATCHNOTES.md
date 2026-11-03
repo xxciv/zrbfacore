@@ -3,6 +3,26 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-03 (Holidays)
+
+Merged to `main` with PR #35 on 2026-11-03.
+
+### Day of the Dead: dancing with Catrina gave no skeleton and no Dead Man's Party
+
+From Four, 2026-11-03. SQL only: `sql/fixes/world/2026_11_03_20_holiday_emote_casts.sql`.
+
+- **Found** (reported by Four): `/dance` with Catrina (34383) during Day of the Dead did nothing, so
+  achievement 3456 Dead Man's Party never came.
+  - The achievement has one criterion (10918, type 69 "be spell target") for spell 65386 Honor the
+    Dead, the skeleton transform. The core credits it when that spell hits the player.
+  - Catrina's SmartAI row (event 22 receive emote, emote 34 dance, action 11 cast 65386) has
+    `target_type` 0 (none). SmartAI finds no target for that, so she never cast the spell.
+  - A scan of every receive-emote cast row in the dump found one more with the same mistake: Winter
+    Reveler (15760, Winter Veil), who should cast Mistletoe (26218) on a player who `/kiss`es him.
+- **Changed:** `target_type` 0 -> 7 (the player who did the emote) on both rows:
+  `smart_scripts` 34383/0/0/0 and 15760/0/0/0.
+- **Status:** Catrina confirmed in game by Four on 2026-11-03 (skeleton transform and Dead Man's
+  Party awarded). Winter Reveler not tested yet: Winter Veil starts 2026-12-15 on this server.
 ## 2026-11-03 (Transmog apply)
 
 Merged to `main` with PR #34 on 2026-11-03. Core change in the new `tools/bfa/transmog-apply.patch`,
