@@ -5,6 +5,29 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-03
 
+### World: Rerouted! (Desolace) gives no mount to ride
+
+- **Found** (reported by Four): after taking Rerouted! from Officer Jankie, there is no mount.
+- **Cause:** nothing is scripted. Jankie (36410), Jankie's Mount (36416/36419), Furien (35286) and
+  Furien's Mount (35287) have no SmartAI rows, spellclick or waypoint path in this DB (or the Pandaria
+  one), and none of the mounts is set up as a vehicle. The only retail trace is spell 68693, which
+  summons 36419 next to Jankie (`spell_target_position` 171.4, 1793.5, 86.2).
+- **Changed:** `sql/fixes/world/2026_11_03_31_desolace_entry_flights.sql`, a stand-in for the flight:
+  - Jankie 36410 SAI id 0: on accepting 14384, teleport the player to Corporal Melkins at Nijel's
+    Point (map 1, 129.0, 1235.5, 163.6).
+  - Furien 35286 SAI id 0 (Horde): on accepting My Time Has Passed (14184), teleport to Cerelia at
+    Furien's Post (map 1, -427.6, 2229.9, 89.5).
+- **Status:** waiting for Four to test. If you already have the quest, abandon it and take it again.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_31_desolace_entry_flights.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ### World: no quest from Officer Jankie (or Furien) at the Desolace entrance
 
 - **Found** (reported by Four): Officer Jankie (36410) at Tethris Aran shows no quest marker.
