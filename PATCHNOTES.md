@@ -5,6 +5,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-31
 
+### Razorfen Downs: Blackthorn's Summon Skeletons summoned nothing
+
+From Four's run, 2026-11-03. SQL only: `sql/fixes/world/2026_11_03_02_razorfen_downs_blackthorn_skeletons.sql`.
+
+- **Found** (reported by Four): Death Speaker Blackthorn cast Summon Skeletons, but no skeletons
+  came. His script casts 150601, which only puts a dummy aura on him. The server-side script that
+  should then summon is missing. The spell that actually summons is 150603 (Summon Skeletons: a
+  Splinterbone Warrior, 74902, at the caster).
+- **Changed:**
+  - He casts 150603 three times, from 70% health and then every 20-35 seconds as before.
+  - The warriors get the scaling row for the dungeon's difficulty.
+- **Status:** waiting on Four's test.
+
 ### Razorfen Downs: Amnennar never appeared after Blackthorn died
 
 From Four's run, 2026-11-03. SQL only: `sql/fixes/world/2026_11_03_01_razorfen_downs_amnennar_summon.sql`.
@@ -33,7 +46,8 @@ From Four's run, 2026-11-03. SQL only: `sql/fixes/world/2026_11_03_00_razorfen_d
   `2026_10_31_01` gave her the Pandaria database's waypoint path, which is a one-way flight from her
   perch down to the trail. Run as a loop, it made her dive through the dungeon over and over.
 - **Changed:** her path (129000018) is removed and she stays on her perch.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed in game by Four on 2026-11-03: she stays put. Four moved her off a vine with
+  `.npc move` in their own database.
 
 ### Razorfen Downs: Lady Falther'ess still only meleed (and Ragglesnout never cast)
 
