@@ -3,6 +3,30 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-03
+
+### World: no quest from Officer Jankie (or Furien) at the Desolace entrance
+
+- **Found** (reported by Four): Officer Jankie (36410) at Tethris Aran shows no quest marker.
+- **Cause:** her quest Rerouted! (14384), which flies you to Nijel's Point and starts Alliance
+  Desolace, had `quest_template_addon.PrevQuestID` = 25938 (the breadcrumb Help for Desolace). Anyone
+  who came with the other breadcrumb, Hero's Call: Desolace! (28531), or without one got nothing.
+  The Horde side has the same lock: Furien's My Time Has Passed (14184) required Warchief's Command:
+  Desolace! (28548).
+- **Changed:** `sql/fixes/world/2026_11_03_30_desolace_entry_quests_no_breadcrumb.sql` sets
+  `PrevQuestID` 25938 -> 0 for 14384 and 28548 -> 0 for 14184. The breadcrumbs are unchanged and
+  still turn in at Jankie and Furien.
+- **Status:** waiting for Four to test.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_30_desolace_entry_quests_no_breadcrumb.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ## 2026-11-03 (Holidays)
 
 Merged to `main` with PR #35 on 2026-11-03.
