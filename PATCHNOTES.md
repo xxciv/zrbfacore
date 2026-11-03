@@ -180,8 +180,8 @@ Before Four's first run. New `tools/bfa/razorfen-downs.patch` (build needed) and
   database spawn for spawn; classic had 15 there. Four chose to keep it.
 
 **Status:** confirmed in game by Four on 2026-11-03: all five bosses are spawned, the three
-lieutenants and Blackthorn's step (from `razorfen-downs.patch`) completed, and Amnennar gave scenario
-credit. Amnennar's summon needed `2026_11_03_01`.
+lieutenants and Blackthorn's step (from `razorfen-downs.patch`) completed, Amnennar gave scenario
+credit, and achievement 636 "Razorfen Downs" unlocked. Amnennar's summon needed `2026_11_03_01`.
 
 ### World: Bloodlord Mandokir never leaves the Rebel Camp after his quest
 
