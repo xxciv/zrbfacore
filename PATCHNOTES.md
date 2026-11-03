@@ -5,6 +5,35 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-03
 
+### World: Nijel's Point is packed with Defenders (some on fire) and extra Merchants
+
+- **Found** (reported by Four): Nijel's Point in Desolace is crowded with Nijel's Point Defenders,
+  several of them burning, and many copies of Nijel's Point Merchant.
+- **Cause:** Nijel's Point Defender (35506, 119 spawns) and Nijel's Point Merchant (35510, 10
+  spawns) are the targets of the Horde quest Rider on the Storm (14198: kill 40 Defenders and burn
+  15 Merchants while riding the firestorm). Like the Astranaar siege, they have no phase, so every
+  player sees the raid crowd in the town. 11 Defenders also keep the sniffed fire visual (aura
+  42726). The two entries were also listed as quest givers for 14198, which really starts at the
+  Ancient Vortex Runestone (gameobject 195445).
+- **Changed:** `sql/fixes/world/2026_11_03_32_nijels_point_raid_phase.sql`:
+  - All 35506 and 35510 spawns: `PhaseId` 0 -> 303 (a normal Phase.db2 phase used nowhere else).
+  - `phase_area` (608, 303) plus a condition (type 26, quest state 47, quest 14198, mask 10):
+    phase 303 shows only while Rider on the Storm is in progress or complete.
+  - `creature_addon.auras` '42726' -> '' on guids 309531, 309912, 310167, 310400, 310426, 310485,
+    310542, 310635, 310659, 310677 and 310741.
+  - `creature_queststarter` rows (35506, 14198) and (35510, 14198) deleted.
+  - The town's own guards (8151 x18, 51839 x8), its named NPCs and the vortex bunnies are untouched.
+- **Status:** waiting for Four to test.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_32_nijels_point_raid_phase.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ### World: Rerouted! (Desolace) gives no mount to ride
 
 - **Found** (reported by Four): after taking Rerouted! from Officer Jankie, there is no mount.
@@ -17,7 +46,8 @@ to do to pick it up (rebuild, restart, run SQL).
     Point (map 1, 129.0, 1235.5, 163.6).
   - Furien 35286 SAI id 0 (Horde): on accepting My Time Has Passed (14184), teleport to Cerelia at
     Furien's Post (map 1, -427.6, 2229.9, 89.5).
-- **Status:** waiting for Four to test. If you already have the quest, abandon it and take it again.
+- **Status:** Alliance side (Jankie teleport) confirmed in game by Four on 2026-11-03. Furien's side
+  not tested (Horde only).
 - **Pick up:** SQL only, no rebuild:
 
 ```
@@ -41,7 +71,8 @@ Then restart worldserver.
 - **Changed:** `sql/fixes/world/2026_11_03_30_desolace_entry_quests_no_breadcrumb.sql`:
   `PrevQuestID` 25938 -> 0 on 14384 and 28548 -> 0 on 14184; `NextQuestID` 14384 -> 0 on 25938 and
   28531, 14184 -> 0 on 28548. The breadcrumbs still turn in at Jankie and Furien.
-- **Status:** waiting for Four to test.
+- **Status:** confirmed in game by Four on 2026-11-03 (Rerouted! offered by Jankie without a
+  breadcrumb). Furien's side not tested (Horde only).
 - **Pick up:** SQL only, no rebuild:
 
 ```
