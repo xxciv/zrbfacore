@@ -3,7 +3,74 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-03 (World fixes, second batch)
+
+### World: zone entry quests hidden unless you picked up a breadcrumb (67 quests)
+
+- **Found** (Four asked for a sweep after Rerouted!, 2026-11-03): the same lock as Officer Jankie's
+  Rerouted! (14384) exists in many zones.
+- **Cause:** the core turns `quest_template_addon.PrevQuestID` and every quest whose `NextQuestID`
+  points at a quest into hard requirements (`ObjectMgr::LoadQuests` -> `prevQuests`;
+  `Player::SatisfyQuestPreviousQuest` needs one of them rewarded). For 67 zone entry quests every
+  such requirement is a breadcrumb: a Hero's Call / Warchief's Command board quest, or a talk-only
+  quest (no objectives) that starts outside the zone. Arriving without one hid the first quest.
+  Upstream already fixed Westfall (26209) this way; Desolace (14384, 14184) is in
+  `2026_11_03_30`. Quests where one of the requirements is a real or in-zone step (28 found, for
+  example In Defense of Far Watch 871 after Conscript of the Horde 840) are left alone.
+- **Changed:** `sql/fixes/world/2026_11_03_33_zone_entry_quests_no_breadcrumb.sql`: on 65 quests
+  `PrevQuestID` -> 0 where it named one of its breadcrumbs, and `NextQuestID` -> 0 on 115
+  breadcrumbs that pointed at them. Each quest and its breadcrumbs are listed in the file. Examples:
+  The Forsaken 9329 (Ghostlands), Alien Predators 9634 (Bloodmyst), Hellscream's Vigil 11585 and
+  Enlistment Day 11672 (Borean Tundra), The Last Wave of Survivors 13518 (Darkshore), Signs of
+  Change 25210/25447 (Feralas), The Lost Pilot 26854 (Loch Modan), The Maelstrom 27203 (Deepholm),
+  The Road to Kun-Lai 31254/31255. The breadcrumbs stay available and still turn in at the same NPC.
+- **Status:** tested on a copy of the dump (all 67 quests end up with no requirement left). Not
+  tested in game yet.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_33_zone_entry_quests_no_breadcrumb.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: 40 spawns with a cosmetic per-spawn script never ran their own script
+
+- **Found:** follow-up to the Fel Hands rows (`2026_10_31_05`). The same importer left a second kind
+  of one-row per-spawn script (comment 'OOC - CS') on 40 spawns, mostly in Stonetalon Mountains,
+  Southern Barrens, Silithus, Dustwallow Marsh and Orgrimmar.
+- **Cause:** each casts a cosmetic spell out of combat (dummy auras 39550, 54219, 111541, 146130,
+  180695, 183940, 185340, 217193, or dummy-effect 217160 aimed at a nearby bunny). These may be real
+  retail visuals, but a per-spawn script replaces the creature's own script, so these spawns never
+  cast in combat, fled or said their lines, and Tortolla (41504, guid 293563) in Mount Hyjal never
+  ran 'Teleport on Quest Add'.
+- **Changed:** `sql/fixes/world/2026_11_03_34_cosmetic_spawn_scripts_keep_entry_script.sql`: each
+  spawn's entry script is copied under its per-spawn script with `id` and `link` + 1000, next to the
+  cosmetic row (id 0), so both run. It copies from the live table when applied; re-running replaces
+  the copies. Spawns and entries are listed in the file (for example Lumbering Oaf 40906, Sapper
+  Specialist 37925, Razormane Pathfinder 37560, Orgrimmar Grunt 3296).
+- **Status:** tested on a copy of the dump (rows copied, re-run safe). Not tested in game yet.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_34_cosmetic_spawn_scripts_keep_entry_script.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ## 2026-11-03
+
+Merged to `main` with PR #37 on 2026-11-03.
 
 ### World: Nijel's Point is packed with Defenders (some on fire) and extra Merchants
 
