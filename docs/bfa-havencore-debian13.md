@@ -116,6 +116,7 @@ git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
 git apply ../tools-repo/tools/bfa/core-branding.patch
 git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
 git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
+git apply ../tools-repo/tools/bfa/transmog-apply.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -298,6 +299,12 @@ touched: `CollectionMgr.cpp`, `Player.cpp` (`MoveItemToInventory`, for mail, tra
 buyback), `World.h` / `World.cpp` (the three settings), `cs_debug.cpp` (`.debug transmog <item> [learn]`, which
 says why an item isn't collected) and `worldserver.conf.dist`. `World.h` is in the
 precompiled headers, so applying it rebuilds nearly everything.
+
+`transmog-apply.patch` goes with it. Applying a transmog refused the whole request without a word when
+one chosen appearance came from an item the character couldn't use, including one above the character's
+level, which `transmog-collection.patch` now lets you collect. The check now follows the same
+`Transmog.*` settings, and every refusal prints `Transmogrify refused: <reason>` in chat. It only touches
+`TransmogrificationHandler.cpp` and needs `transmog-collection.patch` applied first.
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
@@ -649,6 +656,7 @@ git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
 git apply ../tools-repo/tools/bfa/core-branding.patch
 git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
 git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
+git apply ../tools-repo/tools/bfa/transmog-apply.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
