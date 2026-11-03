@@ -79,6 +79,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   2 or 3 pets in the team no longer adds the pet 2 or 3 times.
 - [`tools/bfa/core-branding.patch`](tools/bfa/core-branding.patch): the startup banner reads
   zrbfacore ("Based on HavenCore"), without the old BfaCore Discord link and email address.
+- [`tools/bfa/razorfen-downs.patch`](tools/bfa/razorfen-downs.patch): Razorfen Downs: Death Speaker
+  Blackthorn's death completes his scenario step. Needs `sql/fixes/world/2026_10_31_01_razorfen_downs.sql`.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.
