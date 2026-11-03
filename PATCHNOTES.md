@@ -77,7 +77,7 @@ From Four's first run, 2026-10-31. SQL only: `sql/fixes/world/2026_10_31_04_razo
 - **Not changed:** 40 more spawns elsewhere have the same Fel Hands row. 30 of them hide their
   creature's own script: 14 in Kalimdor, 8 in the Eastern Kingdoms, 6 in Gnomeregan, 1 in Blackrock
   Depths.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed in game by Four on 2026-11-03.
 
 ### Razorfen Downs: the idol room was a pile-up, and Withered Touch hit far too hard
 
@@ -101,7 +101,7 @@ From Four's first run, 2026-10-31. SQL only: `sql/fixes/world/2026_10_31_03_razo
   - Withered Touch is removed from every Quilguard and from Plaguemaw, both the aura and the cast.
     Quilguards keep Enrage at 30%, and Plaguemaw keeps Putrid Stench.
   - The duplicate Geomancer and Spearhide rows are deleted.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed in game by Four on 2026-11-03.
 
 ### Razorfen Downs: Lady Falther'ess only meleed and rarely dropped an item
 
@@ -118,7 +118,7 @@ From Four's first run, 2026-10-31. SQL only: `sql/fixes/world/2026_10_31_02_razo
     damage within 8 yards). Her classic disguise and Scourge Invasion start are left out.
   - Her items share one group with the Pandaria chances (43% / 56%), so one always drops.
   - That spawner no longer wanders.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed in game by Four on 2026-11-03.
 
 ### Razorfen Downs: pre-run check
 
