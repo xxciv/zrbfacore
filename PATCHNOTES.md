@@ -5,6 +5,33 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-03 (World fixes, second batch)
 
+### World: Sapper Specialist never uses Sapper Charge
+
+- **Found** (reported by Four while testing the per-spawn script entry below): the Sapper Specialist
+  (37925, Southern Barrens) throws dynamite but never blows himself up at 10% HP.
+- **Cause:** Sapper Charge (82867) hits a spot at an enemy (implicit target 53,
+  TARGET_DEST_TARGET_ENEMY) and then kills the caster. The SmartAI rows cast it on target_type 1
+  (self), which is not an enemy, so every cast failed. The entry also mixed two script versions:
+  ids 0 and 1 existed twice, so the aggro link to id 1 could land on the wrong row.
+- **Changed:** `sql/fixes/world/2026_11_03_35_sapper_specialist_sapper_charge.sql`: old-version rows
+  deleted (id 0 'Cast Throw' timer, id 1 'Cast Sapper Charge at 10% HP'); id 16 'Cast Sapper Charge
+  at 10% HP' target_type 1 -> 2 (victim). Row 29 (the scripted run that blows up next to the Triumph
+  defenders) is unchanged. Spawns 270777, 270847 and 270852 get a fresh copy of the entry script
+  (from `2026_11_03_34`).
+- **Status:** tested on a copy of the dump. Not tested in game yet.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_35_sapper_specialist_sapper_charge.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ### World: zone entry quests hidden unless you picked up a breadcrumb (67 quests)
 
 - **Found** (Four asked for a sweep after Rerouted!, 2026-11-03): the same lock as Officer Jankie's
@@ -24,8 +51,8 @@ to do to pick it up (rebuild, restart, run SQL).
   Enlistment Day 11672 (Borean Tundra), The Last Wave of Survivors 13518 (Darkshore), Signs of
   Change 25210/25447 (Feralas), The Lost Pilot 26854 (Loch Modan), The Maelstrom 27203 (Deepholm),
   The Road to Kun-Lai 31254/31255. The breadcrumbs stay available and still turn in at the same NPC.
-- **Status:** tested on a copy of the dump (all 67 quests end up with no requirement left). Not
-  tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-03 (The Lost Pilot, The Last Wave of Survivors,
+  The Stolen Keg, Northfold Manor and Signs of Change all offered without a breadcrumb).
 - **Pick up:** SQL only, no rebuild:
 
 ```
@@ -54,7 +81,8 @@ Then restart worldserver.
   cosmetic row (id 0), so both run. It copies from the live table when applied; re-running replaces
   the copies. Spawns and entries are listed in the file (for example Lumbering Oaf 40906, Sapper
   Specialist 37925, Razormane Pathfinder 37560, Orgrimmar Grunt 3296).
-- **Status:** tested on a copy of the dump (rows copied, re-run safe). Not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-03: the Sapper Specialist now throws dynamite.
+  Its Sapper Charge was broken in the entry script itself, see the next entry.
 - **Pick up:** SQL only, no rebuild:
 
 ```
