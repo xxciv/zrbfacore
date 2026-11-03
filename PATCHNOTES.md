@@ -27,7 +27,7 @@ From Four's run, 2026-11-03. SQL only: `sql/fixes/world/2026_11_03_02_razorfen_d
 - **Changed:**
   - He casts 150603 three times, from 70% health and then every 20-35 seconds as before.
   - The warriors get the scaling row for the dungeon's difficulty.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed in game by Four on 2026-11-03 ("much more fun and challenging").
 
 ### Razorfen Downs: Amnennar never appeared after Blackthorn died
 
