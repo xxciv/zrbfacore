@@ -9,13 +9,15 @@ to do to pick it up (rebuild, restart, run SQL).
 
 - **Found** (reported by Four): Officer Jankie (36410) at Tethris Aran shows no quest marker.
 - **Cause:** her quest Rerouted! (14384), which flies you to Nijel's Point and starts Alliance
-  Desolace, had `quest_template_addon.PrevQuestID` = 25938 (the breadcrumb Help for Desolace). Anyone
-  who came with the other breadcrumb, Hero's Call: Desolace! (28531), or without one got nothing.
-  The Horde side has the same lock: Furien's My Time Has Passed (14184) required Warchief's Command:
-  Desolace! (28548).
-- **Changed:** `sql/fixes/world/2026_11_03_30_desolace_entry_quests_no_breadcrumb.sql` sets
-  `PrevQuestID` 25938 -> 0 for 14384 and 28548 -> 0 for 14184. The breadcrumbs are unchanged and
-  still turn in at Jankie and Furien.
+  Desolace, could only be taken after a breadcrumb. It had `quest_template_addon.PrevQuestID` = 25938
+  (Help for Desolace), and the breadcrumbs Help for Desolace (25938) and Hero's Call: Desolace!
+  (28531) have `NextQuestID` = 14384, which the core also turns into a requirement on 14384
+  (`ObjectMgr::LoadQuests` adds them to its `prevQuests`). Arriving without a breadcrumb gave nothing.
+  The Horde side has the same lock: Furien's My Time Has Passed (14184) had `PrevQuestID` 28548 and
+  Warchief's Command: Desolace! (28548) has `NextQuestID` 14184.
+- **Changed:** `sql/fixes/world/2026_11_03_30_desolace_entry_quests_no_breadcrumb.sql`:
+  `PrevQuestID` 25938 -> 0 on 14384 and 28548 -> 0 on 14184; `NextQuestID` 14384 -> 0 on 25938 and
+  28531, 14184 -> 0 on 28548. The breadcrumbs still turn in at Jankie and Furien.
 - **Status:** waiting for Four to test.
 - **Pick up:** SQL only, no rebuild:
 
