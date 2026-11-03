@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-03 (Transmog apply)
 
-On PR #13 (not merged yet). Core change in the new `tools/bfa/transmog-apply.patch`, applied after all
+On PR #34 (not merged yet). Core change in the new `tools/bfa/transmog-apply.patch`, applied after all
 the other patches. It needs `transmog-collection.patch`.
 
 ### Apply at the transmogrifier did nothing
