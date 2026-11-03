@@ -5,6 +5,34 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-03 (World fixes, second batch)
 
+### World: Stonetalon oil pumps wander and the Krom'gar balloon sinks into the lake
+
+- **Found** (reported by Four, Mirkfallon Lake): the Oil Pumps walk around, and the Krom'gar Hot Air
+  Balloon sits half under water.
+- **Cause:** Oil Pump 41475 (11 spawns, the targets of Schemin' That Sabotage 25878) had
+  MovementType 1 with spawndist 3. The balloon 41418 (guid 272501, spawned at z 148.2) has
+  InhabitType 3 (ground + water), so it falls into the lake. The Pandaria DB has the pumps still
+  with InhabitType 7 and the balloon at InhabitType 4 (air). The pumps' size is their normal model
+  (scale 1 in both DBs).
+- **Changed:** `sql/fixes/world/2026_11_03_36_stonetalon_oil_pumps_balloon.sql`: 41475 spawns
+  MovementType 1 -> 0 and spawndist 3 -> 0, template InhabitType 3 -> 7; 41418 template InhabitType
+  3 -> 4.
+- **Not changed:** the big fire Four saw at 1497.8, 1006.2: no creature or gameobject is spawned
+  within 50 yards in the DB, so it is part of the client's map art (inferred).
+- **Status:** waiting for Four to test.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_36_stonetalon_oil_pumps_balloon.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ### World: Sapper Specialist never uses Sapper Charge
 
 - **Found** (reported by Four while testing the per-spawn script entry below): the Sapper Specialist
