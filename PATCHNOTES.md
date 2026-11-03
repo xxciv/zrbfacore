@@ -16,8 +16,7 @@ the other patches. It needs `transmog-collection.patch`.
   refuses the very appearances `transmog-collection.patch` lets you collect: items above your level
   (`Transmog.CollectIgnoreLevel`) and items your class, race or faction can't use
   (`Transmog.CollectAnyClass`). The client offers every collected appearance, so picking one of those
-  breaks Apply for every slot. This is the likely cause but isn't confirmed; the new chat message will
-  say if it is something else.
+  breaks Apply for every slot.
 - **Changed:** `TransmogrificationHandler.cpp`, `HandleTransmogrifyItems`:
   - With `Transmog.CollectAnyClass` 1 the `CanUseItem` check is skipped. With it 0 and
     `Transmog.CollectIgnoreLevel` 1, it skips only the required level (`CanUseItem(itemTemplate, true)`).
@@ -27,8 +26,7 @@ the other patches. It needs `transmog-collection.patch`.
     bad slot, nothing equipped, unknown or uncollected appearance, an item you can't use (with its
     `InventoryResult`), an appearance that doesn't fit the item, illusion problems, or not enough money.
   - No SQL, no new settings.
-- **Status:** compiled (`TransmogrificationHandler.cpp` built against all the other patches); not yet
-  tested in game.
+- **Status:** confirmed in game by Four on 2026-11-03: Apply works again.
 
 ### To pick up the transmog apply fix
 This only adds a new patch, so the patches already applied stay as they are. Only one file changes, so
