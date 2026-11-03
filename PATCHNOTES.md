@@ -50,7 +50,12 @@ dungeon 34), and all their spells exist. Dire Maul has one scenario for all thre
 - **Found:** 449 spawns, 30 random wanderers, no paths.
 - **Changed:** 52 patrols (Pandaria paths for the same guids, else AzerothCore, ids 429000002+),
   2 formations, 183 wanderers. Bosses, Pusillin, Old Ironbark and the Alzzin's Minions are left still.
-- **Status:** not tested in game yet.
+- **Found** (reported by Four): Warpwood Treant 323675 bounced through the air on its patrol. It
+  and two more spawns (treant 323700, Warpwood Tangler 323994) had the same 300-yard AzerothCore
+  loop round the whole courtyard (paths 429000031, 429000033, 429000038).
+- **Changed:** `sql/fixes/world/2026_11_03_06_dire_maul_east_treant_loop.sql`: those three wander
+  2 yards at their spawn point instead, and the three paths are deleted. 49 patrols left.
+- **Status:** first run in progress; treant fix not tested in game yet.
 
 ## 2026-11-03 (Holidays)
 
