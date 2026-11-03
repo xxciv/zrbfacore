@@ -5,6 +5,16 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-31
 
+### Razorfen Downs: Koristrasza dropped to the ground wherever she was put
+
+From Four's run, 2026-11-03. SQL only: `sql/fixes/world/2026_11_03_03_razorfen_downs_koristrasza_flying.sql`.
+
+- **Found** (reported by Four, while moving her off a vine with `.npc move`): Koristrasza (44843)
+  plays a flying animation, but her template only allowed ground and water (InhabitType 3). So the
+  server dropped her to the floor below wherever she was placed.
+- **Changed:** InhabitType 4 (air), so she hovers where she is placed.
+- **Status:** waiting on Four's test.
+
 ### Razorfen Downs: Blackthorn's Summon Skeletons summoned nothing
 
 From Four's run, 2026-11-03. SQL only: `sql/fixes/world/2026_11_03_02_razorfen_downs_blackthorn_skeletons.sql`.
