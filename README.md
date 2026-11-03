@@ -68,6 +68,17 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   `2026_10_24_05_headless_horseman.sql` and `2026_10_24_06_scarlet_fuel_tank_encounters.sql`.
 - [`tools/bfa/battle-pet-slots.patch`](tools/bfa/battle-pet-slots.patch): fixes the packet that
   unlocks battle pet slots, so the first slot opens after Battle Pet Training and pets can be slotted.
+- [`tools/bfa/battle-pet-journal.patch`](tools/bfa/battle-pet-journal.patch): summoned journal pets
+  appear as themselves instead of Murkimus the Gladiator, and released pets stay released.
+- [`tools/bfa/battle-pet-level-achievements.patch`](tools/bfa/battle-pet-level-achievements.patch): pet
+  level achievements (Newbie, Just a Pup) are awarded, which unlocks battle pet slots 2 and 3.
+- [`tools/bfa/battle-pet-achievements.patch`](tools/bfa/battle-pet-achievements.patch): the other pet
+  battle achievement criteria count (battles won, pets captured, pets added to the journal).
+- [`tools/bfa/battle-pet-trainers.patch`](tools/bfa/battle-pet-trainers.patch): pet tamers such as
+  Julia Stevens can be battled ("Let's do battle!") and the win credits their quest; a capture with
+  2 or 3 pets in the team no longer adds the pet 2 or 3 times.
+- [`tools/bfa/core-branding.patch`](tools/bfa/core-branding.patch): the startup banner reads
+  zrbfacore ("Based on HavenCore"), without the old BfaCore Discord link and email address.
 - [`tools/bfa/razorfen-downs.patch`](tools/bfa/razorfen-downs.patch): Razorfen Downs: Death Speaker
   Blackthorn's death completes his scenario step. Needs `sql/fixes/world/2026_10_31_01_razorfen_downs.sql`.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the

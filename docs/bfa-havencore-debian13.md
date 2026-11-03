@@ -110,6 +110,12 @@ git apply ../tools-repo/tools/bfa/open-lock-crash.patch
 git apply ../tools-repo/tools/bfa/scarlet-halls.patch
 git apply ../tools-repo/tools/bfa/scarlet-monastery.patch
 git apply ../tools-repo/tools/bfa/battle-pet-slots.patch
+git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
+git apply ../tools-repo/tools/bfa/battle-pet-player-flags.patch
+git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
+git apply ../tools-repo/tools/bfa/core-branding.patch
+git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
+git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -556,6 +562,57 @@ grep -q '^Transmog.CollectOnPickup' ~/bfa/server/etc/worldserver.conf || sed -n 
 
 Set a value to 0 for stock 8.3.7 behavior, then `.reload config` or restart `worldserver`.
 
+### Pet battles
+
+Learn Battle Pet Training from a Battle Pet Trainer (for example in Stormwind or Orgrimmar) to open
+the first battle slot. The battle pet patches in step 3 fix the slot unlock, journal summons (pets
+appear as themselves instead of Murkimus the Gladiator) and releasing pets.
+
+The core never swaps critters for battle pets at runtime, so out of the box only the battle pets
+spawned directly in the world DB exist, and many zones have none of the species a pet tracker addon
+lists for them. Run this once after the world DB is installed and updated (after the first
+`worldserver` start), then restart `worldserver`:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_01_50_wild_battle_pet_spawns.sql
+```
+
+It turns critter spawns into their battle pet version per `battlepet_wild_zone_pool`, up to each
+zone's cap (about 5,900 spawns in 86 zones), and records every change in
+`zr_wild_battlepet_conversion` so it can be undone (see the file's header). Running it again changes
+nothing.
+
+Pet tamers (Julia Stevens, Marcus Jensen and the other trainers with a team in
+`battlepet_npc_team_member`) offer **Let's do battle!** in their dialog while you have their "defeat
+<tamer> in a pet battle" quest. Winning completes that objective. Without the quest the option does
+not appear, as on retail.
+
+Most tamers have their team standing next to them, often several pets on one spot. This makes those
+pets wander within 2 yards of their spawn instead (run once, then restart `worldserver`):
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_02_51_pet_tamer_display_pets_wander.sql
+```
+#### Legion and BFA pet tamers
+
+Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest
+(`battle-pet-trainers.patch`). The world DB had no team for the 23 Legion and BFA tamers and no spawn
+for 7 of them. Run these once (one line at a time), then restart `worldserver`:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_02_60_legion_bfa_tamer_teams.sql
+```
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_02_61_legion_bfa_tamer_spawns.sql
+```
+
+The first adds 69 team pets (level 25; rare for BFA, epic or legendary for the Legion ones). The
+second spawns Captain Hermes, Fizzie Sparkwhistle, Kwint, Korval Darkbeard, Crysa, Environeer Bert and
+Algalon, and gives the five that had none the gossip flag. The Shipwrecked Captive (98489) still has
+no spawn. Their world quests follow the normal rotation; to test one now, use
+`.quest add <quest id>` (Kwint is 52430), then right-click the tamer. If the client shows the talk
+cursor but nothing opens, you are probably more than about 5 yards away (easy underwater).
+
 ## 10. Updating
 
 ```sh
@@ -586,6 +643,12 @@ git apply ../tools-repo/tools/bfa/open-lock-crash.patch
 git apply ../tools-repo/tools/bfa/scarlet-halls.patch
 git apply ../tools-repo/tools/bfa/scarlet-monastery.patch
 git apply ../tools-repo/tools/bfa/battle-pet-slots.patch
+git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
+git apply ../tools-repo/tools/bfa/battle-pet-player-flags.patch
+git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
+git apply ../tools-repo/tools/bfa/core-branding.patch
+git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
+git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

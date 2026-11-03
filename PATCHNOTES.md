@@ -3,7 +3,9 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-10-31
+## 2026-11-03 (Razorfen Downs)
+
+Merged to `main` with PR #26 on 2026-11-03.
 
 ### Razorfen Downs: Koristrasza dropped to the ground wherever she was put
 
@@ -183,6 +185,510 @@ Before Four's first run. New `tools/bfa/razorfen-downs.patch` (build needed) and
 lieutenants and Blackthorn's step (from `razorfen-downs.patch`) completed, Amnennar gave scenario
 credit, and achievement 636 "Razorfen Downs" unlocked. Amnennar's summon needed `2026_11_03_01`.
 
+## 2026-11-02 (pet battles, tamers and achievements)
+
+Merged to `main` with PR #31 on 2026-11-02. The two patches go on top of
+`battle-pet-level-achievements.patch`, achievements first.
+
+### Pet tamers: display pets stacked on top of each other
+
+- **Found** (reported by Four): Julia Stevens' pets Fangs (64334) and Slither (64335) stand on the
+  exact same spot (-9874.57, 98.49, Goldshire).
+- **Cause:** most pet tamers have their team spawned next to them as static creatures
+  (MovementType 0). For 40 tamers, two or three of those pets share one position (104 spawns).
+- **Changed:** new `sql/fixes/world/2026_11_02_51_pet_tamer_display_pets_wander.sql`: the 149 static
+  team pet spawns within 30 yards of the 53 pet tamers that have a "win a pet battle against
+  <tamer>" quest now wander within 2 yards of their spawn (MovementType 1, spawndist 2). Pets were
+  matched by the `battlepet_info` creature of each species in the tamer's
+  `battlepet_npc_team_member` rows. Only spawns that are still static are changed; undo line in the
+  file header.
+- **Status:** confirmed in game by Four on 2026-11-02 (Fangs and Slither spread out at Julia).
+
+### Pet battles: tamers (Julia Stevens and others) cannot be battled
+
+- **Found** (reported by Four): Julia Stevens (64330, Goldshire) offers nothing to start a battle.
+  Beating the wild pets near her does not count for her quest.
+- **Cause:** the core has the tamers' teams (`battlepet_npc_team_member`, 1,509 NPC entries; Julia
+  has species 872 and 873 at level 2) and a trainer battle type (`PVE_BATTLE_PET_TRAINER`), but
+  nothing ever starts a battle against a tamer: `GetPetBattleTrainerTeam` is never called, no gossip
+  option exists, and the quest credit for winning was commented out in `PetBattle::Finish`. The quest
+  objective type that tamer quests use (11, `QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC`, 201 objectives
+  in the DB, for example quests 31316 and 31693 for Julia) was also missing from
+  `Player::IsQuestObjectiveComplete`, so even a credited objective could never complete the quest.
+- **Changed:** new `tools/bfa/battle-pet-trainers.patch`:
+  - `GossipDef.h`: new gossip option type `GOSSIP_OPTION_PET_BATTLE` (30) and option index 9001.
+  - `Player::PrepareGossipMenu`: adds **Let's do battle!** when the player has Battle Pet Training
+    (spell 119467), the NPC has a team in `battlepet_npc_team_member`, and an incomplete quest in the
+    log has a type 11 objective for this NPC that is not done yet (as on retail, no quest = no
+    battle).
+  - `Player::OnGossipSelect`: the option closes the dialog and calls the new
+    `WorldSession::StartPetBattleWithTrainer` (`BattlePetHandler.cpp`). It builds up to 3 tamer pets
+    from the team rows (level `minlevel`..`maxlevel`, quality `minquality`, a breed from
+    `breadsMask`, abilities `Ability1..3`, falling back to the species' own ability for an empty
+    one) and starts a PvE battle of type `PVE_BATTLE_PET_TRAINER` with the player's slotted pets. The
+    player stays in place, the tamer turns to face them, and the pets fight in between. Capturing is
+    already blocked for this type.
+  - `SendPetBattleInitialUpdate`: for tamer battles the tamer's entry and display are sent and the
+    tamer is no longer sent as the "wild pet" GUID.
+  - `PetBattle::Finish`: a win against a tamer calls the new `Player::PetBattleTrainerCredit`, which
+    sets every matching type 11 objective in the quest log and completes the quest when it can.
+  - `Player::IsQuestObjectiveComplete`: type 11 is a flag objective (done when set).
+  - `HandleGossipSelectOptionOpcode` (`NPCHandler.cpp`): accepts quest givers too. Julia's template
+    has only the quest giver flag (npcflag 2), so picking any gossip option on her was ignored. The
+    option is still checked against the menu that was sent.
+  - The battle client draws its own copy of the tamer on the opponent's spot, so the real NPC
+    stood next to it (two Julias, reported by Four). `StartPetBattleWithTrainer` now hides the
+    real tamer (`SetVisible(false)`) and `PetBattle::Finish` shows it again for every ending (win,
+    loss, forfeit). The real tamer is hidden for everyone during the fight. The first version looked
+    the tamer up with `ObjectAccessor::FindUnit`, which in this core never finds creatures, so Julia
+    stayed hidden until a `worldserver` restart (reported by Four); it now uses
+    `ObjectAccessor::GetCreature` on the player's map. If you log out in the middle of a tamer
+    battle, the tamer stays hidden until the next restart.
+  - `BattlePetDataStore`: new `FindPetBattleTrainerTeam` (read only; the old getter inserts into the
+    map on a miss).
+  - Also fixed in `PetBattle::Finish`: the end-of-battle rewards ran once per pet in the winning team,
+    not once per battle. With 2 or 3 pets slotted, a captured pet was added to the journal 2 or 3
+    times, and "Learning the Ropes" (credit 65355) counted 2 or 3 times. They now run once, and the
+    "Learning the Ropes" credit needs a win.
+  - No SQL. 86 tamers have both a team and a type 11 quest. The 23 Legion/BFA tamers got their
+    teams with PR #32 (entry below).
+- **Status:** confirmed in game by Four on 2026-11-02 (Julia Stevens battle and quest credit; a
+  capture with several pets slotted adds 1 copy; the tamer is hidden during the fight and back right
+  after it).
+
+### Pet battles: win, capture and journal achievements never progress
+
+- **Found** while fixing the slot unlocks: more pet battle criteria types were listed as "Not
+  implemented yet" in `CriteriaHandler::UpdateCriteria`.
+- **Cause:** criteria types 96 (`ADD_BATTLE_PET_JOURNAL`, a specific pet in the journal), 157
+  (`CAPTURE_PET_IN_BATTLE`), 158 (`BATTLE_PET_WIN`), 161 (`CAPTURE_BATTLE_PET_CREDIT`) and 162
+  (`LEVEL_BATTLE_PET_CREDIT`) did nothing, so achievements that count battle wins, captures or
+  specific pets never moved. The win call also passed "is PvP" as the counted value, which is 0 for
+  every PvE battle.
+- **Changed:** new `tools/bfa/battle-pet-achievements.patch`:
+  - `CriteriaHandler.cpp`: 157, 158 and 161 add 1 per capture or win and complete at the criteria's
+    amount. 162 counts a pet reaching the criteria's level in battle. 96 completes when a pet of the
+    criteria's creature is added, and at login if you already own one.
+  - `PetBattle.cpp`: a win now counts 1; a capture also sends type 161.
+  - No SQL.
+  - Fix after Four's test (2026-11-02): the PvP-only win achievements check "is this a PvP battle"
+    (criteria modifier 90) against the first criteria value, which the patch had turned into "1 win".
+    So every PvE win passed it, and Four got No Time To Heal (6620, win 5 PvP battles in a row) from
+    wild battles. Modifier 90 now reads the second value ("is PvP", 1 or 0), so asset 1 = PvP only
+    (Pet Brawler 6595-6599, No Time To Heal) and asset 0 = PvE only. New
+    `sql/fixes/characters/2026_11_02_00_remove_pve_pvp_pet_achievement.sql` removes 6620 and the
+    progress on criteria 21525 and 22225 (worldserver stopped). Cat Fight (6594, criteria 19724) has
+    no modifier and counts every win.
+  - Fix after Four's test (2026-11-02): wins counted on the server (Cat Fight criteria 19724 at 7 in
+    `character_achievement_progress`) but the achievement window never showed progress. Two packet
+    bugs, both fixed as in TrinityCore 8.3.7: `SMSG_CRITERIA_UPDATE` (`AchievementPackets.cpp`,
+    `CriteriaUpdate::Write`) lacked the final RafAcceptanceID bit, so the packet was a byte short; and
+    account-wide achievements (all pet battle ones) need `SMSG_ACCOUNT_CRITERIA_UPDATE` with the
+    criteria-progress layout, which the core sent only for "collect battle pets" and with the
+    character layout. `PlayerAchievementMgr::SendCriteriaUpdate` now sends the account packet for every
+    account-wide criteria, and `SendAllData` also sends `SMSG_ALL_ACCOUNT_CRITERIA` at login (new
+    packet classes `AccountCriteriaUpdate` and `AllAccountCriteria`).
+- **Note:** wins and captures from before the patch were never recorded, so those counters start at
+  0. Journal criteria (96) are rechecked at every login.
+- **Status:** confirmed in game by Four on 2026-11-02 (win counter shows and updates live, PvP-only
+  achievements no longer earned from PvE).
+
+#### To pick up both patches
+Two new patches on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-achievements.patch | git apply && echo "pet achievements patch applied"
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-trainers.patch | git apply && echo "pet tamers patch applied"
+grep -c "GOSSIP_OPTION_PET_BATTLE" src/server/game/Entities/Player/Player.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 2. Then restart `worldserver`.
+## 2026-11-02 (pet battles, tamer teams)
+
+### Pet battles: Legion and BFA pet tamers have no team
+
+Merged to `main` with PR #32 on 2026-11-02. The guide's "Pet battles" section now lists both SQL files.
+
+- **Found:** 23 Legion and BFA tamers that a quest asks you to beat in a pet battle had no rows in
+  `battlepet_npc_team_member`, so "Let's do battle!" (from `tools/bfa/battle-pet-trainers.patch`,
+  PR #31) had no team to put against you.
+- **Changed:** new `sql/fixes/world/2026_11_02_60_legion_bfa_tamer_teams.sql` adds 69 rows (3 pets
+  per tamer) for these tamers:
+  - BFA, Kul Tiras: Captain Hermes 139489, Eddie Fixit 140315, Dilbert McClint 140461, Fizzie
+    Sparkwhistle 140813, Michael Skarn 140880, Ellie Vern 141002, Leana Darkwind 141046, Kwint 141077,
+    Delia Hanako 141292, Burly 141479.
+  - BFA, Zandalar: Lozu 141529, Grady Prett 141799, Korval Darkbeard 141814, Keeyo 141879, Sizzik
+    141945, Kusa 142054, Karaga 142096, Talia Sparkbrow 142114, Zujai 142234.
+  - Legion: Crysa 115286, Environeer Bert 124617, Shipwrecked Captive 98489, Algalon the Observer 115307.
+  - Species, level (all 25) and quality come from the Rematch addon's target data, which was captured
+    from the real fights in game. Quality: BFA tamers rare (3), Crysa, Bert and the Shipwrecked Captive
+    epic (4), Algalon legendary (5).
+  - Abilities are each species' own abilities from `BattlePetSpeciesXAbility` (these tamer species
+    have exactly 3, or 2 for Eddie Fixit's Rocket Chicken, Sizzik's Clubber and Bert's Corporal
+    Hammer and M-37; the 3rd ability stays 0 there). Every row's `Comment` names the tamer, pet,
+    quality and abilities.
+  - `breadsMask` 8 (breed 3), like the existing Legion world quest tamer rows.
+  - The pets' own creatures (Chum 141094 etc.) were already in `creature_template` with models.
+- **Spawns:** Captain Hermes, Fizzie Sparkwhistle, Kwint, Korval Darkbeard, Crysa, Environeer Bert
+  and Algalon had no spawn at all. New `sql/fixes/world/2026_11_02_61_legion_bfa_tamer_spawns.sql`
+  adds one spawn each (guids 1157000001-1157000007). X/Y come from each tamer's world quest map
+  marker (`quest_poi_points`), Z and facing from Four's `.gps` on the spot:
+  - Captain Hermes 139489: map 1643, Drustvar, Crimson Coast (-1276.401, 4082.493, 1.894)
+  - Fizzie Sparkwhistle 140813: map 1643, Drustvar, Arom's Crossing (-212.0, 3115.0, 313.669)
+  - Kwint 141077: map 1643, Tiragarde Sound, on the sea floor (404.046, -1415.275, -53.367). The first
+    mid-water spot (z -12.275) showed the gossip cursor but right-click did nothing; Four moved him
+    down in game and the battle gossip appeared
+  - Korval Darkbeard 141814: map 1642, Nazmir, The Dreadmire (2164.170, 1178.665, 1.072)
+  - Crysa 115286: map 1, Northern Barrens (439.567, -3452.627, 92.388)
+  - Environeer Bert 124617: map 0, Dun Morogh, Gnomeregan entrance (-5146.244, 826.715, 287.386)
+  - Algalon the Observer 115307: map 571, Storm Peaks, Ulduar (9030.281, -1112.029, 1165.275)
+- **Gossip:** Captain Hermes, Kwint, Crysa, Environeer Bert and Algalon had `creature_template.npcflag`
+  0, so they couldn't be right-clicked and "Let's do battle!" never showed. Same file sets
+  `npcflag` 0 -> 1 (gossip) for 139489, 141077, 115286, 124617, 115307.
+- **Not done:** the Shipwrecked Captive 98489 has a team but no spawn (no known position).
+- **Status:** Kwint confirmed in game by Four on 2026-11-02 (quest 52430 added with `.quest add`,
+  "Let's do battle!" shown, battle started with his team). The other tamers are not tested in game
+  yet; both SQL files loaded twice on a copy of the dump tables (MySQL 8.4) without errors. Needs
+  `battle-pet-trainers.patch` (PR #31) to start the fights.
+
+#### To pick up the tamer teams
+SQL only (run the two mysql blocks one at a time), then restart `worldserver`.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-0g0n74
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_02_60_legion_bfa_tamer_teams.sql | mysql -u root -p bfa_world
+```
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_02_61_legion_bfa_tamer_spawns.sql | mysql -u root -p bfa_world
+```
+
+## 2026-11-02 (core)
+
+### Startup banner: zrbfacore, no foreign Discord or email
+
+Merged to `main` with PR #33 on 2026-11-02.
+
+- **Asked** (Four): the console header should say zrbfacore in lower case ASCII art, the line
+  `https://discord.gg/hTtSYh7WbQ | bfacore.reforged@gmail.com` should become "Based on HavenCore", and
+  no other Discord or email contacts that aren't ours should show.
+- **Where it lives:** the banner is `Trinity::Banner::Show` in `src/common/Banner.cpp`, which both
+  `worldserver` and `bnetserver` print at startup. The worldserver also logs
+  `BfaCore Reforged | bfacore.reforged@gmail.com` just before "ready..." (`src/server/worldserver/Main.cpp`,
+  `main`). Those are the only Discord or email contacts the servers print. The databases (world dump,
+  auth dump) have none.
+- **Changed:** new `tools/bfa/core-branding.patch`:
+  - `src/common/Banner.cpp`: the "BFA-HavenCore" art is replaced by "zrbfacore" in the same figlet font
+    (Big Money-ne). The Discord/email line is replaced by `Based on HavenCore`. The line
+    `World of Warcraft Emulator | Battle for Azeroth 8.3.7` stays.
+  - `src/server/worldserver/Main.cpp`: `BfaCore Reforged | bfacore.reforged@gmail.com` becomes
+    `zrbfacore | Based on HavenCore`.
+  - Not changed: the first banner line (`BfaCore rev. <hash> ...`, from `src/common/GitRevision.cpp`),
+    the default `Motd` in `worldserver.conf.dist`, and the Discord links in upstream's `README.md` and
+    `pull_request_template.md` (never shown by the servers). Author credits in source comments
+    (for example `WorldSocketMgr.h`) stay as they are.
+- **Status:** confirmed by Four on 2026-11-02: the new banner shows on the server and works.
+
+#### To pick up the new banner
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/core-branding.patch && echo "branding patch applied"
+grep -c "Based on HavenCore" src/common/Banner.cpp src/server/worldserver/Main.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1 for each file. Then restart `worldserver` (and `bnetserver`, which prints the same
+banner).
+
+## 2026-11-01 (pet battles, slots)
+
+### Pet battles: second and third battle slots never unlock
+
+Merged to `main` with PR #30 on 2026-11-02.
+
+- **Found** (reported by Four): the second battle pet slot stayed locked ("complete Newbie") although
+  Four's pets are level 4 and 5.
+- **Cause:** slots 2 and 3 open with the achievements Newbie (7433, raise a pet to level 3) and Just a
+  Pup (6566, raise a pet to level 5) (`Player::GetUnlockedPetBattleSlot`). Their criteria are type 160
+  (`CRITERIA_TYPE_BATTLE_PET_LEVEL_UP`). The core sends that criteria type when a pet levels in a
+  battle or from a level item, but `CriteriaHandler::UpdateCriteria` listed it under "Not implemented
+  yet" and did nothing, so no pet level achievement could ever complete.
+- **Changed:** new `tools/bfa/battle-pet-level-achievements.patch`
+  (`src/server/game/Achievements/CriteriaHandler.cpp`): type 160 completes when the level reached is at
+  least the criteria's level. At every login the core rechecks all criteria with no level given; then
+  it checks the levels of the pets you own, so pets that are already high enough count. Added to
+  `IsCompletedCriteria` (done at 1). The existing achievement hook then sends the slot unlock. No SQL.
+- **Status:** confirmed in game by Four on 2026-11-02 (Newbie and Just a Pup awarded, slots 2 and 3
+  open).
+
+#### To pick up the pet level achievements
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-level-achievements.patch | git apply && echo "pet level patch applied"
+grep -c "Newbie (7433, level 3)" src/server/game/Achievements/CriteriaHandler.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1. Then restart `worldserver` and log in: Newbie and Just a Pup should pop and both
+slots open.
+
+## 2026-11-01 (pet battles)
+
+### Pet battles: wild battle pets missing from most zones
+
+Merged to `main` with PR #29 on 2026-11-01.
+
+- **Found** (reported by Four): Pet Tracker shows Forest Spiderling, Tree Python and Lizard
+  Hatchling spawns in Northern Stranglethorn, but in game those were plain neutral critters
+  (Lizard Hatchling 50479 at level 1, Forest Spiderling 50487 at level 90), not battle pets.
+- **Cause:** `battlepet_wild_zone_pool` lists, per zone, which critter becomes which battle pet and
+  how many pets the zone should have. The core's runtime swap (`Map::PopulateBattlePet`) is never
+  called anywhere, so only battle pets spawned directly in `creature` ever existed. Northern
+  Stranglethorn (area 33) had about 60 battle Beetles (61319) and 23 Strand Crabs (61312), but no
+  Tree Python (61318), Forest Spiderling (61320) or Lizard Hatchling (61321) battle pets.
+- **Changed:** new `sql/fixes/world/2026_11_01_50_wild_battle_pet_spawns.sql`. For each pool row
+  whose battle pet template is a wild pet (type 14), it counts the pets already spawned in the zone
+  (`creature.zoneId` or `areaId`) and converts random critter spawns of that zone into the battle
+  pet until the zone's `Max` is reached or the critters run out. Critters with a per-spawn SmartAI
+  script are skipped. On the dump that is about 4,700 or more spawns in 81 zones; Northern Stranglethorn
+  gets 62 Tree Pythons, 54 Lizard Hatchlings, about 56 Forest Spiderlings (all its critters), 8 more Beetles, 3 Crimson Moths and a Long-tailed
+  Mole. Every converted spawn is recorded in the new table `zr_wild_battlepet_conversion`, so it can
+  be undone (the SQL file's header has the two lines). Running it twice converts nothing new.
+  No core change.
+- **Docs:** guide section 9, "Pet battles".
+- **Status:** run on Four's live DB on 2026-11-01: 5,900 spawns converted in 86 zones (more than
+  the dump estimate, which could not parse some templates). Confirmed in game by Four.
+
+#### To pick up the wild battle pet spawns
+SQL only, then a restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_50_wild_battle_pet_spawns.sql | mysql -u root -p bfa_world
+```
+The last line prints the number of converted spawns and zones. Then restart `worldserver`.
+
+## 2026-11-01
+
+### World: quest items from one unique mob now always drop (508 items)
+
+- **Asked** (Four): if a named mob is the only source of a quest item, it should drop on every kill
+  while you're on the quest. Items that drop from many common mobs (hides, claws) stay random.
+- **How the list was picked** from the world dump (all INSERT blocks parsed):
+  - the item is a quest objective (`quest_objectives` Type 1) and the quest needs exactly 1;
+  - it only comes from `creature_loot_template` (no gameobject, container, pickpocket, skinning or
+    reference loot), with every row `QuestRequired` 1, `GroupId` 0, `Reference` 0;
+  - every creature that drops it has at most one spawn point. Creatures with no spawn (summoned by
+    events) count only when they are elite or their name is unique, so summoned generic mobs stay
+    random; 7 summoned named mobs were added by hand (Anaya Dawnrunner, Captain Halyndor, Saragosa,
+    Stalvan Mistmantle, Gardul Venomshiv, Jergosh the Invoker, Torturer Relyn);
+  - at most 6 creatures drop it, raids are left alone (13 items, e.g. AQ20 tokens, Nightbane), and
+    where several creatures drop it, rows under 10% are left alone (stray low-chance copies).
+- **Changed:** `sql/fixes/world/2026_11_01_03_unique_mob_quest_drops.sql` sets
+  `creature_loot_template.Chance` = 100 on 517 rows (508 items). Before: 58 rows were under 50%,
+  161 between 50% and 90%, 298 at 90% or more. Each row in the file has a comment with the creature,
+  its old chance and the quest. `QuestRequired` stays 1, so nothing drops without the quest.
+  Examples: Goldtooth 327 (61.86%), Princess 330 (66.87%), Jammal'an the Prophet 5710 (49.89%),
+  Gahz'rilla 7273 (56.45%), Dockmaster 6846 (0.44%).
+- **Status:** merged 2026-11-01 without a dedicated in-game test (the Esquivel case above is the same
+  change on 4 rows and was confirmed). Report any named quest mob that still misses its item.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_03_unique_mob_quest_drops.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: Chief Esquivel rarely drops the Whispering Blue Stone
+
+- **Found** (reported by Four): Chief Esquivel (43912, Kurzen compound cave in Northern
+  Stranglethorn) often dies without dropping the quest item for The Source of the Madness.
+- **Cause:** Whispering Blue Stone (item 60263, 1 needed for quest 26734) is a quest-only drop with
+  low chances on the four chiefs the quest sends you to: Chief Anders 43910 26.67%, Chief Gaulus
+  43911 13.86%, Chief Esquivel 43912 7.68%, Chief Miranda 43913 18.39%.
+- **Changed:** `sql/fixes/world/2026_11_01_02_whispering_blue_stone_kurzen_chiefs.sql` sets
+  `creature_loot_template.Chance` = 100 for item 60263 on 43910, 43911, 43912 and 43913 (QuestRequired
+  stays 1, so it only drops while you're on the quest). The regular Kurzen troops (939, 941, 942, 978,
+  979) keep their 1-5% chance.
+- **Status:** confirmed in game by Four (2026-11-01): Chief Esquivel dropped the stone.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_02_whispering_blue_stone_kurzen_chiefs.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### Core: dying never turned you into a proper ghost (battle pet code wiped player flags)
+
+- **Found** (reported by Four): after `.die` or a creature kill and Release Spirit, you arrive at the
+  graveyard as a "ghost" in a normal, living world. The Spirit Healer won't talk to you, there is no
+  corpse arrow, and the character screen shows you alive. Relogging doesn't fix it. A fall death
+  sometimes worked.
+- **Cause:** the server did make you a ghost (`.list auras` shows Ghost 8326 and wisp 20584), but three
+  battle pet functions *replace* all player flags with `PLAYER_FLAGS_PET_BATTLES_UNLOCKED` (0x400000)
+  instead of adding it: `Player::_LoadPetBattles` (login), `WorldSession::SendBattlePetJournal`
+  (login, teleports, every journal request) and `WorldSession::SendPetBattleSlotUpdates`. That wipes
+  `PLAYER_FLAGS_GHOST` (0x10), which is what the client uses for the grey world, Spirit Healer and
+  corpse arrow, and it was saved without the flag. They only run once a battle pet slot is unlocked,
+  so this started after the battle pet slot fix (2026-10-25).
+- **Changed:** new `tools/bfa/battle-pet-player-flags.patch` (applied after `battle-pet-journal.patch`):
+  `SetPlayerFlags(PLAYER_FLAGS_PET_BATTLES_UNLOCKED)` becomes `AddPlayerFlag(...)` in
+  `Player.cpp` (`_LoadPetBattles`) and `BattlePetHandler.cpp` (`SendPetBattleSlotUpdates`,
+  `SendBattlePetJournal`). This also stops AFK, DND and resting flags being cleared the same way.
+- **Status:** confirmed in game by Four (2026-11-01): death and release give a proper ghost again.
+- **Pick up:** rebuild with the new patch and restart worldserver:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-player-flags.patch | git apply
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+
+### World: Astranaar crowded by a siege that only belongs to its quests
+
+- **Found** (reported by Four): Astranaar is packed with soldiers, Horde Hellions and Wind Riders and
+  Throwers, while the town itself looks calm (no fires).
+- **Cause:** 193 spawns in Astranaar (area 415) belong to the Cataclysm siege quests but have no phase,
+  so everyone sees them all the time: Hellscream's Hellion 34163 (15), Watch Wind Rider 34160 (15),
+  Astranaar Skirmisher 34419 (23), Astranaar Sentinel 34494 (59), Astranaar Officer 34420 (5),
+  Astranaar Thrower 34132 (12) and 34492 (9), Thrower Bunny 34501 (9), fire bunnies 34123 (34),
+  Phase Q1 Generic Bunny JSB 34439 (12). The Pandaria DB has the same unphased spawns.
+- **Changed:** `sql/fixes/world/2026_11_01_01_astranaar_siege_quest_phase.sql` moves those 193 spawns
+  to phase 295 (in Phase.db2, normal phase, unused anywhere else in the DB) and adds `phase_area`
+  (415, 295) with `conditions` (source type 26) that turn it on while any siege quest is in progress or
+  complete: 13849 Astranaar's Burning!, 13853 Return Fire (Alliance), 13943 Breathing Room,
+  13947 Blastranaar! (Horde). The town guards (6087, 51770), vendors and Hellscream's Watch are
+  untouched. The revert line is in the file.
+- **Status:** confirmed in game by Four (2026-11-01): Astranaar is calm without the quest.
+
+#### To pick up the Astranaar siege phase
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_01_astranaar_siege_quest_phase.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
+### World: Astranaar flight master Daelyshia lies dead
+
+- **Found** (reported by Four): the Astranaar Hippogryph Master Daelyshia (4267, spawn 239983) lies
+  on the ground as a corpse and can't be talked to, so Astranaar has no Alliance flight master.
+- **Cause:** her BFA template was taken while she was dead in a war phase: `npcflag` 0, `unit_flags`
+  0x20040300 (stunned + feign death), `unit_flags2` 0x801 (feign death), `unit_flags3` 0x2000.
+- **Changed:** `sql/fixes/world/2026_11_01_00_astranaar_flight_master_daelyshia.sql` sets entry 4267 to
+  `npcflag` 8193 (gossip + flight master, as in the Pandaria DB), `unit_flags` 768, `unit_flags2`
+  2048, `unit_flags3` 0. Gossip menu 0 already has the "I want to travel fast" option.
+- **Status:** confirmed in game by Four (2026-11-01): Daelyshia is alive and offers flights.
+
+#### To pick up the flight master fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_00_astranaar_flight_master_daelyshia.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver` and delete the client's `Cache` folder (the client caches creature data).
+
+## 2026-10-31
+
+### World: 37 creature spawns ignored their own scripts (junk "Fel Hands" spawn rows)
+
+- **Found** (Dungeon Fixes thread, while fixing Lady Falther'ess in Razorfen Downs): 44 creature
+  spawns carry a per-spawn SmartAI row (`entryorguid` = -guid) that casts Fel Hands (207101, a
+  Legion dummy aura with no effect) out of combat, comment `OOC - CS`.
+- **Cause:** a per-spawn script replaces the creature's own entry script entirely, so these spawns
+  only meleed. Examples: Warsong Demolishers (32850) never threw Flaming Balls or exploded,
+  Rampaging Owlbeasts (49245) never used Shred, Northwatch Guards (38636) never shot, Gnomeregan's
+  Dark Iron Land Mines (8035) never detonated, Dark Keeper Uggel (9439) never cast.
+- **Changed:** `sql/fixes/world/2026_10_31_05_fel_hands_spawn_scripts.sql`:
+  - Deletes the 207101 rows for 42 guids (the full list by map is in the file). Razorfen Downs
+    373574/373575 are left to `2026_10_31_04` (PR #26). 5 of the guids have no spawn; their rows go too.
+  - Northwatch Guard 38636 had two script versions mixed together: removes id 0 (event 0, Cast
+    Shoot), id 1 (event 2, Shield Block) and id 2 (event 0, Revenge), all with link 0, which duplicate
+    ids 4, 16 and 17. The linked ranged chain (ids 0-19) stays.
+  - Grishna Raven 20327 and Theldren 16059 have no entry script, so they only lose the dummy row.
+- **Status:** confirmed in game by Four (2026-11-01): Rampaging Owlbeasts in Hillsbrad cast Shred again.
+
+#### To pick up the spawn script fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_05_fel_hands_spawn_scripts.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
+### World: Warsong Demolisher Flamethrower one-shots players
+
+- **Found** (reported by Four, testing the spawn script fix): a Warsong Demolisher (32850, level 23,
+  Ashenvale) killed Four with Flamethrower: 764 fire on hit, then 144 fire every second.
+- **Cause:** with its own script running again (entry above), row id 3 casts Flamethrower (65388)
+  within 20 yards every 14-19 s. 65388 is a vehicle weapon whose damage scales with the caster's level
+  by a large coefficient (about 38.6 per hit, 7.7 per tick).
+- **Changed:** `sql/fixes/world/2026_10_31_06_warsong_demolisher_flamethrower.sql` deletes that one
+  row (entry 32850, id 3, spell 65388). Flaming Ball (61865), the out-of-combat ball at trigger NPCs
+  (61864) and the death explosion (65417) stay.
+- **Follow-up (2026-11-01):** Four found the demolishers then only meleed and stood still, and Flaming
+  Ball never fired. The same file now also deletes ids 0 and 1 (event 4 aggro, action 21 "stop combat
+  movement" with 0), so they chase their target instead of standing rooted.
+- **Follow-up 2 (2026-11-01):** after killing Four they never reset and kept swinging at the spot.
+  Row id 6 (on spawn, action 117 disable evade, linked to id 7 "set aggressive") is now a plain
+  "on spawn, set aggressive" (action 8, param 2, link 0) and id 7 is deleted, so they can evade and
+  leash again.
+- **Status:** confirmed in game by Four (2026-11-01): Demolishers no longer one-shot and leash home.
+
+#### To pick up the Flamethrower fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_06_warsong_demolisher_flamethrower.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
+### World: Spirit Healers doubled or tripled at 117 graveyards
+
+- **Found** (reported by Four): the Nightsong graveyard near Raynewood Tower in Ashenvale
+  (`world_safe_locs` 1427) has two Spirit Healers (6491) on the same spot, and Astranaar has three.
+  Four asked to clear the same doubling everywhere.
+- **Cause:** a block of added Spirit Healer spawns (mostly guids 371188-371416 and 375076-375097, and
+  on the Broken Isles 20549126-20549205) repeats graveyards that already had one. A scan of all 876
+  Spirit Healers found 117 graveyards with two or three within 25 yards of each other (height within
+  10), same phase and difficulty.
+- **Changed:**
+  - `sql/fixes/world/2026_10_31_07_nightsong_spirit_healer_duplicate.sql` deletes spawn 371367
+    (Nightsong). Spawn 129879 stays.
+  - `sql/fixes/world/2026_10_31_08_spirit_healer_duplicates.sql` deletes 132 spawns (Kalimdor 53,
+    Eastern Kingdoms 34, Broken Isles 40, Outland 2, Pandaria 2, Northrend 1; 371367 is in the list
+    too). Astranaar keeps 40868 (239931 and 371366 go). Each graveyard keeps one healer: the sniffed
+    spawn where there is one (452538, 452539, 210117416, 210118234), otherwise the lowest guid. None of
+    the removed guids is in a pool, game event, formation or `creature_addon` row. The first version
+    of this file (5-yard scan, 85 spawns) is a subset, so running the new one after it is fine.
+- **Status:** confirmed in game by Four (2026-11-01): Astranaar and Raynewood Tower each show one Spirit Healer.
+
+#### To pick up the Spirit Healer fix
+SQL only, no rebuild:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_07_nightsong_spirit_healer_duplicate.sql | mysql -u root -p bfa_world
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_10_31_08_spirit_healer_duplicates.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
 ### World: Bloodlord Mandokir never leaves the Rebel Camp after his quest
 
 Merged to `main` with PR #25 on 2026-10-31.
@@ -328,6 +834,57 @@ grep -c SyncParentProfessionSkill src/server/game/Entities/Player/Player.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
 Both echo lines print, and the grep prints 3. Then restart `worldserver`.
+
+## 2026-10-26
+
+### Pet battles: summoned pets show as Murkimus, released pets come back
+
+Merged to `main` with PR #21 on 2026-10-31.
+
+- **Found** (reported by Four): summoning Black Lamb, Stormwind Rat or Cat from the Pet Journal
+  spawned Murkimus the Gladiator. A Black Lamb released from the journal kept showing up again.
+- **Cause, Murkimus:** pets with no summon spell of their own are summoned with spell 118301
+  (Summon Battle Pet), whose MiscValue is a placeholder creature, 40721 Murkimus the Gladiator
+  (TrinityCore 8.3.7 notes the same). The core used that creature as is. It also never set the
+  player's `SummonedBattlePetGUID`, so the summon was not tied to the journal pet at all.
+- **Cause, released pets:** on login the core loaded only the first row of each species from
+  `account_battlepet` and silently skipped the rest. Extra copies stayed in the DB, hidden, and
+  one of them showed up again after a release and relog. Releasing the last copy of a species
+  was also silently refused.
+- **Changed:** new `tools/bfa/battle-pet-journal.patch`:
+  - `Player.cpp` `SummonBattlePet`: sets `SummonedBattlePetGUID` and the last summoned pet before
+    casting, and remembers the spawned critter. `UnsummonCurrentBattlePetIfAny` clears it.
+  - `SpellEffects.cpp` `EffectSummonType`: for 118301 the creature is the journal pet's species
+    `CreatureID` instead of 40721.
+  - `SpellEffects.cpp` companion summon, after the creature's level and NPC flags are set from its
+    template: when the critter is the journal pet, the wild battle flag is taken off again (first
+    version left the Stormwind Rat battleable), the pet's own display model is used, and its health
+    is set to the pet's journal max health. Wild pet templates have tiny health modifiers (Black Lamb
+    60649 has `HealthModifier` 0.01), which gave 0 health, so the summon showed up dead.
+  - `Player.cpp` `_LoadPetBattles`: loads every copy of a species.
+  - `BattlePetHandler.cpp`: release no longer checks species flag 0x8. The core calls it
+    `NOT_RELEASABLE`, but in 8.3.7 0x8 is Capturable (TrinityCore's `BattlePetSpeciesFlags`), so
+    every wild pet such as the Black Lamb was refused and stayed in the DB (second version still
+    brought the lamb back on every relog). Release also works on the last copy, dismisses the pet if it is out
+    and clears it from a battle slot. Clicking summon on a pet whose critter is gone now summons
+    it instead of doing nothing.
+  - No SQL.
+- **Status:** first version (2cc26f6) summoned the right creature but dead and battleable. Second
+  version (bb1835b): summons confirmed in game by Four on 2026-10-26, released Black Lamb still came
+  back. Third version (release flag check removed): release confirmed in game by Four on
+  2026-10-26. Summons and release both done.
+
+#### To pick up the pet journal fix
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/battle-pet-journal.patch | git apply
+grep -c "is Capturable in 8.3.7" src/server/game/Handlers/BattlePetHandler.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1. Then restart `worldserver` and log in again.
 
 ## 2026-10-25
 
