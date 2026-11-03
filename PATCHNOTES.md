@@ -23,7 +23,7 @@ to do to pick it up (rebuild, restart, run SQL).
     310542, 310635, 310659, 310677 and 310741.
   - `creature_queststarter` rows (35506, 14198) and (35510, 14198) deleted.
   - The town's own guards (8151 x18, 51839 x8), its named NPCs and the vortex bunnies are untouched.
-- **Status:** waiting for Four to test.
+- **Status:** confirmed in game by Four on 2026-11-03 (Alliance view: raid crowd gone).
 - **Pick up:** SQL only, no rebuild:
 
 ```
