@@ -5,6 +5,17 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-10-31
 
+### Razorfen Downs: Koristrasza kept flying past
+
+From Four's run, 2026-11-03. SQL only: `sql/fixes/world/2026_11_03_00_razorfen_downs_koristrasza.sql`.
+
+- **Found** (reported by Four): Koristrasza (44843, guid 325205), a friendly blue dragon from the
+  Cataclysm quest line, kept showing up on the trail. She is parked high above the dungeon.
+  `2026_10_31_01` gave her the Pandaria database's waypoint path, which is a one-way flight from her
+  perch down to the trail. Run as a loop, it made her dive through the dungeon over and over.
+- **Changed:** her path (129000018) is removed and she stays on her perch.
+- **Status:** waiting on Four's test.
+
 ### Razorfen Downs: Lady Falther'ess still only meleed (and Ragglesnout never cast)
 
 From Four's first run, 2026-10-31. SQL only: `sql/fixes/world/2026_10_31_04_razorfen_downs_rare_guid_scripts.sql`.
