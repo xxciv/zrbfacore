@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-03 (Holidays)
 
-On branch `claude/project-thread-lzgnii`, not merged yet.
+Merged to `main` with PR #35 on 2026-11-03.
 
 ### Day of the Dead: dancing with Catrina gave no skeleton and no Dead Man's Party
 
@@ -21,8 +21,8 @@ From Four, 2026-11-03. SQL only: `sql/fixes/world/2026_11_03_20_holiday_emote_ca
     Reveler (15760, Winter Veil), who should cast Mistletoe (26218) on a player who `/kiss`es him.
 - **Changed:** `target_type` 0 -> 7 (the player who did the emote) on both rows:
   `smart_scripts` 34383/0/0/0 and 15760/0/0/0.
-- **Status:** not tested in game yet. Winter Reveler can only be tested once Winter Veil starts
-  (2026-12-15 on this server).
+- **Status:** Catrina confirmed in game by Four on 2026-11-03 (skeleton transform and Dead Man's
+  Party awarded). Winter Reveler not tested yet: Winter Veil starts 2026-12-15 on this server.
 
 ## 2026-11-03 (Razorfen Downs)
 
