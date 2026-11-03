@@ -3,6 +3,86 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-03
+
+### World: Nijel's Point is packed with Defenders (some on fire) and extra Merchants
+
+- **Found** (reported by Four): Nijel's Point in Desolace is crowded with Nijel's Point Defenders,
+  several of them burning, and many copies of Nijel's Point Merchant.
+- **Cause:** Nijel's Point Defender (35506, 119 spawns) and Nijel's Point Merchant (35510, 10
+  spawns) are the targets of the Horde quest Rider on the Storm (14198: kill 40 Defenders and burn
+  15 Merchants while riding the firestorm). Like the Astranaar siege, they have no phase, so every
+  player sees the raid crowd in the town. 11 Defenders also keep the sniffed fire visual (aura
+  42726). The two entries were also listed as quest givers for 14198, which really starts at the
+  Ancient Vortex Runestone (gameobject 195445).
+- **Changed:** `sql/fixes/world/2026_11_03_32_nijels_point_raid_phase.sql`:
+  - All 35506 and 35510 spawns: `PhaseId` 0 -> 303 (a normal Phase.db2 phase used nowhere else).
+  - `phase_area` (608, 303) plus a condition (type 26, quest state 47, quest 14198, mask 10):
+    phase 303 shows only while Rider on the Storm is in progress or complete.
+  - `creature_addon.auras` '42726' -> '' on guids 309531, 309912, 310167, 310400, 310426, 310485,
+    310542, 310635, 310659, 310677 and 310741.
+  - `creature_queststarter` rows (35506, 14198) and (35510, 14198) deleted.
+  - The town's own guards (8151 x18, 51839 x8), its named NPCs and the vortex bunnies are untouched.
+- **Status:** confirmed in game by Four on 2026-11-03 (Alliance view: raid crowd gone).
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_32_nijels_point_raid_phase.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: Rerouted! (Desolace) gives no mount to ride
+
+- **Found** (reported by Four): after taking Rerouted! from Officer Jankie, there is no mount.
+- **Cause:** nothing is scripted. Jankie (36410), Jankie's Mount (36416/36419), Furien (35286) and
+  Furien's Mount (35287) have no SmartAI rows, spellclick or waypoint path in this DB (or the Pandaria
+  one), and none of the mounts is set up as a vehicle. The only retail trace is spell 68693, which
+  summons 36419 next to Jankie (`spell_target_position` 171.4, 1793.5, 86.2).
+- **Changed:** `sql/fixes/world/2026_11_03_31_desolace_entry_flights.sql`, a stand-in for the flight:
+  - Jankie 36410 SAI id 0: on accepting 14384, teleport the player to Corporal Melkins at Nijel's
+    Point (map 1, 129.0, 1235.5, 163.6).
+  - Furien 35286 SAI id 0 (Horde): on accepting My Time Has Passed (14184), teleport to Cerelia at
+    Furien's Post (map 1, -427.6, 2229.9, 89.5).
+- **Status:** Alliance side (Jankie teleport) confirmed in game by Four on 2026-11-03. Furien's side
+  not tested (Horde only).
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_31_desolace_entry_flights.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: no quest from Officer Jankie (or Furien) at the Desolace entrance
+
+- **Found** (reported by Four): Officer Jankie (36410) at Tethris Aran shows no quest marker.
+- **Cause:** her quest Rerouted! (14384), which flies you to Nijel's Point and starts Alliance
+  Desolace, could only be taken after a breadcrumb. It had `quest_template_addon.PrevQuestID` = 25938
+  (Help for Desolace), and the breadcrumbs Help for Desolace (25938) and Hero's Call: Desolace!
+  (28531) have `NextQuestID` = 14384, which the core also turns into a requirement on 14384
+  (`ObjectMgr::LoadQuests` adds them to its `prevQuests`). Arriving without a breadcrumb gave nothing.
+  The Horde side has the same lock: Furien's My Time Has Passed (14184) had `PrevQuestID` 28548 and
+  Warchief's Command: Desolace! (28548) has `NextQuestID` 14184.
+- **Changed:** `sql/fixes/world/2026_11_03_30_desolace_entry_quests_no_breadcrumb.sql`:
+  `PrevQuestID` 25938 -> 0 on 14384 and 28548 -> 0 on 14184; `NextQuestID` 14384 -> 0 on 25938 and
+  28531, 14184 -> 0 on 28548. The breadcrumbs still turn in at Jankie and Furien.
+- **Status:** confirmed in game by Four on 2026-11-03 (Rerouted! offered by Jankie without a
+  breadcrumb). Furien's side not tested (Horde only).
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_30_desolace_entry_quests_no_breadcrumb.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ## 2026-11-03 (Holidays)
 
 Merged to `main` with PR #35 on 2026-11-03.
