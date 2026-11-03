@@ -5,8 +5,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-03 (Transmog apply)
 
-On PR #34 (not merged yet). Core change in the new `tools/bfa/transmog-apply.patch`, applied after all
-the other patches. It needs `transmog-collection.patch`.
+Merged to `main` with PR #34 on 2026-11-03. Core change in the new `tools/bfa/transmog-apply.patch`,
+applied after all the other patches. It needs `transmog-collection.patch`.
 
 ### Apply at the transmogrifier did nothing
 - **Found** (reported by Four): Apply at the transmogrifier stopped doing anything. Every check in
@@ -29,12 +29,19 @@ the other patches. It needs `transmog-collection.patch`.
 - **Status:** confirmed in game by Four on 2026-11-03: Apply works again.
 
 ### To pick up the transmog apply fix
-This only adds a new patch, so the patches already applied stay as they are. Only one file changes, so
-the build is short. The patch is read straight from the PR branch, so `tools-repo` stays on `main`:
+Everything is on `main` now. If you applied the patch from the PR branch, the file on `main` is the same,
+so nothing needs rebuilding; just pull:
+```
+git -C ~/bfa/tools-repo checkout main
+git -C ~/bfa/tools-repo pull
+```
+
+Without it applied yet, add the new patch. Only one file changes, so the build is short. There's no SQL:
 ```
 cd ~/bfa/source
-git -C ../tools-repo fetch origin claude/transmog-collection-0qdzrj
-git -C ../tools-repo show FETCH_HEAD:tools/bfa/transmog-apply.patch | git apply
+git -C ../tools-repo checkout main
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/transmog-apply.patch
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
 Then type `server shutdown 1` in the worldserver console and start it again with
