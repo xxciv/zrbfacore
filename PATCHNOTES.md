@@ -3,6 +3,55 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-03 (Dire Maul: Warpwood Quarter)
+
+On branch `claude/project-thread-g6xhsv`, not merged yet. SQL only, no rebuild:
+`sql/fixes/world/2026_11_03_04_dire_maul_east_scripts.sql` and
+`sql/fixes/world/2026_11_03_05_dire_maul_east_movement.sql`. Needs a fresh instance
+(`.instance unbind all`).
+
+Pre-run check of the east wing (Pusillin, Zevrim Thornhoof, Hydrospawn, Lethtendris, Alzzin). All
+bosses are spawned with Normal scaling rows, `instance_encounters` 343-346 exist (Alzzin ends LFG
+dungeon 34), and all their spells exist. Dire Maul has one scenario for all three wings (668, step
+1212 "Defeat the bosses of Dire Maul", 14 bosses), so it cannot finish from one wing.
+
+### Pusillin's chase stopped early and always showed the same text
+- **Found:** two versions of his script on top of each other. All five Gossip Hello rows had no
+  phase mask, so every one fired and the last menu won. Rows "stop at waypoint 3/14/12/7" belong to
+  an old 3-point path and cut each run short. His four paths (14354, 143540, 287080, 430620) are
+  complete and join end to start.
+- **Changed:** `smart_scripts` 14354 and action lists 1435400-1435404 rebuilt: gossip menu 5709-5713
+  by phase 1-5; each answer closes the gossip, says his line and runs the next path; at the end of a
+  path he is talkable again. The fifth answer makes him hostile (faction 16), casts Spirit of Runn
+  Tum (22735) and summons five Wildspawn Imps (13276, new row id 1: summoned imps join the fight).
+- **Status:** not tested in game yet.
+
+### The Conservatory Door to Alzzin never opened
+- **Found:** Old Ironbark (11491) offers "We are ready for you to open the door" but had no script,
+  so choosing it did nothing and the Conservatory Door (176907) stayed shut. Ironbark the Redeemed
+  (14241, guid 323214) stood on the same spot with the same gossip and no script either.
+- **Changed:** Old Ironbark: on that option he closes the gossip, walks AzerothCore's 14-point path
+  (new `waypoints` path 1149100) to the door and opens it. Guid 323214 deleted.
+- **Status:** not tested in game yet.
+
+### Alzzin the Wildshaper, Lethtendris and Pimgib scripts
+- **Found:** Alzzin had 24 rows from two script versions (orphan "reset on evade" links, a broken
+  40% chain). Lethtendris cast Curse of Tongues twice (ids 3 and 4). Pimgib had two caster scripts
+  on top of each other. Hydroling (14350) had no Normal scaling row.
+- **Changed:** Alzzin rebuilt from AzerothCore: Disarm, Enervate, Knock Away and Wither as a night
+  elf; Mangle and Vicious Bite in Dire Wolf Form (22660); Wither and Wild Regeneration in Tree Form
+  (22688); a random form every 20 seconds (lists 1149200-1149202); four Alzzin's Minions (11460) from
+  the crumbled wall at 50% health (list 1149203; new row: summoned minions join the fight).
+  Lethtendris id 4 casts Curse of Thorns (16247). Pimgib: Fireball, Flame Buffet, Blast Wave.
+  Hydroling gets a scaling row for difficulty 1.
+- **Status:** not tested in game yet.
+
+### Nothing in the east wing moved
+- **Found:** 449 spawns, 30 random wanderers, no paths.
+- **Changed:** 52 patrols (Pandaria paths for the same guids, else AzerothCore, ids 429000002+),
+  2 formations, 183 wanderers. Bosses, Pusillin, Old Ironbark and the Alzzin's Minions are left still.
+- **Status:** not tested in game yet.
+
 ## 2026-11-03 (Holidays)
 
 Merged to `main` with PR #35 on 2026-11-03.
