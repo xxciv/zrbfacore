@@ -21,7 +21,8 @@ From Four's run, 2026-11-03. SQL only: `sql/fixes/world/2026_11_03_01_razorfen_d
 - **Changed:**
   - Blackthorn's summon row is now its own death event, and the say row is deleted.
   - Mushlump's and Mordresh's death rows are fixed the same way.
-- **Status:** waiting on Four's test.
+- **Status:** confirmed in game by Four on 2026-11-03: Blackthorn summoned Amnennar, and his corpse
+  was lootable.
 
 ### Razorfen Downs: Koristrasza kept flying past
 
@@ -153,7 +154,9 @@ Before Four's first run. New `tools/bfa/razorfen-downs.patch` (build needed) and
 - The idol room around Plaguemaw (32 mobs, 12 of them Withered Battle Boars) matches the Pandaria
   database spawn for spawn; classic had 15 there. Four chose to keep it.
 
-**Status:** none of this has been tested in game yet.
+**Status:** confirmed in game by Four on 2026-11-03: all five bosses are spawned, the three
+lieutenants and Blackthorn's step (from `razorfen-downs.patch`) completed, and Amnennar gave scenario
+credit. Amnennar's summon needed `2026_11_03_01`.
 
 ### World: Bloodlord Mandokir never leaves the Rebel Camp after his quest
 
