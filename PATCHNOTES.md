@@ -46,8 +46,8 @@ From Four's run, 2026-11-03. SQL only: `sql/fixes/world/2026_11_03_00_razorfen_d
   `2026_10_31_01` gave her the Pandaria database's waypoint path, which is a one-way flight from her
   perch down to the trail. Run as a loop, it made her dive through the dungeon over and over.
 - **Changed:** her path (129000018) is removed and she stays on her perch.
-- **Status:** confirmed in game by Four on 2026-11-03: she stays put. Four moved her off a vine with
-  `.npc move` in their own database.
+- **Status:** confirmed in game by Four on 2026-11-03: she stays put. She clips into a vine there; Four
+  may move her with `.npc move` in their own database.
 
 ### Razorfen Downs: Lady Falther'ess still only meleed (and Ragglesnout never cast)
 
