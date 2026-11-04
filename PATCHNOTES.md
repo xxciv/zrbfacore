@@ -3,7 +3,265 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-04 (World fixes)
+
+### World: Battlescar fliers fight each other in mid-air; Fort Triumph laborers slide and get blasted
+
+- **Found** (Four, after SQL 31): some wind riders and gryphons fight each other in mid-air without
+  riders on their backs. At Fort Triumph, a sleeping laborer slides around on the scaffolding and the
+  other laborers keep getting thrown around next to the effect bunny.
+- **Cause:**
+  - Desolation Wind Rider 37974 (faction 29) and Triumph War Gryphon 37978 (faction 894) are hostile
+    to each other, so they attack where their new flight routes cross. The riders die in those
+    fights, and the mount flies on empty until it respawns.
+  - The 12 Peasant Laborers 39129 and 3 Mizzy's Apprentices 39124 at Fort Triumph, and the 11
+    Desolation Guards 38070, wander 3 yards (MovementType 1). MaNGOS Three has all of them standing
+    still. The laborer script naps (actionlist 3912900: Sleep 6431 for 30 s), so a sleeping laborer
+    slides along the boards.
+  - The blasting is bunny 35845's Legion knockback 206750 (its id 3 timer row). The laborer script
+    only expects knockback 177984. See SQL 37.
+- **Changed:** `sql/fixes/world/2026_11_04_32_battlescar_fort_workers_and_air_fights.sql`:
+  - `unit_flags |= 0x200` (IMMUNE_TO_NPC) on 37971, 37974, 37977 and 37978, so the mounts and their
+    riders ignore other NPCs. Players can still fight them.
+  - MovementType 0, spawndist 0 on the 26 spawns listed in the file.
+- **Status:** confirmed in game by Four (2026-11-04): fliers keep their riders, no more sliding.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_04_32_battlescar_fort_workers_and_air_fights.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: Battlescar fliers hang still in the sky and the patrols stand still
+
+- **Found** while looking into the Battlescar with Four (see
+  `/mnt/project-files/world-fixes/battlescar.md` in the project for the whole picture).
+- **Cause:** our Battlescar spawns are the same spawns as the MaNGOS Three Cataclysm DB (same guids,
+  same positions), but our dump lost the waypoint paths of 27 of them, which were left at
+  MovementType 0. The wind riders' and gryphons' riders were spawned on their own in mid-air
+  (z 110-145) with random movement instead of riding their mounts.
+- **Changed:** `sql/fixes/world/2026_11_04_31_battlescar_fliers_and_patrols.sql`:
+  - New paths 485500001-485500027 (from MaNGOS Three `creature_movement`), with creature_addon
+    `path_id` and MovementType 2:
+    - 6 Desolation Wind Riders 37974 (269007, 269009, 269011, 269013, 269015, 269017) and
+      6 Triumph War Gryphons 37978 (269019, 270158, 270332, 270334, 270343, 270347): flight
+      routes of 33-54 points, run speed.
+    - 3 Desolation Raiders 37922 (269585, 270589, 270667), 2 Triumph Vanguards 37923 (269077,
+      270905), 5 Sapper Specialists 37925 (270711, 270780, 270827, 270850, 270851) and 5 Barrens
+      Operatives 37924 (269147, 269148, 269149, 270197, 270336): walking patrols of 4-8 points.
+  - `vehicle_template_accessory`: Desolation Sky Render 37971 rides seat 0 of the Wind Rider
+    37974, and Wildhammer Mercenary 37977 rides seat 0 of the War Gryphon 37978. The gryphon's
+    script already expects a rider ("Passenger Boarded").
+  - The 12 loose mid-air riders are deleted (37971: 269008, 269010, 269012, 269014, 269016,
+    269018; 37977: 269020, 270159, 270333, 270335, 270344, 270348). The stray Mercenary 200478
+    in the Eastern Kingdoms is left alone.
+- **Not fixed (no data):** the flag capture (events 23033/23034 do nothing, here and in MaNGOS
+  Three), the gryphon Hook Shot (no caster), and the sapper suicide runs into Fort Triumph (their
+  trigger spawns 92564-92569 and paths 3792500-3792505 are missing).
+- **Status:** patrols confirmed in game by Four (2026-11-04). Fliers flew with riders, but mid-air fights killed riders; fixed in SQL 32 (confirmed).
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_04_31_battlescar_fliers_and_patrols.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: Claim the Battlescar never completes ("Scout out the flag marker")
+
+- **Found** while looking into the Battlescar with Four (Southern Barrens, between Fort Triumph and
+  Desolation Hold).
+- **Cause:** Claim the Battlescar (Alliance 25081, objective 259939) and Claim the Battle Scar
+  (Horde 24618, objective 266351) have an area objective (type 10, ObjectID -1) next to "kill 10".
+  Nothing completes it: there is no `areatrigger_involvedrelation` row and no script. The core only
+  sets a type-10 objective from `Player::AreaExploredOrEventHappens`, so both quests stay
+  incomplete forever. (The 4.3.4 quest in the MaNGOS Three DB was kill-only; the scouting step came
+  later and was never wired up.)
+- **Changed:** `sql/fixes/world/2026_11_04_30_claim_the_battlescar_scout_flag.sql`: a per-spawn
+  script on the invisible bunny that stands on the flagpole (35845, guid 269123, -3244.4 -2002.5):
+  SMART_EVENT_OOC_LOS (non-hostile, 15 yards, 1 s cooldown) -> SMART_ACTION_CALL_AREAEXPLOREDOREVENTHAPPENS
+  for 25081 (id 0) and 24618 (id 1), target the player. A player without the quest gets nothing.
+  Because a per-spawn script replaces the entry script, this one bunny also stops running 35845's
+  Legion timer rows (the zap at the closest player).
+- **Status:** confirmed in game by Four (2026-11-04).
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_04_30_claim_the_battlescar_scout_flag.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+## 2026-11-03 (World fixes, second batch)
+
+### World: invisible effect bunny zaps nearby players and keeps them in combat
+
+- **Found** (reported by Four, Southern Barrens near the Sapper Specialists): a lightning-like
+  effect hits you and you stay in combat with "Dave's Industrial Light and Magic Bunny
+  (Small)(Sessile)" (35845, spawn 269123).
+- **Cause:** 35845 is a generic invisible effect bunny with 144 spawns (Broken Isles 33, Draenor 44,
+  Mount Hyjal 17, Southern Barrens 9 and more). Its entry script mixes rows from unrelated uses, and
+  three Legion rows run on a timer (event 60, in and out of combat) on every spawn: id 3 casts
+  206750 (damage + knockback around the bunny) every 3-8 s, id 5 sends data to Azuregos 104902 (a
+  Broken Isles NPC), id 8 casts 199886 on the closest player within 100 yards every 2-3 s.
+- **Changed:** `sql/fixes/world/2026_11_03_37_bunny_35845_legion_rows_map_only.sql`: SMART_EVENT
+  conditions (source 22, groups 4, 6 and 9, CONDITION_MAPID 22 on the bunny itself) so ids 3, 5 and
+  8 only run on map 1220 (Broken Isles). The data-triggered rows are untouched.
+- **Status:** back on (2026-11-04). The Battlescar investigation showed the same rows misfiring at
+  Fort Triumph: bunny 269877 zaps players and knocks the scaffolding laborers around with 206750.
+  Neither the Battlescar nor Fort Triumph scripts use these spells. Confirmed in game by Four
+  (2026-11-04): lightning and explosions gone.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_37_bunny_35845_legion_rows_map_only.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: Stonetalon oil pumps wander and the Krom'gar balloon sinks into the lake
+
+- **Found** (reported by Four, Mirkfallon Lake): the Oil Pumps walk around, and the Krom'gar Hot Air
+  Balloon sits half under water.
+- **Cause:** Oil Pump 41475 (11 spawns, the targets of Schemin' That Sabotage 25878) had
+  MovementType 1 with spawndist 3. The balloon 41418 (guid 272501, spawned at z 148.2) has
+  InhabitType 3 (ground + water), so it falls into the lake. The Pandaria DB has the pumps still
+  with InhabitType 7 and the balloon at InhabitType 4 (air). The pumps' size is their normal model
+  (scale 1 in both DBs).
+- **Changed:** `sql/fixes/world/2026_11_03_36_stonetalon_oil_pumps_balloon.sql`: 41475 spawns
+  MovementType 1 -> 0 and spawndist 3 -> 0, template InhabitType 3 -> 7; 41418 template InhabitType
+  3 -> 4.
+- **Not changed:** the big fire Four saw at 1497.8, 1006.2: no creature or gameobject is spawned
+  within 50 yards in the DB, so it is part of the client's map art (inferred).
+- **Status:** confirmed in game by Four on 2026-11-04.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_36_stonetalon_oil_pumps_balloon.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: Sapper Specialist never uses Sapper Charge
+
+- **Found** (reported by Four while testing the per-spawn script entry below): the Sapper Specialist
+  (37925, Southern Barrens) throws dynamite but never blows himself up at 10% HP.
+- **Cause:** Sapper Charge (82867) hits a spot at an enemy (implicit target 53,
+  TARGET_DEST_TARGET_ENEMY) and then kills the caster. The SmartAI rows cast it on target_type 1
+  (self), which is not an enemy, so every cast failed. The entry also mixed two script versions:
+  ids 0 and 1 existed twice, so the aggro link to id 1 could land on the wrong row.
+- **Changed:** `sql/fixes/world/2026_11_03_35_sapper_specialist_sapper_charge.sql`: old-version rows
+  deleted (id 0 'Cast Throw' timer, id 1 'Cast Sapper Charge at 10% HP'); id 16 'Cast Sapper Charge
+  at 10% HP' target_type 1 -> 2 (victim). Row 29 (the scripted run that blows up next to the Triumph
+  defenders) is unchanged. Spawns 270777, 270847 and 270852 get a fresh copy of the entry script
+  (from `2026_11_03_34`).
+- **Status:** confirmed in game by Four on 2026-11-04.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_35_sapper_specialist_sapper_charge.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: zone entry quests hidden unless you picked up a breadcrumb (67 quests)
+
+- **Found** (Four asked for a sweep after Rerouted!, 2026-11-03): the same lock as Officer Jankie's
+  Rerouted! (14384) exists in many zones.
+- **Cause:** the core turns `quest_template_addon.PrevQuestID` and every quest whose `NextQuestID`
+  points at a quest into hard requirements (`ObjectMgr::LoadQuests` -> `prevQuests`;
+  `Player::SatisfyQuestPreviousQuest` needs one of them rewarded). For 67 zone entry quests every
+  such requirement is a breadcrumb: a Hero's Call / Warchief's Command board quest, or a talk-only
+  quest (no objectives) that starts outside the zone. Arriving without one hid the first quest.
+  Upstream already fixed Westfall (26209) this way; Desolace (14384, 14184) is in
+  `2026_11_03_30`. Quests where one of the requirements is a real or in-zone step (28 found, for
+  example In Defense of Far Watch 871 after Conscript of the Horde 840) are left alone.
+- **Changed:** `sql/fixes/world/2026_11_03_33_zone_entry_quests_no_breadcrumb.sql`: on 65 quests
+  `PrevQuestID` -> 0 where it named one of its breadcrumbs, and `NextQuestID` -> 0 on 115
+  breadcrumbs that pointed at them. Each quest and its breadcrumbs are listed in the file. Examples:
+  The Forsaken 9329 (Ghostlands), Alien Predators 9634 (Bloodmyst), Hellscream's Vigil 11585 and
+  Enlistment Day 11672 (Borean Tundra), The Last Wave of Survivors 13518 (Darkshore), Signs of
+  Change 25210/25447 (Feralas), The Lost Pilot 26854 (Loch Modan), The Maelstrom 27203 (Deepholm),
+  The Road to Kun-Lai 31254/31255. The breadcrumbs stay available and still turn in at the same NPC.
+- **Status:** confirmed in game by Four on 2026-11-03 (The Lost Pilot, The Last Wave of Survivors,
+  The Stolen Keg, Northfold Manor and Signs of Change all offered without a breadcrumb).
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_33_zone_entry_quests_no_breadcrumb.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: 40 spawns with a cosmetic per-spawn script never ran their own script
+
+- **Found:** follow-up to the Fel Hands rows (`2026_10_31_05`). The same importer left a second kind
+  of one-row per-spawn script (comment 'OOC - CS') on 40 spawns, mostly in Stonetalon Mountains,
+  Southern Barrens, Silithus, Dustwallow Marsh and Orgrimmar.
+- **Cause:** each casts a cosmetic spell out of combat (dummy auras 39550, 54219, 111541, 146130,
+  180695, 183940, 185340, 217193, or dummy-effect 217160 aimed at a nearby bunny). These may be real
+  retail visuals, but a per-spawn script replaces the creature's own script, so these spawns never
+  cast in combat, fled or said their lines, and Tortolla (41504, guid 293563) in Mount Hyjal never
+  ran 'Teleport on Quest Add'.
+- **Changed:** `sql/fixes/world/2026_11_03_34_cosmetic_spawn_scripts_keep_entry_script.sql`: each
+  spawn's entry script is copied under its per-spawn script with `id` and `link` + 1000, next to the
+  cosmetic row (id 0), so both run. It copies from the live table when applied; re-running replaces
+  the copies. Spawns and entries are listed in the file (for example Lumbering Oaf 40906, Sapper
+  Specialist 37925, Razormane Pathfinder 37560, Orgrimmar Grunt 3296).
+- **Status:** confirmed in game by Four on 2026-11-03: the Sapper Specialist now throws dynamite.
+  Its Sapper Charge was broken in the entry script itself, see the next entry.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_34_cosmetic_spawn_scripts_keep_entry_script.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ## 2026-11-03
+
+Merged to `main` with PR #37 on 2026-11-03.
 
 ### World: Nijel's Point is packed with Defenders (some on fire) and extra Merchants
 
