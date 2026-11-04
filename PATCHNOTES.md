@@ -24,7 +24,7 @@ to do to pick it up (rebuild, restart, run SQL).
   - `unit_flags |= 0x200` (IMMUNE_TO_NPC) on 37971, 37974, 37977 and 37978, so the mounts and their
     riders ignore other NPCs. Players can still fight them.
   - MovementType 0, spawndist 0 on the 26 spawns listed in the file.
-- **Status:** waiting for Four to test.
+- **Status:** confirmed in game by Four (2026-11-04): fliers keep their riders, no more sliding.
 - **Pick up:** SQL only, no rebuild:
 
 ```
@@ -64,7 +64,7 @@ Then restart worldserver.
 - **Not fixed (no data):** the flag capture (events 23033/23034 do nothing, here and in MaNGOS
   Three), the gryphon Hook Shot (no caster), and the sapper suicide runs into Fort Triumph (their
   trigger spawns 92564-92569 and paths 3792500-3792505 are missing).
-- **Status:** patrols confirmed in game by Four (2026-11-04). Fliers flew with riders, but mid-air fights killed riders; fixed in SQL 32.
+- **Status:** patrols confirmed in game by Four (2026-11-04). Fliers flew with riders, but mid-air fights killed riders; fixed in SQL 32 (confirmed).
 - **Pick up:** SQL only, no rebuild:
 
 ```
@@ -125,7 +125,8 @@ Then restart worldserver.
   8 only run on map 1220 (Broken Isles). The data-triggered rows are untouched.
 - **Status:** back on (2026-11-04). The Battlescar investigation showed the same rows misfiring at
   Fort Triumph: bunny 269877 zaps players and knocks the scaffolding laborers around with 206750.
-  Neither the Battlescar nor Fort Triumph scripts use these spells. Waiting for Four to test.
+  Neither the Battlescar nor Fort Triumph scripts use these spells. Confirmed in game by Four
+  (2026-11-04): lightning and explosions gone.
 - **Pick up:** SQL only, no rebuild:
 
 ```
