@@ -3,6 +3,38 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-04 (World fixes)
+
+### World: Claim the Battlescar never completes ("Scout out the flag marker")
+
+- **Found** while looking into the Battlescar with Four (Southern Barrens, between Fort Triumph and
+  Desolation Hold).
+- **Cause:** Claim the Battlescar (Alliance 25081, objective 259939) and Claim the Battle Scar
+  (Horde 24618, objective 266351) have an area objective (type 10, ObjectID -1) next to "kill 10".
+  Nothing completes it: there is no `areatrigger_involvedrelation` row and no script. The core only
+  sets a type-10 objective from `Player::AreaExploredOrEventHappens`, so both quests stay
+  incomplete forever. (The 4.3.4 quest in the MaNGOS Three DB was kill-only; the scouting step came
+  later and was never wired up.)
+- **Changed:** `sql/fixes/world/2026_11_04_30_claim_the_battlescar_scout_flag.sql`: a per-spawn
+  script on the invisible bunny that stands on the flagpole (35845, guid 269123, -3244.4 -2002.5):
+  SMART_EVENT_OOC_LOS (non-hostile, 15 yards, 1 s cooldown) -> SMART_ACTION_CALL_AREAEXPLOREDOREVENTHAPPENS
+  for 25081 (id 0) and 24618 (id 1), target the player. A player without the quest gets nothing.
+  Because a per-spawn script replaces the entry script, this one bunny also stops running 35845's
+  Legion timer rows (the zap at the closest player).
+- **Status:** waiting for Four to test.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_04_30_claim_the_battlescar_scout_flag.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ## 2026-11-03 (World fixes, second batch)
 
 ### World: invisible effect bunny zaps nearby players and keeps them in combat
@@ -18,7 +50,8 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed:** `sql/fixes/world/2026_11_03_37_bunny_35845_legion_rows_map_only.sql`: SMART_EVENT
   conditions (source 22, groups 4, 6 and 9, CONDITION_MAPID 22 on the bunny itself) so ids 3, 5 and
   8 only run on map 1220 (Broken Isles). The data-triggered rows are untouched.
-- **Status:** waiting for Four to test.
+- **Status:** on hold. Four doubts it (bunnies drive real mechanics), so it is under review with the
+  Battlescar investigation; do not run it yet.
 - **Pick up:** SQL only, no rebuild:
 
 ```
