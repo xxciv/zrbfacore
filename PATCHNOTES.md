@@ -3,6 +3,39 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-04 (pet battles)
+
+### Pet battles: some wild pets ignore their zone's level range
+
+- **Found** (asked by Four): Pet Tracker's map says Elwynn Forest pets are level 1-2. Are they all?
+- **Cause:** `WildBattlePetMgr::EnableWildBattle` rolls a wild pet's level between
+  max(`battlepet_info.minlevel`, zone min) and max(`battlepet_info.maxlevel`, zone max). The zone
+  range comes from the client's AreaTable. Almost every wild pet template is 1-1, so the zone
+  decides. 30 wild pet templates were 5-5 or 1-25 instead:
+  - 5-5: Fawn 61165 (every Elwynn and Teldrassil fawn was level 5, zone 1-2), Snow Cub 61689,
+    Infected Fawn 61827, Shimmershell Snail 62246.
+  - 1-25 (could roll from the zone minimum up to 25): Tiny Harvester 61160, Little Black Ram 61459,
+    Tiny Twister 61703, Blighthawk 61826, Ruby Sapling 62020, Ravager Hatchling 62051, Creepy Crawly
+    62116, Venomspitter Hatchling 62191, Silithid Hatchling 62258, Minfernal 62317, Diemetradon
+    Hatchling 62375, Nether Faerie Dragon 62395, Qiraji Guardling 62526, Flayer Youngling 62555,
+    Fjord Worg Pup 62669, Stunted Shardhorn 62816, Imperial Eagle Chick 62819, Wildhammer Gryphon
+    Hatchling 62900, Stowaway Rat 62921, Shore Crawler 63097, Gilnean Raven 63098, Harpy Youngling
+    68804, Arcane Eye 68819, Infinite Whelpling 68820, Anodized Robo Cub 68839, Cogblade Raptor 68841.
+- **Changed:** new `sql/fixes/world/2026_11_04_50_wild_battle_pet_zone_levels.sql` sets `minlevel`
+  and `maxlevel` to 1 for those 30 `battlepet_info` rows, so they follow their zone like every other
+  wild pet. The old values are listed in the file's header. Tamer team pets and companion entries
+  are not touched. No core change.
+- **Status:** run on Four's live DB and confirmed in game by Four on 2026-11-04.
+
+#### To pick it up
+SQL only, then a restart (levels are rolled when a pet spawns).
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_04_50_wild_battle_pet_zone_levels.sql | mysql -u root -p bfa_world
+```
+The last line prints `30 wild pet templates set to 1-1`. Then restart `worldserver`.
+
 ## 2026-11-04 (World fixes)
 
 ### World: Battlescar fliers fight each other in mid-air; Fort Triumph laborers slide and get blasted
