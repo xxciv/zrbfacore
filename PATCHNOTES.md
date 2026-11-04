@@ -25,7 +25,7 @@ to do to pick it up (rebuild, restart, run SQL).
   and `maxlevel` to 1 for those 30 `battlepet_info` rows, so they follow their zone like every other
   wild pet. The old values are listed in the file's header. Tamer team pets and companion entries
   are not touched. No core change.
-- **Status:** not tested in game yet.
+- **Status:** run on Four's live DB and confirmed in game by Four on 2026-11-04.
 
 #### To pick it up
 SQL only, then a restart (levels are rolled when a pet spawns).
