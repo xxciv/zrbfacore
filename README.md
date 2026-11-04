@@ -19,6 +19,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   boss doors, Foe Reaper, Helix, Ripsnarl, Mine Bunny), plus a core fix so bosses reset after a wipe.
 - [`sql/fixes/world`](sql/fixes/world): world database fixes, run in file-name order; the guide's step 10
   table says what each one does.
+- [`sql/fixes/hotfixes`](sql/fixes/hotfixes): hotfix database fixes (data the server sends to the client in
+  place of its own db2 rows), run against `bfa_hotfixes` the same way.
 - [`tools/bfa/ragefire-fixes.patch`](tools/bfa/ragefire-fixes.patch): Ragefire Chasm fixes (rescuing
   the prisoners for No Man Left Behind / No Orc Left Behind).
 - [`tools/bfa/shadowfang-fixes.patch`](tools/bfa/shadowfang-fixes.patch): Shadowfang Keep fixes (only
@@ -83,6 +85,9 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   zrbfacore ("Based on HavenCore"), without the old BfaCore Discord link and email address.
 - [`tools/bfa/razorfen-downs.patch`](tools/bfa/razorfen-downs.patch): Razorfen Downs: Death Speaker
   Blackthorn's death completes his scenario step. Needs `sql/fixes/world/2026_10_31_01_razorfen_downs.sql`.
+- [`tools/bfa/darkmoon-faire-schedule.patch`](tools/bfa/darkmoon-faire-schedule.patch): game events with
+  `occurence` 0 run every month from the first Sunday; used to put the Darkmoon Faire on its retail
+  schedule with `sql/fixes/world/2026_11_04_00_darkmoon_faire_first_sunday.sql`.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.

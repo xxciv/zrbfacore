@@ -3,6 +3,48 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-04 (Holidays: Darkmoon Faire)
+
+On branch `claude/project-thread-lzgnii`, not merged yet.
+
+### Darkmoon Faire: missing from the calendar, and on the wrong days
+
+From Four, 2026-11-04. Core patch `tools/bfa/darkmoon-faire-schedule.patch` (after all other patches),
+world SQL `sql/fixes/world/2026_11_04_00_darkmoon_faire_first_sunday.sql`, hotfix SQL
+`sql/fixes/hotfixes/2026_11_04_00_darkmoon_faire_calendar.sql`.
+
+- **Found** (reported by Four: "I don't really see it on the calendar"):
+  - The server sends no holidays to the calendar. The client draws them from its own Holidays.db2.
+    In the 8.3.7 client (Four's file), the Darkmoon Faire, holiday 479, only has 18 dates, from
+    July 2019 to December 2020. So nothing showed in 2026. The hotfix database had no row 479.
+  - On the server, the Faire is game event 3. Upstream's `2026_08_16_01_fix_game_events.sql` gave it
+    a start of 2026-09-06 10:01, every 30 days (`occurence` 43200), 7 days long. Months aren't 30
+    days long, so the start day slid away from the retail first Sunday of the month by about 5 days
+    a year. The core's `game_event` only supports fixed periods.
+- **Changed:**
+  - `darkmoon-faire-schedule.patch` changes `src/server/game/Events/GameEventMgr.cpp`, in
+    `CheckOneGameEvent`, `NextCheck`, `StopEvent` and `LoadFromDB`. A `game_event` row with
+    `occurence` 0 is now a monthly event: it starts on the first Sunday of every month, at the time
+    of day of its `start_time`, and runs for `length` minutes. Before, `occurence` 0 divided by zero.
+    No row used it.
+    - `.event start 3` runs the event for its length from now.
+    - `.event stop 3` stops the current month's run until it would have ended.
+    - At startup the log says "game event id (3) runs monthly from the first Sunday at 00:00".
+  - `game_event` 3: `start_time` 2026-09-06 10:01 -> 2026-11-01 00:00, `occurence` 43200 -> 0,
+    `length` 10080 (7 days, unchanged), `end_time` 2030-12-31 17:00 -> 2037-12-31 23:59.
+    Event 23 (Darkmoon Faire Building) has no spawns or scripts, so it is unchanged.
+  - Hotfix: `holidays` row 479 is the client's own row (name, description, textures, durations 48 h
+    + 168 h, calendar flags 0/3) with 26 new dates. Each date is the Friday 00:00 before a first
+    Sunday, from the Faire of 2026-11-01 to the Faire of 2028-12-03. `hotfix_data` row: Id 9000479,
+    table hash 1972272076 (Holidays.db2), record 479. The calendar shows each Faire from Sunday 00:00
+    for 7 days. Holidays.db2 holds at most 26 dates, so the calendar needs new dates again for 2029.
+    The server schedule doesn't.
+- **Not done yet:** the same client problem hides other holidays from the 2026 calendar. Their dates
+  in Holidays.db2 stop at 2020: Noblegarden, Children's Week, Harvest Festival, Pilgrim's Bounty,
+  Love is in the Air and the Timewalking weeks. Lunar Festival stops at 2024. Hallow's End, Winter
+  Veil, Midsummer, Brewfest, Day of the Dead and Pirates' Day repeat every year and are fine.
+- **Status:** compiled (GameEventMgr.cpp), not tested in game yet.
+
 ## 2026-11-04 (pet battles)
 
 ### Pet battles: some wild pets ignore their zone's level range
