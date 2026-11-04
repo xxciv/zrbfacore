@@ -5,6 +5,39 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-04 (World fixes)
 
+### World: Battlescar fliers fight each other in mid-air; Fort Triumph laborers slide and get blasted
+
+- **Found** (Four, after SQL 31): some wind riders and gryphons fight each other in mid-air without
+  riders on their backs. At Fort Triumph, a sleeping laborer slides around on the scaffolding and the
+  other laborers keep getting thrown around next to the effect bunny.
+- **Cause:**
+  - Desolation Wind Rider 37974 (faction 29) and Triumph War Gryphon 37978 (faction 894) are hostile
+    to each other, so they attack where their new flight routes cross. The riders die in those
+    fights, and the mount flies on empty until it respawns.
+  - The 12 Peasant Laborers 39129 and 3 Mizzy's Apprentices 39124 at Fort Triumph, and the 11
+    Desolation Guards 38070, wander 3 yards (MovementType 1). MaNGOS Three has all of them standing
+    still. The laborer script naps (actionlist 3912900: Sleep 6431 for 30 s), so a sleeping laborer
+    slides along the boards.
+  - The blasting is bunny 35845's Legion knockback 206750 (its id 3 timer row). The laborer script
+    only expects knockback 177984. See SQL 37.
+- **Changed:** `sql/fixes/world/2026_11_04_32_battlescar_fort_workers_and_air_fights.sql`:
+  - `unit_flags |= 0x200` (IMMUNE_TO_NPC) on 37971, 37974, 37977 and 37978, so the mounts and their
+    riders ignore other NPCs. Players can still fight them.
+  - MovementType 0, spawndist 0 on the 26 spawns listed in the file.
+- **Status:** waiting for Four to test.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_04_32_battlescar_fort_workers_and_air_fights.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ### World: Battlescar fliers hang still in the sky and the patrols stand still
 
 - **Found** while looking into the Battlescar with Four (see
@@ -31,7 +64,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Not fixed (no data):** the flag capture (events 23033/23034 do nothing, here and in MaNGOS
   Three), the gryphon Hook Shot (no caster), and the sapper suicide runs into Fort Triumph (their
   trigger spawns 92564-92569 and paths 3792500-3792505 are missing).
-- **Status:** waiting for Four to test.
+- **Status:** patrols confirmed in game by Four (2026-11-04). Fliers flew with riders, but mid-air fights killed riders; fixed in SQL 32.
 - **Pick up:** SQL only, no rebuild:
 
 ```
@@ -61,7 +94,7 @@ Then restart worldserver.
   for 25081 (id 0) and 24618 (id 1), target the player. A player without the quest gets nothing.
   Because a per-spawn script replaces the entry script, this one bunny also stops running 35845's
   Legion timer rows (the zap at the closest player).
-- **Status:** waiting for Four to test.
+- **Status:** confirmed in game by Four (2026-11-04).
 - **Pick up:** SQL only, no rebuild:
 
 ```
@@ -90,8 +123,9 @@ Then restart worldserver.
 - **Changed:** `sql/fixes/world/2026_11_03_37_bunny_35845_legion_rows_map_only.sql`: SMART_EVENT
   conditions (source 22, groups 4, 6 and 9, CONDITION_MAPID 22 on the bunny itself) so ids 3, 5 and
   8 only run on map 1220 (Broken Isles). The data-triggered rows are untouched.
-- **Status:** on hold. Four doubts it (bunnies drive real mechanics), so it is under review with the
-  Battlescar investigation; do not run it yet.
+- **Status:** back on (2026-11-04). The Battlescar investigation showed the same rows misfiring at
+  Fort Triumph: bunny 269877 zaps players and knocks the scaffolding laborers around with 206750.
+  Neither the Battlescar nor Fort Triumph scripts use these spells. Waiting for Four to test.
 - **Pick up:** SQL only, no rebuild:
 
 ```
