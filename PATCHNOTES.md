@@ -5,6 +5,46 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-04 (World fixes)
 
+### World: Battlescar fliers hang still in the sky and the patrols stand still
+
+- **Found** while looking into the Battlescar with Four (see
+  `/mnt/project-files/world-fixes/battlescar.md` in the project for the whole picture).
+- **Cause:** our Battlescar spawns are the same spawns as the MaNGOS Three Cataclysm DB (same guids,
+  same positions), but our dump lost the waypoint paths of 27 of them, which were left at
+  MovementType 0. The wind riders' and gryphons' riders were spawned on their own in mid-air
+  (z 110-145) with random movement instead of riding their mounts.
+- **Changed:** `sql/fixes/world/2026_11_04_31_battlescar_fliers_and_patrols.sql`:
+  - New paths 485500001-485500027 (from MaNGOS Three `creature_movement`), with creature_addon
+    `path_id` and MovementType 2:
+    - 6 Desolation Wind Riders 37974 (269007, 269009, 269011, 269013, 269015, 269017) and
+      6 Triumph War Gryphons 37978 (269019, 270158, 270332, 270334, 270343, 270347): flight
+      routes of 33-54 points, run speed.
+    - 3 Desolation Raiders 37922 (269585, 270589, 270667), 2 Triumph Vanguards 37923 (269077,
+      270905), 5 Sapper Specialists 37925 (270711, 270780, 270827, 270850, 270851) and 5 Barrens
+      Operatives 37924 (269147, 269148, 269149, 270197, 270336): walking patrols of 4-8 points.
+  - `vehicle_template_accessory`: Desolation Sky Render 37971 rides seat 0 of the Wind Rider
+    37974, and Wildhammer Mercenary 37977 rides seat 0 of the War Gryphon 37978. The gryphon's
+    script already expects a rider ("Passenger Boarded").
+  - The 12 loose mid-air riders are deleted (37971: 269008, 269010, 269012, 269014, 269016,
+    269018; 37977: 269020, 270159, 270333, 270335, 270344, 270348). The stray Mercenary 200478
+    in the Eastern Kingdoms is left alone.
+- **Not fixed (no data):** the flag capture (events 23033/23034 do nothing, here and in MaNGOS
+  Three), the gryphon Hook Shot (no caster), and the sapper suicide runs into Fort Triumph (their
+  trigger spawns 92564-92569 and paths 3792500-3792505 are missing).
+- **Status:** waiting for Four to test.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_04_31_battlescar_fliers_and_patrols.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ### World: Claim the Battlescar never completes ("Scout out the flag marker")
 
 - **Found** while looking into the Battlescar with Four (Southern Barrens, between Fort Triumph and
