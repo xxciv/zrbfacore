@@ -5,6 +5,33 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-03 (World fixes, second batch)
 
+### World: invisible effect bunny zaps nearby players and keeps them in combat
+
+- **Found** (reported by Four, Southern Barrens near the Sapper Specialists): a lightning-like
+  effect hits you and you stay in combat with "Dave's Industrial Light and Magic Bunny
+  (Small)(Sessile)" (35845, spawn 269123).
+- **Cause:** 35845 is a generic invisible effect bunny with 144 spawns (Broken Isles 33, Draenor 44,
+  Mount Hyjal 17, Southern Barrens 9 and more). Its entry script mixes rows from unrelated uses, and
+  three Legion rows run on a timer (event 60, in and out of combat) on every spawn: id 3 casts
+  206750 (damage + knockback around the bunny) every 3-8 s, id 5 sends data to Azuregos 104902 (a
+  Broken Isles NPC), id 8 casts 199886 on the closest player within 100 yards every 2-3 s.
+- **Changed:** `sql/fixes/world/2026_11_03_37_bunny_35845_legion_rows_map_only.sql`: SMART_EVENT
+  conditions (source 22, groups 4, 6 and 9, CONDITION_MAPID 22 on the bunny itself) so ids 3, 5 and
+  8 only run on map 1220 (Broken Isles). The data-triggered rows are untouched.
+- **Status:** waiting for Four to test.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_37_bunny_35845_legion_rows_map_only.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ### World: Stonetalon oil pumps wander and the Krom'gar balloon sinks into the lake
 
 - **Found** (reported by Four, Mirkfallon Lake): the Oil Pumps walk around, and the Krom'gar Hot Air
@@ -19,7 +46,7 @@ to do to pick it up (rebuild, restart, run SQL).
   3 -> 4.
 - **Not changed:** the big fire Four saw at 1497.8, 1006.2: no creature or gameobject is spawned
   within 50 yards in the DB, so it is part of the client's map art (inferred).
-- **Status:** waiting for Four to test.
+- **Status:** confirmed in game by Four on 2026-11-04.
 - **Pick up:** SQL only, no rebuild:
 
 ```
@@ -46,7 +73,7 @@ Then restart worldserver.
   at 10% HP' target_type 1 -> 2 (victim). Row 29 (the scripted run that blows up next to the Triumph
   defenders) is unchanged. Spawns 270777, 270847 and 270852 get a fresh copy of the entry script
   (from `2026_11_03_34`).
-- **Status:** tested on a copy of the dump. Not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-04.
 - **Pick up:** SQL only, no rebuild:
 
 ```
