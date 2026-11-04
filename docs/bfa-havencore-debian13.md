@@ -600,6 +600,14 @@ pets wander within 2 yards of their spawn instead (run once, then restart `world
 ```sh
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_02_51_pet_tamer_display_pets_wander.sql
 ```
+
+Wild pet levels follow the zone (the range a pet tracker map shows), except for 30 wild pet types
+whose template forced level 5 or allowed up to 25 (for example every Elwynn Fawn was level 5). This
+sets them to follow their zone too (run once, then restart `worldserver`):
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_04_50_wild_battle_pet_zone_levels.sql
+```
 #### Legion and BFA pet tamers
 
 Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest
