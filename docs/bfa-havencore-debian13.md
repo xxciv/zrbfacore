@@ -717,6 +717,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_05_03_darkmoon_race_course_hidden.sql` | Darkmoon Island's strider race course (checkpoint arches, power-up crates, tripwire posts) standing on every path for everyone: despawned in spawn group 450 until the race is scripted |
 | `2026_11_05_04_darkmoon_faire_npcs.sql` | Darkmoon Faire: Selina Dourman not talking (missing gossip), the paired Fire Jugglers not throwing to each other, and the Alliance/Horde citizens and children being attackable |
 | `2026_11_05_05_darkmoon_race_course.sql` | Darkmoon Island strider races: brings the race course back (undoes `2026_11_05_03`) and shows it only to players in a race. Needs `darkmoon-race.patch` |
+| `2026_11_05_06_darkmoon_strider_ride.sql` | "Dusty" Brandom at the Darkmoon Island arrival hill not talking, and his Darkmoon Striders not giving the free ride to the Faire |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030).
 

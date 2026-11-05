@@ -7,6 +7,22 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Dusty's strider ride at the arrival hill
+
+From Four, 2026-11-05 ("the mechastrider mount handler at the entrance isn't interactable", "Dusty
+Brandom doesn't interact"). World SQL `sql/fixes/world/2026_11_05_06_darkmoon_strider_ride.sql`.
+Run the SQL, restart.
+
+- **Found:** "Dusty" Brandom (68492, Tallstrider Handler) and two Darkmoon Striders (68491) stand
+  where you arrive on the island. On retail the striders give anyone a free ride down the Darkmoon
+  Path to the Faire. Here Dusty had `npcflag` 0 (no gossip) and an SAI line that talks with no
+  text; the striders had no spellclick. (Earlier notes in this PR wrongly tied Dusty to the races.)
+- **Changed** (values from the Pandaria 5.4.8 DB): Dusty `npcflag` 1, `gossip_menu_id` 15306 (menu
+  and npc_text 21955 already in the DB), `unit_flags` 768, SAI removed. Striders `npcflag`
+  16777216 (spellclick), `unit_flags` 33536, `npc_spellclick_spells` (68491, 134931, 3, 0):
+  clicking one mounts you on a Darkmoon Strider (spell 134931).
+- **Status:** untested in game.
+
 ### Darkmoon Faire: the strider races
 
 From Four, 2026-11-05 ("let's start on the strider race"). Core patch `tools/bfa/darkmoon-race.patch`
