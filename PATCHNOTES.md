@@ -41,6 +41,20 @@ world SQL `sql/fixes/world/2026_11_04_00_darkmoon_faire_first_sunday.sql`, hotfi
     The server schedule doesn't.
 - **Status:** compiled (GameEventMgr.cpp), not tested in game yet.
 
+### Darkmoon Island: Portal Back hung the client on the loading screen
+
+From Four's visit, 2026-11-05. SQL only: `sql/fixes/world/2026_11_05_02_darkmoon_portal_back.sql`.
+
+- **Found** (reported by Four: taking the portal back out left the client stuck on the loading screen):
+  - Portal Back (gameobject 216667, 2 spawns on Darkmoon Island) is a spellcaster gameobject. Its
+    own spell, 101260 To the Staging Area!, already sends Horde to Mulgore and Alliance to Elwynn
+    (`spell_darkmoon_staging_area_teleport`).
+  - It also had SmartAI that, on the same click, cast 101260 again and 103582 (Mulgore, map 1). So
+    an Alliance player got teleports to Elwynn and to Mulgore at the same time.
+- **Changed:** both `smart_scripts` rows of 216667 (source type 1, ids 0 and 1) are deleted, and
+  `gameobject_template` 216667 `AIName` 'SmartGameObjectAI' -> ''.
+- **Status:** not tested in game yet.
+
 ### Darkmoon Faire: Fire Jugglers throwing torches at players and NPCs
 
 From Four's visit to the Elwynn Faire camp, 2026-11-05. SQL only:
