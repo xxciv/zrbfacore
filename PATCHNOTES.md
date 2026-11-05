@@ -28,7 +28,7 @@ either. Can get 26/30 - just not enough spawning"). Updated `tools/bfa/darkmoon-
   after 4 s. A bonus gnoll or baby that finds no free barrel tries again after 0.5 s instead of
   waiting for its next turn. Dead gnolls no longer count as targets, and a whacked gnoll is
   removed after 0.5 s.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-05, "That worked perfectly!").
 
 ### Darkmoon Faire: Whack-a-Gnoll pace and reset
 
