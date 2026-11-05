@@ -8,7 +8,7 @@
 --
 -- Entries (all on map 974): 74153 Powerup Bunny (Dash), 74157 (Jump), 74678 (Rocket), 74800 (Blink),
 -- 74872 (Loot), 75063 (Rotating), 75044 Tripwire, 75718 Checkpoint, 74260-74263 Marker 1-4 Pointer,
--- 74420 Marker Camp Pointer, 74536 Bunny Darkmoon Start Race. About 250 spawns in the dump.
+-- 74420 Marker Camp Pointer, 74536 Bunny Darkmoon Start Race. 290 spawns in the dump.
 DELETE FROM `spawn_group` WHERE `spawnType`=0 AND `spawnId` IN (SELECT `guid` FROM `creature` WHERE `map`=974 AND `id` IN (74153, 74157, 74678, 74800, 74872, 75063, 75044, 75718, 74260, 74261, 74262, 74263, 74420, 74536));
 DELETE FROM `spawn_group_template` WHERE `groupId`=450;
 INSERT INTO `spawn_group_template` (`groupId`, `groupName`, `groupFlags`) VALUES

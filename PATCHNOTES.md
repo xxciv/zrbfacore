@@ -47,7 +47,7 @@ From Four's visit, 2026-11-05 (screenshots of "Powerup Bunny Checkpoint" arches 
 Trap - Tripwire - NOT MECHANICAL" posts all over the paths, with GM mode off). SQL only:
 `sql/fixes/world/2026_11_05_03_darkmoon_race_course_hidden.sql`.
 
-- **Found:** the course of the island's strider race is spawned, about 250 creatures. That's the
+- **Found:** the course of the island's strider race is spawned, 290 creatures. That's the
   checkpoints, power-up crates, tripwires, marker arrows and start bunnies, with visible models
   and no trigger flag. On retail only racers see them. The race itself has no scripts here.
   "Dusty" Brandom (68492) has no gossip and npcflag 0.
