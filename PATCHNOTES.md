@@ -41,6 +41,24 @@ world SQL `sql/fixes/world/2026_11_04_00_darkmoon_faire_first_sunday.sql`, hotfi
     The server schedule doesn't.
 - **Status:** compiled (GameEventMgr.cpp), not tested in game yet.
 
+### Darkmoon Island: the strider race course visible to everyone
+
+From Four's visit, 2026-11-05 (screenshots of "Powerup Bunny Checkpoint" arches and "Powerup Bunny -
+Trap - Tripwire - NOT MECHANICAL" posts all over the paths, with GM mode off). SQL only:
+`sql/fixes/world/2026_11_05_03_darkmoon_race_course_hidden.sql`.
+
+- **Found:** the course of the island's strider race is spawned, about 250 creatures. That's the
+  checkpoints, power-up crates, tripwires, marker arrows and start bunnies, with visible models
+  and no trigger flag. On retail only racers see them. The race itself has no scripts here.
+  "Dusty" Brandom (68492) has no gossip and npcflag 0.
+- **Changed:** every map 974 spawn of 74153, 74157, 74678, 74800, 74872, 75063, 75044, 75718,
+  74260-74263, 74420 and 74536 goes into new spawn group 450, "Darkmoon Island - strider race
+  course", with flag 0x04 (manual spawn). The core keeps those spawns despawned until a script
+  turns the group on. The rows are selected from the live `creature` table, so no guid list is
+  hard-coded.
+- **Next:** the race itself (Four, 2026-11-05: "yes after").
+- **Status:** not tested in game yet.
+
 ### Darkmoon Island: Portal Back hung the client on the loading screen
 
 From Four's visit, 2026-11-05. SQL only: `sql/fixes/world/2026_11_05_02_darkmoon_portal_back.sql`.
