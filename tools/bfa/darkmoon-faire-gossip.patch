@@ -49,7 +49,7 @@ index 7e4a359..cbd1f3b 100644
              player->TeleportTo(974, -4019.00f, 6286.58f, 12.49f, 1.39f);
  
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
-index 37f4f99..d5dd1b2 100644
+index 37f4f99..58e470d 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
 @@ -18,6 +18,8 @@
@@ -61,7 +61,7 @@ index 37f4f99..d5dd1b2 100644
  
  enum whackCreatures
  {
-@@ -59,9 +61,23 @@ enum whackEvents
+@@ -59,9 +61,25 @@ enum whackEvents
  
  #define MAX_BARRELS         9
  
@@ -74,6 +74,8 @@ index 37f4f99..d5dd1b2 100644
 +#define DOLL_TIMER          5  * IN_MILLISECONDS
 +#define BOSS_TIMER          7  * IN_MILLISECONDS
 +#define QUEST_CREDIT_NPC    54505
++#define POPUP_LIFETIME      4  * IN_MILLISECONDS
++#define RETRY_TIMER         500
 +
 +// zrbfacore: the score bar (alternate power) follows the quest count.
 +static void SyncWhackScore(Player* player)
@@ -88,7 +90,7 @@ index 37f4f99..d5dd1b2 100644
  
  class npc_whack_gnoll_bunny : public CreatureScript
  {
-@@ -103,26 +119,35 @@ class npc_whack_gnoll_bunny : public CreatureScript
+@@ -103,26 +121,35 @@ class npc_whack_gnoll_bunny : public CreatureScript
                      barrelList.push_back(barrel->GetGUID());
              }
  
@@ -123,8 +125,7 @@ index 37f4f99..d5dd1b2 100644
                  }
 +                return true;
 +            }
- 
--                return nullptr;
++
 +            Creature* GetRandomBarrel()
 +            {
 +                std::vector<Creature*> freeBarrels;
@@ -135,12 +136,56 @@ index 37f4f99..d5dd1b2 100644
 +
 +                if (freeBarrels.empty())
 +                    return nullptr;
-+
+ 
+-                return nullptr;
 +                return freeBarrels[urand(0, freeBarrels.size() - 1)];
              }
  
              void SummonFromBarrel(Creature* barrel, uint32 spellId)
-@@ -182,6 +207,7 @@ class npc_whack_gnoll_bunny : public CreatureScript
+@@ -133,7 +160,13 @@ class npc_whack_gnoll_bunny : public CreatureScript
+                 if (spellId != SPELL_SUMMON_GNOLL && spellId != SPELL_SUMMON_DOLL && spellId != SPELL_SUMMON_BOSS)
+                     return;
+ 
+-                barrel->CastSpell(barrel, spellId, false);
++                // zrbfacore: summon straight from the barrel with a fixed lifetime. The
++                // summon spells left gnolls standing until whacked, so all 9 barrels
++                // filled up and the 1 s gnoll timer took every freed barrel before the
++                // bonus gnoll (7 s) ever found one (Four, 2026-11-05: "i have yet to
++                // see one").
++                uint32 entry = spellId == SPELL_SUMMON_GNOLL ? uint32(NPC_GNOLL) : spellId == SPELL_SUMMON_DOLL ? uint32(NPC_DOLL) : uint32(NPC_BOSS);
++                barrel->SummonCreature(entry, barrel->GetPosition(), TEMPSUMMON_TIMED_DESPAWN, POPUP_LIFETIME);
+                 barrel->CastSpell(barrel, SPELL_SPAWN_VISUAL, false);
+                 barrel->AddAura(SPELL_OK_TO_HIT, barrel);
+             }
+@@ -160,17 +193,23 @@ class npc_whack_gnoll_bunny : public CreatureScript
+                         case EVENT_SUMMON_DOLL:
+                         {
+                             if (Creature* barrel = GetRandomBarrel())
++                            {
+                                 SummonFromBarrel(barrel, SPELL_SUMMON_DOLL);
+-
+-                            events.ScheduleEvent(EVENT_SUMMON_DOLL, DOLL_TIMER);
++                                events.ScheduleEvent(EVENT_SUMMON_DOLL, DOLL_TIMER);
++                            }
++                            else
++                                events.ScheduleEvent(EVENT_SUMMON_DOLL, RETRY_TIMER);
+                             break;
+                         }
+                         case EVENT_SUMMON_BOSS:
+                         {
+                             if (Creature* barrel = GetRandomBarrel())
++                            {
+                                 SummonFromBarrel(barrel, SPELL_SUMMON_BOSS);
+-
+-                            events.ScheduleEvent(EVENT_SUMMON_BOSS, BOSS_TIMER);
++                                events.ScheduleEvent(EVENT_SUMMON_BOSS, BOSS_TIMER);
++                            }
++                            else
++                                events.ScheduleEvent(EVENT_SUMMON_BOSS, RETRY_TIMER);
+                             break;
+                         }
+                         case EVENT_CHECK_PLAYER_POS:
+@@ -182,6 +221,7 @@ class npc_whack_gnoll_bunny : public CreatureScript
                              {
                                  if (player->HasAura(SPELL_ENABLE_POWERBAR))
                                  {
@@ -148,7 +193,7 @@ index 37f4f99..d5dd1b2 100644
                                      if (me->GetDistance(player) >= 15.0f)
                                          player->NearTeleportTo(-3994.28f, 6283.58f, 13.12f, 0.727784f, true);
                                  }
-@@ -211,8 +237,8 @@ class npc_whack_gnoll_mola : public CreatureScript
+@@ -211,8 +251,8 @@ class npc_whack_gnoll_mola : public CreatureScript
              if (creature->IsQuestGiver())
                  player->PrepareQuestMenu(creature->GetGUID());
  
@@ -159,7 +204,7 @@ index 37f4f99..d5dd1b2 100644
  
              player->PlayerTalkClass->SendGossipMenu(player->GetGossipTextId(creature), creature->GetGUID());
              return true;
-@@ -222,7 +248,8 @@ class npc_whack_gnoll_mola : public CreatureScript
+@@ -222,7 +262,8 @@ class npc_whack_gnoll_mola : public CreatureScript
          {
              if (!player->HasItemCount(ITEM_DARKMOON_TOKEN))
              {
@@ -169,7 +214,7 @@ index 37f4f99..d5dd1b2 100644
                  return true;
              }
  
-@@ -231,7 +258,8 @@ class npc_whack_gnoll_mola : public CreatureScript
+@@ -231,7 +272,8 @@ class npc_whack_gnoll_mola : public CreatureScript
  
              creature->AddAura(SPELL_OVERRIDE_ACTION, player);
              creature->AddAura(SPELL_ENABLE_POWERBAR, player);
@@ -179,10 +224,24 @@ index 37f4f99..d5dd1b2 100644
  
              CloseGossipMenuFor(player);
              return true;
-@@ -341,6 +369,10 @@ class spell_whack_gnoll_whack : public SpellScriptLoader
+@@ -280,6 +322,12 @@ class PositionCheck
+ 
+         bool operator()(WorldObject* unit)
+         {
++            // zrbfacore: a whacked gnoll's corpse stayed in the barrel and every swing
++            // at it scored again (Four, 2026-11-05).
++            if (Unit* target = unit->ToUnit())
++                if (!target->IsAlive())
++                    return true;
++
+             bool isTooFar = _caster->GetDistance2d(unit) >= 3.0f;
+             bool isNotInFront = !_caster->isInFront(unit, 90.0f);
+             return isTooFar || isNotInFront;
+@@ -341,6 +389,11 @@ class spell_whack_gnoll_whack : public SpellScriptLoader
                  }
  
                  caster->Kill(target);
++                target->DespawnOrUnsummon(500);
 +
 +                if (Player* player = caster->ToPlayer())
 +                    SyncWhackScore(player);
@@ -190,7 +249,7 @@ index 37f4f99..d5dd1b2 100644
                  return SPELL_CAST_OK;
              }
  
-@@ -380,6 +412,18 @@ public:
+@@ -380,6 +433,18 @@ public:
                  return;
  
              target->SetPower(POWER_ALTERNATE_POWER, 0);

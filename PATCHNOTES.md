@@ -20,6 +20,14 @@ either. Can get 26/30 - just not enough spawning"). Updated `tools/bfa/darkmoon-
 - **Changed:** a barrel is free as soon as no gnoll, doll or boss is alive in it (2 yd). Gnoll every
   1 s, boss every 7 s (doll stays 5 s). The score bar is set to It's Hammer Time's count at the
   start, after every whack, and once a second while you play.
+- **Found (second test, "you mention a boss, but i have yet to see one. 28/30", and a video):** the
+  summon spells left every unwhacked gnoll standing, so all 9 barrels filled and the 1 s gnoll
+  timer took each freed barrel before the bonus gnoll (54549) or the baby (54466) found one.
+  Whacked gnolls left a grey corpse in the barrel, and swinging at the corpse scored again.
+- **Changed:** gnolls, babies and bonus gnolls are summoned straight from the barrel and leave
+  after 4 s. A bonus gnoll or baby that finds no free barrel tries again after 0.5 s instead of
+  waiting for its next turn. Dead gnolls no longer count as targets, and a whacked gnoll is
+  removed after 0.5 s.
 - **Status:** untested in game.
 
 ### Darkmoon Faire: Whack-a-Gnoll pace and reset
