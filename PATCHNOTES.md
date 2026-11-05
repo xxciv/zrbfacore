@@ -7,6 +7,42 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Selina, jugglers, Maxima, citizens
+
+From Four, 2026-11-05. Core patch `tools/bfa/darkmoon-faire-gossip.patch` (after
+`holiday-schedule.patch`), world SQL `sql/fixes/world/2026_11_05_04_darkmoon_faire_npcs.sql`.
+Rebuild, run the SQL, restart.
+
+- **Found** (reported by Four):
+  - "Selina Dourman, has a quest, cannot interact": her C++ script `npc_selina_dourman` sends
+    npc_text 23004-23006, which don't exist, and her template's gossip menu 8776 has no
+    `gossip_menu` row. Her real menu 13075 (guide, purchases, prize tickets, cards, attractions)
+    is already in the database.
+  - "Fire jugglers at the entrance, not juggling": 8 jugglers in pairs (55220/55221 at the entrance,
+    55222/55223, 55225/55226, 55341/55342) cast Juggle Torches (196717) at their partner by
+    sniffed spawn guid (2099, 2104, 2142, 2145, 2187, 2189, 2212, 2219). Those guids don't exist
+    here, so the spell had no target.
+  - "Maxima Blastenheimer has French locale text" and "Unable to turn in game tokens": the
+    `npc_canon_maxima` script has French text ("Je souhaite devenir un homme canon !") and only
+    offers the launch while the daily Humanoid Cannonball (29436) is in progress. Mola
+    (Whack-a-Gnoll, 29463) and Teleportologist Fozlebub (cannon teleport, 30 silver) had the same
+    problem. Fozlebub also took the 30 silver without checking you had it.
+  - "Horde Children / Citizen are hostile/attackable": Alliance Citizen 55347 and Horde Citizen
+    55348 had `unit_flags` 512, so the other faction could attack them.
+- **Changed:**
+  - `darkmoon-faire-gossip.patch` (`DarkmoonCanon.cpp`, `DarkmoonWhackGnoll.cpp`): English
+    options "Launch me! (Darkmoon Game Token)", "Ready to play! (Darkmoon Game Token)" and
+    "Teleport me to the cannon." with a 30 silver confirm; English whispers when you have no
+    token; the options show for everyone (the quests still count). Fozlebub checks your money.
+  - Selina 10445: `ScriptName` '', `gossip_menu_id` 13075, `unit_flags` 768.
+  - Juggler SAI `target_param1` set to the partner's spawn on this server: 55220->1400016,
+    55221->1400017, 55222->1400081, 55223->1400086, 55225->1400313, 55226->1400349,
+    55341->1400114, 55342->1400294.
+  - Citizens 55347, 55348: `unit_flags` 768 (adds IMMUNE_TO_PC, as in the Pandaria 5.4.8 DB).
+- **Not changed:** the carousel (its mounts aren't seated on the moving carousel, which needs core
+  transport work) and the rollercoaster (none at the retail Faire as far as we know; asked Four).
+- **Status:** untested in game.
+
 ### Darkmoon Faire: missing from the calendar, and on the wrong days
 
 From Four, 2026-11-04. Core patch `tools/bfa/holiday-schedule.patch` (after all other patches),

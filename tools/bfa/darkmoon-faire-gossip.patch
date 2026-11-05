@@ -1,0 +1,75 @@
+diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
+index 7e4a359..cbd1f3b 100644
+--- a/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
++++ b/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
+@@ -46,8 +46,9 @@ class npc_canon_maxima : public CreatureScript
+             if (creature->IsQuestGiver())
+                 player->PrepareQuestMenu(creature->GetGUID());
+ 
+-            if (player->GetQuestStatus(QUEST_HUMANOID_CANNONBALL) == QUEST_STATUS_INCOMPLETE)
+-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Je souhaite devenir un homme canon !", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
++            // zrbfacore: the launch is open to everyone (the quest only counts the
++            // landings), and the old option text was French.
++            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Launch me! |cFF0000FF(Darkmoon Game Token)|r", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+ 
+             SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+             return true;
+@@ -57,7 +58,7 @@ class npc_canon_maxima : public CreatureScript
+         {
+             if (!player->HasItemCount(ITEM_DARKMOON_TOKEN))
+             {
+-                creature->Whisper("Vous devez posseder un Jeton de Sombrelune pour utiliser le canon !", LANG_UNIVERSAL, player);
++                creature->Whisper("You need a Darkmoon Game Token to use the cannon!", LANG_UNIVERSAL, player);
+                 CloseGossipMenuFor(player);
+                 return true;
+             }
+@@ -145,8 +146,8 @@ class npc_canon_fozlebub : public CreatureScript
+             if (creature->IsQuestGiver())
+                 player->PrepareQuestMenu(creature->GetGUID());
+ 
+-            if (player->GetQuestStatus(QUEST_HUMANOID_CANNONBALL) != QUEST_STATUS_NONE)
+-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Teleportez moi au canon !", GOSSIP_SENDER_MAIN, 0, "Souhaitez-vous payer 30 piece d'argent ?", 3000, false);
++            // zrbfacore: open to everyone, English text.
++            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Teleport me to the cannon.", GOSSIP_SENDER_MAIN, 0, "Travel to the cannon for 30 silver?", 3000, false);
+ 
+             player->PlayerTalkClass->SendGossipMenu(player->GetGossipTextId(creature), creature->GetGUID());
+             return true;
+@@ -154,6 +155,13 @@ class npc_canon_fozlebub : public CreatureScript
+ 
+         bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 /*action*/) override
+         {
++            if (!player->HasEnoughMoney(uint64(3000)))
++            {
++                player->SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, nullptr, 0, 0);
++                CloseGossipMenuFor(player);
++                return true;
++            }
++
+             player->ModifyMoney(-3000);
+             player->TeleportTo(974, -4019.00f, 6286.58f, 12.49f, 1.39f);
+ 
+diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
+index 37f4f99..1fcf188 100644
+--- a/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
++++ b/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
+@@ -211,8 +211,8 @@ class npc_whack_gnoll_mola : public CreatureScript
+             if (creature->IsQuestGiver())
+                 player->PrepareQuestMenu(creature->GetGUID());
+ 
+-            if (player->GetQuestStatus(QUEST_WHACK_A_GNOLL) == QUEST_STATUS_INCOMPLETE)
+-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Je souhaite jouer a Cogne-Gnoll !", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
++            // zrbfacore: open to everyone (the quest only counts the hits), English text.
++            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Ready to play! |cFF0000FF(Darkmoon Game Token)|r", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+ 
+             player->PlayerTalkClass->SendGossipMenu(player->GetGossipTextId(creature), creature->GetGUID());
+             return true;
+@@ -222,7 +222,8 @@ class npc_whack_gnoll_mola : public CreatureScript
+         {
+             if (!player->HasItemCount(ITEM_DARKMOON_TOKEN))
+             {
+-                creature->Whisper("Vous devez posseder un Jeton de Sombrelune pour jouer a Cogne-Gnoll !", LANG_UNIVERSAL, player);
++                creature->Whisper("You need a Darkmoon Game Token to play Whack-a-Gnoll!", LANG_UNIVERSAL, player);
++                CloseGossipMenuFor(player);
+                 return true;
+             }
+ 

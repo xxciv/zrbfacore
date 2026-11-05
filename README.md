@@ -89,6 +89,9 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   `occurence` 0 run every month from the first Sunday (the Darkmoon Faire), with `occurence` 1 on
   the dates of their holiday in Holidays.db2 (Easter, Thanksgiving and other moving holidays). Used by
   `sql/fixes/world/2026_11_04_00_darkmoon_faire_first_sunday.sql` and `2026_11_05_00_holiday_dates_schedule.sql`.
+- [`tools/bfa/darkmoon-faire-gossip.patch`](tools/bfa/darkmoon-faire-gossip.patch): Darkmoon Faire
+  games in English (Maxima's cannon, Mola's Whack-a-Gnoll, Fozlebub's teleport were French) and open
+  to everyone with a Darkmoon Game Token, not only while their daily quest is in progress.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.

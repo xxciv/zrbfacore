@@ -118,6 +118,7 @@ git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
 git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 git apply ../tools-repo/tools/bfa/transmog-apply.patch
 git apply ../tools-repo/tools/bfa/holiday-schedule.patch
+git apply ../tools-repo/tools/bfa/darkmoon-faire-gossip.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -667,6 +668,7 @@ git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
 git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 git apply ../tools-repo/tools/bfa/transmog-apply.patch
 git apply ../tools-repo/tools/bfa/holiday-schedule.patch
+git apply ../tools-repo/tools/bfa/darkmoon-faire-gossip.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -711,6 +713,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_05_01_darkmoon_fire_juggler_torches.sql` | Darkmoon Faire Fire Jugglers throwing their torches at players and nearby NPCs: the torch spell had no condition saying it targets Fire Jugglers |
 | `2026_11_05_02_darkmoon_portal_back.sql` | Darkmoon Island's Portal Back hanging the client on the loading screen: it teleported Alliance players to Elwynn and Mulgore at once |
 | `2026_11_05_03_darkmoon_race_course_hidden.sql` | Darkmoon Island's strider race course (checkpoint arches, power-up crates, tripwire posts) standing on every path for everyone: despawned in spawn group 450 until the race is scripted |
+| `2026_11_05_04_darkmoon_faire_npcs.sql` | Darkmoon Faire: Selina Dourman not talking (missing gossip), the paired Fire Jugglers not throwing to each other, and the Alliance/Horde citizens and children being attackable |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030).
 
