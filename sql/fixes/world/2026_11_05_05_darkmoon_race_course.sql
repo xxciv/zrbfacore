@@ -19,3 +19,11 @@ INSERT INTO `creature_template_addon` (`entry`, `path_id`, `mount`, `bytes1`, `b
 (74872, 0, 0, 0, 1, 0, 0, 0, 0, 0, '179303 150578'), -- Loot: Powerup Visual - Loot
 (75063, 0, 0, 0, 1, 0, 0, 0, 0, 0, '179303 151031')  -- Rotating: Powerup Rotating Effect - BlinkRocketJump
 ON DUPLICATE KEY UPDATE `auras`=VALUES(`auras`);
+
+-- 3. Racing Strider buttons (OverrideSpellData 569, from Four's client file):
+-- Jump To Banner 179748, Lasso Powerup 316043, Jump To Racer 179804.
+DELETE FROM `spell_script_names` WHERE `ScriptName`='spell_darkmoon_racer_button';
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(179748, 'spell_darkmoon_racer_button'),
+(316043, 'spell_darkmoon_racer_button'),
+(179804, 'spell_darkmoon_racer_button');

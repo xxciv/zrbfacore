@@ -46,9 +46,13 @@ Rebuild, run the SQL, restart.
   - SQL: removes spawn group 450 from `2026_11_05_03`, so the course spawns again, and gives the
     course bunnies (checkpoints, tripwire stakes, powerup pads) Invis to Non-Racers 179303 plus
     their powerup visual. Only racers (and GMs) see them.
-- **Not done yet:** the Racing Strider's own buttons (like Jump to Banner). They come from
-  OverrideSpellData.db2, which I've asked Four to upload. The Rocketeer, Powermonger and Wanderluster
-  racers aren't supported, only the Racing Strider.
+  - The Racing Strider's buttons, from Four's OverrideSpellData.db2 (bar 569), are scripted as
+    `spell_darkmoon_racer_button`: **Jump To Banner** (179748) leaps to the nearest checkpoint
+    banner ahead of you within 100 yards and keeps you safe from tripwires for 4 seconds;
+    **Lasso Powerup** (316043) uses the nearest powerup pad within 25 yards at once; **Jump To
+    Racer** (179804) leaps to the nearest other racer ahead. Cooldowns are the client's.
+- **Not done:** the Rocketeer, Powermonger and Wanderluster racers (toys) aren't supported, only
+  the Racing Strider.
 - **Status:** untested in game.
 
 ### Darkmoon Faire: Selina, jugglers, Maxima, citizens

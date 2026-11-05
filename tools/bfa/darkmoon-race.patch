@@ -1,5 +1,5 @@
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-index b65819e..9594a21 100644
+index b65819e..c546748 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 @@ -1006,6 +1006,8 @@ public:
@@ -11,7 +11,7 @@ index b65819e..9594a21 100644
  void AddSC_darkmoon_island()
  {
      new playerscript_darkmoon_carousel();
-@@ -1023,4 +1025,600 @@ void AddSC_darkmoon_island()
+@@ -1023,4 +1025,729 @@ void AddSC_darkmoon_island()
      new spell_put_up_darkmoon_banner();
      new spell_darkmoon_deathmatch();
      new spell_shoot_gallery_shoot();
@@ -35,7 +35,9 @@ index b65819e..9594a21 100644
 + * bell tolls every RACE_TOLL_MS; your toll count decides the achievements.
 + * Checkpoint banners give a speed boost and water walking, dash, jump,
 + * rocket and blink pads do what they say, the electrified tripwires between
-+ * stakes take your mount speed away for a moment.
++ * stakes take your mount speed away for a moment. The Racing Strider's
++ * buttons (Jump To Banner, Lasso Powerup, Jump To Racer) are
++ * spell_darkmoon_racer_button.
 + */
 +
 +#include "ObjectMgr.h"
@@ -393,6 +395,39 @@ index b65819e..9594a21 100644
 +        return std::sqrt(cx * cx + cy * cy);
 +    }
 +
++    void ApplyPowerup(Player* player, Racer& racer, Creature* pad)
++    {
++        racer.PowerupCooldowns[pad->GetSpawnId()] = 5 * IN_MILLISECONDS;
++
++        uint32 effect = pad->GetEntry();
++        if (effect == NPC_POWERUP_ROTATING)
++            effect = RAND(NPC_POWERUP_BLINK, NPC_POWERUP_ROCKET, NPC_POWERUP_JUMP);
++
++        switch (effect)
++        {
++            case NPC_POWERUP_DASH:
++            case NPC_POWERUP_LOOT:
++                BoostAura(player, SPELL_SPEED_BOOST, 4 * IN_MILLISECONDS);
++                break;
++            case NPC_POWERUP_JUMP:
++                player->JumpTo(25.0f, 12.0f, true);
++                break;
++            case NPC_POWERUP_ROCKET:
++                player->JumpTo(40.0f, 20.0f, true);
++                break;
++            case NPC_POWERUP_BLINK:
++            {
++                Position dest = player->GetPosition();
++                player->MovePositionToFirstCollision(dest, 20.0f, 0.0f);
++                player->NearTeleportTo(dest.GetPositionX(), dest.GetPositionY(), dest.GetPositionZ(), player->GetOrientation());
++                break;
++            }
++            default:
++                break;
++        }
++        racer.ZapImmune = std::max<uint32>(racer.ZapImmune, 1500);
++    }
++
 +    void HandleCourse(Player* player, Racer& racer, uint32 diff)
 +    {
 +        for (auto itr = racer.PowerupCooldowns.begin(); itr != racer.PowerupCooldowns.end();)
@@ -428,35 +463,7 @@ index b65819e..9594a21 100644
 +            {
 +                if (racer.PowerupCooldowns.count(pad->GetSpawnId()))
 +                    continue;
-+                racer.PowerupCooldowns[pad->GetSpawnId()] = 5 * IN_MILLISECONDS;
-+
-+                uint32 effect = entry;
-+                if (entry == NPC_POWERUP_ROTATING)
-+                    effect = RAND(NPC_POWERUP_BLINK, NPC_POWERUP_ROCKET, NPC_POWERUP_JUMP);
-+
-+                switch (effect)
-+                {
-+                    case NPC_POWERUP_DASH:
-+                    case NPC_POWERUP_LOOT:
-+                        BoostAura(player, SPELL_SPEED_BOOST, 4 * IN_MILLISECONDS);
-+                        break;
-+                    case NPC_POWERUP_JUMP:
-+                        player->JumpTo(25.0f, 12.0f, true);
-+                        break;
-+                    case NPC_POWERUP_ROCKET:
-+                        player->JumpTo(40.0f, 20.0f, true);
-+                        break;
-+                    case NPC_POWERUP_BLINK:
-+                    {
-+                        Position dest = player->GetPosition();
-+                        player->MovePositionToFirstCollision(dest, 20.0f, 0.0f);
-+                        player->NearTeleportTo(dest.GetPositionX(), dest.GetPositionY(), dest.GetPositionZ(), player->GetOrientation());
-+                        break;
-+                    }
-+                    default:
-+                        break;
-+                }
-+                racer.ZapImmune = std::max<uint32>(racer.ZapImmune, 1500);
++                ApplyPowerup(player, racer, pad);
 +            }
 +        }
 +
@@ -606,9 +613,131 @@ index b65819e..9594a21 100644
 +            HandleCourse(player, racer, tick);
 +        }
 +    };
++
++    // Racing Strider buttons (OverrideSpellData 569). The client spells are
++    // script effects aimed at server-side targets, so the targets are picked here.
++    enum RacerSpells : uint32
++    {
++        SPELL_JUMP_TO_BANNER    = 179748,
++        SPELL_LASSO_POWERUP     = 316043,
++        SPELL_JUMP_TO_RACER     = 179804,
++    };
++
++    float const JUMP_RANGE      = 100.0f;
++    float const LASSO_RANGE     = 25.0f;
++
++    void LeapTo(Player* player, WorldObject const* target)
++    {
++        float dist = player->GetExactDist2d(target);
++        player->GetMotionMaster()->MoveJump(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ() + 1.0f,
++            player->GetOrientation(), 45.0f, 8.0f + dist / 8.0f);
++    }
++
++    class spell_darkmoon_racer_button : public SpellScriptLoader
++    {
++    public:
++        spell_darkmoon_racer_button() : SpellScriptLoader("spell_darkmoon_racer_button") { }
++
++        class spell_darkmoon_racer_button_SpellScript : public SpellScript
++        {
++            PrepareSpellScript(spell_darkmoon_racer_button_SpellScript);
++
++            void ClearTargets(std::list<WorldObject*>& targets)
++            {
++                targets.clear();
++            }
++
++            void HandleCast()
++            {
++                Player* player = GetCaster()->ToPlayer();
++                if (!player)
++                    return;
++
++                auto itr = Racers.find(player->GetGUID());
++                if (itr == Racers.end())
++                    return;
++                Racer& racer = itr->second;
++
++                switch (GetSpellInfo()->Id)
++                {
++                    case SPELL_JUMP_TO_BANNER:
++                    {
++                        // Nearest checkpoint banner ahead of you, 4 seconds safe from tripwires.
++                        std::list<Creature*> banners;
++                        player->GetCreatureListWithEntryInGrid(banners, NPC_CHECKPOINT, JUMP_RANGE);
++                        Creature* best = nullptr;
++                        for (Creature* banner : banners)
++                            if (player->GetExactDist2d(banner) > 8.0f && player->HasInArc(float(M_PI) * 2.0f / 3.0f, banner) &&
++                                (!best || player->GetExactDist2d(banner) < player->GetExactDist2d(best)))
++                                best = banner;
++                        if (best)
++                        {
++                            LeapTo(player, best);
++                            racer.ZapImmune = 4 * IN_MILLISECONDS;
++                        }
++                        break;
++                    }
++                    case SPELL_JUMP_TO_RACER:
++                    {
++                        Player* best = nullptr;
++                        for (auto const& other : Racers)
++                        {
++                            if (other.first == player->GetGUID())
++                                continue;
++                            Player* racerPlayer = ObjectAccessor::GetPlayer(*player, other.first);
++                            if (racerPlayer && player->GetExactDist2d(racerPlayer) <= JUMP_RANGE && player->HasInArc(float(M_PI), racerPlayer) &&
++                                (!best || player->GetExactDist2d(racerPlayer) < player->GetExactDist2d(best)))
++                                best = racerPlayer;
++                        }
++                        if (best)
++                        {
++                            LeapTo(player, best);
++                            racer.ZapImmune = 4 * IN_MILLISECONDS;
++                        }
++                        break;
++                    }
++                    case SPELL_LASSO_POWERUP:
++                    {
++                        // Grab the nearest powerup pad in reach and use it at once.
++                        static uint32 const pads[] = { NPC_POWERUP_DASH, NPC_POWERUP_JUMP, NPC_POWERUP_ROCKET, NPC_POWERUP_BLINK, NPC_POWERUP_LOOT, NPC_POWERUP_ROTATING };
++                        Creature* best = nullptr;
++                        for (uint32 entry : pads)
++                        {
++                            std::list<Creature*> found;
++                            player->GetCreatureListWithEntryInGrid(found, entry, LASSO_RANGE);
++                            for (Creature* pad : found)
++                                if (!racer.PowerupCooldowns.count(pad->GetSpawnId()) &&
++                                    (!best || player->GetExactDist(pad) < player->GetExactDist(best)))
++                                    best = pad;
++                        }
++                        if (best)
++                            ApplyPowerup(player, racer, best);
++                        break;
++                    }
++                    default:
++                        break;
++                }
++            }
++
++            void Register() override
++            {
++                if (m_scriptSpellId == SPELL_LASSO_POWERUP)
++                    OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_darkmoon_racer_button_SpellScript::ClearTargets, EFFECT_0, TARGET_UNIT_CONE_ENTRY);
++                else
++                    OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_darkmoon_racer_button_SpellScript::ClearTargets, EFFECT_0, TARGET_UNIT_CONE_ENTRY_110);
++                OnCast += SpellCastFn(spell_darkmoon_racer_button_SpellScript::HandleCast);
++            }
++        };
++
++        SpellScript* GetSpellScript() const override
++        {
++            return new spell_darkmoon_racer_button_SpellScript();
++        }
++    };
 +}
 +
 +void AddSC_darkmoon_race()
 +{
 +    new DarkmoonRace::player_darkmoon_race();
++    new DarkmoonRace::spell_darkmoon_racer_button();
 +}
