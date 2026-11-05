@@ -7,6 +7,21 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Whack-a-Gnoll barrels and score bar
+
+From Four, 2026-11-05 ("still not fast enough. Not accurately incrementing the count on the artwork
+either. Can get 26/30 - just not enough spawning"). Updated `tools/bfa/darkmoon-faire-gossip.patch`
+(`DarkmoonWhackGnoll.cpp`). Rebuild, restart.
+
+- **Found:** a barrel only took a new gnoll once its "ok to hit" aura (101996) ran out, so whacked
+  barrels stayed blocked and most spawn ticks found no free barrel. The score bar (alternate power)
+  was set once at the start and then only moved by the credit spell's energize, so it drifted from
+  the quest count.
+- **Changed:** a barrel is free as soon as no gnoll, doll or boss is alive in it (2 yd). Gnoll every
+  1 s, boss every 7 s (doll stays 5 s). The score bar is set to It's Hammer Time's count at the
+  start, after every whack, and once a second while you play.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Whack-a-Gnoll pace and reset
 
 From Four, 2026-11-05 ("You can only realistically get 15/30 at the current rate", "You can not
