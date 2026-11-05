@@ -41,6 +41,24 @@ world SQL `sql/fixes/world/2026_11_04_00_darkmoon_faire_first_sunday.sql`, hotfi
     The server schedule doesn't.
 - **Status:** compiled (GameEventMgr.cpp), not tested in game yet.
 
+### Darkmoon Faire: Fire Jugglers throwing torches at players and NPCs
+
+From Four's visit to the Elwynn Faire camp, 2026-11-05. SQL only:
+`sql/fixes/world/2026_11_05_01_darkmoon_fire_juggler_torches.sql`.
+
+- **Found** (reported by Four: the torches home in on the nearest NPC or player, some at Four,
+  others at the Greeter):
+  - Fire Jugglers carry aura 102905 (template addon of 55089, 55093, 55225 and 55397). Every 0.7
+    seconds it casts Juggle Torch, 102882. That's a dummy spell whose torch flies to a "nearby unit
+    of an entry" (target 38) within 20 yards. Which entry is meant to come from `conditions`, and
+    the dump has none for 102882. So the core took any nearby unit: players, the Greeter, the Fire
+    Eater.
+  - Read from the client's SpellEffect.db2.
+- **Changed:** 13 `conditions` rows (source type 13, group 1, entry 102882, condition 31 type 3).
+  The torch may now only target a Fire Juggler: 55089, 55093, 55220-55226, 55341, 55342, 55397,
+  55398. The jugglers stand in pairs about 18 yards apart, so the torches stay with the jugglers.
+- **Status:** not tested in game yet.
+
 ### Holidays that move every year: missing from the calendar, and two never ran
 
 From Four, 2026-11-05 ("please do them all"). Same core patch (`holiday-schedule.patch`, which was
