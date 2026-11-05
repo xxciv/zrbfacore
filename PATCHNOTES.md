@@ -7,6 +7,50 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: the strider races
+
+From Four, 2026-11-05 ("let's start on the strider race"). Core patch `tools/bfa/darkmoon-race.patch`
+(after `darkmoon-faire-gossip.patch`), world SQL `sql/fixes/world/2026_11_05_05_darkmoon_race_course.sql`.
+Rebuild, run the SQL, restart.
+
+- **Found:**
+  - Malle Earnhard (74056: Welcome to the Darkmoon Races 37819, The Real Race 37910) and Patti
+    Earnhard (90473: More Big Racing! 37868, The Real Big Race 37911) give the race quests, but
+    nothing on the server runs a race. Retail does it with server-side spells and area triggers
+    that aren't in the client files, and this database has no rows for them.
+  - The client files do have the pieces: the objective credit entries (start 74536, posts
+    73984/73988/74030/74031, end 74004, passed 74299), the Racing Strider mount (179750), the
+    course bunnies' visual spells, Invis to Non-Racers (179303) / On a Trial (149669), and the
+    achievement spells (criteria "cast spell" 179420-179617, e.g. Darkmoon Racer Roadhog 9761).
+  - The Real Race posts aren't spawned. Their map coordinates come from the wiki's route guide
+    (blue 26.3,66.9; green 29.5,46.1; red 43.5,50.1). Fitting its 16 checkpoint coordinates to our
+    checkpoint banners matched all of them within 2 yards, which gives blue (-4152.4, 6779.6),
+    green (-3894.5, 6720.1), red (-3944.1, 6459.7). The Big Race posts are the Marker Pointer
+    spawns: purple 74263, green 74261, red 74262.
+- **Changed:**
+  - `darkmoon-race.patch` adds a player script to `DarkmoonIsland.cpp`. With a race quest in
+    your log, running through the start banner (Malle's for the Real Race, Patti's for the Big
+    Race) uses a Darkmoon Game Token, mounts you on the Racing Strider and starts the race. Touch
+    the posts in order (a marker shows the next one), then ride back through the banner.
+  - The bell tolls every 5 seconds. Your toll count is shown at each post and at the finish, and
+    decides the achievements: Real Race within 25/20/15/11 tolls, Big Race within 40/35/30/25/20,
+    plus Darkmoon Race Enthusiast for the first race. The toll length isn't in the client data;
+    5 seconds is a guess from the achievement limits and is easy to change (`RACE_TOLL_MS`).
+  - On the course: checkpoint banners give +100% speed for 3 seconds and 7 seconds of water
+    walking (once each per race), dash and loot pads +100% speed for 4 seconds, jump and rocket
+    pads throw you forward, blink pads move you 20 yards ahead, rotating pads pick one of
+    those. Running between two tripwire stakes (within 14 yards of each other) takes your mount
+    speed away for 2 seconds.
+  - The race is canceled (objectives reset, token not refunded) if you die, get off the strider,
+    leave the island, log out or take longer than 10 minutes.
+  - SQL: removes spawn group 450 from `2026_11_05_03`, so the course spawns again, and gives the
+    course bunnies (checkpoints, tripwire stakes, powerup pads) Invis to Non-Racers 179303 plus
+    their powerup visual. Only racers (and GMs) see them.
+- **Not done yet:** the Racing Strider's own buttons (like Jump to Banner). They come from
+  OverrideSpellData.db2, which I've asked Four to upload. The Rocketeer, Powermonger and Wanderluster
+  racers aren't supported, only the Racing Strider.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Selina, jugglers, Maxima, citizens
 
 From Four, 2026-11-05. Core patch `tools/bfa/darkmoon-faire-gossip.patch` (after

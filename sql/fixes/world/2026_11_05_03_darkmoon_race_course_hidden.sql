@@ -1,4 +1,5 @@
 -- Darkmoon Island: the strider race course stood everywhere for everyone (Four, 2026-11-05).
+-- Superseded by 2026_11_05_05_darkmoon_race_course.sql, which removes this group again.
 --
 -- The island's strider race (started at "Dusty" Brandom 68492) has no scripts on this server, but its
 -- course is spawned: checkpoint arches, power-up crates, tripwire posts, marker arrows and start bunnies.
