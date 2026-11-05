@@ -7,6 +7,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Whack-a-Gnoll pace and reset
+
+From Four, 2026-11-05 ("You can only realistically get 15/30 at the current rate", "You can not
+succeed the first time, and the quest remains along with the count you had. This should fail").
+Updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonWhackGnoll.cpp`). Rebuild, restart.
+
+- **Found:** the game spawns a gnoll every 3 s, a doll every 6 s and a boss gnoll every 10 s, so the
+  one-minute game holds about 20 gnolls and 6 bosses at best. Points carried over to the next
+  game, but the quest is "score 30 points in a minute".
+- **Changed:** gnoll every 1.5 s, doll every 5 s, boss every 9 s. When a game ends with It's Hammer
+  Time (29463) still incomplete, its count goes back to 0.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Game Prize hang, Let's Keep Racing
 
 From Four, 2026-11-05 ("Opening the Darkmoon Game Prize hangs, the box is greyed out", "Let's keep

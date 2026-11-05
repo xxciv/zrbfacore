@@ -49,10 +49,34 @@ index 7e4a359..cbd1f3b 100644
              player->TeleportTo(974, -4019.00f, 6286.58f, 12.49f, 1.39f);
  
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
-index 37f4f99..1fcf188 100644
+index 37f4f99..963cef5 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
-@@ -211,8 +211,8 @@ class npc_whack_gnoll_mola : public CreatureScript
+@@ -18,6 +18,8 @@
+ #include "ScriptMgr.h"
+ #include "DarkmoonIsland.h"
+ #include "ScriptedGossip.h"
++#include "ObjectMgr.h"
++#include "QuestDef.h"
+ 
+ enum whackCreatures
+ {
+@@ -59,9 +61,11 @@ enum whackEvents
+ 
+ #define MAX_BARRELS         9
+ 
+-#define GNOLL_TIMER         3  * IN_MILLISECONDS
+-#define DOLL_TIMER          6  * IN_MILLISECONDS
+-#define BOSS_TIMER          10 * IN_MILLISECONDS
++// zrbfacore: was 3 / 6 / 10 seconds, which allowed only about 15 of the 30
++// points in the one-minute game (Four, 2026-11-05).
++#define GNOLL_TIMER         1500
++#define DOLL_TIMER          5  * IN_MILLISECONDS
++#define BOSS_TIMER          9  * IN_MILLISECONDS
+ 
+ class npc_whack_gnoll_bunny : public CreatureScript
+ {
+@@ -211,8 +215,8 @@ class npc_whack_gnoll_mola : public CreatureScript
              if (creature->IsQuestGiver())
                  player->PrepareQuestMenu(creature->GetGUID());
  
@@ -63,7 +87,7 @@ index 37f4f99..1fcf188 100644
  
              player->PlayerTalkClass->SendGossipMenu(player->GetGossipTextId(creature), creature->GetGUID());
              return true;
-@@ -222,7 +222,8 @@ class npc_whack_gnoll_mola : public CreatureScript
+@@ -222,7 +226,8 @@ class npc_whack_gnoll_mola : public CreatureScript
          {
              if (!player->HasItemCount(ITEM_DARKMOON_TOKEN))
              {
@@ -73,3 +97,22 @@ index 37f4f99..1fcf188 100644
                  return true;
              }
  
+@@ -380,6 +385,18 @@ public:
+                 return;
+ 
+             target->SetPower(POWER_ALTERNATE_POWER, 0);
++
++            // zrbfacore: "score 30 points in a minute". A game that ends short of 30
++            // starts the count over, instead of carrying the points to the next token.
++            if (Player* player = target->ToPlayer())
++                if (player->GetQuestStatus(QUEST_WHACK_A_GNOLL) == QUEST_STATUS_INCOMPLETE)
++                    if (Quest const* quest = sObjectMgr->GetQuestTemplate(QUEST_WHACK_A_GNOLL))
++                    {
++                        for (QuestObjective const& objective : quest->GetObjectives())
++                            player->SetQuestObjectiveData(objective, 0);
++                        player->SendQuestUpdate(QUEST_WHACK_A_GNOLL);
++                    }
++
+             target->RemoveAurasDueToSpell(SPELL_ENABLE_POWERBAR);
+             target->RemoveAurasDueToSpell(SPELL_DOLL_STUN);
+             target->CastSpell(target, SPELL_FORBIDDEN_ZONE, true);
