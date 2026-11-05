@@ -7,6 +7,27 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: course names, empty Game Prize
+
+From Four, 2026-11-05 ("Malle's race worked, but I can still see the doodad's names", "the reward,
+Darkmoon Game Prize, has been empty twice"). World SQL
+`sql/fixes/world/2026_11_05_07_darkmoon_race_names_and_game_prize.sql`. Run the SQL, restart, delete
+the client's Cache folder.
+
+- **Found:**
+  - The course bunnies have visible models (checkpoint banners, tripwire stakes, pads) and no
+    name-hiding flags, so racers saw "Powerup Bunny Checkpoint" and the like over the course.
+  - Darkmoon Game Prize 93724 has 14 loot rows, all independent chances of 0.5% to 8.6% (about
+    29% in total), so it opened empty most of the time. The Darkmoon Prize Ticket that retail
+    always puts in it (currency 515; 1 per game daily in the Pandaria 5.4.8 DB) was missing.
+- **Changed:**
+  - 14 course entries (75718, 75044, 74153, 74157, 74678, 74800, 74872, 75063, 74536,
+    74260-74263, 74420): `type_flags` |= 0x40100000 (no name, no nameplate), `unit_flags` |=
+    0x02000000 (not selectable).
+  - `item_loot_template` (93724, -515, chance 100, count 1): one Darkmoon Prize Ticket in every
+    prize. A negative `Item` is a currency in this core's loot loader.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Dusty's strider ride at the arrival hill
 
 From Four, 2026-11-05 ("the mechastrider mount handler at the entrance isn't interactable", "Dusty
