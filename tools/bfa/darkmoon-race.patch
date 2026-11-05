@@ -1,5 +1,5 @@
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-index b65819e..c546748 100644
+index b65819e..766a557 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 @@ -1006,6 +1006,8 @@ public:
@@ -11,7 +11,7 @@ index b65819e..c546748 100644
  void AddSC_darkmoon_island()
  {
      new playerscript_darkmoon_carousel();
-@@ -1023,4 +1025,729 @@ void AddSC_darkmoon_island()
+@@ -1023,4 +1025,731 @@ void AddSC_darkmoon_island()
      new spell_put_up_darkmoon_banner();
      new spell_darkmoon_deathmatch();
      new spell_shoot_gallery_shoot();
@@ -23,7 +23,7 @@ index b65819e..c546748 100644
 + *
 + * Retail runs the races on server-side spells and area triggers that are not
 + * in the client data, so this is a rebuild from what the client does have:
-+ * the quests (Malle Earnhard 74056: 37819, 37910; Patti Earnhard 90473:
++ * the quests (Malle Earnhard 74056: 37819, 37910, 33756; Patti Earnhard 90473:
 + * 37868, 37911), their kill-credit objectives, the Racing Strider mount
 + * (179750), the course bunnies on Darkmoon Island and the achievement spells
 + * (criteria "cast spell" 179420-179617).
@@ -55,6 +55,7 @@ index b65819e..c546748 100644
 +
 +        QUEST_WELCOME               = 37819,
 +        QUEST_REAL_RACE             = 37910,
++        QUEST_KEEP_RACING           = 33756, // Let's Keep Racing! (Malle, repeatable Real Race course)
 +        QUEST_MORE_BIG_RACING       = 37868,
 +        QUEST_REAL_BIG_RACE         = 37911,
 +
@@ -176,6 +177,7 @@ index b65819e..c546748 100644
 +    {
 +        { QUEST_WELCOME,         &RealRaceBanner, RealRacePosts, 1, nullptr, 0, true },
 +        { QUEST_REAL_RACE,       &RealRaceBanner, RealRacePosts, 3, RealRaceAchievements, uint8(std::size(RealRaceAchievements)), true },
++        { QUEST_KEEP_RACING,     &RealRaceBanner, RealRacePosts, 3, nullptr, 0, false },
 +        { QUEST_MORE_BIG_RACING, &BigRaceBanner,  BigRacePosts,  3, nullptr, 0, false },
 +        { QUEST_REAL_BIG_RACE,   &BigRaceBanner,  BigRacePosts,  3, BigRaceAchievements, uint8(std::size(BigRaceAchievements)), false },
 +    };

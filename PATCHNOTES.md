@@ -7,6 +7,27 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Game Prize hang, Let's Keep Racing
+
+From Four, 2026-11-05 ("Opening the Darkmoon Game Prize hangs, the box is greyed out", "Let's keep
+racing - nothing happens. Crossing the start line doesn't start the race"). World SQL
+`sql/fixes/world/2026_11_05_08_darkmoon_prize_ticket_as_quest_reward.sql`, updated
+`tools/bfa/darkmoon-race.patch`.
+
+- **Found:**
+  - The ticket row from `2026_11_05_07` (currency 515 as loot of item 93724) hangs the client: this
+    core can't hand a currency out of an item's loot window.
+  - Malle also gives Let's Keep Racing! (33756), a repeatable run of the Real Race course
+    (blue, green, red). The race script didn't know the quest.
+- **Changed:**
+  - SQL removes the currency loot row and gives 1 Darkmoon Prize Ticket (currency 515) as
+    `RewardCurrencyID1` on every quest that rewards the Game Prize (29434, 29436, 29438, 29455,
+    29463, 36481, 37819, 37910, 37911), as in the Pandaria 5.4.8 DB. The Game Prize keeps its
+    old rare contents and is still often empty.
+  - `darkmoon-race.patch`: Let's Keep Racing! uses Malle's start banner and the Real Race posts
+    (no achievements, those are for The Real Race).
+- **Status:** untested in game.
+
 ### Darkmoon Faire: course names, empty Game Prize
 
 From Four, 2026-11-05 ("Malle's race worked, but I can still see the doodad's names", "the reward,
