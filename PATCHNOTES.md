@@ -3,13 +3,13 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-04 (Holidays: Darkmoon Faire)
+## 2026-11-04/05 (Holidays: calendar and schedules)
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
 ### Darkmoon Faire: missing from the calendar, and on the wrong days
 
-From Four, 2026-11-04. Core patch `tools/bfa/darkmoon-faire-schedule.patch` (after all other patches),
+From Four, 2026-11-04. Core patch `tools/bfa/holiday-schedule.patch` (after all other patches),
 world SQL `sql/fixes/world/2026_11_04_00_darkmoon_faire_first_sunday.sql`, hotfix SQL
 `sql/fixes/hotfixes/2026_11_04_00_darkmoon_faire_calendar.sql`.
 
@@ -22,7 +22,7 @@ world SQL `sql/fixes/world/2026_11_04_00_darkmoon_faire_first_sunday.sql`, hotfi
     days long, so the start day slid away from the retail first Sunday of the month by about 5 days
     a year. The core's `game_event` only supports fixed periods.
 - **Changed:**
-  - `darkmoon-faire-schedule.patch` changes `src/server/game/Events/GameEventMgr.cpp`, in
+  - `holiday-schedule.patch` changes `src/server/game/Events/GameEventMgr.cpp`, in
     `CheckOneGameEvent`, `NextCheck`, `StopEvent` and `LoadFromDB`. A `game_event` row with
     `occurence` 0 is now a monthly event: it starts on the first Sunday of every month, at the time
     of day of its `start_time`, and runs for `length` minutes. Before, `occurence` 0 divided by zero.
@@ -39,10 +39,51 @@ world SQL `sql/fixes/world/2026_11_04_00_darkmoon_faire_first_sunday.sql`, hotfi
     table hash 1972272076 (Holidays.db2), record 479. The calendar shows each Faire from Sunday 00:00
     for 7 days. Holidays.db2 holds at most 26 dates, so the calendar needs new dates again for 2029.
     The server schedule doesn't.
-- **Not done yet:** the same client problem hides other holidays from the 2026 calendar. Their dates
-  in Holidays.db2 stop at 2020: Noblegarden, Children's Week, Harvest Festival, Pilgrim's Bounty,
-  Love is in the Air and the Timewalking weeks. Lunar Festival stops at 2024. Hallow's End, Winter
-  Veil, Midsummer, Brewfest, Day of the Dead and Pirates' Day repeat every year and are fine.
+- **Status:** compiled (GameEventMgr.cpp), not tested in game yet.
+
+### Holidays that move every year: missing from the calendar, and two never ran
+
+From Four, 2026-11-05 ("please do them all"). Same core patch (`holiday-schedule.patch`, which was
+first written for the Faire alone), world SQL `sql/fixes/world/2026_11_05_00_holiday_dates_schedule.sql`,
+hotfix SQL `sql/fixes/hotfixes/2026_11_05_00_holiday_calendar_dates.sql`.
+
+- **Found:**
+  - In the client's Holidays.db2, six holidays have dates only up to 2020 (Lunar Festival up to 2024),
+    so none of them shows on the 2026 calendar: Lunar Festival 327, Love is in the Air 423,
+    Noblegarden 181, Children's Week 201, Harvest Festival 321, Pilgrim's Bounty 404. Hallow's End,
+    Winter Veil, Midsummer, Brewfest, Pirates' Day, Day of the Dead and the 4th of July fireworks use
+    "any year" dates and were already fine.
+  - On the server, upstream's `2026_08_16_01_fix_game_events.sql` never updated game events 7
+    (Lunar Festival), 26 (Pilgrim's Bounty) or 72 (Fireworks Spectacular). They still ended in 2020,
+    so they never ran. The others repeat every 365 days (Noblegarden 364), so Easter-based
+    Noblegarden drifts by weeks.
+- **Changed:**
+  - `holiday-schedule.patch`: `occurence` 1 means "start on each date of the event's holiday in
+    Holidays.db2". It reads the dates from the server's own copy, hotfixes included, so the server
+    runs on the dates the calendar shows. An "any year" date repeats every year. Each run lasts
+    `length`. At startup the log says "game event id (N) runs on the dates of holiday H". An event
+    with `occurence` 1 and no holiday logs an error and never starts.
+  - Hotfix rows 327, 423, 181, 201, 321 and 404 are the client's own rows, with five dates each
+    (2026 to 2030, 10:00). 2030 is the last year a Holidays.db2 date can hold. `hotfix_data` ids
+    are 9000000 + holiday id. The rules:
+    - Lunar Festival: 2 days before the lunar new year (2026-02-15, 2027-02-04, 2028-01-24,
+      2029-02-11, 2030-02-01).
+    - Love is in the Air: the first Monday on or after 7 February.
+    - Noblegarden: Easter Monday (as in every client date from 2015 to 2020).
+    - Children's Week: the Monday between 28 April and 4 May.
+    - Harvest Festival: the second Tuesday of September.
+    - Pilgrim's Bounty: the Monday of Thanksgiving week (as in every client date from 2015 to 2020).
+    The Lunar Festival, Love is in the Air, Children's Week and Harvest Festival rules are close fits
+    to the client's 2015-2020 dates. Retail moved those around from year to year.
+  - `game_event` 7, 8, 9, 10, 11, 26 and 72: `occurence` -> 1, `start_time` -> 2026-01-01 00:00
+    (only used by `.event start`), `end_time` -> 2037-12-31 23:59. `length` is unchanged. Fireworks
+    (72, holiday 62, "any year" 4 July 10:00) now runs every year again.
+- **Not done:**
+  - Timewalking (holidays 559, 562, 587, 643). The server's events 100-103 are switched off
+    (they end in 2020 or start and end in 2030), and Timewalking dungeons need their own work.
+  - Brew of the Month (34-45) and the Kalu'ak Fishing Derby (63, 64) also ended in 2020.
+  - The fixed-date holidays still repeat every 365 days, so they slip one day per leap year
+    (first in 2028).
 - **Status:** compiled (GameEventMgr.cpp), not tested in game yet.
 
 ## 2026-11-04 (pet battles)

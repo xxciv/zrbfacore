@@ -1,6 +1,6 @@
 -- Darkmoon Faire on the retail schedule (Four, 2026-11-04): from the first Sunday of every month, for 7 days.
 --
--- NEEDS tools/bfa/darkmoon-faire-schedule.patch IN THE BUILT worldserver FIRST. Without it, occurence 0
+-- NEEDS tools/bfa/holiday-schedule.patch IN THE BUILT worldserver FIRST. Without it, occurence 0
 -- divides by zero in GameEventMgr and worldserver crashes on start.
 --
 -- Game event 3 ran every 30 days from 2026-09-06 10:01 (upstream 2026_08_16_01_fix_game_events.sql),

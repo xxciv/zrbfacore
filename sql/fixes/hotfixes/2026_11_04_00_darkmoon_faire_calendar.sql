@@ -11,7 +11,7 @@
 -- Sunday 2028-12-03. The calendar needs new dates again for 2029.
 -- Date packing: minute | hour<<6 | weekday(7 = any)<<11 | (day-1)<<14 | (month-1)<<20 | (year-2000)<<24.
 --
--- The server's own Faire schedule is game event 3 (darkmoon-faire-schedule.patch and
+-- The server's own Faire schedule is game event 3 (holiday-schedule.patch and
 -- sql/fixes/world/2026_11_04_00_darkmoon_faire_first_sunday.sql), which runs on the same days.
 --
 -- hotfix_data: table hash 0x758E7BCC (1972272076) is Holidays.db2. Hotfix id 9000479 is new (the

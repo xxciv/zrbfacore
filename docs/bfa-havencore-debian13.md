@@ -117,7 +117,7 @@ git apply ../tools-repo/tools/bfa/core-branding.patch
 git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
 git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 git apply ../tools-repo/tools/bfa/transmog-apply.patch
-git apply ../tools-repo/tools/bfa/darkmoon-faire-schedule.patch
+git apply ../tools-repo/tools/bfa/holiday-schedule.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -666,7 +666,7 @@ git apply ../tools-repo/tools/bfa/core-branding.patch
 git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
 git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 git apply ../tools-repo/tools/bfa/transmog-apply.patch
-git apply ../tools-repo/tools/bfa/darkmoon-faire-schedule.patch
+git apply ../tools-repo/tools/bfa/holiday-schedule.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -706,9 +706,10 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_10_16_01_shadowfang_lesser_gargoyles.sql` | Shadowfang Keep's Lesser Gargoyles on the wall walk never attacking: they were flagged as civilians |
 | `2026_10_16_02_shadowfang_godfrey_text.sql` | Typos in Lord Godfrey's aggro and death yells |
 | `2026_11_03_20_holiday_emote_casts.sql` | Day of the Dead: `/dance` with Catrina gave no skeleton and no Dead Man's Party achievement (verified in game 2026-11-03). Winter Veil: `/kiss` on a Winter Reveler gave no Mistletoe (same cause, not tested yet). Both NPCs' emote spells had no target |
-| `2026_11_04_00_darkmoon_faire_first_sunday.sql` | The Darkmoon Faire starting on a different weekday every month (a fixed 30-day cycle). It now opens on the first Sunday of each month for 7 days, as on retail. Needs `darkmoon-faire-schedule.patch` built first, or `worldserver` crashes on start |
+| `2026_11_04_00_darkmoon_faire_first_sunday.sql` | The Darkmoon Faire starting on a different weekday every month (a fixed 30-day cycle). It now opens on the first Sunday of each month for 7 days, as on retail. Needs `holiday-schedule.patch` built first, or `worldserver` crashes on start |
+| `2026_11_05_00_holiday_dates_schedule.sql` | Lunar Festival, Pilgrim's Bounty and the 4th of July fireworks never running (they ended in 2020), and Noblegarden drifting away from Easter. These holidays and Love is in the Air, Children's Week and Harvest Festival now run on the dates of their holiday (the same dates the calendar shows). Needs `holiday-schedule.patch` and the hotfix file below |
 
-Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028.
+Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030).
 
 ## 11. Status
 
