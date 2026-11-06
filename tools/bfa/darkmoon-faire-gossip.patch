@@ -1,8 +1,8 @@
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
-index 7e4a359..cbd1f3b 100644
+index 7e4a359..911c4dc 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
-@@ -46,8 +46,9 @@ class npc_canon_maxima : public CreatureScript
+@@ -46,18 +46,35 @@ class npc_canon_maxima : public CreatureScript
              if (creature->IsQuestGiver())
                  player->PrepareQuestMenu(creature->GetGUID());
  
@@ -10,12 +10,31 @@ index 7e4a359..cbd1f3b 100644
 -                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Je souhaite devenir un homme canon !", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
 +            // zrbfacore: the launch is open to everyone (the quest only counts the
 +            // landings), and the old option text was French.
++            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "How do I use the cannon?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
 +            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Launch me! |cFF0000FF(Darkmoon Game Token)|r", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
  
              SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
              return true;
-@@ -57,7 +58,7 @@ class npc_canon_maxima : public CreatureScript
+         }
+ 
+-        bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 /*action*/) override
++        bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
          {
++            // zrbfacore: "How do I use the cannon?" shows the game's instructions (npc_text 7790),
++            // "I understand." goes back to the first page.
++            if (action == GOSSIP_ACTION_INFO_DEF + 2)
++            {
++                ClearGossipMenuFor(player);
++                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "I understand.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
++                SendGossipMenuFor(player, 7790, creature->GetGUID());
++                return true;
++            }
++            if (action == GOSSIP_ACTION_INFO_DEF + 3)
++            {
++                ClearGossipMenuFor(player);
++                return OnGossipHello(player, creature);
++            }
++
              if (!player->HasItemCount(ITEM_DARKMOON_TOKEN))
              {
 -                creature->Whisper("Vous devez posseder un Jeton de Sombrelune pour utiliser le canon !", LANG_UNIVERSAL, player);
@@ -23,7 +42,7 @@ index 7e4a359..cbd1f3b 100644
                  CloseGossipMenuFor(player);
                  return true;
              }
-@@ -145,8 +146,8 @@ class npc_canon_fozlebub : public CreatureScript
+@@ -145,8 +162,8 @@ class npc_canon_fozlebub : public CreatureScript
              if (creature->IsQuestGiver())
                  player->PrepareQuestMenu(creature->GetGUID());
  
@@ -34,7 +53,7 @@ index 7e4a359..cbd1f3b 100644
  
              player->PlayerTalkClass->SendGossipMenu(player->GetGossipTextId(creature), creature->GetGUID());
              return true;
-@@ -154,6 +155,13 @@ class npc_canon_fozlebub : public CreatureScript
+@@ -154,6 +171,13 @@ class npc_canon_fozlebub : public CreatureScript
  
          bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 /*action*/) override
          {
@@ -48,8 +67,178 @@ index 7e4a359..cbd1f3b 100644
              player->ModifyMoney(-3000);
              player->TeleportTo(974, -4019.00f, 6286.58f, 12.49f, 1.39f);
  
+diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
+index b65819e..a4ff38e 100644
+--- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
++++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
+@@ -199,7 +199,7 @@ public:
+         if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
+             AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+ 
+-        SendGossipMenuFor(player, 54485, creature->GetGUID());
++        SendGossipMenuFor(player, 18284, creature->GetGUID()); // zrbfacore: menu 13012 text (was 54485, no such text)
+         return true;
+     }
+ 
+@@ -214,7 +214,7 @@ public:
+         default:
+             GOSSIP_BUTTON_1 = "How do I play the Ring Toss?";
+             GOSSIP_BUTTON_2 = "Ready to play! |cFF0000FF(Darkmoon Game Token)|r";
+-            GOSSIP_BUTTON_3 = "Alright.";
++            GOSSIP_BUTTON_3 = "I understand.";
+             break;
+         };
+ 
+@@ -223,7 +223,7 @@ public:
+         if (action == GOSSIP_ACTION_INFO_DEF + 1)
+         {
+             AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
+-            SendGossipMenuFor(player, 54486, creature->GetGUID());
++            SendGossipMenuFor(player, 18286, creature->GetGUID()); // zrbfacore: menu 13013 "how to play" text
+         }
+ 
+         if (action == GOSSIP_ACTION_INFO_DEF + 2)
+@@ -241,7 +241,11 @@ public:
+                 return true;
+             }
+             else
+-                SendGossipMenuFor(player, 54603, creature->GetGUID());
++            {
++                // zrbfacore: text 54603 does not exist; say it instead.
++                creature->Whisper("You need a Darkmoon Game Token to play!", LANG_UNIVERSAL, player);
++                CloseGossipMenuFor(player);
++            }
+         }
+ 
+         if (action == GOSSIP_ACTION_INFO_DEF + 3)
+@@ -254,7 +258,7 @@ public:
+             if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
+                 AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+ 
+-            SendGossipMenuFor(player, 54485, creature->GetGUID());
++            SendGossipMenuFor(player, 18284, creature->GetGUID()); // zrbfacore: menu 13012 text (was 54485, no such text)
+         }
+ 
+         return true;
+@@ -604,8 +608,8 @@ public:
+         switch (player->GetSession()->GetSessionDbcLocale())
+         {
+         default:
+-            GOSSIP_BUTTON_1 = "How does the shooting gallery work? ";
+-            GOSSIP_BUTTON_2 = "I'm ready to shoot! |cFF0000FF(Darkmoon Game Token)|r";
++            GOSSIP_BUTTON_1 = "How does the Shooting Gallery work?";
++            GOSSIP_BUTTON_2 = "Let's shoot! |cFF0000FF(Darkmoon Game Token)|r";
+             break;
+         };
+ 
+@@ -614,7 +618,7 @@ public:
+         if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
+             AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+ 
+-        SendGossipMenuFor(player, 23002, creature->GetGUID());
++        SendGossipMenuFor(player, 7397, creature->GetGUID()); // zrbfacore: menu 6225 text (was 23002, no such text)
+         return true;
+     }
+ 
+@@ -627,9 +631,9 @@ public:
+         switch (player->GetSession()->GetSessionDbcLocale())
+         {
+         default:
+-            GOSSIP_BUTTON_1 = "How does the shooting gallery work? ";
+-            GOSSIP_BUTTON_2 = "I'm ready to shoot! |cFF0000FF(Darkmoon Game Token)|r";
+-            GOSSIP_BUTTON_3 = "Alright.";
++            GOSSIP_BUTTON_1 = "How does the Shooting Gallery work?";
++            GOSSIP_BUTTON_2 = "Let's shoot! |cFF0000FF(Darkmoon Game Token)|r";
++            GOSSIP_BUTTON_3 = "I understand.";
+             break;
+         };
+ 
+@@ -638,7 +642,7 @@ public:
+         if (action == GOSSIP_ACTION_INFO_DEF + 1)
+         {
+             AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
+-            SendGossipMenuFor(player, 23003, creature->GetGUID());
++            SendGossipMenuFor(player, 18353, creature->GetGUID()); // zrbfacore: menu 13068 "how it works" text
+         }
+ 
+         if (action == GOSSIP_ACTION_INFO_DEF + 2)
+@@ -658,7 +662,11 @@ public:
+                 return true;
+             }
+             else
+-                SendGossipMenuFor(player, 54603, creature->GetGUID());
++            {
++                // zrbfacore: text 54603 does not exist; say it instead.
++                creature->Whisper("You need a Darkmoon Game Token to play!", LANG_UNIVERSAL, player);
++                CloseGossipMenuFor(player);
++            }
+         }
+ 
+         if (action == GOSSIP_ACTION_INFO_DEF + 3)
+@@ -671,7 +679,7 @@ public:
+             if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
+                 AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+ 
+-            SendGossipMenuFor(player, 23002, creature->GetGUID());
++            SendGossipMenuFor(player, 7397, creature->GetGUID()); // zrbfacore: menu 6225 text (was 23002, no such text)
+         }
+ 
+         return true;
+diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
+index e90fb3a..13ff413 100644
+--- a/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
++++ b/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
+@@ -297,7 +297,7 @@ public:
+         if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
+             AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+ 
+-        SendGossipMenuFor(player, 54605, creature->GetGUID());
++        SendGossipMenuFor(player, 18290, creature->GetGUID()); // zrbfacore: menu 13019 text (was 54605, no such text)
+         return true;
+     }
+ 
+@@ -312,7 +312,7 @@ public:
+         default:
+             GOSSIP_BUTTON_1 = "How do I play the Tonk Challenge?";
+             GOSSIP_BUTTON_2 = "Ready to play! |cFF0000FF(Darkmoon Game Token)|r";
+-            GOSSIP_BUTTON_3 = "Alright.";
++            GOSSIP_BUTTON_3 = "I understand.";
+             break;
+         };
+ 
+@@ -321,7 +321,7 @@ public:
+         if (action == GOSSIP_ACTION_INFO_DEF + 1)
+         {
+             AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
+-            SendGossipMenuFor(player, 54606, creature->GetGUID());
++            SendGossipMenuFor(player, 18352, creature->GetGUID()); // zrbfacore: menu 13066 "how to play" text
+         }
+ 
+         if (action == GOSSIP_ACTION_INFO_DEF + 2)
+@@ -345,7 +345,11 @@ public:
+                 return true;
+             }
+             else
+-                SendGossipMenuFor(player, 54603, creature->GetGUID());
++            {
++                // zrbfacore: text 54603 does not exist; say it instead.
++                creature->Whisper("You need a Darkmoon Game Token to play!", LANG_UNIVERSAL, player);
++                CloseGossipMenuFor(player);
++            }
+         }
+ 
+         if (action == GOSSIP_ACTION_INFO_DEF + 3)
+@@ -358,7 +362,7 @@ public:
+             if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
+                 AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+ 
+-            SendGossipMenuFor(player, 54605, creature->GetGUID());
++            SendGossipMenuFor(player, 18290, creature->GetGUID()); // zrbfacore: menu 13019 text (was 54605, no such text)
+         }
+ 
+         return true;
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
-index 37f4f99..58e470d 100644
+index 37f4f99..ceb8acb 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
 @@ -18,6 +18,8 @@
@@ -133,11 +322,11 @@ index 37f4f99..58e470d 100644
 +                    if (Creature* barrel = ObjectAccessor::GetCreature(*me, guid))
 +                        if (IsBarrelFree(barrel))
 +                            freeBarrels.push_back(barrel);
-+
-+                if (freeBarrels.empty())
-+                    return nullptr;
  
 -                return nullptr;
++                if (freeBarrels.empty())
++                    return nullptr;
++
 +                return freeBarrels[urand(0, freeBarrels.size() - 1)];
              }
  
@@ -193,19 +382,38 @@ index 37f4f99..58e470d 100644
                                      if (me->GetDistance(player) >= 15.0f)
                                          player->NearTeleportTo(-3994.28f, 6283.58f, 13.12f, 0.727784f, true);
                                  }
-@@ -211,8 +251,8 @@ class npc_whack_gnoll_mola : public CreatureScript
+@@ -211,18 +251,35 @@ class npc_whack_gnoll_mola : public CreatureScript
              if (creature->IsQuestGiver())
                  player->PrepareQuestMenu(creature->GetGUID());
  
 -            if (player->GetQuestStatus(QUEST_WHACK_A_GNOLL) == QUEST_STATUS_INCOMPLETE)
 -                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Je souhaite jouer a Cogne-Gnoll !", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
 +            // zrbfacore: open to everyone (the quest only counts the hits), English text.
++            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "How do I play Whack-a-Gnoll?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
 +            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Ready to play! |cFF0000FF(Darkmoon Game Token)|r", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
  
              player->PlayerTalkClass->SendGossipMenu(player->GetGossipTextId(creature), creature->GetGUID());
              return true;
-@@ -222,7 +262,8 @@ class npc_whack_gnoll_mola : public CreatureScript
+         }
+ 
+-        bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 /*action*/) override
++        bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
          {
++            // zrbfacore: "How do I play Whack-a-Gnoll?" shows the game's instructions (npc_text 18350),
++            // "I understand." goes back to the first page.
++            if (action == GOSSIP_ACTION_INFO_DEF + 2)
++            {
++                ClearGossipMenuFor(player);
++                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "I understand.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
++                SendGossipMenuFor(player, 18350, creature->GetGUID());
++                return true;
++            }
++            if (action == GOSSIP_ACTION_INFO_DEF + 3)
++            {
++                ClearGossipMenuFor(player);
++                return OnGossipHello(player, creature);
++            }
++
              if (!player->HasItemCount(ITEM_DARKMOON_TOKEN))
              {
 -                creature->Whisper("Vous devez posseder un Jeton de Sombrelune pour jouer a Cogne-Gnoll !", LANG_UNIVERSAL, player);
@@ -214,7 +422,7 @@ index 37f4f99..58e470d 100644
                  return true;
              }
  
-@@ -231,7 +272,8 @@ class npc_whack_gnoll_mola : public CreatureScript
+@@ -231,7 +288,8 @@ class npc_whack_gnoll_mola : public CreatureScript
  
              creature->AddAura(SPELL_OVERRIDE_ACTION, player);
              creature->AddAura(SPELL_ENABLE_POWERBAR, player);
@@ -224,7 +432,7 @@ index 37f4f99..58e470d 100644
  
              CloseGossipMenuFor(player);
              return true;
-@@ -280,6 +322,12 @@ class PositionCheck
+@@ -280,6 +338,12 @@ class PositionCheck
  
          bool operator()(WorldObject* unit)
          {
@@ -237,7 +445,7 @@ index 37f4f99..58e470d 100644
              bool isTooFar = _caster->GetDistance2d(unit) >= 3.0f;
              bool isNotInFront = !_caster->isInFront(unit, 90.0f);
              return isTooFar || isNotInFront;
-@@ -341,6 +389,11 @@ class spell_whack_gnoll_whack : public SpellScriptLoader
+@@ -341,6 +405,11 @@ class spell_whack_gnoll_whack : public SpellScriptLoader
                  }
  
                  caster->Kill(target);
@@ -249,7 +457,7 @@ index 37f4f99..58e470d 100644
                  return SPELL_CAST_OK;
              }
  
-@@ -380,6 +433,18 @@ public:
+@@ -380,6 +449,18 @@ public:
                  return;
  
              target->SetPower(POWER_ALTERNATE_POWER, 0);

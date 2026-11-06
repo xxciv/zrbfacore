@@ -7,6 +7,52 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: NPC audit (gossip, flags, quests, vendors)
+
+From Four, 2026-11-06 ("review every quest giver and merchant, make sure they're flags are
+correct, interactable, and have quests that lead to something. ensure their gossips lead
+somewhere, locales are enUS", "check items too for merchants/vendors"). Checked all 62 creatures on
+Darkmoon Island with a gossip, quest or vendor flag, and the Faire's event spawns elsewhere. World
+SQL `sql/fixes/world/2026_11_06_00_darkmoon_faire_npc_audit.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (now also `DarkmoonIsland.cpp` and `DarkmoonTonk.cpp`).
+Rebuild, run the SQL, restart.
+
+- **Found:**
+  - Jessica Rogers (Ring Toss), Rinling (Shooting Gallery) and Finlay Coolshot (Tonk Challenge)
+    sent npc_text ids that don't exist (54485/54486, 23002/23003, 54605/54606, and 54603 for "no
+    token"), so their pages showed placeholder text.
+  - Gossip menus 8849 (Silas Darkmoon), 13012 (Jessica), 13018 (Mola) and the "how to play" menus
+    13013/13065/13066 had options but no text row.
+  - Maxima and Mola had no "How do I play?" option.
+  - Ziggie Sparks (Firebird's Challenge) had gossip menu 0, so her "Ready to fly!" menu and its
+    SAI never showed.
+  - Christoph VonFeasel (pet tamer, quest 36471) had no gossip flag, so "Let's do battle!" could
+    not show.
+  - Chronos offered "DEPRECATED: Putting the Carnies Back Together Again" (29512).
+  - The old Outland Faire (26 creatures, 120 gameobjects in Terokkar Forest) still spawned with the
+    Faire event.
+  - Vendors: every Faire vendor's list is a superset of the Pandaria 5.4.8 list (the heirloom
+    vendor uses the newer heirloom items). Prize vendors (tickets) have no gold-priced items. Whether
+    each item exists in this build's Item.db2 can only be seen in the worldserver's DB error log.
+  - Every quest giver's quests have an ender, and all texts are English. Quests whose objective has
+    no source yet: Test Your Strength 29433 (Grisly Trophy 71096 drops nowhere), Spoilin' for Salty
+    Sea Dogs 29513 (no fishing loot for 73269), Tan My Hide 29519 (Staked Skin 209276 not spawned),
+    Master Pit Fighter 29761 (74034 only from an unspawned object), Firebird's Challenge 36481
+    (untested).
+- **Changed:**
+  - The three game hosts use their real texts (18284/18286, 7397/18353, 18290/18352). "No token" is
+    now a whisper. "Alright." is now "I understand.", and the Shooting Gallery options match the
+    database ("How does the Shooting Gallery work?", "Let's shoot!").
+  - Maxima ("How do I use the cannon?", text 7790) and Mola ("How do I play Whack-a-Gnoll?", text
+    18350) get an instructions page.
+  - The missing gossip_menu rows are added (texts from the Pandaria DB).
+  - Ziggie uses menu 16970. Her instructions menu 16972 gets npc_text 24704 (a guess from the text
+    ids).
+  - Christoph gets the gossip flag. Chronos no longer offers 29512.
+  - The Terokkar spawns are removed; copies are kept in `zr_dmf_terokkar_creature` and
+    `zr_dmf_terokkar_gameobject`.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Whack-a-Gnoll barrels and score bar
 
 From Four, 2026-11-05 ("still not fast enough. Not accurately incrementing the count on the artwork

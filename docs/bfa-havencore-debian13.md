@@ -720,6 +720,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_05_06_darkmoon_strider_ride.sql` | "Dusty" Brandom at the Darkmoon Island arrival hill not talking, and his Darkmoon Striders not giving the free ride to the Faire |
 | `2026_11_05_07_darkmoon_race_names_and_game_prize.sql` | Race course bunnies showing their names. Delete the client's Cache folder afterwards. (Its Game Prize ticket row is undone by `_08`) |
 | `2026_11_05_08_darkmoon_prize_ticket_as_quest_reward.sql` | Darkmoon Game Prize hanging the client: the Darkmoon Prize Ticket is now a currency reward of the Faire game and race quests |
+| `2026_11_06_00_darkmoon_faire_npc_audit.sql` | Darkmoon Faire NPC audit: missing gossip texts (Silas, Jessica Rogers, Mola, game instructions), Ziggie Sparks menu, Christoph VonFeasel gossip flag, deprecated Chronos quest removed, old Terokkar Faire spawns removed (copies kept in `zr_dmf_terokkar_*`) |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030).
 
