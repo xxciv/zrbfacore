@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-04/05 (Holidays: calendar and schedules)
 
-On branch `claude/project-thread-lzgnii`, not merged yet.
+Merged to main via PR #40 (2026-11-06).
 
 ### Quest objects counted twice (Tan My Hide)
 
