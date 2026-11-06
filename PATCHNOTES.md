@@ -7,6 +7,40 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: retest fixes (Firebird, Ring Toss, Shooting Gallery, Tonk Commander)
+
+From Four's retest, 2026-11-06. World SQL `sql/fixes/world/2026_11_06_08_darkmoon_game_targets.sql`,
+updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`, `DarkmoonTonk.cpp`). Rebuild,
+run the SQL, restart.
+
+- **Update steps changed:** the earlier "undo the old patch version, apply the new one" loop could
+  undo an older version from a newer tree (the Maxima/Mola/Fozlebub parts are the same in every
+  version), which left Four's tree half-patched: French gossip again, no gossip on Jessica,
+  Finlay and Rinling. Darkmoon updates now reset `src/server/scripts/DarkmoonIsland` and apply
+  `darkmoon-faire-gossip.patch` then `darkmoon-race.patch` (the only two patches in that folder).
+- **Firebird's Challenge, found:** the first ring appeared but never counted, and no more came.
+  The ring and summon code required Wings of Flame (170819) on the player; the flight is the
+  170820 aura it keeps refreshing. **Changed:** either aura counts, and each ring also checks
+  every update whether its owner is within 6 yd (a fast flier can pass through between two
+  target-list updates).
+- **Ring Toss, found:** the ring bar stayed after the last ring or after turning in Target: Turtle
+  (29455). **Changed:** Jessica removes 102058 when you have had 0 rings for two checks (2 s, so
+  the last ring lands first; whisper "You're out of rings!") and when you turn in 29455.
+- **Shooting Gallery, found:** the targets (54231) spawned dead: level 1 with HealthModifier 0.01
+  is 0 health. Shoot (101872) had no `spell_script_names` row, so hits never gave credit. The
+  decoy entry 54225 does not exist in 8.3.7, so only the marked target was summoned. The gun
+  stayed after the 60 s game. **Changed:** HealthModifier 1; script name and a target condition
+  (creature 54231) for 101872; decoys are 54231 too and only the round's marked target (the one
+  that casts Marked! 102341) gives credit, once; at the end of the game Rinling removes 101871
+  from players within 30 yd ("Time's up!"), and turning in He Shoots, He Scores! (29438) removes it.
+- **Tonk Commander, found:** Tonk Targets (33081) spawned dead too (same HealthModifier 0.01), and
+  the Cannon (102292) only reached things touching the tonk. **Changed:** HealthModifier 1;
+  `spell_darkmoon_tonk_cannon` hits Tonk Targets, Enemy Tonks and MiniZeps up to 30 yd in a
+  60 degree cone in front of the tonk.
+- **Not changed yet:** Enemy Tonks and MiniZeps don't shoot back (their Cannon Blast 102227 drops a
+  cannonball whose Bombs Away 102211 is a dummy with no script) and show friendly (faction 1616).
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Horde Citizens and the Champions
 
 From Four, 2026-11-06 ("Horde Citizens should appear as horde races. Champion Faesrol, Champion

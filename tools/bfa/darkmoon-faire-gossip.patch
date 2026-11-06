@@ -229,7 +229,7 @@ index 7e4a359..017c4f2 100644
              player->TeleportTo(974, -4019.00f, 6286.58f, 12.49f, 1.39f);
  
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-index b65819e..71fab2b 100644
+index b65819e..64afae1 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 @@ -28,6 +28,8 @@
@@ -241,7 +241,7 @@ index b65819e..71fab2b 100644
  
  class playerscript_darkmoon_carousel : public PlayerScript
  {
-@@ -173,11 +175,55 @@ public:
+@@ -173,11 +175,89 @@ public:
  };
  
  // 54485 - Jessica Rogers
@@ -279,6 +279,7 @@ index b65819e..71fab2b 100644
 +            if (_boothCheck <= diff)
 +            {
 +                RemoveGameAuraAwayFromBooth(me, 102058, 20.0f, "You left the Ring Toss booth. Game over!");
++                RemoveRingTossWhenOutOfRings();
 +                _boothCheck = 1000;
 +            }
 +            else
@@ -286,7 +287,32 @@ index b65819e..71fab2b 100644
 +        }
 +
 +    private:
++        // zrbfacore: the Ring Toss bar stayed after the last ring was thrown. Remove it once
++        // the player has had no rings left for two checks (the last ring lands first).
++        void RemoveRingTossWhenOutOfRings()
++        {
++            Map::PlayerList const& players = me->GetMap()->GetPlayers();
++            for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++            {
++                Player* player = itr->GetSource();
++                if (!player || !player->HasAura(102058) || player->GetPower(POWER_ALTERNATE_POWER) > 0)
++                {
++                    if (player)
++                        _outOfRings.erase(player->GetGUID());
++                    continue;
++                }
++
++                if (_outOfRings.insert(player->GetGUID()).second)
++                    continue;
++
++                _outOfRings.erase(player->GetGUID());
++                player->RemoveAurasDueToSpell(102058);
++                me->Whisper("You're out of rings!", LANG_UNIVERSAL, player);
++            }
++        }
++
 +        uint32 _boothCheck;
++        GuidSet _outOfRings;
 +    };
 +
 +    CreatureAI* GetAI(Creature* creature) const override
@@ -294,10 +320,18 @@ index b65819e..71fab2b 100644
 +        return new npc_jessica_rogersAI(creature);
 +    }
 +
++    // zrbfacore: turning in Target: Turtle (29455) ends the game.
++    bool OnQuestReward(Player* player, Creature* /*creature*/, Quest const* quest, uint32 /*opt*/) override
++    {
++        if (quest->GetQuestId() == 29455)
++            player->RemoveAurasDueToSpell(102058);
++        return false;
++    }
++
      bool OnGossipHello(Player* player, Creature* creature) override
      {
          if (creature->IsQuestGiver())
-@@ -199,7 +245,7 @@ public:
+@@ -199,7 +279,7 @@ public:
          if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -306,7 +340,7 @@ index b65819e..71fab2b 100644
          return true;
      }
  
-@@ -214,7 +260,7 @@ public:
+@@ -214,7 +294,7 @@ public:
          default:
              GOSSIP_BUTTON_1 = "How do I play the Ring Toss?";
              GOSSIP_BUTTON_2 = "Ready to play! |cFF0000FF(Darkmoon Game Token)|r";
@@ -315,7 +349,7 @@ index b65819e..71fab2b 100644
              break;
          };
  
-@@ -223,7 +269,7 @@ public:
+@@ -223,7 +303,7 @@ public:
          if (action == GOSSIP_ACTION_INFO_DEF + 1)
          {
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
@@ -324,7 +358,7 @@ index b65819e..71fab2b 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 2)
-@@ -241,7 +287,11 @@ public:
+@@ -241,7 +321,11 @@ public:
                  return true;
              }
              else
@@ -337,7 +371,7 @@ index b65819e..71fab2b 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 3)
-@@ -254,7 +304,7 @@ public:
+@@ -254,7 +338,7 @@ public:
              if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
                  AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -346,7 +380,7 @@ index b65819e..71fab2b 100644
          }
  
          return true;
-@@ -279,16 +329,19 @@ public:
+@@ -279,16 +363,19 @@ public:
              return SPELL_CAST_OK;
          }
  
@@ -372,7 +406,7 @@ index b65819e..71fab2b 100644
  
              player->KilledMonsterCredit(54495, ObjectGuid::Empty);
          }
-@@ -306,6 +359,97 @@ public:
+@@ -306,6 +393,116 @@ public:
      }
  };
  
@@ -386,8 +420,16 @@ index b65819e..71fab2b 100644
 +    SPELL_FIREBIRD_WINGS_OF_FLAME = 170819,
 +    SPELL_FIREBIRD_RING_AT        = 170815,
 +    SPELL_FIREBIRD_BLAZING_RING   = 170823,
++    SPELL_FIREBIRD_WINGS_PERIODIC = 170820,
 +    FIREBIRD_RING_DURATION        = 15000,
 +};
++
++// zrbfacore (2026-11-06 retest: the first ring never counted and no more came): Wings of
++// Flame 170819 itself may be short; the flight is the 170820 aura it keeps refreshing.
++static bool IsFlyingFirebird(Unit const* unit)
++{
++    return unit && (unit->HasAura(SPELL_FIREBIRD_WINGS_OF_FLAME) || unit->HasAura(SPELL_FIREBIRD_WINGS_PERIODIC));
++}
 +
 +class spell_darkmoon_firebird_summon_rings : public SpellScriptLoader
 +{
@@ -401,7 +443,7 @@ index b65819e..71fab2b 100644
 +        void HandleScript(SpellEffIndex /*effIndex*/)
 +        {
 +            Player* player = GetHitUnit() ? GetHitUnit()->ToPlayer() : nullptr;
-+            if (!player || !player->HasAura(SPELL_FIREBIRD_WINGS_OF_FLAME))
++            if (!player || !IsFlyingFirebird(player))
 +                return;
 +
 +            float dist = frand(20.0f, 30.0f);
@@ -445,11 +487,22 @@ index b65819e..71fab2b 100644
 +
 +        void OnUnitEnter(Unit* unit) override
 +        {
-+            if (_taken || !unit || unit != at->GetCaster())
-+                return;
++            if (unit && unit == at->GetCaster())
++                Take(unit->ToPlayer());
++        }
 +
-+            Player* player = unit->ToPlayer();
-+            if (!player || !player->HasAura(SPELL_FIREBIRD_WINGS_OF_FLAME))
++        // A fast flier can pass through between two target-list updates; check the
++        // distance to the owner on every update as well.
++        void OnUpdate(uint32 /*diff*/) override
++        {
++            Unit* caster = at->GetCaster();
++            if (caster && caster->IsWithinDist3d(at, 6.0f))
++                Take(caster->ToPlayer());
++        }
++
++        void Take(Player* player)
++        {
++            if (_taken || !player || !IsFlyingFirebird(player))
 +                return;
 +
 +            _taken = true;
@@ -470,7 +523,17 @@ index b65819e..71fab2b 100644
  enum DarkmoonFaireYells
  {
      // Selina
-@@ -525,7 +669,9 @@ public:
+@@ -507,6 +704,9 @@ public:
+     }
+ };
+ 
++// zrbfacore: the marked target of each Shooting Gallery round (see spell_shoot_gallery_shoot).
++static GuidSet sMarkedShootingTargets;
++
+ enum ShootGallery
+ {
+     EVENT_SHOOTGALLERY_START_GAME = 1,
+@@ -525,7 +725,9 @@ public:
  
      struct npc_rinlingAI : public ScriptedAI
      {
@@ -481,7 +544,7 @@ index b65819e..71fab2b 100644
  
          EventMap events;
  
-@@ -549,6 +695,14 @@ public:
+@@ -549,6 +751,14 @@ public:
          {
              events.Update(diff);
  
@@ -496,7 +559,76 @@ index b65819e..71fab2b 100644
              [[maybe_unused]] Map::PlayerList const& PlayerList = me->GetMap()->GetPlayers();
  
              while (uint32 eventId = events.ExecuteEvent())
-@@ -604,8 +758,8 @@ public:
+@@ -560,39 +770,59 @@ public:
+                     {
+                     case 0:
+                         if (Creature* summon = me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
+-                            summon->CastSpell(summon, 102341, false);
++                            { summon->CastSpell(summon, 102341, false); sMarkedShootingTargets.insert(summon->GetGUID()); }
+ 
+-                        me->SummonCreature(54225, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
+-                        me->SummonCreature(54225, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
+                         break;
+                     case 1:
+-                        me->SummonCreature(54225, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
+ 
+                         if (Creature* summon = me->SummonCreature(54231, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
+-                            summon->CastSpell(summon, 102341, false);
++                            { summon->CastSpell(summon, 102341, false); sMarkedShootingTargets.insert(summon->GetGUID()); }
+ 
+-                        me->SummonCreature(54225, -4068.41f, 6353.09f, 12.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4068.41f, 6353.09f, 12.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
+                         break;
+                     case 2:
+-                        me->SummonCreature(54225, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
+-                        me->SummonCreature(54225, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
+ 
+                         if (Creature* summon = me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
+-                            summon->CastSpell(summon, 102341, false);
++                            { summon->CastSpell(summon, 102341, false); sMarkedShootingTargets.insert(summon->GetGUID()); }
+ 
+                         break;
+                     }
+                     events.ScheduleEvent(EVENT_SHOOTGALLERY_START_GAME, 5000);
+                     break;
+                 case EVENT_SHOOTGALLERY_FINISH_GAME:
++                {
+                     Active = false;
+                     events.CancelEvent(EVENT_SHOOTGALLERY_START_GAME);
++
++                    // zrbfacore: the gun stayed after the 60 s game.
++                    Map::PlayerList const& players = me->GetMap()->GetPlayers();
++                    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++                        if (Player* player = itr->GetSource())
++                            if (player->HasAura(101871) && player->GetExactDist2d(me) <= 30.0f)
++                            {
++                                player->RemoveAurasDueToSpell(101871);
++                                me->Whisper("Time's up!", LANG_UNIVERSAL, player);
++                            }
+                     break;
+                 }
++                }
+             }
+         }
+     };
+ 
++    // zrbfacore: turning in the Shooting Gallery quest (29438) ends the game.
++    bool OnQuestReward(Player* player, Creature* /*creature*/, Quest const* quest, uint32 /*opt*/) override
++    {
++        if (quest->GetQuestId() == 29438)
++            player->RemoveAurasDueToSpell(101871);
++        return false;
++    }
++
+     bool OnGossipHello(Player* player, Creature* creature) override
+     {
+         if (creature->IsQuestGiver())
+@@ -604,8 +834,8 @@ public:
          switch (player->GetSession()->GetSessionDbcLocale())
          {
          default:
@@ -507,7 +639,7 @@ index b65819e..71fab2b 100644
              break;
          };
  
-@@ -614,7 +768,7 @@ public:
+@@ -614,7 +844,7 @@ public:
          if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -516,7 +648,7 @@ index b65819e..71fab2b 100644
          return true;
      }
  
-@@ -627,9 +781,9 @@ public:
+@@ -627,9 +857,9 @@ public:
          switch (player->GetSession()->GetSessionDbcLocale())
          {
          default:
@@ -529,7 +661,7 @@ index b65819e..71fab2b 100644
              break;
          };
  
-@@ -638,7 +792,7 @@ public:
+@@ -638,7 +868,7 @@ public:
          if (action == GOSSIP_ACTION_INFO_DEF + 1)
          {
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
@@ -538,7 +670,7 @@ index b65819e..71fab2b 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 2)
-@@ -658,7 +812,11 @@ public:
+@@ -658,7 +888,11 @@ public:
                  return true;
              }
              else
@@ -551,7 +683,7 @@ index b65819e..71fab2b 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 3)
-@@ -671,7 +829,7 @@ public:
+@@ -671,7 +905,7 @@ public:
              if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
                  AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -560,7 +692,21 @@ index b65819e..71fab2b 100644
          }
  
          return true;
-@@ -1013,6 +1171,8 @@ void AddSC_darkmoon_island()
+@@ -983,8 +1217,12 @@ public:
+         {
+             Player* player = GetCaster()->ToPlayer();
+ 
+-            if (GetHitCreature()->GetEntry() == 54231)
++            // zrbfacore: only the marked target counts; the decoys are the same creature
++            // now, because the old decoy entry (54225) does not exist in 8.3.7.
++            Creature* target = GetHitCreature();
++            if (player && target && target->GetEntry() == 54231 && sMarkedShootingTargets.erase(target->GetGUID()))
+             {
++                target->RemoveAurasDueToSpell(102341);
+                 player->KilledMonsterCredit(54231, ObjectGuid::Empty);
+ 
+                 AchievementEntry const* AchievShooter = sAchievementStore.LookupEntry(6022);
+@@ -1013,6 +1251,8 @@ void AddSC_darkmoon_island()
      new npc_selina_dourman();
      new npc_rinling();
      new spell_ring_toss();
@@ -570,7 +716,7 @@ index b65819e..71fab2b 100644
      new spell_darkmoon_carousel_whee();
      new spell_darkmoon_staging_area_teleport();
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
-index e90fb3a..ebb589a 100644
+index e90fb3a..d9036fb 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
 @@ -266,12 +266,35 @@ public:
@@ -649,7 +795,7 @@ index e90fb3a..ebb589a 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 3)
-@@ -358,7 +385,7 @@ public:
+@@ -358,15 +385,58 @@ public:
              if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
                  AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -658,6 +804,57 @@ index e90fb3a..ebb589a 100644
          }
  
          return true;
+     }
+ };
+ 
++// zrbfacore: the steam tonk's Cannon (102292) only hit things touching the tonk (its cone
++// radius comes from a SpellRadius row that is tiny in 8.3.7). Hit Tonk Targets, Enemy Tonks
++// and MiniZeps up to 30 yards in a 60 degree cone in front of the tonk instead.
++class spell_darkmoon_tonk_cannon : public SpellScriptLoader
++{
++public:
++    spell_darkmoon_tonk_cannon() : SpellScriptLoader("spell_darkmoon_tonk_cannon") { }
++
++    class spell_darkmoon_tonk_cannon_SpellScript : public SpellScript
++    {
++        PrepareSpellScript(spell_darkmoon_tonk_cannon_SpellScript);
++
++        void SelectTargets(std::list<WorldObject*>& targets)
++        {
++            targets.clear();
++            Unit* caster = GetCaster();
++            if (!caster)
++                return;
++
++            static uint32 const entries[] = { 33081, 54642, 54643 };
++            for (uint32 entry : entries)
++            {
++                std::list<Creature*> found;
++                caster->GetCreatureListWithEntryInGrid(found, entry, 30.0f);
++                for (Creature* creature : found)
++                    if (creature->IsAlive() && caster->HasInArc(float(M_PI) / 3.0f, creature))
++                        targets.push_back(creature);
++            }
++        }
++
++        void Register() override
++        {
++            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_darkmoon_tonk_cannon_SpellScript::SelectTargets, EFFECT_0, TARGET_UNIT_CONE_ENTRY);
++        }
++    };
++
++    SpellScript* GetSpellScript() const override
++    {
++        return new spell_darkmoon_tonk_cannon_SpellScript();
++    }
++};
++
+ void AddSC_darkmoon_tonk()
+ {
++    new spell_darkmoon_tonk_cannon();
+     //npc
+     new npc_finlay_coolshot();
+     //go
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
 index 37f4f99..ceb8acb 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp

@@ -728,6 +728,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_06_05_darkmoon_firebird_rings.sql` | Darkmoon Faire Firebird's Challenge: Summon Rings script name and ring areatrigger 3069 (needs darkmoon-faire-gossip.patch) |
 | `2026_11_06_06_darkmoon_horde_citizens.sql` | Darkmoon Faire Horde Citizens (55348) use orc, troll, blood elf and Forsaken models instead of Stormwind humans |
 | `2026_11_06_07_darkmoon_champions_aggro.sql` | Darkmoon Faire Champions Faesrol (55732) and Isimode (55733) only attack hostile players within 5 yards |
+| `2026_11_06_08_darkmoon_game_targets.sql` | Darkmoon Faire: Shooting Gallery and Tonk targets spawn alive, Shoot (101872) and tonk Cannon (102292) script names (needs darkmoon-faire-gossip.patch) |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030).
 
