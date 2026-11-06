@@ -7,6 +7,24 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Darkmoon Island fishing loot
+
+From Four's Wowhead list, 2026-11-06. World SQL `2026_11_06_18_darkmoon_island_fishing.sql` (run
+after `_17`). Run the SQL, restart. No rebuild.
+
+- **Found:** Darkmoon Island (zone 5861) had no fishing loot, so every cast used the core's default
+  table (Arctic Char 48%, Raw Bristle Whisker Catfish 21%, junk).
+- **Changed:** zone 5861 fishing loot built from Wowhead's Darkmoon Island list (Four's CSV): 51
+  catches in one group (one per cast), each at its share of Wowhead's catch counts; Darkmoon
+  Daggermaw (124669) takes the rest, about 54%. Raw Rainbow Fin Albacore 9.4%, Sealed Darkmoon
+  Crate 6.9%, Oily Blackmouth 3.7%, Bloated Thresher 2.5%, the Darkmoon Sealed Crates (78930, 88496)
+  2.4% and 1.8%, junk about 2% each, rare catches down to 0.005%. Catches Wowhead shows at 0% are
+  left out. Salty Sea Dog (73269, "Great Sea Herring" on Wowhead now) stays at 29% on top, only
+  for Spoilin' for Salty Sea Dogs.
+- **Not covered:** Sealed Darkmoon Crate (124670) and the Big-Mouth, Darkwater and Jaggal Clams
+  have no contents in our DB, so they open empty.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: four quests that could not be finished
 
 From Four's questions, 2026-11-06. World SQL `2026_11_06_17_darkmoon_quest_items.sql`, updated

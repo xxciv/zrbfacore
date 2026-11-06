@@ -738,6 +738,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_06_15_darkmoon_names_rings_balloons.sql` | Darkmoon Faire: Shooting Gallery names hidden by flags, Firebird rings keep coming, Carl's balloons back on the bunny 1 yd up (after `_14`, needs the gossip patch) |
 | `2026_11_06_16_darkmoon_gallery_unselectable.sql` | Darkmoon Faire: Shooting Gallery targets not selectable, so no names over them |
 | `2026_11_06_17_darkmoon_quest_items.sql` | Darkmoon Faire: Salty Sea Dog fishing, Staked Skins, Darkmoon Treasure Chest (Pit Fighter) placed (Grisly Trophies come from the gossip patch) |
+| `2026_11_06_18_darkmoon_island_fishing.sql` | Darkmoon Island fishing loot from Wowhead's list (Darkmoon Daggermaw and the rest; after `_17`) |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236).
 
