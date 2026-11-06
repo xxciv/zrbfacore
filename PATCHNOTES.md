@@ -22,6 +22,13 @@ run the SQL, restart.
 - **Changed:** condition on 181458 effect 0: only creature 54490. The handler only credits (once)
   when the hit unit is Dubenko, and still plays the ring-on-shell visuals (101697, 101737). Dubenko's
   SAI credit row is deleted.
+- **Found (Four, 2026-11-06, with a screenshot):** the ring button failed with "Requires Standing
+  at the Ring Toss Booth"; the Shooting Gallery failed the same way ("Requires Standing at the Booth
+  Counter"). Both spells need a spell focus gameobject near the player, and neither was spawned.
+- **Changed:** world SQL `sql/fixes/world/2026_11_06_02_darkmoon_booth_spell_focus.sql` spawns
+  301114 "Standing at the Ring Toss Booth" (focus 1729, 20 yd) on Jessica (-4287.87, 6309.00,
+  13.20, guid 974000001) and 300129 "Standing at the Booth Counter" (focus 1471, 10 yd) at Rinling's
+  counter (-4078.42, 6354.07, 13.08, Pandaria 5.4.8 DB position, guid 974000002). Both are invisible.
 - **Status:** untested in game.
 
 ### Darkmoon Faire: Humanoid Cannonball (Maxima Blastenheimer)
