@@ -7,6 +7,29 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Firebird rings further out, gallery names, Carl's cart spacing
+
+From Four's retest, 2026-11-06. World SQL `2026_11_06_16_darkmoon_gallery_unselectable.sql`,
+hotfix SQL `sql/fixes/hotfixes/2026_11_06_00_darkmoon_balloon_cart_seat.sql` (run against
+`bfa_hotfixes`), updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`). Rebuild,
+run the SQL, restart, delete the client Cache folder.
+
+- **Confirmed:** Firebird's Challenge quest works (rings keep coming); Carl's balloons sit on the
+  cart.
+- **Firebird, found:** rings came too close (20-30 yd) and some were inside the roller coaster.
+  **Changed:** rings go 35-50 yd ahead, at least 10 yd over the ground, and only where the line from
+  the player and the ring's 5 yd circle (both ways, and up/down) are clear of buildings and
+  objects; up to 8 tries, else 40 yd straight ahead and 15 yd over the ground.
+- **Shooting Gallery, found:** the name flags from `2026_11_06_15` did not hide the names either.
+  The client does not draw names on units that can't be selected (Carl's cart and balloon bunny
+  show none). **Changed:** 54231 unit_flags `|= 0x02000000` (not selectable); the Shoot script
+  picks its target itself, so hits still count.
+- **Carl Goodup, found:** the cart sits in seat VehicleSeat 10236, 0.7 yd in front of Carl, so his
+  name overlapped the balloons. **Changed:** hotfix row for seat 10236 with AttachmentOffsetX 1.0
+  (other fields are the client's values), hotfix_data id 9110236, table hash 0xD4A85CEB. Only
+  Carl's vehicle (1769) uses this seat.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Firebird rings keep coming, gallery names hidden, balloons raised
 
 From Four's retest, 2026-11-06. World SQL `2026_11_06_15_darkmoon_names_rings_balloons.sql`,
