@@ -229,7 +229,7 @@ index 7e4a359..017c4f2 100644
              player->TeleportTo(974, -4019.00f, 6286.58f, 12.49f, 1.39f);
  
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-index b65819e..72dc390 100644
+index b65819e..fcee36e 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 @@ -28,6 +28,8 @@
@@ -559,43 +559,49 @@ index b65819e..72dc390 100644
              [[maybe_unused]] Map::PlayerList const& PlayerList = me->GetMap()->GetPlayers();
  
              while (uint32 eventId = events.ExecuteEvent())
-@@ -560,39 +770,59 @@ public:
+@@ -559,40 +769,62 @@ public:
+                     switch (urand(0, 2))
                      {
                      case 0:
-                         if (Creature* summon = me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
+-                        if (Creature* summon = me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
 -                            summon->CastSpell(summon, 102341, false);
++                        if (Creature* summon = me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000))
 +                            { summon->CastSpell(summon, 102341, false); sMarkedShootingTargets.insert(summon->GetGUID()); }
  
 -                        me->SummonCreature(54225, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
 -                        me->SummonCreature(54225, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
-+                        me->SummonCreature(54231, -4070.09f, 6354.87f, 13.30f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
-+                        me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4070.09f, 6354.87f, 13.30f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000);
++                        me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000);
                          break;
                      case 1:
 -                        me->SummonCreature(54225, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
-+                        me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000);
  
 -                        if (Creature* summon = me->SummonCreature(54231, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
 -                            summon->CastSpell(summon, 102341, false);
-+                        if (Creature* summon = me->SummonCreature(54231, -4070.09f, 6354.87f, 13.30f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
++                        if (Creature* summon = me->SummonCreature(54231, -4070.09f, 6354.87f, 13.30f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000))
 +                            { summon->CastSpell(summon, 102341, false); sMarkedShootingTargets.insert(summon->GetGUID()); }
  
 -                        me->SummonCreature(54225, -4068.41f, 6353.09f, 12.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
-+                        me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000);
                          break;
                      case 2:
 -                        me->SummonCreature(54225, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
 -                        me->SummonCreature(54225, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
-+                        me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
-+                        me->SummonCreature(54231, -4070.09f, 6354.87f, 13.30f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000);
++                        me->SummonCreature(54231, -4070.09f, 6354.87f, 13.30f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000);
  
-                         if (Creature* summon = me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
+-                        if (Creature* summon = me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
 -                            summon->CastSpell(summon, 102341, false);
++                        if (Creature* summon = me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000))
 +                            { summon->CastSpell(summon, 102341, false); sMarkedShootingTargets.insert(summon->GetGUID()); }
  
                          break;
                      }
-                     events.ScheduleEvent(EVENT_SHOOTGALLERY_START_GAME, 5000);
+-                    events.ScheduleEvent(EVENT_SHOOTGALLERY_START_GAME, 5000);
++                    // zrbfacore: a new target every 2 s (was 5 s). At 5 s only 12 marked targets showed up
++                    // in the 60 s game, so 25 hits were impossible (Four, 2026-11-06).
++                    events.ScheduleEvent(EVENT_SHOOTGALLERY_START_GAME, 2000);
                      break;
                  case EVENT_SHOOTGALLERY_FINISH_GAME:
 +                {
@@ -629,7 +635,7 @@ index b65819e..72dc390 100644
      bool OnGossipHello(Player* player, Creature* creature) override
      {
          if (creature->IsQuestGiver())
-@@ -604,8 +834,8 @@ public:
+@@ -604,8 +836,8 @@ public:
          switch (player->GetSession()->GetSessionDbcLocale())
          {
          default:
@@ -640,7 +646,7 @@ index b65819e..72dc390 100644
              break;
          };
  
-@@ -614,7 +844,7 @@ public:
+@@ -614,7 +846,7 @@ public:
          if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -649,7 +655,7 @@ index b65819e..72dc390 100644
          return true;
      }
  
-@@ -627,9 +857,9 @@ public:
+@@ -627,9 +859,9 @@ public:
          switch (player->GetSession()->GetSessionDbcLocale())
          {
          default:
@@ -662,7 +668,7 @@ index b65819e..72dc390 100644
              break;
          };
  
-@@ -638,7 +868,7 @@ public:
+@@ -638,7 +870,7 @@ public:
          if (action == GOSSIP_ACTION_INFO_DEF + 1)
          {
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
@@ -671,7 +677,7 @@ index b65819e..72dc390 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 2)
-@@ -658,7 +888,11 @@ public:
+@@ -658,7 +890,11 @@ public:
                  return true;
              }
              else
@@ -684,7 +690,7 @@ index b65819e..72dc390 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 3)
-@@ -671,7 +905,7 @@ public:
+@@ -671,7 +907,7 @@ public:
              if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
                  AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -693,7 +699,7 @@ index b65819e..72dc390 100644
          }
  
          return true;
-@@ -983,8 +1217,12 @@ public:
+@@ -983,8 +1219,12 @@ public:
          {
              Player* player = GetCaster()->ToPlayer();
  
@@ -707,7 +713,7 @@ index b65819e..72dc390 100644
                  player->KilledMonsterCredit(54231, ObjectGuid::Empty);
  
                  AchievementEntry const* AchievShooter = sAchievementStore.LookupEntry(6022);
-@@ -993,8 +1231,40 @@ public:
+@@ -993,8 +1233,40 @@ public:
              }
          }
  
@@ -748,7 +754,7 @@ index b65819e..72dc390 100644
              AfterHit += SpellHitFn(spell_shoot_gallery_shoot_SpellScript::OnHit);
              OnCheckCast += SpellCheckCastFn(spell_shoot_gallery_shoot_SpellScript::CheckRequirement);
          }
-@@ -1013,6 +1283,8 @@ void AddSC_darkmoon_island()
+@@ -1013,6 +1285,8 @@ void AddSC_darkmoon_island()
      new npc_selina_dourman();
      new npc_rinling();
      new spell_ring_toss();
@@ -758,7 +764,7 @@ index b65819e..72dc390 100644
      new spell_darkmoon_carousel_whee();
      new spell_darkmoon_staging_area_teleport();
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
-index e90fb3a..8e8df8c 100644
+index e90fb3a..6865b83 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
 @@ -26,6 +26,8 @@
@@ -770,7 +776,18 @@ index e90fb3a..8e8df8c 100644
  
  enum eSpells
  {
-@@ -266,12 +268,35 @@ public:
+@@ -70,6 +72,10 @@ public:
+ 
+         bool Active;
+ 
++        // zrbfacore: where each player stood when they started the game, so the end of the
++        // game can put them back there (Four, 2026-11-06).
++        std::map<ObjectGuid, Position> StartPositions;
++
+         void Reset()
+         {
+             Active = false;
+@@ -266,12 +272,42 @@ public:
                      events.ScheduleEvent(EVENT_TONKCOMMANDER_START_GAME_3, 5000);
                      break;
                  case EVENT_TONKCOMMANDER_FINISH_GAME:
@@ -778,18 +795,25 @@ index e90fb3a..8e8df8c 100644
 +                    // zrbfacore: the game never ended for the player. When the steam tonk
 +                    // (54588) timed out they were dropped on the battlefield with the Tonk!
 +                    // bar still up (Four, 2026-11-06). End it here: take the bar, leave the
-+                    // tonk, go back to the consoles, and clear the tonks.
++                    // tonk, go back to where they started the game (falls back to the consoles),
++                    // and clear the tonks. Players are found from the start list too, so a player
++                    // whose Tonk! bar ran out a moment early still goes back.
 +                    std::list<Player*> players;
 +                    me->GetPlayerListInGrid(players, 80.0f);
 +                    for (Player* player : players)
 +                    {
-+                        if (!player->HasAura(SPELL_PROGRESS_BAR))
++                        auto itr = StartPositions.find(player->GetGUID());
++                        if (!player->HasAura(SPELL_PROGRESS_BAR) && itr == StartPositions.end())
 +                            continue;
 +
 +                        player->RemoveAurasDueToSpell(SPELL_PROGRESS_BAR);
 +                        player->ExitVehicle();
-+                        player->NearTeleportTo(-4127.5f, 6327.0f, 13.12f, 4.37f);
++                        if (itr != StartPositions.end())
++                            player->NearTeleportTo(itr->second.GetPositionX(), itr->second.GetPositionY(), itr->second.GetPositionZ(), itr->second.GetOrientation());
++                        else
++                            player->NearTeleportTo(-4127.5f, 6327.0f, 13.12f, 4.37f);
 +                    }
++                    StartPositions.clear();
 +
 +                    std::list<Creature*> tonks;
 +                    me->GetCreatureListWithEntryInGrid(tonks, 54588, 80.0f);
@@ -806,7 +830,7 @@ index e90fb3a..8e8df8c 100644
              }
          }
      };
-@@ -297,7 +322,7 @@ public:
+@@ -297,7 +333,7 @@ public:
          if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -815,7 +839,7 @@ index e90fb3a..8e8df8c 100644
          return true;
      }
  
-@@ -312,7 +337,7 @@ public:
+@@ -312,7 +348,7 @@ public:
          default:
              GOSSIP_BUTTON_1 = "How do I play the Tonk Challenge?";
              GOSSIP_BUTTON_2 = "Ready to play! |cFF0000FF(Darkmoon Game Token)|r";
@@ -824,7 +848,7 @@ index e90fb3a..8e8df8c 100644
              break;
          };
  
-@@ -321,7 +346,7 @@ public:
+@@ -321,7 +357,7 @@ public:
          if (action == GOSSIP_ACTION_INFO_DEF + 1)
          {
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
@@ -833,7 +857,23 @@ index e90fb3a..8e8df8c 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 2)
-@@ -345,7 +370,11 @@ public:
+@@ -334,9 +370,14 @@ public:
+                 player->RemoveAurasByType(SPELL_AURA_MOUNTED);
+                 player->RemoveAurasByType(SPELL_AURA_MOD_SHAPESHIFT);
+ 
++                // zrbfacore: remember where the player started, for the end of the game.
++                CAST_AI(npc_finlay_coolshot::npc_finlay_coolshotAI, creature->AI())->StartPositions[player->GetGUID()] = player->GetPosition();
++
+                 player->AddAura(102178, player);
+ 
+-                if (Creature* summon = creature->SummonCreature(54588, -4131.37f, 6317.32f, 13.11f, 4.31f, TEMPSUMMON_TIMED_DESPAWN, 60000))
++                // zrbfacore: the tonk lasts 2 s longer than the game, so the end of the game
++                // (which sends the player back) runs before the tonk despawns under them.
++                if (Creature* summon = creature->SummonCreature(54588, -4131.37f, 6317.32f, 13.11f, 4.31f, TEMPSUMMON_TIMED_DESPAWN, 62000))
+                     player->CastSpell(summon, 46598, false);
+ 
+                 CAST_AI(npc_finlay_coolshot::npc_finlay_coolshotAI, creature->AI())->StartGame();
+@@ -345,7 +386,11 @@ public:
                  return true;
              }
              else
@@ -846,7 +886,7 @@ index e90fb3a..8e8df8c 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 3)
-@@ -358,15 +387,144 @@ public:
+@@ -358,15 +403,144 @@ public:
              if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
                  AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  

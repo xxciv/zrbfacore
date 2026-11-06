@@ -7,6 +7,29 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Tonk return point, faster Shooting Gallery, Carl's balloons
+
+From Four's retest, 2026-11-06. World SQL `2026_11_06_14_darkmoon_gallery_names_balloons.sql`,
+updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`, `DarkmoonTonk.cpp`).
+Rebuild, run the SQL, restart, delete the client Cache folder.
+
+- **Confirmed:** Shooting Gallery credit works (Quick Shot, 5 Darkmoon dailies, 5 different games,
+  Blastenheimer Bullseye unlocked); Carl pushes his cart; Tonk Commander "way better".
+- **Tonk Commander, found:** at the end of the game the player was put back in the tonk pen.
+  **Changed:** Finlay remembers where each player stood when they started (the "Ready to play!"
+  gossip) and the end of the game sends them back there; the old console spot is only a fallback.
+  The tonk now lasts 62 s (was 60 s) so the game ends before the tonk despawns under the player.
+- **Shooting Gallery, found:** a new marked target came every 5 s, so only 12 showed up in the
+  60 s game and 25 hits were impossible (Four's best: 12/25). **Changed:** a new round every 2 s
+  (targets last 2 s), so up to 30 marked targets per game. The target name (54231) is now empty, so
+  no name shows over the targets.
+- **Carl Goodup, found:** the balloons stayed where the cart was made. They are the Balloon Cart
+  Contents aura (103320) on the Balloon Cart Bunny (55307), which should ride on the cart as a
+  second accessory; that second step does not follow the cart. **Changed:** the aura is on the
+  cart itself (55306 auras `96847 103320`), the bunny accessory row and the cart's spellclick row
+  are removed.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: concert in sync, Carl's cart, one cannon target, Shooting Gallery aim
 
 From Four's retest, 2026-11-06. World SQL `2026_11_06_12_darkmoon_concert_sync.sql`,
