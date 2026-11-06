@@ -229,7 +229,7 @@ index 7e4a359..017c4f2 100644
              player->TeleportTo(974, -4019.00f, 6286.58f, 12.49f, 1.39f);
  
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-index b65819e..81e05cc 100644
+index b65819e..6ff5fe6 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 @@ -28,6 +28,10 @@
@@ -408,7 +408,7 @@ index b65819e..81e05cc 100644
  
              player->KilledMonsterCredit(54495, ObjectGuid::Empty);
          }
-@@ -306,6 +395,141 @@ public:
+@@ -306,6 +395,149 @@ public:
      }
  };
  
@@ -448,25 +448,33 @@ index b65819e..81e05cc 100644
 +            if (!player || !IsFlyingFirebird(player))
 +                return;
 +
-+            // zrbfacore (2026-11-06 retest: rings came too close and some sat inside the
-+            // roller coaster): 35-50 yards ahead, at least 10 yards over the ground, and only
-+            // where the flight path and the ring's 5-yard circle are clear of buildings and
-+            // objects. Up to 8 tries; if every spot is blocked the ring goes straight ahead
-+            // and higher up.
++            // zrbfacore (2026-11-06 retests): rings came too close and some sat inside the roller
++            // coaster, then (35-50 yd out) some went out over the ocean. Rings now stay inside the
++            // area Four marked over the island (X -4454..-4144, Y 6151..6361), at a height of
++            // 104-115 (Four: "keep them above this height, but not much higher"), 50 yards
++            // from the player (Four: "rings should probably always appear 50 yards"), and only where the line from the player and the ring's 5-yard
++            // circle are clear of buildings and objects. The first tries go ahead of the player,
++            // later ones toward the middle of the area; up to 16 tries, else the middle.
 +            Map* map = player->GetMap();
 +            PhaseShift const& phase = player->GetPhaseShift();
++            float const minX = -4454.0f, maxX = -4144.0f, minY = 6151.0f, maxY = 6361.0f;
++            float const minZ = 104.0f, maxZ = 115.0f;
++            float const midX = (minX + maxX) / 2.0f, midY = (minY + maxY) / 2.0f;
 +            float px = player->GetPositionX(), py = player->GetPositionY(), pz = player->GetPositionZ();
 +            float x = 0.0f, y = 0.0f, z = 0.0f;
 +            bool found = false;
-+            for (uint8 i = 0; i < 8 && !found; ++i)
++            for (uint8 i = 0; i < 16 && !found; ++i)
 +            {
-+                float dist = frand(35.0f, 50.0f);
-+                float angle = player->GetOrientation() + frand(-0.5f, 0.5f);
++                float base = i < 8 ? player->GetOrientation() : std::atan2(midY - py, midX - px);
++                float angle = base + frand(-0.6f, 0.6f);
++                float dist = 50.0f;
 +                x = px + dist * std::cos(angle);
 +                y = py + dist * std::sin(angle);
-+                z = pz + frand(-4.0f, 8.0f);
++                if (x < minX || x > maxX || y < minY || y > maxY)
++                    continue;
 +
-+                float ground = map->GetHeight(phase, x, y, z + 50.0f, true, 100.0f);
++                z = frand(minZ, maxZ);
++                float ground = map->GetHeight(phase, x, y, z + 50.0f, true, 150.0f);
 +                if (z < ground + 10.0f)
 +                    z = ground + 10.0f;
 +
@@ -478,9 +486,9 @@ index b65819e..81e05cc 100644
 +
 +            if (!found)
 +            {
-+                x = px + 40.0f * std::cos(player->GetOrientation());
-+                y = py + 40.0f * std::sin(player->GetOrientation());
-+                z = std::max(pz + 10.0f, map->GetHeight(phase, x, y, pz + 60.0f, true, 120.0f) + 15.0f);
++                x = midX + frand(-40.0f, 40.0f);
++                y = midY + frand(-40.0f, 40.0f);
++                z = std::max(frand(minZ, maxZ), map->GetHeight(phase, x, y, maxZ + 50.0f, true, 150.0f) + 10.0f);
 +            }
 +
 +            player->CastSpell(x, y, z, SPELL_FIREBIRD_RING_AT, true);
@@ -550,7 +558,7 @@ index b65819e..81e05cc 100644
  enum DarkmoonFaireYells
  {
      // Selina
-@@ -507,6 +731,9 @@ public:
+@@ -507,6 +739,9 @@ public:
      }
  };
  
@@ -560,7 +568,7 @@ index b65819e..81e05cc 100644
  enum ShootGallery
  {
      EVENT_SHOOTGALLERY_START_GAME = 1,
-@@ -525,7 +752,9 @@ public:
+@@ -525,7 +760,9 @@ public:
  
      struct npc_rinlingAI : public ScriptedAI
      {
@@ -571,7 +579,7 @@ index b65819e..81e05cc 100644
  
          EventMap events;
  
-@@ -549,6 +778,14 @@ public:
+@@ -549,6 +786,14 @@ public:
          {
              events.Update(diff);
  
@@ -586,7 +594,7 @@ index b65819e..81e05cc 100644
              [[maybe_unused]] Map::PlayerList const& PlayerList = me->GetMap()->GetPlayers();
  
              while (uint32 eventId = events.ExecuteEvent())
-@@ -559,40 +796,62 @@ public:
+@@ -559,40 +804,62 @@ public:
                      switch (urand(0, 2))
                      {
                      case 0:
@@ -662,7 +670,7 @@ index b65819e..81e05cc 100644
      bool OnGossipHello(Player* player, Creature* creature) override
      {
          if (creature->IsQuestGiver())
-@@ -604,8 +863,8 @@ public:
+@@ -604,8 +871,8 @@ public:
          switch (player->GetSession()->GetSessionDbcLocale())
          {
          default:
@@ -673,7 +681,7 @@ index b65819e..81e05cc 100644
              break;
          };
  
-@@ -614,7 +873,7 @@ public:
+@@ -614,7 +881,7 @@ public:
          if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -682,7 +690,7 @@ index b65819e..81e05cc 100644
          return true;
      }
  
-@@ -627,9 +886,9 @@ public:
+@@ -627,9 +894,9 @@ public:
          switch (player->GetSession()->GetSessionDbcLocale())
          {
          default:
@@ -695,7 +703,7 @@ index b65819e..81e05cc 100644
              break;
          };
  
-@@ -638,7 +897,7 @@ public:
+@@ -638,7 +905,7 @@ public:
          if (action == GOSSIP_ACTION_INFO_DEF + 1)
          {
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
@@ -704,7 +712,7 @@ index b65819e..81e05cc 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 2)
-@@ -658,7 +917,11 @@ public:
+@@ -658,7 +925,11 @@ public:
                  return true;
              }
              else
@@ -717,7 +725,7 @@ index b65819e..81e05cc 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 3)
-@@ -671,7 +934,7 @@ public:
+@@ -671,7 +942,7 @@ public:
              if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
                  AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -726,7 +734,7 @@ index b65819e..81e05cc 100644
          }
  
          return true;
-@@ -983,8 +1246,12 @@ public:
+@@ -983,8 +1254,12 @@ public:
          {
              Player* player = GetCaster()->ToPlayer();
  
@@ -740,7 +748,7 @@ index b65819e..81e05cc 100644
                  player->KilledMonsterCredit(54231, ObjectGuid::Empty);
  
                  AchievementEntry const* AchievShooter = sAchievementStore.LookupEntry(6022);
-@@ -993,8 +1260,40 @@ public:
+@@ -993,8 +1268,40 @@ public:
              }
          }
  
@@ -781,7 +789,7 @@ index b65819e..81e05cc 100644
              AfterHit += SpellHitFn(spell_shoot_gallery_shoot_SpellScript::OnHit);
              OnCheckCast += SpellCheckCastFn(spell_shoot_gallery_shoot_SpellScript::CheckRequirement);
          }
-@@ -1006,6 +1305,95 @@ public:
+@@ -1006,6 +1313,95 @@ public:
      }
  };
  
@@ -877,7 +885,7 @@ index b65819e..81e05cc 100644
  void AddSC_darkmoon_island()
  {
      new playerscript_darkmoon_carousel();
-@@ -1013,6 +1401,10 @@ void AddSC_darkmoon_island()
+@@ -1013,6 +1409,10 @@ void AddSC_darkmoon_island()
      new npc_selina_dourman();
      new npc_rinling();
      new spell_ring_toss();

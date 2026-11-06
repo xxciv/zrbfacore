@@ -7,6 +7,20 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Firebird rings kept over the island
+
+From Four's retest, 2026-11-06. Updated `tools/bfa/darkmoon-faire-gossip.patch`
+(`DarkmoonIsland.cpp`). Rebuild, restart. No SQL.
+
+- **Confirmed:** Carl Goodup's cart spacing (hotfix seat 10236), Rinling's targets without names,
+  Firebird's height and quest.
+- **Firebird, found:** rings could go out over the ocean. **Changed:** rings stay inside the area
+  Four marked (X -4454 to -4144, Y 6151 to 6361), at a height of 104 to 115 (at least 10 over the
+  ground), always 50 yd from the player (Four's call), with the same clearance checks. The first
+  8 tries go ahead of the player, the next 8 toward the middle of the area; if all fail, the ring
+  goes near the middle.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Firebird rings further out, gallery names, Carl's cart spacing
 
 From Four's retest, 2026-11-06. World SQL `2026_11_06_16_darkmoon_gallery_unselectable.sql`,
