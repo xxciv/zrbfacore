@@ -19,7 +19,7 @@ From Four's retest, 2026-11-06. Updated `tools/bfa/darkmoon-faire-gossip.patch`
   ground), always 50 yd from the player (Four's call), with the same clearance checks. The first
   8 tries go ahead of the player, the next 8 toward the middle of the area; if all fail, the ring
   goes near the middle.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four, 2026-11-06 ("That was perfect").
 
 ### Darkmoon Faire: Firebird rings further out, gallery names, Carl's cart spacing
 
