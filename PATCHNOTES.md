@@ -32,8 +32,8 @@ out. I don't know what this is"). Updated `tools/bfa/darkmoon-faire-gossip.patch
   the event ... you remain inside the cannon".
 - **Changed:** Maxima now removes mounts (`SPELL_AURA_MOUNTED`) and shapeshift forms before putting
   you in the cannon.
-- **Status:** untested in game. That the three area auras draw the visible rings is a guess from
-  their names.
+- **Status:** the cannon game is confirmed in game by Four (2026-11-06, "otherwise, that worked").
+  The dismount fix is untested.
 
 ### Darkmoon Faire: NPC audit (gossip, flags, quests, vendors)
 
