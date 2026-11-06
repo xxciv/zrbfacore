@@ -229,7 +229,7 @@ index 7e4a359..017c4f2 100644
              player->TeleportTo(974, -4019.00f, 6286.58f, 12.49f, 1.39f);
  
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-index b65819e..6ff5fe6 100644
+index b65819e..73dcec1 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 @@ -28,6 +28,10 @@
@@ -789,7 +789,7 @@ index b65819e..6ff5fe6 100644
              AfterHit += SpellHitFn(spell_shoot_gallery_shoot_SpellScript::OnHit);
              OnCheckCast += SpellCheckCastFn(spell_shoot_gallery_shoot_SpellScript::CheckRequirement);
          }
-@@ -1006,6 +1313,95 @@ public:
+@@ -1006,6 +1313,139 @@ public:
      }
  };
  
@@ -882,10 +882,54 @@ index b65819e..6ff5fe6 100644
 +    }
 +};
 +
++// zrbfacore: Test Your Strength (29433) needs 250 Grisly Trophies (71096), and nothing gave
++// them (Four, 2026-11-06). On retail a trophy comes from each kill of an enemy that gives
++// experience or honor, while the player carries the Darkmoon Adventurer's Guide (71634) and
++// has the quest. Only the player's own killing blows count (the core has no kill hook for pets).
++enum GrislyTrophy
++{
++    QUEST_TEST_YOUR_STRENGTH       = 29433,
++    ITEM_GRISLY_TROPHY             = 71096,
++    ITEM_DARKMOON_ADVENTURERS_GUIDE = 71634,
++};
++
++class playerscript_darkmoon_grisly_trophy : public PlayerScript
++{
++public:
++    playerscript_darkmoon_grisly_trophy() : PlayerScript("playerscript_darkmoon_grisly_trophy") { }
++
++    static void TryGiveTrophy(Player* player, Unit* victim)
++    {
++        if (!player || !victim || victim == player)
++            return;
++
++        if (player->GetQuestStatus(QUEST_TEST_YOUR_STRENGTH) != QUEST_STATUS_INCOMPLETE)
++            return;
++
++        if (!player->HasItemCount(ITEM_DARKMOON_ADVENTURERS_GUIDE, 1, true))
++            return;
++
++        if (!player->isHonorOrXPTarget(victim))
++            return;
++
++        player->AddItem(ITEM_GRISLY_TROPHY, 1);
++    }
++
++    void OnCreatureKill(Player* killer, Creature* killed) override
++    {
++        TryGiveTrophy(killer, killed);
++    }
++
++    void OnPVPKill(Player* killer, Player* killed) override
++    {
++        TryGiveTrophy(killer, killed);
++    }
++};
++
  void AddSC_darkmoon_island()
  {
      new playerscript_darkmoon_carousel();
-@@ -1013,6 +1409,10 @@ void AddSC_darkmoon_island()
+@@ -1013,6 +1453,11 @@ void AddSC_darkmoon_island()
      new npc_selina_dourman();
      new npc_rinling();
      new spell_ring_toss();
@@ -893,6 +937,7 @@ index b65819e..6ff5fe6 100644
 +    new at_darkmoon_firebird_ring();
 +    new spell_darkmoon_firebird_blazing_ring();
 +    new npc_darkmoon_balloon_cart();
++    new playerscript_darkmoon_grisly_trophy();
      new item_darkmoon_faire_fireworks();
      new spell_darkmoon_carousel_whee();
      new spell_darkmoon_staging_area_teleport();

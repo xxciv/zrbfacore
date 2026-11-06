@@ -7,6 +7,27 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: four quests that could not be finished
+
+From Four's questions, 2026-11-06. World SQL `2026_11_06_17_darkmoon_quest_items.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`). Rebuild, run the SQL, restart.
+
+- **Test Your Strength (29433), found:** it needs 250 Grisly Trophies (71096) and nothing gave
+  them. On retail one comes from every kill of an enemy that gives experience or honor while you
+  carry the Darkmoon Adventurer's Guide (71634). **Changed:** `playerscript_darkmoon_grisly_trophy`
+  adds a trophy on each such kill (creature or player) while the quest is in progress and the
+  guide is in your bags. Only your own killing blows count; the core has no kill hook for pets.
+- **Spoilin' for Salty Sea Dogs (29513), found:** the Salty Sea Dog (73269) was in no fishing loot
+  and Darkmoon Island had no fishing loot at all (you got the default fish). **Changed:** fishing
+  loot for zone 5861: Salty Sea Dog, 30%, only while on the quest (Pandaria DB: 20.9%). Other
+  catches are the default fish as before.
+- **Tan My Hide (29519), found:** the Staked Skins (209276) were never placed. **Changed:** the 19
+  skins around the tents from the Pandaria DB, guids 974000003-974000021.
+- **Master Pit Fighter (29761), found:** Pit Fighter (74034) only comes from the Darkmoon Treasure
+  Chest (209620, 95%), which was never placed. **Changed:** one chest in the Deathmatch pit, back
+  2 hours after it is looted (Pandaria value), guid 974000022.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Firebird rings kept over the island
 
 From Four's retest, 2026-11-06. Updated `tools/bfa/darkmoon-faire-gossip.patch`
