@@ -7,6 +7,29 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Firebird rings keep coming, gallery names hidden, balloons raised
+
+From Four's retest, 2026-11-06. World SQL `2026_11_06_15_darkmoon_names_rings_balloons.sql`,
+updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`). Rebuild, run the SQL,
+restart, delete the client Cache folder.
+
+- **Confirmed:** Tonk Commander sends you back to where you started; Shooting Gallery is fast
+  enough for 25/25.
+- **Firebird's Challenge, found:** one ring came, it counted, then nothing. Wings of Flame
+  (170819) lasts 2.5 s and starts one 10 s flight (170820), which brings one ring. Each ring
+  caught casts Blazing Ring (170823); its script effect (effect 1) is what renews the flight, and
+  it had no script. **Changed:** `spell_darkmoon_firebird_blazing_ring` renews the flight (170820)
+  on each ring caught, which brings the next ring. Miss rings for 10 s and the flight ends.
+- **Shooting Gallery, found:** the empty name from `2026_11_06_14` did not hide the name.
+  **Changed:** the name is back and target 54231 has type_flags `0x40000000` (do not draw the
+  name) and `0x00100000` (no name plate).
+- **Carl Goodup, found:** the balloons on the cart itself sat at the cart's base. The cart's seat
+  (VehicleSeat 10237) is 1 yd up, which is where the Balloon Cart Bunny (55307) belongs.
+  **Changed:** the cart (55306) has a script, `npc_darkmoon_balloon_cart`, that seats the bunny
+  once the cart rides on Carl (up to 5 tries, 2 s apart); the bunny carries the balloons again
+  and the cart's aura is back to `96847`.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Tonk return point, faster Shooting Gallery, Carl's balloons
 
 From Four's retest, 2026-11-06. World SQL `2026_11_06_14_darkmoon_gallery_names_balloons.sql`,

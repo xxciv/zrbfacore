@@ -229,19 +229,21 @@ index 7e4a359..017c4f2 100644
              player->TeleportTo(974, -4019.00f, 6286.58f, 12.49f, 1.39f);
  
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-index b65819e..fcee36e 100644
+index b65819e..abff1f1 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-@@ -28,6 +28,8 @@
+@@ -28,6 +28,10 @@
  #include "GameObject.h"
  #include "Transport.h"
  #include "DarkmoonIsland.h"
++#include "Vehicle.h"
++#include "TemporarySummon.h"
 +#include "AreaTrigger.h"
 +#include "AreaTriggerAI.h"
  
  class playerscript_darkmoon_carousel : public PlayerScript
  {
-@@ -173,11 +175,89 @@ public:
+@@ -173,11 +177,89 @@ public:
  };
  
  // 54485 - Jessica Rogers
@@ -331,7 +333,7 @@ index b65819e..fcee36e 100644
      bool OnGossipHello(Player* player, Creature* creature) override
      {
          if (creature->IsQuestGiver())
-@@ -199,7 +279,7 @@ public:
+@@ -199,7 +281,7 @@ public:
          if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -340,7 +342,7 @@ index b65819e..fcee36e 100644
          return true;
      }
  
-@@ -214,7 +294,7 @@ public:
+@@ -214,7 +296,7 @@ public:
          default:
              GOSSIP_BUTTON_1 = "How do I play the Ring Toss?";
              GOSSIP_BUTTON_2 = "Ready to play! |cFF0000FF(Darkmoon Game Token)|r";
@@ -349,7 +351,7 @@ index b65819e..fcee36e 100644
              break;
          };
  
-@@ -223,7 +303,7 @@ public:
+@@ -223,7 +305,7 @@ public:
          if (action == GOSSIP_ACTION_INFO_DEF + 1)
          {
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
@@ -358,7 +360,7 @@ index b65819e..fcee36e 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 2)
-@@ -241,7 +321,11 @@ public:
+@@ -241,7 +323,11 @@ public:
                  return true;
              }
              else
@@ -371,7 +373,7 @@ index b65819e..fcee36e 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 3)
-@@ -254,7 +338,7 @@ public:
+@@ -254,7 +340,7 @@ public:
              if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
                  AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -380,7 +382,7 @@ index b65819e..fcee36e 100644
          }
  
          return true;
-@@ -279,16 +363,19 @@ public:
+@@ -279,16 +365,19 @@ public:
              return SPELL_CAST_OK;
          }
  
@@ -406,7 +408,7 @@ index b65819e..fcee36e 100644
  
              player->KilledMonsterCredit(54495, ObjectGuid::Empty);
          }
-@@ -306,6 +393,116 @@ public:
+@@ -306,6 +395,116 @@ public:
      }
  };
  
@@ -523,7 +525,7 @@ index b65819e..fcee36e 100644
  enum DarkmoonFaireYells
  {
      // Selina
-@@ -507,6 +704,9 @@ public:
+@@ -507,6 +706,9 @@ public:
      }
  };
  
@@ -533,7 +535,7 @@ index b65819e..fcee36e 100644
  enum ShootGallery
  {
      EVENT_SHOOTGALLERY_START_GAME = 1,
-@@ -525,7 +725,9 @@ public:
+@@ -525,7 +727,9 @@ public:
  
      struct npc_rinlingAI : public ScriptedAI
      {
@@ -544,7 +546,7 @@ index b65819e..fcee36e 100644
  
          EventMap events;
  
-@@ -549,6 +751,14 @@ public:
+@@ -549,6 +753,14 @@ public:
          {
              events.Update(diff);
  
@@ -559,7 +561,7 @@ index b65819e..fcee36e 100644
              [[maybe_unused]] Map::PlayerList const& PlayerList = me->GetMap()->GetPlayers();
  
              while (uint32 eventId = events.ExecuteEvent())
-@@ -559,40 +769,62 @@ public:
+@@ -559,40 +771,62 @@ public:
                      switch (urand(0, 2))
                      {
                      case 0:
@@ -635,7 +637,7 @@ index b65819e..fcee36e 100644
      bool OnGossipHello(Player* player, Creature* creature) override
      {
          if (creature->IsQuestGiver())
-@@ -604,8 +836,8 @@ public:
+@@ -604,8 +838,8 @@ public:
          switch (player->GetSession()->GetSessionDbcLocale())
          {
          default:
@@ -646,7 +648,7 @@ index b65819e..fcee36e 100644
              break;
          };
  
-@@ -614,7 +846,7 @@ public:
+@@ -614,7 +848,7 @@ public:
          if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -655,7 +657,7 @@ index b65819e..fcee36e 100644
          return true;
      }
  
-@@ -627,9 +859,9 @@ public:
+@@ -627,9 +861,9 @@ public:
          switch (player->GetSession()->GetSessionDbcLocale())
          {
          default:
@@ -668,7 +670,7 @@ index b65819e..fcee36e 100644
              break;
          };
  
-@@ -638,7 +870,7 @@ public:
+@@ -638,7 +872,7 @@ public:
          if (action == GOSSIP_ACTION_INFO_DEF + 1)
          {
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
@@ -677,7 +679,7 @@ index b65819e..fcee36e 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 2)
-@@ -658,7 +890,11 @@ public:
+@@ -658,7 +892,11 @@ public:
                  return true;
              }
              else
@@ -690,7 +692,7 @@ index b65819e..fcee36e 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 3)
-@@ -671,7 +907,7 @@ public:
+@@ -671,7 +909,7 @@ public:
              if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
                  AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -699,7 +701,7 @@ index b65819e..fcee36e 100644
          }
  
          return true;
-@@ -983,8 +1219,12 @@ public:
+@@ -983,8 +1221,12 @@ public:
          {
              Player* player = GetCaster()->ToPlayer();
  
@@ -713,7 +715,7 @@ index b65819e..fcee36e 100644
                  player->KilledMonsterCredit(54231, ObjectGuid::Empty);
  
                  AchievementEntry const* AchievShooter = sAchievementStore.LookupEntry(6022);
-@@ -993,8 +1233,40 @@ public:
+@@ -993,8 +1235,40 @@ public:
              }
          }
  
@@ -754,12 +756,110 @@ index b65819e..fcee36e 100644
              AfterHit += SpellHitFn(spell_shoot_gallery_shoot_SpellScript::OnHit);
              OnCheckCast += SpellCheckCastFn(spell_shoot_gallery_shoot_SpellScript::CheckRequirement);
          }
-@@ -1013,6 +1285,8 @@ void AddSC_darkmoon_island()
+@@ -1006,6 +1280,95 @@ public:
+     }
+ };
+ 
++// zrbfacore: Firebird's Challenge gave one ring and then nothing (Four, 2026-11-06). Wings of
++// Flame (170819) lasts 2.5 s and starts the flight (170820, 10 s), which brings one ring.
++// Each ring caught casts Blazing Ring (170823), whose script effect had no script: it is
++// what keeps the flight going. It now renews the flight, which brings the next ring.
++class spell_darkmoon_firebird_blazing_ring : public SpellScriptLoader
++{
++public:
++    spell_darkmoon_firebird_blazing_ring() : SpellScriptLoader("spell_darkmoon_firebird_blazing_ring") { }
++
++    class spell_darkmoon_firebird_blazing_ring_SpellScript : public SpellScript
++    {
++        PrepareSpellScript(spell_darkmoon_firebird_blazing_ring_SpellScript);
++
++        void HandleScript(SpellEffIndex /*effIndex*/)
++        {
++            Unit* target = GetHitUnit();
++            if (!target || !IsFlyingFirebird(target))
++                return;
++
++            target->CastSpell(target, SPELL_FIREBIRD_WINGS_PERIODIC, true);
++        }
++
++        void Register() override
++        {
++            OnEffectHitTarget += SpellEffectFn(spell_darkmoon_firebird_blazing_ring_SpellScript::HandleScript, EFFECT_1, SPELL_EFFECT_SCRIPT_EFFECT);
++        }
++    };
++
++    SpellScript* GetSpellScript() const override
++    {
++        return new spell_darkmoon_firebird_blazing_ring_SpellScript();
++    }
++};
++
++// zrbfacore: Carl Goodup's Balloon Cart (55306). The balloons are the Balloon Cart Bunny
++// (55307) sitting in the cart's seat (1 yard up). Loaded the normal way, the bunny boarded
++// the cart before the cart was on Carl and stayed behind when Carl walked off (Four,
++// 2026-11-06). The cart now seats the bunny itself once it is riding on Carl.
++enum BalloonCart
++{
++    NPC_BALLOON_CART_BUNNY = 55307,
++};
++
++class npc_darkmoon_balloon_cart : public CreatureScript
++{
++public:
++    npc_darkmoon_balloon_cart() : CreatureScript("npc_darkmoon_balloon_cart") { }
++
++    struct npc_darkmoon_balloon_cartAI : public ScriptedAI
++    {
++        npc_darkmoon_balloon_cartAI(Creature* creature) : ScriptedAI(creature), _checkTimer(1000), _tries(0) { }
++
++        void UpdateAI(uint32 diff) override
++        {
++            if (_tries >= 5)
++                return;
++
++            if (_checkTimer > diff)
++            {
++                _checkTimer -= diff;
++                return;
++            }
++            _checkTimer = 2000;
++
++            Vehicle* kit = me->GetVehicleKit();
++            if (!kit || !me->GetVehicle())
++                return; // wait until the cart rides on Carl
++
++            if (kit->GetPassenger(0))
++            {
++                _tries = 5; // balloons are on
++                return;
++            }
++
++            ++_tries;
++            kit->InstallAccessory(NPC_BALLOON_CART_BUNNY, 0, true, TEMPSUMMON_MANUAL_DESPAWN, 0);
++        }
++
++    private:
++        uint32 _checkTimer;
++        uint8 _tries;
++    };
++
++    CreatureAI* GetAI(Creature* creature) const override
++    {
++        return new npc_darkmoon_balloon_cartAI(creature);
++    }
++};
++
+ void AddSC_darkmoon_island()
+ {
+     new playerscript_darkmoon_carousel();
+@@ -1013,6 +1376,10 @@ void AddSC_darkmoon_island()
      new npc_selina_dourman();
      new npc_rinling();
      new spell_ring_toss();
 +    new spell_darkmoon_firebird_summon_rings();
 +    new at_darkmoon_firebird_ring();
++    new spell_darkmoon_firebird_blazing_ring();
++    new npc_darkmoon_balloon_cart();
      new item_darkmoon_faire_fireworks();
      new spell_darkmoon_carousel_whee();
      new spell_darkmoon_staging_area_teleport();
