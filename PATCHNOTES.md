@@ -7,6 +7,38 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Tauren Chieftains, Carl Goodup's cart, Tonk enemies fire back
+
+From Four, 2026-11-06. World SQL `2026_11_06_09_darkmoon_tauren_chieftains.sql`,
+`2026_11_06_10_darkmoon_balloon_cart.sql`, `2026_11_06_11_darkmoon_tonk_cannonballs.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonTonk.cpp`). Rebuild, run the SQL, restart.
+
+- **Tauren Chieftains, found:** the band (Bergrisst 23619, Chief Thunder-Skins 23623, Mai'Kyl
+  23624, Samuro 23625, Sig Nicious 23626) plays a ~280 s show of one-shot timed SAI events. It ran
+  once after a restart; at 280.8 s they all cast Greater Invisibility (16380) and nothing brought
+  them back. Each member's first event casts 89344, labelled "Clear Target Auras" but in 8.3.7
+  89344 is "Armor" (an aura with a sound); Bergrisst's copy repeated every second, so it played
+  constantly and kept him visible.
+- **Changed:** every timed event repeats every 300 s (the show loops with a 20 s break), and the
+  89344 casts now remove Greater Invisibility instead, so each member comes back at their
+  entrance flare.
+- **Not known:** where the concert music comes from. No row in the DB plays a sound; it may be the
+  stage's area music in the client.
+- **Carl Goodup, found:** Carl (55305, vehicle 1769) should carry the Balloon Cart (55306, vehicle
+  1770), which carries the Balloon Cart Bunny (55307, the balloons). The dump had no vehicle
+  accessories for them (the Pandaria 5.4.8 DB does), so the cart stood alone and could be
+  clicked, and the balloons wandered by themselves.
+- **Changed:** `vehicle_template_accessory` 55305 -> 55306 -> 55307 (seat 0), the separate cart
+  and bunny spawns (guids 1400353, 1400354) removed, the cart not selectable, Carl wanders up to
+  5 yd (Pandaria DB value).
+- **Tonk Commander, changed (Four's choice):** every Enemy Tonk (54642) and MiniZep (54643) has a
+  25% chance every 3-4 s to fire Cannon Blast (102227) at the nearest player tonk within 40 yd.
+  The cannonball lands where the tonk was (it flies at 6 yd/s, so it can be dodged).
+  `spell_darkmoon_enemy_tonk_cannon_blast` stuns a tonk within 4 yd of the landing spot for 2 s
+  (Death Stun 102229) and takes 1 Tonk Target credit off its driver (quest 29434, only while
+  the quest is incomplete).
+- **Status:** untested in game.
+
 ### Darkmoon Faire: retest fixes (Firebird, Ring Toss, Shooting Gallery, Tonk Commander)
 
 From Four's retest, 2026-11-06. World SQL `sql/fixes/world/2026_11_06_08_darkmoon_game_targets.sql`,

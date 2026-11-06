@@ -716,10 +716,19 @@ index b65819e..64afae1 100644
      new spell_darkmoon_carousel_whee();
      new spell_darkmoon_staging_area_teleport();
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
-index e90fb3a..d9036fb 100644
+index e90fb3a..a589902 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
-@@ -266,12 +266,35 @@ public:
+@@ -26,6 +26,8 @@
+ #include "ScriptedGossip.h"
+ #include "MotionMaster.h"
+ #include <G3D/Quat.h>
++#include "Vehicle.h"
++#include "ObjectMgr.h"
+ 
+ enum eSpells
+ {
+@@ -266,12 +268,35 @@ public:
                      events.ScheduleEvent(EVENT_TONKCOMMANDER_START_GAME_3, 5000);
                      break;
                  case EVENT_TONKCOMMANDER_FINISH_GAME:
@@ -755,7 +764,7 @@ index e90fb3a..d9036fb 100644
              }
          }
      };
-@@ -297,7 +320,7 @@ public:
+@@ -297,7 +322,7 @@ public:
          if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -764,7 +773,7 @@ index e90fb3a..d9036fb 100644
          return true;
      }
  
-@@ -312,7 +335,7 @@ public:
+@@ -312,7 +337,7 @@ public:
          default:
              GOSSIP_BUTTON_1 = "How do I play the Tonk Challenge?";
              GOSSIP_BUTTON_2 = "Ready to play! |cFF0000FF(Darkmoon Game Token)|r";
@@ -773,7 +782,7 @@ index e90fb3a..d9036fb 100644
              break;
          };
  
-@@ -321,7 +344,7 @@ public:
+@@ -321,7 +346,7 @@ public:
          if (action == GOSSIP_ACTION_INFO_DEF + 1)
          {
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
@@ -782,7 +791,7 @@ index e90fb3a..d9036fb 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 2)
-@@ -345,7 +368,11 @@ public:
+@@ -345,7 +370,11 @@ public:
                  return true;
              }
              else
@@ -795,7 +804,7 @@ index e90fb3a..d9036fb 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 3)
-@@ -358,15 +385,58 @@ public:
+@@ -358,15 +387,129 @@ public:
              if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
                  AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -849,8 +858,79 @@ index e90fb3a..d9036fb 100644
 +    }
 +};
 +
++// zrbfacore: Enemy Tonks and MiniZeps fire Cannon Blast (102227) at the player's tonk (SAI:
++// 25% chance every 3-4 s). The cannonball lands where the tonk was (6 yd/s, so it can be
++// dodged); a tonk within 4 yd of the landing spot is stunned for 2 s and its driver loses
++// 1 Tonk Target credit (quest 29434) while the quest is not complete yet.
++class spell_darkmoon_enemy_tonk_cannon_blast : public SpellScriptLoader
++{
++public:
++    spell_darkmoon_enemy_tonk_cannon_blast() : SpellScriptLoader("spell_darkmoon_enemy_tonk_cannon_blast") { }
++
++    class spell_darkmoon_enemy_tonk_cannon_blast_SpellScript : public SpellScript
++    {
++        PrepareSpellScript(spell_darkmoon_enemy_tonk_cannon_blast_SpellScript);
++
++        void HandleHit(SpellEffIndex /*effIndex*/)
++        {
++            Unit* caster = GetCaster();
++            WorldLocation const* dest = GetHitDest();
++            if (!caster || !dest)
++                return;
++
++            std::list<Creature*> tonks;
++            caster->GetCreatureListWithEntryInGrid(tonks, 54588, 80.0f);
++            for (Creature* tonk : tonks)
++            {
++                if (!tonk->IsAlive() || tonk->GetExactDist2d(dest) > 4.0f)
++                    continue;
++
++                if (Aura* stun = tonk->AddAura(102229, tonk))
++                {
++                    stun->SetMaxDuration(2000);
++                    stun->SetDuration(2000);
++                }
++
++                Vehicle* kit = tonk->GetVehicleKit();
++                if (!kit)
++                    continue;
++
++                for (int8 seat = 0; seat < MAX_VEHICLE_SEATS; ++seat)
++                {
++                    Unit* passenger = kit->GetPassenger(seat);
++                    Player* player = passenger ? passenger->ToPlayer() : nullptr;
++                    if (!player || player->GetQuestStatus(29434) != QUEST_STATUS_INCOMPLETE)
++                        continue;
++
++                    if (Quest const* quest = sObjectMgr->GetQuestTemplate(29434))
++                        for (QuestObjective const& objective : quest->GetObjectives())
++                        {
++                            int32 count = player->GetQuestObjectiveData(quest, objective.StorageIndex);
++                            if (objective.ObjectID == 33081 && count > 0)
++                            {
++                                player->SetQuestObjectiveData(objective, count - 1);
++                                player->SendQuestUpdate(29434);
++                            }
++                        }
++                }
++            }
++        }
++
++        void Register() override
++        {
++            OnEffectHit += SpellEffectFn(spell_darkmoon_enemy_tonk_cannon_blast_SpellScript::HandleHit, EFFECT_0, SPELL_EFFECT_TRANS_DOOR);
++        }
++    };
++
++    SpellScript* GetSpellScript() const override
++    {
++        return new spell_darkmoon_enemy_tonk_cannon_blast_SpellScript();
++    }
++};
++
  void AddSC_darkmoon_tonk()
  {
++    new spell_darkmoon_enemy_tonk_cannon_blast();
 +    new spell_darkmoon_tonk_cannon();
      //npc
      new npc_finlay_coolshot();
