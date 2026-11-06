@@ -60,7 +60,7 @@ and restart. No rebuild.
   spawn/reset and attack a hostile player that comes within 5 yd (SAI out-of-combat LOS, max 5,
   1 s cooldown; condition: invoker is a player, so they don't start on each other). They still
   fight back when attacked.
-- **Status:** untested in game.
+- **Status:** Horde Citizens confirmed in game by Four, 2026-11-06; Champions untested.
 
 ### Darkmoon Faire: Firebird's Challenge (Ziggie Sparks)
 
@@ -142,7 +142,7 @@ run the SQL, restart.
     left the Shooting Gallery. Game over!").
   - World SQL `sql/fixes/world/2026_11_06_04_darkmoon_dubenko_wanders.sql`: Dubenko wanders up to
     3 yd from his spot (MovementType 1, spawndist 3; template MovementType 0).
-- **Status:** untested in game.
+- **Status:** leaving the booth and Dubenko's wandering confirmed in game by Four, 2026-11-06.
 
 ### Darkmoon Faire: Humanoid Cannonball (Maxima Blastenheimer)
 
