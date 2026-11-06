@@ -28,6 +28,10 @@ out. I don't know what this is"). Updated `tools/bfa/darkmoon-faire-gossip.patch
   on land and no longer falling (after 2 s), they get their score and lose Cannon Blast and Magic
   Wings. A landing more than 30 yards out ends the shot with a whisper ("You missed the target! Use
   Cancel Magic Wings when you are over it.") and no points.
+- **Found (Four, 2026-11-06):** "Speaking to maxima and saying you're ready while mounted locks up
+  the event ... you remain inside the cannon".
+- **Changed:** Maxima now removes mounts (`SPELL_AURA_MOUNTED`) and shapeshift forms before putting
+  you in the cannon.
 - **Status:** untested in game. That the three area auras draw the visible rings is a guess from
   their names.
 

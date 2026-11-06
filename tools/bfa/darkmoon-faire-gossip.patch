@@ -1,5 +1,5 @@
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
-index 7e4a359..168e7ff 100644
+index 7e4a359..017c4f2 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
 @@ -19,6 +19,7 @@
@@ -10,7 +10,7 @@ index 7e4a359..168e7ff 100644
  
  enum eSpells
  {
-@@ -46,18 +47,35 @@ class npc_canon_maxima : public CreatureScript
+@@ -46,24 +47,47 @@ class npc_canon_maxima : public CreatureScript
              if (creature->IsQuestGiver())
                  player->PrepareQuestMenu(creature->GetGUID());
  
@@ -50,7 +50,19 @@ index 7e4a359..168e7ff 100644
                  CloseGossipMenuFor(player);
                  return true;
              }
-@@ -83,54 +101,106 @@ class npc_darkmoon_canon_target : public CreatureScript
+ 
+             player->DestroyItemCount(ITEM_DARKMOON_TOKEN, 1, true);
+ 
++            // zrbfacore: a mounted (or shapeshifted) player stayed stuck in the cannon:
++            // Cannon Prep never fired them. Take them off the mount first (Four, 2026-11-06).
++            player->RemoveAurasByType(SPELL_AURA_MOUNTED);
++            player->RemoveAurasByType(SPELL_AURA_MOD_SHAPESHIFT);
++            player->Dismount();
++
+             player->NearTeleportTo(-4018.15f, 6299.57f, 13.11f, 3.31f, true);
+             player->CastSpell(player, SPELL_CANON_PREPARATION, false);
+             player->CastSpell(player, SPELL_ROOT, false);
+@@ -83,54 +107,106 @@ class npc_darkmoon_canon_target : public CreatureScript
              return new npc_darkmoon_canon_targetAI(pCreature);
          }
  
@@ -93,8 +105,7 @@ index 7e4a359..168e7ff 100644
 +            {
 +                if (player->IsInWater())
 +                    return true;
- 
--                for (auto player: playerList)
++
 +                // On land: give the launch two seconds before trusting "not falling".
 +                if (Aura const* blast = player->GetAura(SPELL_CANON_DEFLAGRATION))
 +                    if (time(nullptr) - blast->GetApplyTime() < 2)
@@ -119,6 +130,26 @@ index 7e4a359..168e7ff 100644
 +                    creditCount = 5;
 +                }
 +                else if (dist <= 10.0f)
++                {
++                    me->AddAura(SPELL_TARGET_NEAR, player);
++                    creditCount = 3;
++                }
++                else if (dist <= 30.0f)
++                {
++                    me->AddAura(SPELL_TARGET_MISS, player);
++                    creditCount = 1;
++                }
++                else
++                    me->Whisper("You missed the target! Use Cancel Magic Wings when you are over it.", LANG_UNIVERSAL, player);
+ 
+-                for (auto player: playerList)
++                for (uint8 i = 0; i < creditCount; ++i)
++                    player->CastSpell(player, SPELL_TARGET_CREDIT, true);
++            }
++
++            void UpdateAI(uint32 diff) override
++            {
++                if (ringTimer <= diff)
                  {
 -                    if (player->GetPositionZ() > 0.0f)
 -                        continue;
@@ -148,28 +179,9 @@ index 7e4a359..168e7ff 100644
 -
 -                    for (uint8 i = 0; i < creditCount; ++i)
 -                        player->CastSpell(player, SPELL_TARGET_CREDIT, false);
-+                    me->AddAura(SPELL_TARGET_NEAR, player);
-+                    creditCount = 3;
-                 }
-+                else if (dist <= 30.0f)
-+                {
-+                    me->AddAura(SPELL_TARGET_MISS, player);
-+                    creditCount = 1;
-+                }
-+                else
-+                    me->Whisper("You missed the target! Use Cancel Magic Wings when you are over it.", LANG_UNIVERSAL, player);
-+
-+                for (uint8 i = 0; i < creditCount; ++i)
-+                    player->CastSpell(player, SPELL_TARGET_CREDIT, true);
-+            }
-+
-+            void UpdateAI(uint32 diff) override
-+            {
-+                if (ringTimer <= diff)
-+                {
 +                    KeepRingsUp();
 +                    ringTimer = 5 * IN_MILLISECONDS;
-+                }
+                 }
 +                else
 +                    ringTimer -= diff;
 +
@@ -191,7 +203,7 @@ index 7e4a359..168e7ff 100644
              }
          };
  };
-@@ -145,8 +215,8 @@ class npc_canon_fozlebub : public CreatureScript
+@@ -145,8 +221,8 @@ class npc_canon_fozlebub : public CreatureScript
              if (creature->IsQuestGiver())
                  player->PrepareQuestMenu(creature->GetGUID());
  
@@ -202,7 +214,7 @@ index 7e4a359..168e7ff 100644
  
              player->PlayerTalkClass->SendGossipMenu(player->GetGossipTextId(creature), creature->GetGUID());
              return true;
-@@ -154,6 +224,13 @@ class npc_canon_fozlebub : public CreatureScript
+@@ -154,6 +230,13 @@ class npc_canon_fozlebub : public CreatureScript
  
          bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 /*action*/) override
          {
