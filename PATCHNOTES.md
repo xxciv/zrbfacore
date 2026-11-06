@@ -7,6 +7,29 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Firebird's Challenge (Ziggie Sparks)
+
+From Four, 2026-11-06 ("Ziggie Sparks, Firebird challenge, no rings"). World SQL
+`sql/fixes/world/2026_11_06_05_darkmoon_firebird_rings.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`). Rebuild, run the SQL, restart.
+
+- **Found:** "Ready to fly!" casts Wings of Flame (170819), which re-casts 170820 every 2.5 s
+  (flight, flight speed) and with it Summon Rings (170817). 170817 is a script effect with no
+  script, so nothing was summoned. The ring spell (170815) creates areatrigger misc 3069, which had
+  no `spell_areatrigger` / `areatrigger_template` rows. The quest needs 15 Darkmoon Faire Ring
+  Credit (85559), given by Blazing Ring (170823).
+- **Changed:**
+  - `spell_darkmoon_firebird_summon_rings` (170817): while you have Wings of Flame, puts a ring
+    (170815) 20-30 yd ahead of you (up to about 35 degrees to either side, 6 yd below to 8 yd
+    above you, never closer than 6 yd to the ground).
+  - `at_darkmoon_firebird_ring` (areatrigger 3069, 5 yd sphere): flying through your own ring
+    casts Blazing Ring (170823, 1 credit) and removes the ring. Rings you miss fade after 15 s.
+  - SQL: `spell_script_names` row for 170817, `areatrigger_template` 3069 and `spell_areatrigger`
+    3069 -> 3069 (id 3069 was unused).
+- **Not known:** whether the client draws the ring from 170815's own visual; if you can fly
+  through invisible rings and get credit, the visual is the remaining gap.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Tonk Commander (Finlay Coolshot)
 
 From Four, 2026-11-06 ("Tonk doesn't attack or kill anything, player returns as the tonk on the
