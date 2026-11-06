@@ -7,6 +7,30 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Humanoid Cannonball (Maxima Blastenheimer)
+
+From Four, 2026-11-05 ("It flings you out towards the ocean ... you finally splash down much further
+out. I don't know what this is"). Updated `tools/bfa/darkmoon-faire-gossip.patch`
+(`DarkmoonCanon.cpp`, target bunny script `npc_darkmoon_canon_target`). Rebuild, restart.
+
+- **How the game works (retail):** Maxima fires you from the cannon toward a target floating in the
+  water to the south-west (bunny 33068 at -4478, 6221). Magic Wings (102116) slows your fall, so you
+  glide well past the target unless you press the one button on your bar, Cancel Magic Wings
+  (102120), while you are over it. Landing within 3 yards = Bullseye (5 points, achievement
+  Blastenheimer Bullseye), 10 yards = Great Shot (3), 30 yards = Poor Shot (1). The quest (29436)
+  needs 5 points.
+- **Found:** the target bunny only checked players within 30 yards that had sunk below z 0. A long
+  shot (the normal result without the button) never ended: no result, and the Cannon Blast override
+  bar (102121) stayed. The bunny never put up its target rings (Darkmoon Cannon Target Area Aura
+  A/B/C, 62171/62174/62178), so there was nothing to aim at.
+- **Changed:** the bunny keeps the three target-area auras up (rechecked every 5 s) and stays
+  loaded. Every 0.2 s it checks every launched player on the island: once they are in the water, or
+  on land and no longer falling (after 2 s), they get their score and lose Cannon Blast and Magic
+  Wings. A landing more than 30 yards out ends the shot with a whisper ("You missed the target! Use
+  Cancel Magic Wings when you are over it.") and no points.
+- **Status:** untested in game. That the three area auras draw the visible rings is a guess from
+  their names.
+
 ### Darkmoon Faire: NPC audit (gossip, flags, quests, vendors)
 
 From Four, 2026-11-06 ("review every quest giver and merchant, make sure they're flags are

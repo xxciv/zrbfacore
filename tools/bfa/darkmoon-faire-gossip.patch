@@ -1,8 +1,16 @@
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
-index 7e4a359..911c4dc 100644
+index 7e4a359..168e7ff 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
-@@ -46,18 +46,35 @@ class npc_canon_maxima : public CreatureScript
+@@ -19,6 +19,7 @@
+ #include "ScriptMgr.h"
+ #include "ScriptedGossip.h"
+ #include "DarkmoonIsland.h"
++#include "SpellAuras.h"
+ 
+ enum eSpells
+ {
+@@ -46,18 +47,35 @@ class npc_canon_maxima : public CreatureScript
              if (creature->IsQuestGiver())
                  player->PrepareQuestMenu(creature->GetGUID());
  
@@ -42,7 +50,148 @@ index 7e4a359..911c4dc 100644
                  CloseGossipMenuFor(player);
                  return true;
              }
-@@ -145,8 +162,8 @@ class npc_canon_fozlebub : public CreatureScript
+@@ -83,54 +101,106 @@ class npc_darkmoon_canon_target : public CreatureScript
+             return new npc_darkmoon_canon_targetAI(pCreature);
+         }
+ 
++        // zrbfacore: the target bunny (33068) floats on the water south-west of the
++        // cannon. The old AI only looked for players within 30 yards that had sunk
++        // below z 0, so a shot that went long (the usual case without "Cancel Magic
++        // Wings") never ended: the override bar stayed, no result, no rings on the
++        // water (Four, 2026-11-05). Now the bunny keeps its three target rings up
++        // (62171/62174/62178, persistent area auras), and any launched player who
++        // lands, in the water or on land, gets a result and loses the cannon auras.
+         struct npc_darkmoon_canon_targetAI : ScriptedAI
+         {
+             npc_darkmoon_canon_targetAI(Creature* pCreature) : ScriptedAI(pCreature)
+             {}
+ 
++            uint32 ringTimer = 0;
++            uint32 checkTimer = 0;
++
+             void Reset() override
+             {
++                ringTimer = 0;
++                checkTimer = 0;
++                // Keep this grid loaded so a long shot is still scored.
++                me->setActive(true);
+             }
+ 
+-            void UpdateAI(uint32 /*diff*/) override
++            void KeepRingsUp()
+             {
+-                std::list<Player*> playerList;
+-                me->GetPlayerListInGrid(playerList, 30.0f);
++                for (uint32 spellId : { 62171u, 62174u, 62178u })
++                    if (!me->GetDynObject(spellId))
++                        me->CastSpell(me, spellId, true);
++            }
+ 
+-                if (playerList.empty())
+-                    return;
++            static bool HasLanded(Player* player)
++            {
++                if (player->IsInWater())
++                    return true;
+ 
+-                for (auto player: playerList)
++                // On land: give the launch two seconds before trusting "not falling".
++                if (Aura const* blast = player->GetAura(SPELL_CANON_DEFLAGRATION))
++                    if (time(nullptr) - blast->GetApplyTime() < 2)
++                        return false;
++
++                return !player->IsFalling();
++            }
++
++            void Score(Player* player)
++            {
++                player->RemoveAurasDueToSpell(SPELL_CANON_DEFLAGRATION);
++                player->RemoveAurasDueToSpell(SPELL_MAGIC_WINGS);
++
++                float dist = me->GetExactDist2d(player);
++                uint32 creditCount = 0;
++
++                if (dist <= 3.0f)
++                {
++                    if (AchievementEntry const* achievementEntry = sAchievementStore.LookupEntry(ACHIEVEMENT_BLASTENHEIMER_BULLSEYE))
++                        player->CompletedAchievement(achievementEntry);
++                    me->AddAura(SPELL_TARGET_CENTER, player);
++                    creditCount = 5;
++                }
++                else if (dist <= 10.0f)
+                 {
+-                    if (player->GetPositionZ() > 0.0f)
+-                        continue;
+-
+-                    if (!player->HasAura(SPELL_CANON_DEFLAGRATION))
+-                        continue;
+-
+-                    player->RemoveAurasDueToSpell(SPELL_CANON_DEFLAGRATION);
+-
+-                    uint32 dist = me->GetDistance(player);
+-                    uint32 creditCount = 1;
+-
+-                    if (dist <= 3.0f)
+-                    {
+-                        if (AchievementEntry const* achievementEntry = sAchievementStore.LookupEntry(ACHIEVEMENT_BLASTENHEIMER_BULLSEYE))
+-                            player->CompletedAchievement(achievementEntry);
+-                        me->AddAura(SPELL_TARGET_CENTER, player);
+-                        creditCount = 5;
+-                    }
+-                    else if (dist <= 10.0f)
+-                    {
+-                        me->AddAura(SPELL_TARGET_NEAR, player);
+-                        creditCount = 3;
+-                    }
+-                    else
+-                        me->AddAura(SPELL_TARGET_MISS, player);
+-
+-                    for (uint8 i = 0; i < creditCount; ++i)
+-                        player->CastSpell(player, SPELL_TARGET_CREDIT, false);
++                    me->AddAura(SPELL_TARGET_NEAR, player);
++                    creditCount = 3;
+                 }
++                else if (dist <= 30.0f)
++                {
++                    me->AddAura(SPELL_TARGET_MISS, player);
++                    creditCount = 1;
++                }
++                else
++                    me->Whisper("You missed the target! Use Cancel Magic Wings when you are over it.", LANG_UNIVERSAL, player);
++
++                for (uint8 i = 0; i < creditCount; ++i)
++                    player->CastSpell(player, SPELL_TARGET_CREDIT, true);
++            }
++
++            void UpdateAI(uint32 diff) override
++            {
++                if (ringTimer <= diff)
++                {
++                    KeepRingsUp();
++                    ringTimer = 5 * IN_MILLISECONDS;
++                }
++                else
++                    ringTimer -= diff;
++
++                if (checkTimer > diff)
++                {
++                    checkTimer -= diff;
++                    return;
++                }
++                checkTimer = 200;
++
++                std::list<Player*> landed;
++                for (auto const& ref : me->GetMap()->GetPlayers())
++                    if (Player* player = ref.GetSource())
++                        if (player->IsAlive() && player->HasAura(SPELL_CANON_DEFLAGRATION) && HasLanded(player))
++                            landed.push_back(player);
++
++                for (Player* player : landed)
++                    Score(player);
+             }
+         };
+ };
+@@ -145,8 +215,8 @@ class npc_canon_fozlebub : public CreatureScript
              if (creature->IsQuestGiver())
                  player->PrepareQuestMenu(creature->GetGUID());
  
@@ -53,7 +202,7 @@ index 7e4a359..911c4dc 100644
  
              player->PlayerTalkClass->SendGossipMenu(player->GetGossipTextId(creature), creature->GetGUID());
              return true;
-@@ -154,6 +171,13 @@ class npc_canon_fozlebub : public CreatureScript
+@@ -154,6 +224,13 @@ class npc_canon_fozlebub : public CreatureScript
  
          bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 /*action*/) override
          {
