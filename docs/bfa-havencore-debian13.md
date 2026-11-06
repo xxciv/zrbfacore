@@ -723,6 +723,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_06_00_darkmoon_faire_npc_audit.sql` | Darkmoon Faire NPC audit: missing gossip texts (Silas, Jessica Rogers, Mola, game instructions), Ziggie Sparks menu, Christoph VonFeasel gossip flag, deprecated Chronos quest removed, old Terokkar Faire spawns removed (copies kept in `zr_dmf_terokkar_*`) |
 | `2026_11_06_01_darkmoon_ring_toss.sql` | Darkmoon Faire Ring Toss: rings only hit Dubenko the turtle; his duplicate SAI credit removed |
 | `2026_11_06_02_darkmoon_booth_spell_focus.sql` | Darkmoon Faire Ring Toss and Shooting Gallery: spawns the booth spell focus objects the game spells require |
+| `2026_11_06_03_darkmoon_tonk_commander.sql` | Darkmoon Faire Tonk Commander: tonk cannon targets, quest credit for targets and enemy tonks, enemy tonks stay passive and respawn in 10 s |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030).
 

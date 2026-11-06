@@ -7,6 +7,31 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Tonk Commander (Finlay Coolshot)
+
+From Four, 2026-11-06 ("Tonk doesn't attack or kill anything, player returns as the tonk on the
+battlefield at the end. Enemy tonks leave the arena."). World SQL
+`sql/fixes/world/2026_11_06_03_darkmoon_tonk_commander.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonTonk.cpp`). Rebuild, run the SQL, restart.
+
+- **Found:**
+  - The steam tonk's Cannon (102292) picks targets by entry in a cone and had no target
+    conditions, so it hit nothing.
+  - A Tonk Target (33081, the quest's credit, 30 needed) only despawned when shot; nothing gave
+    credit.
+  - Enemy Tonks (54642) and MiniZeps (54643) had SmartAI with no script, chased the player's tonk
+    out of the arena, and respawned after 2 minutes.
+  - At the end of the 60 s game nothing ended it: when the tonk (54588) timed out the player was
+    left on the battlefield with the Tonk! bar (102178).
+- **Changed:**
+  - Conditions on 102292 effect 0: creatures 33081, 54642, 54643.
+  - A shot Tonk Target, Enemy Tonk or MiniZep gives credit 33081 to the tonk's driver (SAI kill
+    credit to the invoker; for a vehicle that is its passenger). Targets despawn, enemy tonks and
+    MiniZeps die and respawn after 10 s (was 120). Enemy tonks and MiniZeps are passive.
+  - Finlay's end-of-game event removes 102178, takes the player out of the tonk, puts them back at
+    the consoles (-4127.5, 6327.0, 13.12) and despawns the tonks.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Ring Toss (Jessica Rogers)
 
 Four picked Ring Toss next (2026-11-06). World SQL `sql/fixes/world/2026_11_06_01_darkmoon_ring_toss.sql`,

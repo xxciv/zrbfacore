@@ -372,10 +372,46 @@ index b65819e..6eaf268 100644
  
          return true;
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
-index e90fb3a..13ff413 100644
+index e90fb3a..ebb589a 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
-@@ -297,7 +297,7 @@ public:
+@@ -266,12 +266,35 @@ public:
+                     events.ScheduleEvent(EVENT_TONKCOMMANDER_START_GAME_3, 5000);
+                     break;
+                 case EVENT_TONKCOMMANDER_FINISH_GAME:
++                {
++                    // zrbfacore: the game never ended for the player. When the steam tonk
++                    // (54588) timed out they were dropped on the battlefield with the Tonk!
++                    // bar still up (Four, 2026-11-06). End it here: take the bar, leave the
++                    // tonk, go back to the consoles, and clear the tonks.
++                    std::list<Player*> players;
++                    me->GetPlayerListInGrid(players, 80.0f);
++                    for (Player* player : players)
++                    {
++                        if (!player->HasAura(SPELL_PROGRESS_BAR))
++                            continue;
++
++                        player->RemoveAurasDueToSpell(SPELL_PROGRESS_BAR);
++                        player->ExitVehicle();
++                        player->NearTeleportTo(-4127.5f, 6327.0f, 13.12f, 4.37f);
++                    }
++
++                    std::list<Creature*> tonks;
++                    me->GetCreatureListWithEntryInGrid(tonks, 54588, 80.0f);
++                    for (Creature* tonk : tonks)
++                        tonk->DespawnOrUnsummon();
++
+                     Active = false;
+                     events.CancelEvent(EVENT_TONKCOMMANDER_START_GAME_1);
+                     events.CancelEvent(EVENT_TONKCOMMANDER_START_GAME_2);
+                     events.CancelEvent(EVENT_TONKCOMMANDER_START_GAME_3);
+                     break;
+                 }
++                }
+             }
+         }
+     };
+@@ -297,7 +320,7 @@ public:
          if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -384,7 +420,7 @@ index e90fb3a..13ff413 100644
          return true;
      }
  
-@@ -312,7 +312,7 @@ public:
+@@ -312,7 +335,7 @@ public:
          default:
              GOSSIP_BUTTON_1 = "How do I play the Tonk Challenge?";
              GOSSIP_BUTTON_2 = "Ready to play! |cFF0000FF(Darkmoon Game Token)|r";
@@ -393,7 +429,7 @@ index e90fb3a..13ff413 100644
              break;
          };
  
-@@ -321,7 +321,7 @@ public:
+@@ -321,7 +344,7 @@ public:
          if (action == GOSSIP_ACTION_INFO_DEF + 1)
          {
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
@@ -402,7 +438,7 @@ index e90fb3a..13ff413 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 2)
-@@ -345,7 +345,11 @@ public:
+@@ -345,7 +368,11 @@ public:
                  return true;
              }
              else
@@ -415,7 +451,7 @@ index e90fb3a..13ff413 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 3)
-@@ -358,7 +362,7 @@ public:
+@@ -358,7 +385,7 @@ public:
              if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
                  AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
