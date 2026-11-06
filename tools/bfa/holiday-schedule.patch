@@ -1,0 +1,214 @@
+diff --git a/src/server/game/Events/GameEventMgr.cpp b/src/server/game/Events/GameEventMgr.cpp
+index ff40372..061f21b 100644
+--- a/src/server/game/Events/GameEventMgr.cpp
++++ b/src/server/game/Events/GameEventMgr.cpp
+@@ -31,6 +31,8 @@
+ #include "PoolMgr.h"
+ #include "World.h"
+ #include "WorldStatePackets.h"
++#include <algorithm>
++#include <vector>
+ 
+ GameEventMgr* GameEventMgr::instance()
+ {
+@@ -38,6 +40,132 @@ GameEventMgr* GameEventMgr::instance()
+     return &instance;
+ }
+ 
++// zrbfacore: scheduled game events, for holidays a fixed `occurence` cannot follow.
++//   occurence 0: every month from the first Sunday, at the time of day of start_time (the retail
++//                Darkmoon Faire). Months differ in length, so a fixed period drifts.
++//   occurence 1: from each date of the event's holiday in Holidays.db2 (with hotfixes), the same
++//                dates the client calendar shows; for holidays that move every year (Easter,
++//                Thanksgiving, the lunar new year). A date with "any year" repeats every year.
++// Both run for `length` minutes from each start and stop at end_time.
++namespace
++{
++    enum : uint32
++    {
++        SCHEDULE_MONTHLY_FIRST_SUNDAY = 0,
++        SCHEDULE_HOLIDAY_DATES        = 1,
++    };
++
++    std::map<uint16, uint32> MonthlyEventTimeOfDay;       // event id -> minutes after local midnight
++    std::map<uint16, time_t> ScheduledEventSkippedUntil;  // event id -> end of a window stopped by a GM
++
++    bool IsScheduledEvent(GameEventData const& data)
++    {
++        return data.state == GAMEEVENT_NORMAL
++            && (data.occurence == SCHEDULE_MONTHLY_FIRST_SUNDAY || data.occurence == SCHEDULE_HOLIDAY_DATES);
++    }
++
++    // Local start of the first Sunday of the given month (month may be out of 0-11, mktime normalises it).
++    time_t FirstSundayOfMonth(int year, int month, uint32 timeOfDay)
++    {
++        tm t = tm();
++        t.tm_year = year;
++        t.tm_mon = month;
++        t.tm_mday = 1;
++        t.tm_hour = 12;
++        t.tm_isdst = -1;
++        time_t firstDay = mktime(&t);
++        tm resolved = tm();
++        localtime_r(&firstDay, &resolved);
++
++        tm sunday = tm();
++        sunday.tm_year = resolved.tm_year;
++        sunday.tm_mon = resolved.tm_mon;
++        sunday.tm_mday = 1 + (7 - resolved.tm_wday) % 7;
++        sunday.tm_hour = int(timeOfDay / 60);
++        sunday.tm_min = int(timeOfDay % 60);
++        sunday.tm_isdst = -1;
++        return mktime(&sunday);
++    }
++
++    // Holidays.db2 date: minute 6 bits, hour 5, weekday 3, day-1 6, month-1 4, year-2000 5 (31 = any year).
++    time_t HolidayDateToTime(uint32 date, int anyYear)
++    {
++        uint32 year = (date >> 24) & 0x1F;
++        tm t = tm();
++        t.tm_year = year == 0x1F ? anyYear : int(year) + 100;
++        t.tm_mon = int((date >> 20) & 0xF);
++        t.tm_mday = int((date >> 14) & 0x3F) + 1;
++        t.tm_hour = int((date >> 6) & 0x1F);
++        t.tm_min = int(date & 0x3F);
++        t.tm_isdst = -1;
++        return mktime(&t);
++    }
++
++    std::vector<time_t> GetScheduledStarts(uint16 entry, GameEventData const& data, time_t now)
++    {
++        std::vector<time_t> starts;
++        tm local = tm();
++        localtime_r(&now, &local);
++
++        if (data.occurence == SCHEDULE_MONTHLY_FIRST_SUNDAY)
++        {
++            uint32 timeOfDay = 0;
++            auto itr = MonthlyEventTimeOfDay.find(entry);
++            if (itr != MonthlyEventTimeOfDay.end())
++                timeOfDay = itr->second;
++            for (int offset = -1; offset <= 2; ++offset)
++                starts.push_back(FirstSundayOfMonth(local.tm_year, local.tm_mon + offset, timeOfDay));
++        }
++        else if (HolidaysEntry const* holiday = sHolidaysStore.LookupEntry(data.holiday_id))
++        {
++            for (uint32 date : holiday->Date)
++            {
++                if (!date)
++                    continue;
++                if (((date >> 24) & 0x1F) == 0x1F)
++                {
++                    for (int offset = -1; offset <= 1; ++offset)
++                        starts.push_back(HolidayDateToTime(date, local.tm_year + offset));
++                }
++                else
++                    starts.push_back(HolidayDateToTime(date, 0));
++            }
++        }
++        std::sort(starts.begin(), starts.end());
++        return starts;
++    }
++
++    // Finds the window that contains `now` (returns true, its end in windowEnd) or the next window start.
++    bool GetScheduledWindow(uint16 entry, GameEventData const& data, time_t now, time_t& windowEnd, time_t& nextStart)
++    {
++        time_t skippedUntil = 0;
++        auto skip = ScheduledEventSkippedUntil.find(entry);
++        if (skip != ScheduledEventSkippedUntil.end())
++            skippedUntil = skip->second;
++
++        time_t length = time_t(data.length) * MINUTE;
++        nextStart = 0;
++        for (time_t start : GetScheduledStarts(entry, data, now))
++        {
++            if (start <= now && now < start + length && start + length > skippedUntil)
++            {
++                windowEnd = start + length;
++                return true;
++            }
++            if (start > now && !nextStart)
++                nextStart = start;
++        }
++
++        // A GM `.event start` sets start to now: run that window too.
++        if (data.start <= now && now < data.start + length)
++        {
++            windowEnd = data.start + length;
++            return true;
++        }
++        return false;
++    }
++}
++
+ bool GameEventMgr::CheckOneGameEvent(uint16 entry) const
+ {
+     switch (mGameEvent[entry].state)
+@@ -46,6 +174,12 @@ bool GameEventMgr::CheckOneGameEvent(uint16 entry) const
+         case GAMEEVENT_NORMAL:
+         {
+             time_t currenttime = time(nullptr);
++            if (IsScheduledEvent(mGameEvent[entry]))
++            {
++                time_t windowEnd, nextStart;
++                return currenttime < mGameEvent[entry].end
++                    && GetScheduledWindow(entry, mGameEvent[entry], currenttime, windowEnd, nextStart);
++            }
+             // Get the event information
+             return mGameEvent[entry].start < currenttime
+                 && currenttime < mGameEvent[entry].end
+@@ -97,6 +231,17 @@ uint32 GameEventMgr::NextCheck(uint16 entry) const
+     if (currenttime > mGameEvent[entry].end)
+         return max_ge_check_delay;
+ 
++    if (IsScheduledEvent(mGameEvent[entry]))
++    {
++        time_t windowEnd = 0, nextStart = 0;
++        time_t next = GetScheduledWindow(entry, mGameEvent[entry], currenttime, windowEnd, nextStart) ? windowEnd : nextStart;
++        if (!next || next > mGameEvent[entry].end)
++            next = mGameEvent[entry].end;
++        if (next <= currenttime)
++            return max_ge_check_delay;
++        return uint32(std::min<time_t>(next - currenttime, max_ge_check_delay));
++    }
++
+     // never started event, we return delay before start
+     if (mGameEvent[entry].start > currenttime)
+         return uint32(mGameEvent[entry].start - currenttime);
+@@ -185,6 +330,13 @@ void GameEventMgr::StopEvent(uint16 event_id, bool overwrite)
+ 
+     if (overwrite && !serverwide_evt)
+     {
++        if (IsScheduledEvent(data))
++        {
++            // keep the current monthly window stopped until it would have ended
++            time_t now = time(nullptr);
++            time_t windowEnd = 0, nextStart = 0;
++            ScheduledEventSkippedUntil[event_id] = GetScheduledWindow(event_id, data, now, windowEnd, nextStart) ? windowEnd : now;
++        }
+         data.start = time(nullptr) - data.length * MINUTE;
+         if (data.end <= data.start)
+             data.end = data.start + data.length;
+@@ -270,6 +422,22 @@ void GameEventMgr::LoadFromDB()
+ 
+             pGameEvent.description  = fields[6].GetString();
+ 
++            if (IsScheduledEvent(pGameEvent) && pGameEvent.occurence == SCHEDULE_MONTHLY_FIRST_SUNDAY)
++            {
++                tm startLocal = tm();
++                localtime_r(&pGameEvent.start, &startLocal);
++                MonthlyEventTimeOfDay[event_id] = uint32(startLocal.tm_hour * 60 + startLocal.tm_min);
++                TC_LOG_INFO("server.loading", "`game_event`: game event id (%i) runs monthly from the first Sunday at %02u:%02u.",
++                    event_id, startLocal.tm_hour, startLocal.tm_min);
++            }
++            else if (IsScheduledEvent(pGameEvent) && pGameEvent.occurence == SCHEDULE_HOLIDAY_DATES)
++            {
++                if (pGameEvent.holiday_id == HOLIDAY_NONE)
++                    TC_LOG_ERROR("sql.sql", "`game_event`: game event id (%i) has occurence 1 (follow holiday dates) but no holiday, it will never start.", event_id);
++                else
++                    TC_LOG_INFO("server.loading", "`game_event`: game event id (%i) runs on the dates of holiday %u.", event_id, uint32(pGameEvent.holiday_id));
++            }
++
+             ++count;
+         }
+         while (result->NextRow());

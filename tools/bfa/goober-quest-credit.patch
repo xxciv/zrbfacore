@@ -1,0 +1,17 @@
+diff --git a/src/server/game/Handlers/SpellHandler.cpp b/src/server/game/Handlers/SpellHandler.cpp
+index 7617fc5..0627730 100644
+--- a/src/server/game/Handlers/SpellHandler.cpp
++++ b/src/server/game/Handlers/SpellHandler.cpp
+@@ -268,7 +268,11 @@ void WorldSession::HandleGameobjectReportUse(WorldPackets::GameObject::GameObjRe
+         if (go->AI()->GossipHello(_player, true))
+             return;
+ 
+-        _player->KillCreditGO(go->GetEntry(), go->GetGUID());
++        // zrbfacore: a goober (type 10) already gives its quest credit in GameObject::Use, and
++        // the client reports the same use again, so each one counted twice (Darkmoon Faire's
++        // Tan My Hide: 2 Staked Skins finished a 4-skin quest; Four, 2026-11-06).
++        if (go->GetGoType() != GAMEOBJECT_TYPE_GOOBER)
++            _player->KillCreditGO(go->GetEntry(), go->GetGUID());
+         _player->UpdateCriteria(CRITERIA_TYPE_USE_GAMEOBJECT, go->GetEntry());
+     }
+ }

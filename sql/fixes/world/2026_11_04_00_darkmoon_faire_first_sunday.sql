@@ -1,0 +1,13 @@
+-- Darkmoon Faire on the retail schedule (Four, 2026-11-04): from the first Sunday of every month, for 7 days.
+--
+-- NEEDS tools/bfa/holiday-schedule.patch IN THE BUILT worldserver FIRST. Without it, occurence 0
+-- divides by zero in GameEventMgr and worldserver crashes on start.
+--
+-- Game event 3 ran every 30 days from 2026-09-06 10:01 (upstream 2026_08_16_01_fix_game_events.sql),
+-- so its start day slid about 5 days a year away from the first Sunday. With the patch, occurence 0
+-- means "every month from the first Sunday, at start_time's time of day", for `length` minutes.
+-- start_time 2026-11-01 00:00 (a first Sunday, 00:00 as in the client's calendar), length 10080 = 7 days.
+-- end_time moved from 2030 to the end of 2037 (the timestamp column ends in January 2038).
+--
+-- Event 23 (Darkmoon Faire Building) has no spawns or scripts in this database, so it is left as is.
+UPDATE `game_event` SET `start_time`='2026-11-01 00:00:00', `end_time`='2037-12-31 23:59:59', `occurence`=0, `length`=10080 WHERE `eventEntry`=3;

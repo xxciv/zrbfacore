@@ -19,6 +19,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   boss doors, Foe Reaper, Helix, Ripsnarl, Mine Bunny), plus a core fix so bosses reset after a wipe.
 - [`sql/fixes/world`](sql/fixes/world): world database fixes, run in file-name order; the guide's step 10
   table says what each one does.
+- [`sql/fixes/hotfixes`](sql/fixes/hotfixes): hotfix database fixes (data the server sends to the client in
+  place of its own db2 rows), run against `bfa_hotfixes` the same way.
 - [`tools/bfa/ragefire-fixes.patch`](tools/bfa/ragefire-fixes.patch): Ragefire Chasm fixes (rescuing
   the prisoners for No Man Left Behind / No Orc Left Behind).
 - [`tools/bfa/shadowfang-fixes.patch`](tools/bfa/shadowfang-fixes.patch): Shadowfang Keep fixes (only
@@ -83,6 +85,17 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   zrbfacore ("Based on HavenCore"), without the old BfaCore Discord link and email address.
 - [`tools/bfa/razorfen-downs.patch`](tools/bfa/razorfen-downs.patch): Razorfen Downs: Death Speaker
   Blackthorn's death completes his scenario step. Needs `sql/fixes/world/2026_10_31_01_razorfen_downs.sql`.
+- [`tools/bfa/holiday-schedule.patch`](tools/bfa/holiday-schedule.patch): game events with
+  `occurence` 0 run every month from the first Sunday (the Darkmoon Faire), with `occurence` 1 on
+  the dates of their holiday in Holidays.db2 (Easter, Thanksgiving and other moving holidays). Used by
+  `sql/fixes/world/2026_11_04_00_darkmoon_faire_first_sunday.sql` and `2026_11_05_00_holiday_dates_schedule.sql`.
+- [`tools/bfa/darkmoon-faire-gossip.patch`](tools/bfa/darkmoon-faire-gossip.patch): Darkmoon Faire
+  games in English (Maxima's cannon, Mola's Whack-a-Gnoll, Fozlebub's teleport were French) and open
+  to everyone with a Darkmoon Game Token, not only while their daily quest is in progress.
+- [`tools/bfa/darkmoon-race.patch`](tools/bfa/darkmoon-race.patch): the Darkmoon Island strider
+  races (Malle and Patti Earnhard's four race quests): Racing Strider, posts, tolls, checkpoint boosts,
+  powerup pads, electrified tripwires and the race achievements. Needs
+  `sql/fixes/world/2026_11_05_05_darkmoon_race_course.sql`.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.

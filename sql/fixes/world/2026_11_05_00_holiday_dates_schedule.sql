@@ -1,0 +1,17 @@
+-- Holidays on the same dates as the client calendar (Four, 2026-11-05).
+--
+-- NEEDS tools/bfa/holiday-schedule.patch IN THE BUILT worldserver FIRST (occurence 1 means "follow the
+-- holiday's dates" only with the patch) and sql/fixes/hotfixes/2026_11_05_00_holiday_calendar_dates.sql
+-- in bfa_hotfixes (the dates come from there).
+--
+-- Before (after upstream 2026_08_16_01_fix_game_events.sql):
+--   7  Lunar Festival     2013-01-27, every 365 days, ended 2020-12-31: never ran.
+--   26 Pilgrim's Bounty   2013-11-24, every 365 days, ended 2020-12-31: never ran.
+--   8  Love is in the Air 2027-02-10 12:00, every 365 days.
+--   9  Noblegarden        2027-04-20 10:00, every 364 days (Easter moves by up to 5 weeks).
+--   10 Children's Week    2027-04-28 11:01, every 365 days.
+--   11 Harvest Festival   2026-09-02 10:00, every 365 days.
+--   72 Fireworks Spectacular (4 July, holiday 62 "any year") 2010-07-04 17:00, ended 2020-07-04: never ran.
+-- After: occurence 1, each run starts on a date of the event's holiday and lasts `length` (unchanged).
+-- start_time only matters for `.event start`; end_time moves to the end of 2037.
+UPDATE `game_event` SET `start_time`='2026-01-01 00:00:00', `end_time`='2037-12-31 23:59:59', `occurence`=1 WHERE `eventEntry` IN (7, 8, 9, 10, 11, 26, 72);

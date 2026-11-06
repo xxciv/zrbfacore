@@ -3,6 +3,757 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-04/05 (Holidays: calendar and schedules)
+
+Merged to main via PR #40 (2026-11-06).
+
+### Quest objects counted twice (Tan My Hide)
+
+From Four, 2026-11-06: Tan My Hide (29519) finished after 2 of its 4 Staked Skins. New patch
+`tools/bfa/goober-quest-credit.patch` (`src/server/game/Handlers/SpellHandler.cpp`, after
+`darkmoon-race.patch`). Rebuild, restart.
+
+- **Found:** using a "goober" object (type 10, like the Staked Skin) gives its quest credit in
+  `GameObject::Use`, and the client then reports the same use (`CMSG_GAME_OBJ_REPORT_USE`), where
+  HavenCore gives the credit again. Every goober quest objective counted twice. Upstream
+  TrinityCore gives no quest credit on the report.
+- **Changed:** the report no longer gives quest credit for goobers; other object types keep it.
+  The achievement update on the report is unchanged.
+- **Status:** untested in game.
+
+### Darkmoon Faire: profession quests need only the profession
+
+From Four, 2026-11-06 ("Stamp Thunderhorn is only a vendor here"). World SQL
+`2026_11_06_20_darkmoon_profession_quests_skill.sql`. Run the SQL, restart. No rebuild.
+
+- **Found:** all 14 Darkmoon profession quests (29506-29511, 29513-29520) have a skill condition
+  asking for 75 points in the profession's parent skill (Cataclysm rule), so players below 75
+  never see them offered.
+- **Changed:** the conditions ask for 1 point (the profession), as in Battle for Azeroth;
+  `quest_template_addon` already had RequiredSkillPoints 1.
+- **Status:** untested in game.
+
+### Darkmoon Faire: fished crates and clams open with contents
+
+From Four's Wowhead lists, 2026-11-06. World SQL `2026_11_06_19_darkmoon_fishing_containers.sql`.
+Run the SQL, restart. No rebuild.
+
+- **Found:** Sealed Darkmoon Crate (124670), Darkwater Clam (36781), Big-Mouth Clam (7973) and
+  Jaggal Clam (24476), all caught at Darkmoon Island, had no `item_loot_template` rows and opened
+  empty.
+- **Changed:** contents from Wowhead, each item rolling on its own. Crate: Darkmoon Firewater 97%,
+  16 faire foods and drinks 6-10% each, 15 Darkmoon Draughts/Tinctures and the Healing Tonic about
+  3% each, Don Carlos Tequila 0.7%, the two Divergence ones 0.2%. Darkwater Clam: Succulent Clam
+  Meat 89% (1-3), Northsea Pearl 10%, Siren's Tear 1%. Big-Mouth Clam: Zesty Clam Meat 100%, Black
+  Pearl 1%, Golden Pearl 1.7%, Iridescent Pearl 2.3%, Small Lustrous Pearl 1%. Jaggal Clam: Jaggal
+  Clam Meat 100% (1-3), Jaggal Pearl 8%, Shadow Pearl 5%.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Darkmoon Island fishing loot
+
+From Four's Wowhead list, 2026-11-06. World SQL `2026_11_06_18_darkmoon_island_fishing.sql` (run
+after `_17`). Run the SQL, restart. No rebuild.
+
+- **Found:** Darkmoon Island (zone 5861) had no fishing loot, so every cast used the core's default
+  table (Arctic Char 48%, Raw Bristle Whisker Catfish 21%, junk).
+- **Changed:** zone 5861 fishing loot built from Wowhead's Darkmoon Island list (Four's CSV): 51
+  catches in one group (one per cast), each at its share of Wowhead's catch counts; Darkmoon
+  Daggermaw (124669) takes the rest, about 54%. Raw Rainbow Fin Albacore 9.4%, Sealed Darkmoon
+  Crate 6.9%, Oily Blackmouth 3.7%, Bloated Thresher 2.5%, the Darkmoon Sealed Crates (78930, 88496)
+  2.4% and 1.8%, junk about 2% each, rare catches down to 0.005%. Catches Wowhead shows at 0% are
+  left out. Salty Sea Dog (73269, "Great Sea Herring" on Wowhead now) stays at 29% on top, only
+  for Spoilin' for Salty Sea Dogs.
+- **Not covered:** Sealed Darkmoon Crate (124670) and the Big-Mouth, Darkwater and Jaggal Clams
+  have no contents in our DB, so they open empty.
+- **Status:** untested in game.
+
+### Darkmoon Faire: four quests that could not be finished
+
+From Four's questions, 2026-11-06. World SQL `2026_11_06_17_darkmoon_quest_items.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`). Rebuild, run the SQL, restart.
+
+- **Test Your Strength (29433), found:** it needs 250 Grisly Trophies (71096) and nothing gave
+  them. On retail one comes from every kill of an enemy that gives experience or honor while you
+  carry the Darkmoon Adventurer's Guide (71634). **Changed:** `playerscript_darkmoon_grisly_trophy`
+  adds a trophy on each such kill (creature or player) while the quest is in progress and the
+  guide is in your bags. Only your own killing blows count; the core has no kill hook for pets.
+- **Spoilin' for Salty Sea Dogs (29513), found:** the Salty Sea Dog (73269) was in no fishing loot
+  and Darkmoon Island had no fishing loot at all (you got the default fish). **Changed:** fishing
+  loot for zone 5861: Salty Sea Dog, 30%, only while on the quest (Pandaria DB: 20.9%). Other
+  catches are the default fish as before.
+- **Tan My Hide (29519), found:** the Staked Skins (209276) were never placed. **Changed:** the 19
+  skins around the tents from the Pandaria DB, guids 974000003-974000021.
+- **Master Pit Fighter (29761), found:** Pit Fighter (74034) only comes from the Darkmoon Treasure
+  Chest (209620, 95%), which was never placed. **Changed:** one chest in the Deathmatch pit, back
+  2 hours after it is looted (Pandaria value), guid 974000022.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Firebird rings kept over the island
+
+From Four's retest, 2026-11-06. Updated `tools/bfa/darkmoon-faire-gossip.patch`
+(`DarkmoonIsland.cpp`). Rebuild, restart. No SQL.
+
+- **Confirmed:** Carl Goodup's cart spacing (hotfix seat 10236), Rinling's targets without names,
+  Firebird's height and quest.
+- **Firebird, found:** rings could go out over the ocean. **Changed:** rings stay inside the area
+  Four marked (X -4454 to -4144, Y 6151 to 6361), at a height of 104 to 115 (at least 10 over the
+  ground), always 50 yd from the player (Four's call), with the same clearance checks. The first
+  8 tries go ahead of the player, the next 8 toward the middle of the area; if all fail, the ring
+  goes near the middle.
+- **Status:** confirmed in game by Four, 2026-11-06 ("That was perfect").
+
+### Darkmoon Faire: Firebird rings further out, gallery names, Carl's cart spacing
+
+From Four's retest, 2026-11-06. World SQL `2026_11_06_16_darkmoon_gallery_unselectable.sql`,
+hotfix SQL `sql/fixes/hotfixes/2026_11_06_00_darkmoon_balloon_cart_seat.sql` (run against
+`bfa_hotfixes`), updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`). Rebuild,
+run the SQL, restart, delete the client Cache folder.
+
+- **Confirmed:** Firebird's Challenge quest works (rings keep coming); Carl's balloons sit on the
+  cart.
+- **Firebird, found:** rings came too close (20-30 yd) and some were inside the roller coaster.
+  **Changed:** rings go 35-50 yd ahead, at least 10 yd over the ground, and only where the line from
+  the player and the ring's 5 yd circle (both ways, and up/down) are clear of buildings and
+  objects; up to 8 tries, else 40 yd straight ahead and 15 yd over the ground.
+- **Shooting Gallery, found:** the name flags from `2026_11_06_15` did not hide the names either.
+  The client does not draw names on units that can't be selected (Carl's cart and balloon bunny
+  show none). **Changed:** 54231 unit_flags `|= 0x02000000` (not selectable); the Shoot script
+  picks its target itself, so hits still count.
+- **Carl Goodup, found:** the cart sits in seat VehicleSeat 10236, 0.7 yd in front of Carl, so his
+  name overlapped the balloons. **Changed:** hotfix row for seat 10236 with AttachmentOffsetX 1.0
+  (other fields are the client's values), hotfix_data id 9110236, table hash 0xD4A85CEB. Only
+  Carl's vehicle (1769) uses this seat.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Firebird rings keep coming, gallery names hidden, balloons raised
+
+From Four's retest, 2026-11-06. World SQL `2026_11_06_15_darkmoon_names_rings_balloons.sql`,
+updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`). Rebuild, run the SQL,
+restart, delete the client Cache folder.
+
+- **Confirmed:** Tonk Commander sends you back to where you started; Shooting Gallery is fast
+  enough for 25/25.
+- **Firebird's Challenge, found:** one ring came, it counted, then nothing. Wings of Flame
+  (170819) lasts 2.5 s and starts one 10 s flight (170820), which brings one ring. Each ring
+  caught casts Blazing Ring (170823); its script effect (effect 1) is what renews the flight, and
+  it had no script. **Changed:** `spell_darkmoon_firebird_blazing_ring` renews the flight (170820)
+  on each ring caught, which brings the next ring. Miss rings for 10 s and the flight ends.
+- **Shooting Gallery, found:** the empty name from `2026_11_06_14` did not hide the name.
+  **Changed:** the name is back and target 54231 has type_flags `0x40000000` (do not draw the
+  name) and `0x00100000` (no name plate).
+- **Carl Goodup, found:** the balloons on the cart itself sat at the cart's base. The cart's seat
+  (VehicleSeat 10237) is 1 yd up, which is where the Balloon Cart Bunny (55307) belongs.
+  **Changed:** the cart (55306) has a script, `npc_darkmoon_balloon_cart`, that seats the bunny
+  once the cart rides on Carl (up to 5 tries, 2 s apart); the bunny carries the balloons again
+  and the cart's aura is back to `96847`.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Tonk return point, faster Shooting Gallery, Carl's balloons
+
+From Four's retest, 2026-11-06. World SQL `2026_11_06_14_darkmoon_gallery_names_balloons.sql`,
+updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`, `DarkmoonTonk.cpp`).
+Rebuild, run the SQL, restart, delete the client Cache folder.
+
+- **Confirmed:** Shooting Gallery credit works (Quick Shot, 5 Darkmoon dailies, 5 different games,
+  Blastenheimer Bullseye unlocked); Carl pushes his cart; Tonk Commander "way better".
+- **Tonk Commander, found:** at the end of the game the player was put back in the tonk pen.
+  **Changed:** Finlay remembers where each player stood when they started (the "Ready to play!"
+  gossip) and the end of the game sends them back there; the old console spot is only a fallback.
+  The tonk now lasts 62 s (was 60 s) so the game ends before the tonk despawns under the player.
+- **Shooting Gallery, found:** a new marked target came every 5 s, so only 12 showed up in the
+  60 s game and 25 hits were impossible (Four's best: 12/25). **Changed:** a new round every 2 s
+  (targets last 2 s), so up to 30 marked targets per game. The target name (54231) is now empty, so
+  no name shows over the targets.
+- **Carl Goodup, found:** the balloons stayed where the cart was made. They are the Balloon Cart
+  Contents aura (103320) on the Balloon Cart Bunny (55307), which should ride on the cart as a
+  second accessory; that second step does not follow the cart. **Changed:** the aura is on the
+  cart itself (55306 auras `96847 103320`), the bunny accessory row and the cart's spellclick row
+  are removed.
+- **Status:** untested in game.
+
+### Darkmoon Faire: concert in sync, Carl's cart, one cannon target, Shooting Gallery aim
+
+From Four's retest, 2026-11-06. World SQL `2026_11_06_12_darkmoon_concert_sync.sql`,
+`2026_11_06_13_darkmoon_balloon_cart_spellclick.sql`, updated `tools/bfa/darkmoon-faire-gossip.patch`
+(`DarkmoonIsland.cpp`, `DarkmoonTonk.cpp`). Rebuild, run the SQL, restart.
+
+- **Confirmed:** Bergrisst's constant "Armor" sound is gone; the show plays and the band vanishes
+  at the end; Tonk enemies firing back works ("way better").
+- **Concert, found:** the song is driven by [DND] L70ETC FX Controller (23830): on spawn it plays
+  sound 11803 after 9.4 s, runs the lightning (42500), earthquake (42499) and rain of fire (42501)
+  effects, and despawns after 275 s; it comes back after its spawn time (120 s), which starts the
+  next song. The band's 5-minute loop from `2026_11_06_09` ran on its own clock, so they drifted
+  apart (band showing up mid-break, vanishing mid-song).
+- **Changed:** 1 s after each spawn the controller sends data 1 to the five band members within
+  30 yd; each member then runs its show as a timed action list (`<entry>01`, same steps and times
+  as its old rows, counted from the controller's spawn). The controller respawns 30 s after
+  despawning (was 120 s), so the break is about 50 s. Thunder-Skins' separate on-spawn drum list
+  is dropped. Same entries play in Shattrath and Blackrock Depths and follow their own controller.
+- **Fire, found:** the controller does cast L70ETC Rain of Fire (42501) five times per song (18,
+  88, 142, 247 and 260 s); same spell setup as the lightning except for the visual. Not changed.
+- **Carl Goodup, found:** still no cart: the core only loads a `vehicle_template_accessory` row
+  when the vehicle has an `npc_spellclick_spells` row, so both rows from `2026_11_06_10` were
+  skipped. **Changed:** Ride Vehicle (46598) spellclick rows for 55305 and 55306 (Pandaria DB);
+  players still can't click them (no spellclick npcflag).
+- **Tonk Commander, changed:** the cannon hits one target per shot: the Tonk Target, Enemy Tonk or
+  MiniZep within 30 yd and 60 degrees that is closest to straight ahead.
+- **Shooting Gallery, found:** the targets had health but nothing hit them: Shoot (101872) is a
+  cone with the same tiny radius problem as the tonk cannon. The middle target spawned at z 12.57,
+  under the counter. **Changed:** Shoot hits the gallery target closest to where you face (30 yd,
+  90 degrees); the middle spot is z 13.30 and the third spot's 12.24 variant is 13.24.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Tauren Chieftains, Carl Goodup's cart, Tonk enemies fire back
+
+From Four, 2026-11-06. World SQL `2026_11_06_09_darkmoon_tauren_chieftains.sql`,
+`2026_11_06_10_darkmoon_balloon_cart.sql`, `2026_11_06_11_darkmoon_tonk_cannonballs.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonTonk.cpp`). Rebuild, run the SQL, restart.
+
+- **Tauren Chieftains, found:** the band (Bergrisst 23619, Chief Thunder-Skins 23623, Mai'Kyl
+  23624, Samuro 23625, Sig Nicious 23626) plays a ~280 s show of one-shot timed SAI events. It ran
+  once after a restart; at 280.8 s they all cast Greater Invisibility (16380) and nothing brought
+  them back. Each member's first event casts 89344, labelled "Clear Target Auras" but in 8.3.7
+  89344 is "Armor" (an aura with a sound); Bergrisst's copy repeated every second, so it played
+  constantly and kept him visible.
+- **Changed:** every timed event repeats every 300 s (the show loops with a 20 s break), and the
+  89344 casts now remove Greater Invisibility instead, so each member comes back at their
+  entrance flare.
+- **Not known:** where the concert music comes from. No row in the DB plays a sound; it may be the
+  stage's area music in the client.
+- **Carl Goodup, found:** Carl (55305, vehicle 1769) should carry the Balloon Cart (55306, vehicle
+  1770), which carries the Balloon Cart Bunny (55307, the balloons). The dump had no vehicle
+  accessories for them (the Pandaria 5.4.8 DB does), so the cart stood alone and could be
+  clicked, and the balloons wandered by themselves.
+- **Changed:** `vehicle_template_accessory` 55305 -> 55306 -> 55307 (seat 0), the separate cart
+  and bunny spawns (guids 1400353, 1400354) removed, the cart not selectable, Carl wanders up to
+  5 yd (Pandaria DB value).
+- **Tonk Commander, changed (Four's choice):** every Enemy Tonk (54642) and MiniZep (54643) has a
+  25% chance every 3-4 s to fire Cannon Blast (102227) at the nearest player tonk within 40 yd.
+  The cannonball lands where the tonk was (it flies at 6 yd/s, so it can be dodged).
+  `spell_darkmoon_enemy_tonk_cannon_blast` stuns a tonk within 4 yd of the landing spot for 2 s
+  (Death Stun 102229) and takes 1 Tonk Target credit off its driver (quest 29434, only while
+  the quest is incomplete).
+- **Status:** Bergrisst's sound and the enemy cannonballs confirmed by Four, 2026-11-06; Carl's
+  cart and the concert loop needed `2026_11_06_12` / `13`.
+
+### Darkmoon Faire: retest fixes (Firebird, Ring Toss, Shooting Gallery, Tonk Commander)
+
+From Four's retest, 2026-11-06. World SQL `sql/fixes/world/2026_11_06_08_darkmoon_game_targets.sql`,
+updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`, `DarkmoonTonk.cpp`). Rebuild,
+run the SQL, restart.
+
+- **Update steps changed:** the earlier "undo the old patch version, apply the new one" loop could
+  undo an older version from a newer tree (the Maxima/Mola/Fozlebub parts are the same in every
+  version), which left Four's tree half-patched: French gossip again, no gossip on Jessica,
+  Finlay and Rinling. Darkmoon updates now reset `src/server/scripts/DarkmoonIsland` and apply
+  `darkmoon-faire-gossip.patch` then `darkmoon-race.patch` (the only two patches in that folder).
+- **Firebird's Challenge, found:** the first ring appeared but never counted, and no more came.
+  The ring and summon code required Wings of Flame (170819) on the player; the flight is the
+  170820 aura it keeps refreshing. **Changed:** either aura counts, and each ring also checks
+  every update whether its owner is within 6 yd (a fast flier can pass through between two
+  target-list updates).
+- **Ring Toss, found:** the ring bar stayed after the last ring or after turning in Target: Turtle
+  (29455). **Changed:** Jessica removes 102058 when you have had 0 rings for two checks (2 s, so
+  the last ring lands first; whisper "You're out of rings!") and when you turn in 29455.
+- **Shooting Gallery, found:** the targets (54231) spawned dead: level 1 with HealthModifier 0.01
+  is 0 health. Shoot (101872) had no `spell_script_names` row, so hits never gave credit. The
+  decoy entry 54225 does not exist in 8.3.7, so only the marked target was summoned. The gun
+  stayed after the 60 s game. **Changed:** HealthModifier 1; script name and a target condition
+  (creature 54231) for 101872; decoys are 54231 too and only the round's marked target (the one
+  that casts Marked! 102341) gives credit, once; at the end of the game Rinling removes 101871
+  from players within 30 yd ("Time's up!"), and turning in He Shoots, He Scores! (29438) removes it.
+- **Tonk Commander, found:** Tonk Targets (33081) spawned dead too (same HealthModifier 0.01), and
+  the Cannon (102292) only reached things touching the tonk. **Changed:** HealthModifier 1;
+  `spell_darkmoon_tonk_cannon` hits Tonk Targets, Enemy Tonks and MiniZeps up to 30 yd in a
+  60 degree cone in front of the tonk.
+- **Not changed yet:** Enemy Tonks and MiniZeps don't shoot back (their Cannon Blast 102227 drops a
+  cannonball whose Bombs Away 102211 is a dummy with no script) and show friendly (faction 1616).
+- **Status:** untested in game.
+
+### Darkmoon Faire: Horde Citizens and the Champions
+
+From Four, 2026-11-06 ("Horde Citizens should appear as horde races. Champion Faesrol, Champion
+Isimonde - lower their aggro range to if a player gets right up on them"). World SQL only; run it
+and restart. No rebuild.
+
+- **Found:** Horde Citizen (55348) used the Stormwind citizen models 1501/21621, the same as the
+  Alliance Citizen (55347). Their SAI casts Citizen Costume (71084), a transform with no creature
+  set, which the core does nothing with.
+- **Changed:** `sql/fixes/world/2026_11_06_06_darkmoon_horde_citizens.sql` gives 55348 eight
+  models with equal chance: orc 1370/31416 (Orgrimmar Citizen), troll 2588/2589 (Troll Citizen),
+  blood elf 18211/18212 (Silvermoon Citizen), Forsaken 34459/25893 (Undercity Citizen).
+- **Found:** Champion Faesrol (55732) and Champion Isimode (55733) by the Tonk Commander area are
+  level 80 with SmartAI but no rows, so they pulled with the normal aggro radius (up to 45 yd
+  against low-level players).
+- **Changed:** `sql/fixes/world/2026_11_06_07_darkmoon_champions_aggro.sql`: both go defensive on
+  spawn/reset and attack a hostile player that comes within 5 yd (SAI out-of-combat LOS, max 5,
+  1 s cooldown; condition: invoker is a player, so they don't start on each other). They still
+  fight back when attacked.
+- **Status:** Horde Citizens confirmed in game by Four, 2026-11-06; Champions untested.
+
+### Darkmoon Faire: Firebird's Challenge (Ziggie Sparks)
+
+From Four, 2026-11-06 ("Ziggie Sparks, Firebird challenge, no rings"). World SQL
+`sql/fixes/world/2026_11_06_05_darkmoon_firebird_rings.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`). Rebuild, run the SQL, restart.
+
+- **Found:** "Ready to fly!" casts Wings of Flame (170819), which re-casts 170820 every 2.5 s
+  (flight, flight speed) and with it Summon Rings (170817). 170817 is a script effect with no
+  script, so nothing was summoned. The ring spell (170815) creates areatrigger misc 3069, which had
+  no `spell_areatrigger` / `areatrigger_template` rows. The quest needs 15 Darkmoon Faire Ring
+  Credit (85559), given by Blazing Ring (170823).
+- **Changed:**
+  - `spell_darkmoon_firebird_summon_rings` (170817): while you have Wings of Flame, puts a ring
+    (170815) 20-30 yd ahead of you (up to about 35 degrees to either side, 6 yd below to 8 yd
+    above you, never closer than 6 yd to the ground).
+  - `at_darkmoon_firebird_ring` (areatrigger 3069, 5 yd sphere): flying through your own ring
+    casts Blazing Ring (170823, 1 credit) and removes the ring. Rings you miss fade after 15 s.
+  - SQL: `spell_script_names` row for 170817, `areatrigger_template` 3069 and `spell_areatrigger`
+    3069 -> 3069 (id 3069 was unused).
+- **Not known:** whether the client draws the ring from 170815's own visual; if you can fly
+  through invisible rings and get credit, the visual is the remaining gap.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Tonk Commander (Finlay Coolshot)
+
+From Four, 2026-11-06 ("Tonk doesn't attack or kill anything, player returns as the tonk on the
+battlefield at the end. Enemy tonks leave the arena."). World SQL
+`sql/fixes/world/2026_11_06_03_darkmoon_tonk_commander.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonTonk.cpp`). Rebuild, run the SQL, restart.
+
+- **Found:**
+  - The steam tonk's Cannon (102292) picks targets by entry in a cone and had no target
+    conditions, so it hit nothing.
+  - A Tonk Target (33081, the quest's credit, 30 needed) only despawned when shot; nothing gave
+    credit.
+  - Enemy Tonks (54642) and MiniZeps (54643) had SmartAI with no script, chased the player's tonk
+    out of the arena, and respawned after 2 minutes.
+  - At the end of the 60 s game nothing ended it: when the tonk (54588) timed out the player was
+    left on the battlefield with the Tonk! bar (102178).
+- **Changed:**
+  - Conditions on 102292 effect 0: creatures 33081, 54642, 54643.
+  - A shot Tonk Target, Enemy Tonk or MiniZep gives credit 33081 to the tonk's driver (SAI kill
+    credit to the invoker; for a vehicle that is its passenger). Targets despawn, enemy tonks and
+    MiniZeps die and respawn after 10 s (was 120). Enemy tonks and MiniZeps are passive.
+  - Finlay's end-of-game event removes 102178, takes the player out of the tonk, puts them back at
+    the consoles (-4127.5, 6327.0, 13.12) and despawns the tonks.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Ring Toss (Jessica Rogers)
+
+Four picked Ring Toss next (2026-11-06). World SQL `sql/fixes/world/2026_11_06_01_darkmoon_ring_toss.sql`,
+updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`, `spell_ring_toss`). Rebuild,
+run the SQL, restart.
+
+- **How the game works (retail):** Jessica gives you 10 rings (the bar shows them) and a one-button
+  bar. Aim the ring at Dubenko (54490), the turtle swimming in the pond next to her; 3 rings on his
+  shell complete Target: Turtle (29455).
+- **Found:** the ring's landing spell (181458) has no target conditions, so it hit every unit where
+  it landed, and `spell_ring_toss` gave the quest credit (54495) for any unit hit, the thrower
+  included. Dubenko's SAI (id 1, invoker cast 101807) gave a second credit for each real hit.
+- **Changed:** condition on 181458 effect 0: only creature 54490. The handler only credits (once)
+  when the hit unit is Dubenko, and still plays the ring-on-shell visuals (101697, 101737). Dubenko's
+  SAI credit row is deleted.
+- **Found (Four, 2026-11-06, with a screenshot):** the ring button failed with "Requires Standing
+  at the Ring Toss Booth"; the Shooting Gallery failed the same way ("Requires Standing at the Booth
+  Counter"). Both spells need a spell focus gameobject near the player, and neither was spawned.
+- **Changed:** world SQL `sql/fixes/world/2026_11_06_02_darkmoon_booth_spell_focus.sql` spawns
+  301114 "Standing at the Ring Toss Booth" (focus 1729, 20 yd) on Jessica (-4287.87, 6309.00,
+  13.20, guid 974000001) and 300129 "Standing at the Booth Counter" (focus 1471, 10 yd) at Rinling's
+  counter (-4078.42, 6354.07, 13.08, Pandaria 5.4.8 DB position, guid 974000002). Both are invisible.
+- **Status:** confirmed in game by Four, 2026-11-06 ("Ring toss played well").
+- **Found (Four, 2026-11-06):** the ring aura stays on you after you walk away from the booth, and
+  Dubenko never moves. His spawn (guid 1400112) had MovementType 2 (waypoints) with no path.
+- **Changed:**
+  - `DarkmoonIsland.cpp`: Jessica now has an AI that checks every second; a player more than 20 yd
+    from her loses the Ring Toss aura (102058) and gets the whisper "You left the Ring Toss booth.
+    Game over!". Rinling does the same for the Shooting Gallery aura (101871) past 12 yd ("You
+    left the Shooting Gallery. Game over!").
+  - World SQL `sql/fixes/world/2026_11_06_04_darkmoon_dubenko_wanders.sql`: Dubenko wanders up to
+    3 yd from his spot (MovementType 1, spawndist 3; template MovementType 0).
+- **Status:** leaving the booth and Dubenko's wandering confirmed in game by Four, 2026-11-06.
+
+### Darkmoon Faire: Humanoid Cannonball (Maxima Blastenheimer)
+
+From Four, 2026-11-05 ("It flings you out towards the ocean ... you finally splash down much further
+out. I don't know what this is"). Updated `tools/bfa/darkmoon-faire-gossip.patch`
+(`DarkmoonCanon.cpp`, target bunny script `npc_darkmoon_canon_target`). Rebuild, restart.
+
+- **How the game works (retail):** Maxima fires you from the cannon toward a target floating in the
+  water to the south-west (bunny 33068 at -4478, 6221). Magic Wings (102116) slows your fall, so you
+  glide well past the target unless you press the one button on your bar, Cancel Magic Wings
+  (102120), while you are over it. Landing within 3 yards = Bullseye (5 points, achievement
+  Blastenheimer Bullseye), 10 yards = Great Shot (3), 30 yards = Poor Shot (1). The quest (29436)
+  needs 5 points.
+- **Found:** the target bunny only checked players within 30 yards that had sunk below z 0. A long
+  shot (the normal result without the button) never ended: no result, and the Cannon Blast override
+  bar (102121) stayed. The bunny never put up its target rings (Darkmoon Cannon Target Area Aura
+  A/B/C, 62171/62174/62178), so there was nothing to aim at.
+- **Changed:** the bunny keeps the three target-area auras up (rechecked every 5 s) and stays
+  loaded. Every 0.2 s it checks every launched player on the island: once they are in the water, or
+  on land and no longer falling (after 2 s), they get their score and lose Cannon Blast and Magic
+  Wings. A landing more than 30 yards out ends the shot with a whisper ("You missed the target! Use
+  Cancel Magic Wings when you are over it.") and no points.
+- **Found (Four, 2026-11-06):** "Speaking to maxima and saying you're ready while mounted locks up
+  the event ... you remain inside the cannon".
+- **Changed:** Maxima now removes mounts (`SPELL_AURA_MOUNTED`) and shapeshift forms before putting
+  you in the cannon.
+- **Status:** the cannon game is confirmed in game by Four (2026-11-06, "otherwise, that worked").
+  The dismount fix is untested.
+
+### Darkmoon Faire: NPC audit (gossip, flags, quests, vendors)
+
+From Four, 2026-11-06 ("review every quest giver and merchant, make sure they're flags are
+correct, interactable, and have quests that lead to something. ensure their gossips lead
+somewhere, locales are enUS", "check items too for merchants/vendors"). Checked all 62 creatures on
+Darkmoon Island with a gossip, quest or vendor flag, and the Faire's event spawns elsewhere. World
+SQL `sql/fixes/world/2026_11_06_00_darkmoon_faire_npc_audit.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (now also `DarkmoonIsland.cpp` and `DarkmoonTonk.cpp`).
+Rebuild, run the SQL, restart.
+
+- **Found:**
+  - Jessica Rogers (Ring Toss), Rinling (Shooting Gallery) and Finlay Coolshot (Tonk Challenge)
+    sent npc_text ids that don't exist (54485/54486, 23002/23003, 54605/54606, and 54603 for "no
+    token"), so their pages showed placeholder text.
+  - Gossip menus 8849 (Silas Darkmoon), 13012 (Jessica), 13018 (Mola) and the "how to play" menus
+    13013/13065/13066 had options but no text row.
+  - Maxima and Mola had no "How do I play?" option.
+  - Ziggie Sparks (Firebird's Challenge) had gossip menu 0, so her "Ready to fly!" menu and its
+    SAI never showed.
+  - Christoph VonFeasel (pet tamer, quest 36471) had no gossip flag, so "Let's do battle!" could
+    not show.
+  - Chronos offered "DEPRECATED: Putting the Carnies Back Together Again" (29512).
+  - The old Outland Faire (26 creatures, 120 gameobjects in Terokkar Forest) still spawned with the
+    Faire event.
+  - Vendors: every Faire vendor's list is a superset of the Pandaria 5.4.8 list (the heirloom
+    vendor uses the newer heirloom items). Prize vendors (tickets) have no gold-priced items. Whether
+    each item exists in this build's Item.db2 can only be seen in the worldserver's DB error log.
+  - Every quest giver's quests have an ender, and all texts are English. Quests whose objective has
+    no source yet: Test Your Strength 29433 (Grisly Trophy 71096 drops nowhere), Spoilin' for Salty
+    Sea Dogs 29513 (no fishing loot for 73269), Tan My Hide 29519 (Staked Skin 209276 not spawned),
+    Master Pit Fighter 29761 (74034 only from an unspawned object), Firebird's Challenge 36481
+    (untested).
+- **Changed:**
+  - The three game hosts use their real texts (18284/18286, 7397/18353, 18290/18352). "No token" is
+    now a whisper. "Alright." is now "I understand.", and the Shooting Gallery options match the
+    database ("How does the Shooting Gallery work?", "Let's shoot!").
+  - Maxima ("How do I use the cannon?", text 7790) and Mola ("How do I play Whack-a-Gnoll?", text
+    18350) get an instructions page.
+  - The missing gossip_menu rows are added (texts from the Pandaria DB).
+  - Ziggie uses menu 16970. Her instructions menu 16972 gets npc_text 24704 (a guess from the text
+    ids).
+  - Christoph gets the gossip flag. Chronos no longer offers 29512.
+  - The Terokkar spawns are removed; copies are kept in `zr_dmf_terokkar_creature` and
+    `zr_dmf_terokkar_gameobject`.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Whack-a-Gnoll barrels and score bar
+
+From Four, 2026-11-05 ("still not fast enough. Not accurately incrementing the count on the artwork
+either. Can get 26/30 - just not enough spawning"). Updated `tools/bfa/darkmoon-faire-gossip.patch`
+(`DarkmoonWhackGnoll.cpp`). Rebuild, restart.
+
+- **Found:** a barrel only took a new gnoll once its "ok to hit" aura (101996) ran out, so whacked
+  barrels stayed blocked and most spawn ticks found no free barrel. The score bar (alternate power)
+  was set once at the start and then only moved by the credit spell's energize, so it drifted from
+  the quest count.
+- **Changed:** a barrel is free as soon as no gnoll, doll or boss is alive in it (2 yd). Gnoll every
+  1 s, boss every 7 s (doll stays 5 s). The score bar is set to It's Hammer Time's count at the
+  start, after every whack, and once a second while you play.
+- **Found (second test, "you mention a boss, but i have yet to see one. 28/30", and a video):** the
+  summon spells left every unwhacked gnoll standing, so all 9 barrels filled and the 1 s gnoll
+  timer took each freed barrel before the bonus gnoll (54549) or the baby (54466) found one.
+  Whacked gnolls left a grey corpse in the barrel, and swinging at the corpse scored again.
+- **Changed:** gnolls, babies and bonus gnolls are summoned straight from the barrel and leave
+  after 4 s. A bonus gnoll or baby that finds no free barrel tries again after 0.5 s instead of
+  waiting for its next turn. Dead gnolls no longer count as targets, and a whacked gnoll is
+  removed after 0.5 s.
+- **Status:** confirmed in game by Four (2026-11-05, "That worked perfectly!").
+
+### Darkmoon Faire: Whack-a-Gnoll pace and reset
+
+From Four, 2026-11-05 ("You can only realistically get 15/30 at the current rate", "You can not
+succeed the first time, and the quest remains along with the count you had. This should fail").
+Updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonWhackGnoll.cpp`). Rebuild, restart.
+
+- **Found:** the game spawns a gnoll every 3 s, a doll every 6 s and a boss gnoll every 10 s, so the
+  one-minute game holds about 20 gnolls and 6 bosses at best. Points carried over to the next
+  game, but the quest is "score 30 points in a minute".
+- **Changed:** gnoll every 1.5 s, doll every 5 s, boss every 9 s. When a game ends with It's Hammer
+  Time (29463) still incomplete, its count goes back to 0.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Game Prize hang, Let's Keep Racing
+
+From Four, 2026-11-05 ("Opening the Darkmoon Game Prize hangs, the box is greyed out", "Let's keep
+racing - nothing happens. Crossing the start line doesn't start the race"). World SQL
+`sql/fixes/world/2026_11_05_08_darkmoon_prize_ticket_as_quest_reward.sql`, updated
+`tools/bfa/darkmoon-race.patch`.
+
+- **Found:**
+  - The ticket row from `2026_11_05_07` (currency 515 as loot of item 93724) hangs the client: this
+    core can't hand a currency out of an item's loot window.
+  - Malle also gives Let's Keep Racing! (33756), a repeatable run of the Real Race course
+    (blue, green, red). The race script didn't know the quest.
+- **Changed:**
+  - SQL removes the currency loot row and gives 1 Darkmoon Prize Ticket (currency 515) as
+    `RewardCurrencyID1` on every quest that rewards the Game Prize (29434, 29436, 29438, 29455,
+    29463, 36481, 37819, 37910, 37911), as in the Pandaria 5.4.8 DB. The Game Prize keeps its
+    old rare contents and is still often empty.
+  - `darkmoon-race.patch`: Let's Keep Racing! uses Malle's start banner and the Real Race posts
+    (no achievements, those are for The Real Race).
+- **Status:** untested in game.
+
+### Darkmoon Faire: course names, empty Game Prize
+
+From Four, 2026-11-05 ("Malle's race worked, but I can still see the doodad's names", "the reward,
+Darkmoon Game Prize, has been empty twice"). World SQL
+`sql/fixes/world/2026_11_05_07_darkmoon_race_names_and_game_prize.sql`. Run the SQL, restart, delete
+the client's Cache folder.
+
+- **Found:**
+  - The course bunnies have visible models (checkpoint banners, tripwire stakes, pads) and no
+    name-hiding flags, so racers saw "Powerup Bunny Checkpoint" and the like over the course.
+  - Darkmoon Game Prize 93724 has 14 loot rows, all independent chances of 0.5% to 8.6% (about
+    29% in total), so it opened empty most of the time. The Darkmoon Prize Ticket that retail
+    always puts in it (currency 515; 1 per game daily in the Pandaria 5.4.8 DB) was missing.
+- **Changed:**
+  - 14 course entries (75718, 75044, 74153, 74157, 74678, 74800, 74872, 75063, 74536,
+    74260-74263, 74420): `type_flags` |= 0x40100000 (no name, no nameplate), `unit_flags` |=
+    0x02000000 (not selectable).
+  - `item_loot_template` (93724, -515, chance 100, count 1): one Darkmoon Prize Ticket in every
+    prize. A negative `Item` is a currency in this core's loot loader.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Dusty's strider ride at the arrival hill
+
+From Four, 2026-11-05 ("the mechastrider mount handler at the entrance isn't interactable", "Dusty
+Brandom doesn't interact"). World SQL `sql/fixes/world/2026_11_05_06_darkmoon_strider_ride.sql`.
+Run the SQL, restart.
+
+- **Found:** "Dusty" Brandom (68492, Tallstrider Handler) and two Darkmoon Striders (68491) stand
+  where you arrive on the island. On retail the striders give anyone a free ride down the Darkmoon
+  Path to the Faire. Here Dusty had `npcflag` 0 (no gossip) and an SAI line that talks with no
+  text; the striders had no spellclick. (Earlier notes in this PR wrongly tied Dusty to the races.)
+- **Changed** (values from the Pandaria 5.4.8 DB): Dusty `npcflag` 1, `gossip_menu_id` 15306 (menu
+  and npc_text 21955 already in the DB), `unit_flags` 768, SAI removed. Striders `npcflag`
+  16777216 (spellclick), `unit_flags` 33536, `npc_spellclick_spells` (68491, 134931, 3, 0):
+  clicking one mounts you on a Darkmoon Strider (spell 134931).
+- **Status:** untested in game.
+
+### Darkmoon Faire: the strider races
+
+From Four, 2026-11-05 ("let's start on the strider race"). Core patch `tools/bfa/darkmoon-race.patch`
+(after `darkmoon-faire-gossip.patch`), world SQL `sql/fixes/world/2026_11_05_05_darkmoon_race_course.sql`.
+Rebuild, run the SQL, restart.
+
+- **Found:**
+  - Malle Earnhard (74056: Welcome to the Darkmoon Races 37819, The Real Race 37910) and Patti
+    Earnhard (90473: More Big Racing! 37868, The Real Big Race 37911) give the race quests, but
+    nothing on the server runs a race. Retail does it with server-side spells and area triggers
+    that aren't in the client files, and this database has no rows for them.
+  - The client files do have the pieces: the objective credit entries (start 74536, posts
+    73984/73988/74030/74031, end 74004, passed 74299), the Racing Strider mount (179750), the
+    course bunnies' visual spells, Invis to Non-Racers (179303) / On a Trial (149669), and the
+    achievement spells (criteria "cast spell" 179420-179617, e.g. Darkmoon Racer Roadhog 9761).
+  - The Real Race posts aren't spawned. Their map coordinates come from the wiki's route guide
+    (blue 26.3,66.9; green 29.5,46.1; red 43.5,50.1). Fitting its 16 checkpoint coordinates to our
+    checkpoint banners matched all of them within 2 yards, which gives blue (-4152.4, 6779.6),
+    green (-3894.5, 6720.1), red (-3944.1, 6459.7). The Big Race posts are the Marker Pointer
+    spawns: purple 74263, green 74261, red 74262.
+- **Changed:**
+  - `darkmoon-race.patch` adds a player script to `DarkmoonIsland.cpp`. With a race quest in
+    your log, running through the start banner (Malle's for the Real Race, Patti's for the Big
+    Race) uses a Darkmoon Game Token, mounts you on the Racing Strider and starts the race. Touch
+    the posts in order (a marker shows the next one), then ride back through the banner.
+  - The bell tolls every 5 seconds. Your toll count is shown at each post and at the finish, and
+    decides the achievements: Real Race within 25/20/15/11 tolls, Big Race within 40/35/30/25/20,
+    plus Darkmoon Race Enthusiast for the first race. The toll length isn't in the client data;
+    5 seconds is a guess from the achievement limits and is easy to change (`RACE_TOLL_MS`).
+  - On the course: checkpoint banners give +100% speed for 3 seconds and 7 seconds of water
+    walking (once each per race), dash and loot pads +100% speed for 4 seconds, jump and rocket
+    pads throw you forward, blink pads move you 20 yards ahead, rotating pads pick one of
+    those. Running between two tripwire stakes (within 14 yards of each other) takes your mount
+    speed away for 2 seconds.
+  - The race is canceled (objectives reset, token not refunded) if you die, get off the strider,
+    leave the island, log out or take longer than 10 minutes.
+  - SQL: removes spawn group 450 from `2026_11_05_03`, so the course spawns again, and gives the
+    course bunnies (checkpoints, tripwire stakes, powerup pads) Invis to Non-Racers 179303 plus
+    their powerup visual. Only racers (and GMs) see them.
+  - The Racing Strider's buttons, from Four's OverrideSpellData.db2 (bar 569), are scripted as
+    `spell_darkmoon_racer_button`: **Jump To Banner** (179748) leaps to the nearest checkpoint
+    banner ahead of you within 100 yards and keeps you safe from tripwires for 4 seconds;
+    **Lasso Powerup** (316043) uses the nearest powerup pad within 25 yards at once; **Jump To
+    Racer** (179804) leaps to the nearest other racer ahead. Cooldowns are the client's.
+- **Not done:** the Rocketeer, Powermonger and Wanderluster racers (toys) aren't supported, only
+  the Racing Strider.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Selina, jugglers, Maxima, citizens
+
+From Four, 2026-11-05. Core patch `tools/bfa/darkmoon-faire-gossip.patch` (after
+`holiday-schedule.patch`), world SQL `sql/fixes/world/2026_11_05_04_darkmoon_faire_npcs.sql`.
+Rebuild, run the SQL, restart.
+
+- **Found** (reported by Four):
+  - "Selina Dourman, has a quest, cannot interact": her C++ script `npc_selina_dourman` sends
+    npc_text 23004-23006, which don't exist, and her template's gossip menu 8776 has no
+    `gossip_menu` row. Her real menu 13075 (guide, purchases, prize tickets, cards, attractions)
+    is already in the database.
+  - "Fire jugglers at the entrance, not juggling": 8 jugglers in pairs (55220/55221 at the entrance,
+    55222/55223, 55225/55226, 55341/55342) cast Juggle Torches (196717) at their partner by
+    sniffed spawn guid (2099, 2104, 2142, 2145, 2187, 2189, 2212, 2219). Those guids don't exist
+    here, so the spell had no target.
+  - "Maxima Blastenheimer has French locale text" and "Unable to turn in game tokens": the
+    `npc_canon_maxima` script has French text ("Je souhaite devenir un homme canon !") and only
+    offers the launch while the daily Humanoid Cannonball (29436) is in progress. Mola
+    (Whack-a-Gnoll, 29463) and Teleportologist Fozlebub (cannon teleport, 30 silver) had the same
+    problem. Fozlebub also took the 30 silver without checking you had it.
+  - "Horde Children / Citizen are hostile/attackable": Alliance Citizen 55347 and Horde Citizen
+    55348 had `unit_flags` 512, so the other faction could attack them.
+- **Changed:**
+  - `darkmoon-faire-gossip.patch` (`DarkmoonCanon.cpp`, `DarkmoonWhackGnoll.cpp`): English
+    options "Launch me! (Darkmoon Game Token)", "Ready to play! (Darkmoon Game Token)" and
+    "Teleport me to the cannon." with a 30 silver confirm; English whispers when you have no
+    token; the options show for everyone (the quests still count). Fozlebub checks your money.
+  - Selina 10445: `ScriptName` '', `gossip_menu_id` 13075, `unit_flags` 768.
+  - Juggler SAI `target_param1` set to the partner's spawn on this server: 55220->1400016,
+    55221->1400017, 55222->1400081, 55223->1400086, 55225->1400313, 55226->1400349,
+    55341->1400114, 55342->1400294.
+  - Citizens 55347, 55348: `unit_flags` 768 (adds IMMUNE_TO_PC, as in the Pandaria 5.4.8 DB).
+- **Not changed:** the carousel (its mounts aren't seated on the moving carousel, which needs core
+  transport work) and the rollercoaster (none at the retail Faire as far as we know; asked Four).
+- **Status:** untested in game.
+
+### Darkmoon Faire: missing from the calendar, and on the wrong days
+
+From Four, 2026-11-04. Core patch `tools/bfa/holiday-schedule.patch` (after all other patches),
+world SQL `sql/fixes/world/2026_11_04_00_darkmoon_faire_first_sunday.sql`, hotfix SQL
+`sql/fixes/hotfixes/2026_11_04_00_darkmoon_faire_calendar.sql`.
+
+- **Found** (reported by Four: "I don't really see it on the calendar"):
+  - The server sends no holidays to the calendar. The client draws them from its own Holidays.db2.
+    In the 8.3.7 client (Four's file), the Darkmoon Faire, holiday 479, only has 18 dates, from
+    July 2019 to December 2020. So nothing showed in 2026. The hotfix database had no row 479.
+  - On the server, the Faire is game event 3. Upstream's `2026_08_16_01_fix_game_events.sql` gave it
+    a start of 2026-09-06 10:01, every 30 days (`occurence` 43200), 7 days long. Months aren't 30
+    days long, so the start day slid away from the retail first Sunday of the month by about 5 days
+    a year. The core's `game_event` only supports fixed periods.
+- **Changed:**
+  - `holiday-schedule.patch` changes `src/server/game/Events/GameEventMgr.cpp`, in
+    `CheckOneGameEvent`, `NextCheck`, `StopEvent` and `LoadFromDB`. A `game_event` row with
+    `occurence` 0 is now a monthly event: it starts on the first Sunday of every month, at the time
+    of day of its `start_time`, and runs for `length` minutes. Before, `occurence` 0 divided by zero.
+    No row used it.
+    - `.event start 3` runs the event for its length from now.
+    - `.event stop 3` stops the current month's run until it would have ended.
+    - At startup the log says "game event id (3) runs monthly from the first Sunday at 00:00".
+  - `game_event` 3: `start_time` 2026-09-06 10:01 -> 2026-11-01 00:00, `occurence` 43200 -> 0,
+    `length` 10080 (7 days, unchanged), `end_time` 2030-12-31 17:00 -> 2037-12-31 23:59.
+    Event 23 (Darkmoon Faire Building) has no spawns or scripts, so it is unchanged.
+  - Hotfix: `holidays` row 479 is the client's own row (name, description, textures, durations 48 h
+    + 168 h, calendar flags 0/3) with 26 new dates. Each date is the Friday 00:00 before a first
+    Sunday, from the Faire of 2026-11-01 to the Faire of 2028-12-03. `hotfix_data` row: Id 9000479,
+    table hash 1972272076 (Holidays.db2), record 479. The calendar shows each Faire from Sunday 00:00
+    for 7 days. Holidays.db2 holds at most 26 dates, so the calendar needs new dates again for 2029.
+    The server schedule doesn't.
+- **Status:** compiled (GameEventMgr.cpp), not tested in game yet.
+
+### Darkmoon Island: the strider race course visible to everyone
+
+From Four's visit, 2026-11-05 (screenshots of "Powerup Bunny Checkpoint" arches and "Powerup Bunny -
+Trap - Tripwire - NOT MECHANICAL" posts all over the paths, with GM mode off). SQL only:
+`sql/fixes/world/2026_11_05_03_darkmoon_race_course_hidden.sql`.
+
+- **Found:** the course of the island's strider race is spawned, 290 creatures. That's the
+  checkpoints, power-up crates, tripwires, marker arrows and start bunnies, with visible models
+  and no trigger flag. On retail only racers see them. The race itself has no scripts here.
+  "Dusty" Brandom (68492) has no gossip and npcflag 0.
+- **Changed:** every map 974 spawn of 74153, 74157, 74678, 74800, 74872, 75063, 75044, 75718,
+  74260-74263, 74420 and 74536 goes into new spawn group 450, "Darkmoon Island - strider race
+  course", with flag 0x04 (manual spawn). The core keeps those spawns despawned until a script
+  turns the group on. The rows are selected from the live `creature` table, so no guid list is
+  hard-coded.
+- **Next:** the race itself (Four, 2026-11-05: "yes after").
+- **Status:** not tested in game yet.
+
+### Darkmoon Island: Portal Back hung the client on the loading screen
+
+From Four's visit, 2026-11-05. SQL only: `sql/fixes/world/2026_11_05_02_darkmoon_portal_back.sql`.
+
+- **Found** (reported by Four: taking the portal back out left the client stuck on the loading screen):
+  - Portal Back (gameobject 216667, 2 spawns on Darkmoon Island) is a spellcaster gameobject. Its
+    own spell, 101260 To the Staging Area!, already sends Horde to Mulgore and Alliance to Elwynn
+    (`spell_darkmoon_staging_area_teleport`).
+  - It also had SmartAI that, on the same click, cast 101260 again and 103582 (Mulgore, map 1). So
+    an Alliance player got teleports to Elwynn and to Mulgore at the same time.
+- **Changed:** both `smart_scripts` rows of 216667 (source type 1, ids 0 and 1) are deleted, and
+  `gameobject_template` 216667 `AIName` 'SmartGameObjectAI' -> ''.
+- **Status:** not tested in game yet.
+
+### Darkmoon Faire: Fire Jugglers throwing torches at players and NPCs
+
+From Four's visit to the Elwynn Faire camp, 2026-11-05. SQL only:
+`sql/fixes/world/2026_11_05_01_darkmoon_fire_juggler_torches.sql`.
+
+- **Found** (reported by Four: the torches home in on the nearest NPC or player, some at Four,
+  others at the Greeter):
+  - Fire Jugglers carry aura 102905 (template addon of 55089, 55093, 55225 and 55397). Every 0.7
+    seconds it casts Juggle Torch, 102882. That's a dummy spell whose torch flies to a "nearby unit
+    of an entry" (target 38) within 20 yards. Which entry is meant to come from `conditions`, and
+    the dump has none for 102882. So the core took any nearby unit: players, the Greeter, the Fire
+    Eater.
+  - Read from the client's SpellEffect.db2.
+- **Changed:** 13 `conditions` rows (source type 13, group 1, entry 102882, condition 31 type 3).
+  The torch may now only target a Fire Juggler: 55089, 55093, 55220-55226, 55341, 55342, 55397,
+  55398. The jugglers stand in pairs about 18 yards apart, so the torches stay with the jugglers.
+- **Status:** not tested in game yet.
+
+### Holidays that move every year: missing from the calendar, and two never ran
+
+From Four, 2026-11-05 ("please do them all"). Same core patch (`holiday-schedule.patch`, which was
+first written for the Faire alone), world SQL `sql/fixes/world/2026_11_05_00_holiday_dates_schedule.sql`,
+hotfix SQL `sql/fixes/hotfixes/2026_11_05_00_holiday_calendar_dates.sql`.
+
+- **Found:**
+  - In the client's Holidays.db2, six holidays have dates only up to 2020 (Lunar Festival up to 2024),
+    so none of them shows on the 2026 calendar: Lunar Festival 327, Love is in the Air 423,
+    Noblegarden 181, Children's Week 201, Harvest Festival 321, Pilgrim's Bounty 404. Hallow's End,
+    Winter Veil, Midsummer, Brewfest, Pirates' Day, Day of the Dead and the 4th of July fireworks use
+    "any year" dates and were already fine.
+  - On the server, upstream's `2026_08_16_01_fix_game_events.sql` never updated game events 7
+    (Lunar Festival), 26 (Pilgrim's Bounty) or 72 (Fireworks Spectacular). They still ended in 2020,
+    so they never ran. The others repeat every 365 days (Noblegarden 364), so Easter-based
+    Noblegarden drifts by weeks.
+- **Changed:**
+  - `holiday-schedule.patch`: `occurence` 1 means "start on each date of the event's holiday in
+    Holidays.db2". It reads the dates from the server's own copy, hotfixes included, so the server
+    runs on the dates the calendar shows. An "any year" date repeats every year. Each run lasts
+    `length`. At startup the log says "game event id (N) runs on the dates of holiday H". An event
+    with `occurence` 1 and no holiday logs an error and never starts.
+  - Hotfix rows 327, 423, 181, 201, 321 and 404 are the client's own rows, with five dates each
+    (2026 to 2030, 10:00). 2030 is the last year a Holidays.db2 date can hold. `hotfix_data` ids
+    are 9000000 + holiday id. The rules:
+    - Lunar Festival: 2 days before the lunar new year (2026-02-15, 2027-02-04, 2028-01-24,
+      2029-02-11, 2030-02-01).
+    - Love is in the Air: the first Monday on or after 7 February.
+    - Noblegarden: Easter Monday (as in every client date from 2015 to 2020).
+    - Children's Week: the Monday between 28 April and 4 May.
+    - Harvest Festival: the second Tuesday of September.
+    - Pilgrim's Bounty: the Monday of Thanksgiving week (as in every client date from 2015 to 2020).
+    The Lunar Festival, Love is in the Air, Children's Week and Harvest Festival rules are close fits
+    to the client's 2015-2020 dates. Retail moved those around from year to year.
+  - `game_event` 7, 8, 9, 10, 11, 26 and 72: `occurence` -> 1, `start_time` -> 2026-01-01 00:00
+    (only used by `.event start`), `end_time` -> 2037-12-31 23:59. `length` is unchanged. Fireworks
+    (72, holiday 62, "any year" 4 July 10:00) now runs every year again.
+- **Not done:**
+  - Timewalking (holidays 559, 562, 587, 643). The server's events 100-103 are switched off
+    (they end in 2020 or start and end in 2030), and Timewalking dungeons need their own work.
+  - Brew of the Month (34-45) and the Kalu'ak Fishing Derby (63, 64) also ended in 2020.
+  - The fixed-date holidays still repeat every 365 days, so they slip one day per leap year
+    (first in 2028).
+- **Status:** compiled (GameEventMgr.cpp), not tested in game yet.
+
 ## 2026-11-04 (pet battles)
 
 ### Pet battles: some wild pets ignore their zone's level range

@@ -117,6 +117,10 @@ git apply ../tools-repo/tools/bfa/core-branding.patch
 git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
 git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 git apply ../tools-repo/tools/bfa/transmog-apply.patch
+git apply ../tools-repo/tools/bfa/holiday-schedule.patch
+git apply ../tools-repo/tools/bfa/darkmoon-faire-gossip.patch
+git apply ../tools-repo/tools/bfa/darkmoon-race.patch
+git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -665,6 +669,10 @@ git apply ../tools-repo/tools/bfa/core-branding.patch
 git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
 git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 git apply ../tools-repo/tools/bfa/transmog-apply.patch
+git apply ../tools-repo/tools/bfa/holiday-schedule.patch
+git apply ../tools-repo/tools/bfa/darkmoon-faire-gossip.patch
+git apply ../tools-repo/tools/bfa/darkmoon-race.patch
+git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -704,6 +712,39 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_10_16_01_shadowfang_lesser_gargoyles.sql` | Shadowfang Keep's Lesser Gargoyles on the wall walk never attacking: they were flagged as civilians |
 | `2026_10_16_02_shadowfang_godfrey_text.sql` | Typos in Lord Godfrey's aggro and death yells |
 | `2026_11_03_20_holiday_emote_casts.sql` | Day of the Dead: `/dance` with Catrina gave no skeleton and no Dead Man's Party achievement (verified in game 2026-11-03). Winter Veil: `/kiss` on a Winter Reveler gave no Mistletoe (same cause, not tested yet). Both NPCs' emote spells had no target |
+| `2026_11_04_00_darkmoon_faire_first_sunday.sql` | The Darkmoon Faire starting on a different weekday every month (a fixed 30-day cycle). It now opens on the first Sunday of each month for 7 days, as on retail. Needs `holiday-schedule.patch` built first, or `worldserver` crashes on start |
+| `2026_11_05_00_holiday_dates_schedule.sql` | Lunar Festival, Pilgrim's Bounty and the 4th of July fireworks never running (they ended in 2020), and Noblegarden drifting away from Easter. These holidays and Love is in the Air, Children's Week and Harvest Festival now run on the dates of their holiday (the same dates the calendar shows). Needs `holiday-schedule.patch` and the hotfix file below |
+| `2026_11_05_01_darkmoon_fire_juggler_torches.sql` | Darkmoon Faire Fire Jugglers throwing their torches at players and nearby NPCs: the torch spell had no condition saying it targets Fire Jugglers |
+| `2026_11_05_02_darkmoon_portal_back.sql` | Darkmoon Island's Portal Back hanging the client on the loading screen: it teleported Alliance players to Elwynn and Mulgore at once |
+| `2026_11_05_03_darkmoon_race_course_hidden.sql` | Darkmoon Island's strider race course (checkpoint arches, power-up crates, tripwire posts) standing on every path for everyone: despawned in spawn group 450 until the race is scripted |
+| `2026_11_05_04_darkmoon_faire_npcs.sql` | Darkmoon Faire: Selina Dourman not talking (missing gossip), the paired Fire Jugglers not throwing to each other, and the Alliance/Horde citizens and children being attackable |
+| `2026_11_05_05_darkmoon_race_course.sql` | Darkmoon Island strider races: brings the race course back (undoes `2026_11_05_03`) and shows it only to players in a race. Needs `darkmoon-race.patch` |
+| `2026_11_05_06_darkmoon_strider_ride.sql` | "Dusty" Brandom at the Darkmoon Island arrival hill not talking, and his Darkmoon Striders not giving the free ride to the Faire |
+| `2026_11_05_07_darkmoon_race_names_and_game_prize.sql` | Race course bunnies showing their names. Delete the client's Cache folder afterwards. (Its Game Prize ticket row is undone by `_08`) |
+| `2026_11_05_08_darkmoon_prize_ticket_as_quest_reward.sql` | Darkmoon Game Prize hanging the client: the Darkmoon Prize Ticket is now a currency reward of the Faire game and race quests |
+| `2026_11_06_00_darkmoon_faire_npc_audit.sql` | Darkmoon Faire NPC audit: missing gossip texts (Silas, Jessica Rogers, Mola, game instructions), Ziggie Sparks menu, Christoph VonFeasel gossip flag, deprecated Chronos quest removed, old Terokkar Faire spawns removed (copies kept in `zr_dmf_terokkar_*`) |
+| `2026_11_06_01_darkmoon_ring_toss.sql` | Darkmoon Faire Ring Toss: rings only hit Dubenko the turtle; his duplicate SAI credit removed |
+| `2026_11_06_02_darkmoon_booth_spell_focus.sql` | Darkmoon Faire Ring Toss and Shooting Gallery: spawns the booth spell focus objects the game spells require |
+| `2026_11_06_03_darkmoon_tonk_commander.sql` | Darkmoon Faire Tonk Commander: tonk cannon targets, quest credit for targets and enemy tonks, enemy tonks stay passive and respawn in 10 s |
+| `2026_11_06_04_darkmoon_dubenko_wanders.sql` | Darkmoon Faire Ring Toss: Dubenko (54490) wanders up to 3 yards in his pen instead of standing still |
+| `2026_11_06_05_darkmoon_firebird_rings.sql` | Darkmoon Faire Firebird's Challenge: Summon Rings script name and ring areatrigger 3069 (needs darkmoon-faire-gossip.patch) |
+| `2026_11_06_06_darkmoon_horde_citizens.sql` | Darkmoon Faire Horde Citizens (55348) use orc, troll, blood elf and Forsaken models instead of Stormwind humans |
+| `2026_11_06_07_darkmoon_champions_aggro.sql` | Darkmoon Faire Champions Faesrol (55732) and Isimode (55733) only attack hostile players within 5 yards |
+| `2026_11_06_08_darkmoon_game_targets.sql` | Darkmoon Faire: Shooting Gallery and Tonk targets spawn alive, Shoot (101872) and tonk Cannon (102292) script names (needs darkmoon-faire-gossip.patch) |
+| `2026_11_06_09_darkmoon_tauren_chieftains.sql` | Darkmoon Faire Tauren Chieftains: show loops every 5 minutes, constant "Armor" spell sound removed |
+| `2026_11_06_10_darkmoon_balloon_cart.sql` | Darkmoon Faire Carl Goodup carries his balloon cart and balloons (vehicle accessories), wanders 5 yards |
+| `2026_11_06_11_darkmoon_tonk_cannonballs.sql` | Darkmoon Faire Tonk Commander: enemy tonks and MiniZeps fire cannonballs (needs darkmoon-faire-gossip.patch) |
+| `2026_11_06_12_darkmoon_concert_sync.sql` | Darkmoon Faire Tauren Chieftains follow the FX Controller (the song), controller respawns after 30 s (replaces the `_09` loop) |
+| `2026_11_06_13_darkmoon_balloon_cart_spellclick.sql` | Darkmoon Faire Carl Goodup: spellclick rows so his cart accessories load (needs `_10`) |
+| `2026_11_06_14_darkmoon_gallery_names_balloons.sql` | Darkmoon Faire: no names over the Shooting Gallery targets; Carl Goodup's balloons sit on his cart (after `_13`) |
+| `2026_11_06_15_darkmoon_names_rings_balloons.sql` | Darkmoon Faire: Shooting Gallery names hidden by flags, Firebird rings keep coming, Carl's balloons back on the bunny 1 yd up (after `_14`, needs the gossip patch) |
+| `2026_11_06_16_darkmoon_gallery_unselectable.sql` | Darkmoon Faire: Shooting Gallery targets not selectable, so no names over them |
+| `2026_11_06_17_darkmoon_quest_items.sql` | Darkmoon Faire: Salty Sea Dog fishing, Staked Skins, Darkmoon Treasure Chest (Pit Fighter) placed (Grisly Trophies come from the gossip patch) |
+| `2026_11_06_18_darkmoon_island_fishing.sql` | Darkmoon Island fishing loot from Wowhead's list (Darkmoon Daggermaw and the rest; after `_17`) |
+| `2026_11_06_19_darkmoon_fishing_containers.sql` | Contents for the Sealed Darkmoon Crate and the Darkwater, Big-Mouth and Jaggal Clams |
+| `2026_11_06_20_darkmoon_profession_quests_skill.sql` | Darkmoon Faire profession quests need 1 skill point instead of 75 |
+
+Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236).
 
 ## 11. Status
 
