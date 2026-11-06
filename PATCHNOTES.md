@@ -7,6 +7,27 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Horde Citizens and the Champions
+
+From Four, 2026-11-06 ("Horde Citizens should appear as horde races. Champion Faesrol, Champion
+Isimonde - lower their aggro range to if a player gets right up on them"). World SQL only; run it
+and restart. No rebuild.
+
+- **Found:** Horde Citizen (55348) used the Stormwind citizen models 1501/21621, the same as the
+  Alliance Citizen (55347). Their SAI casts Citizen Costume (71084), a transform with no creature
+  set, which the core does nothing with.
+- **Changed:** `sql/fixes/world/2026_11_06_06_darkmoon_horde_citizens.sql` gives 55348 eight
+  models with equal chance: orc 1370/31416 (Orgrimmar Citizen), troll 2588/2589 (Troll Citizen),
+  blood elf 18211/18212 (Silvermoon Citizen), Forsaken 34459/25893 (Undercity Citizen).
+- **Found:** Champion Faesrol (55732) and Champion Isimode (55733) by the Tonk Commander area are
+  level 80 with SmartAI but no rows, so they pulled with the normal aggro radius (up to 45 yd
+  against low-level players).
+- **Changed:** `sql/fixes/world/2026_11_06_07_darkmoon_champions_aggro.sql`: both go defensive on
+  spawn/reset and attack a hostile player that comes within 5 yd (SAI out-of-combat LOS, max 5,
+  1 s cooldown; condition: invoker is a player, so they don't start on each other). They still
+  fight back when attacked.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Firebird's Challenge (Ziggie Sparks)
 
 From Four, 2026-11-06 ("Ziggie Sparks, Firebird challenge, no rings"). World SQL
