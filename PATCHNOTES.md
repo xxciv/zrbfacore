@@ -7,6 +7,20 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Quest objects counted twice (Tan My Hide)
+
+From Four, 2026-11-06: Tan My Hide (29519) finished after 2 of its 4 Staked Skins. New patch
+`tools/bfa/goober-quest-credit.patch` (`src/server/game/Handlers/SpellHandler.cpp`, after
+`darkmoon-race.patch`). Rebuild, restart.
+
+- **Found:** using a "goober" object (type 10, like the Staked Skin) gives its quest credit in
+  `GameObject::Use`, and the client then reports the same use (`CMSG_GAME_OBJ_REPORT_USE`), where
+  HavenCore gives the credit again. Every goober quest objective counted twice. Upstream
+  TrinityCore gives no quest credit on the report.
+- **Changed:** the report no longer gives quest credit for goobers; other object types keep it.
+  The achievement update on the report is unchanged.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: profession quests need only the profession
 
 From Four, 2026-11-06 ("Stamp Thunderhorn is only a vendor here"). World SQL

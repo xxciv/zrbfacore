@@ -120,6 +120,7 @@ git apply ../tools-repo/tools/bfa/transmog-apply.patch
 git apply ../tools-repo/tools/bfa/holiday-schedule.patch
 git apply ../tools-repo/tools/bfa/darkmoon-faire-gossip.patch
 git apply ../tools-repo/tools/bfa/darkmoon-race.patch
+git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -671,6 +672,7 @@ git apply ../tools-repo/tools/bfa/transmog-apply.patch
 git apply ../tools-repo/tools/bfa/holiday-schedule.patch
 git apply ../tools-repo/tools/bfa/darkmoon-faire-gossip.patch
 git apply ../tools-repo/tools/bfa/darkmoon-race.patch
+git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
