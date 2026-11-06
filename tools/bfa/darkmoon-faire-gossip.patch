@@ -229,7 +229,7 @@ index 7e4a359..017c4f2 100644
              player->TeleportTo(974, -4019.00f, 6286.58f, 12.49f, 1.39f);
  
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-index b65819e..64afae1 100644
+index b65819e..72dc390 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 @@ -28,6 +28,8 @@
@@ -568,25 +568,26 @@ index b65819e..64afae1 100644
  
 -                        me->SummonCreature(54225, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
 -                        me->SummonCreature(54225, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
-+                        me->SummonCreature(54231, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4070.09f, 6354.87f, 13.30f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
 +                        me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
                          break;
                      case 1:
 -                        me->SummonCreature(54225, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
 +                        me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
  
-                         if (Creature* summon = me->SummonCreature(54231, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
+-                        if (Creature* summon = me->SummonCreature(54231, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
 -                            summon->CastSpell(summon, 102341, false);
++                        if (Creature* summon = me->SummonCreature(54231, -4070.09f, 6354.87f, 13.30f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
 +                            { summon->CastSpell(summon, 102341, false); sMarkedShootingTargets.insert(summon->GetGUID()); }
  
 -                        me->SummonCreature(54225, -4068.41f, 6353.09f, 12.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
-+                        me->SummonCreature(54231, -4068.41f, 6353.09f, 12.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
                          break;
                      case 2:
 -                        me->SummonCreature(54225, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
 -                        me->SummonCreature(54225, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
 +                        me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
-+                        me->SummonCreature(54231, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4070.09f, 6354.87f, 13.30f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
  
                          if (Creature* summon = me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
 -                            summon->CastSpell(summon, 102341, false);
@@ -706,7 +707,48 @@ index b65819e..64afae1 100644
                  player->KilledMonsterCredit(54231, ObjectGuid::Empty);
  
                  AchievementEntry const* AchievShooter = sAchievementStore.LookupEntry(6022);
-@@ -1013,6 +1251,8 @@ void AddSC_darkmoon_island()
+@@ -993,8 +1231,40 @@ public:
+             }
+         }
+ 
++        // zrbfacore: Shoot (101872) is a cone whose radius row is tiny in 8.3.7, so nothing was
++        // ever hit. Hit the gallery target (54231) closest to where the player faces, within
++        // 30 yards and 90 degrees.
++        void SelectTarget(std::list<WorldObject*>& targets)
++        {
++            targets.clear();
++            Unit* caster = GetCaster();
++            if (!caster)
++                return;
++
++            std::list<Creature*> found;
++            caster->GetCreatureListWithEntryInGrid(found, 54231, 30.0f);
++            Creature* best = nullptr;
++            float bestOff = 0.0f;
++            for (Creature* creature : found)
++            {
++                if (!creature->IsAlive() || !caster->HasInArc(float(M_PI) / 2.0f, creature))
++                    continue;
++
++                float off = std::fabs(Position::NormalizeOrientation(caster->GetRelativeAngle(creature) + float(M_PI)) - float(M_PI));
++                if (!best || off < bestOff)
++                {
++                    best = creature;
++                    bestOff = off;
++                }
++            }
++
++            if (best)
++                targets.push_back(best);
++        }
++
+         void Register()
+         {
++            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_shoot_gallery_shoot_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_CONE_ENTRY);
+             AfterHit += SpellHitFn(spell_shoot_gallery_shoot_SpellScript::OnHit);
+             OnCheckCast += SpellCheckCastFn(spell_shoot_gallery_shoot_SpellScript::CheckRequirement);
+         }
+@@ -1013,6 +1283,8 @@ void AddSC_darkmoon_island()
      new npc_selina_dourman();
      new npc_rinling();
      new spell_ring_toss();
@@ -716,7 +758,7 @@ index b65819e..64afae1 100644
      new spell_darkmoon_carousel_whee();
      new spell_darkmoon_staging_area_teleport();
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
-index e90fb3a..a589902 100644
+index e90fb3a..8e8df8c 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
 @@ -26,6 +26,8 @@
@@ -804,7 +846,7 @@ index e90fb3a..a589902 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 3)
-@@ -358,15 +387,129 @@ public:
+@@ -358,15 +387,144 @@ public:
              if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
                  AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -817,8 +859,9 @@ index e90fb3a..a589902 100644
  };
  
 +// zrbfacore: the steam tonk's Cannon (102292) only hit things touching the tonk (its cone
-+// radius comes from a SpellRadius row that is tiny in 8.3.7). Hit Tonk Targets, Enemy Tonks
-+// and MiniZeps up to 30 yards in a 60 degree cone in front of the tonk instead.
++// radius comes from a SpellRadius row that is tiny in 8.3.7). It now hits one Tonk Target,
++// Enemy Tonk or MiniZep up to 30 yards away in a 60 degree cone in front of the tonk: the one
++// closest to straight ahead.
 +class spell_darkmoon_tonk_cannon : public SpellScriptLoader
 +{
 +public:
@@ -835,15 +878,29 @@ index e90fb3a..a589902 100644
 +            if (!caster)
 +                return;
 +
++            Creature* best = nullptr;
++            float bestOff = 0.0f;
 +            static uint32 const entries[] = { 33081, 54642, 54643 };
 +            for (uint32 entry : entries)
 +            {
 +                std::list<Creature*> found;
 +                caster->GetCreatureListWithEntryInGrid(found, entry, 30.0f);
 +                for (Creature* creature : found)
-+                    if (creature->IsAlive() && caster->HasInArc(float(M_PI) / 3.0f, creature))
-+                        targets.push_back(creature);
++                {
++                    if (!creature->IsAlive() || !caster->HasInArc(float(M_PI) / 3.0f, creature))
++                        continue;
++
++                    float off = std::fabs(Position::NormalizeOrientation(caster->GetRelativeAngle(creature) + float(M_PI)) - float(M_PI));
++                    if (!best || off < bestOff)
++                    {
++                        best = creature;
++                        bestOff = off;
++                    }
++                }
 +            }
++
++            if (best)
++                targets.push_back(best);
 +        }
 +
 +        void Register() override

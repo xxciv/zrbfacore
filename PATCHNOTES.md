@@ -7,6 +7,38 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: concert in sync, Carl's cart, one cannon target, Shooting Gallery aim
+
+From Four's retest, 2026-11-06. World SQL `2026_11_06_12_darkmoon_concert_sync.sql`,
+`2026_11_06_13_darkmoon_balloon_cart_spellclick.sql`, updated `tools/bfa/darkmoon-faire-gossip.patch`
+(`DarkmoonIsland.cpp`, `DarkmoonTonk.cpp`). Rebuild, run the SQL, restart.
+
+- **Confirmed:** Bergrisst's constant "Armor" sound is gone; the show plays and the band vanishes
+  at the end; Tonk enemies firing back works ("way better").
+- **Concert, found:** the song is driven by [DND] L70ETC FX Controller (23830): on spawn it plays
+  sound 11803 after 9.4 s, runs the lightning (42500), earthquake (42499) and rain of fire (42501)
+  effects, and despawns after 275 s; it comes back after its spawn time (120 s), which starts the
+  next song. The band's 5-minute loop from `2026_11_06_09` ran on its own clock, so they drifted
+  apart (band showing up mid-break, vanishing mid-song).
+- **Changed:** 1 s after each spawn the controller sends data 1 to the five band members within
+  30 yd; each member then runs its show as a timed action list (`<entry>01`, same steps and times
+  as its old rows, counted from the controller's spawn). The controller respawns 30 s after
+  despawning (was 120 s), so the break is about 50 s. Thunder-Skins' separate on-spawn drum list
+  is dropped. Same entries play in Shattrath and Blackrock Depths and follow their own controller.
+- **Fire, found:** the controller does cast L70ETC Rain of Fire (42501) five times per song (18,
+  88, 142, 247 and 260 s); same spell setup as the lightning except for the visual. Not changed.
+- **Carl Goodup, found:** still no cart: the core only loads a `vehicle_template_accessory` row
+  when the vehicle has an `npc_spellclick_spells` row, so both rows from `2026_11_06_10` were
+  skipped. **Changed:** Ride Vehicle (46598) spellclick rows for 55305 and 55306 (Pandaria DB);
+  players still can't click them (no spellclick npcflag).
+- **Tonk Commander, changed:** the cannon hits one target per shot: the Tonk Target, Enemy Tonk or
+  MiniZep within 30 yd and 60 degrees that is closest to straight ahead.
+- **Shooting Gallery, found:** the targets had health but nothing hit them: Shoot (101872) is a
+  cone with the same tiny radius problem as the tonk cannon. The middle target spawned at z 12.57,
+  under the counter. **Changed:** Shoot hits the gallery target closest to where you face (30 yd,
+  90 degrees); the middle spot is z 13.30 and the third spot's 12.24 variant is 13.24.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Tauren Chieftains, Carl Goodup's cart, Tonk enemies fire back
 
 From Four, 2026-11-06. World SQL `2026_11_06_09_darkmoon_tauren_chieftains.sql`,
@@ -37,7 +69,8 @@ From Four, 2026-11-06. World SQL `2026_11_06_09_darkmoon_tauren_chieftains.sql`,
   `spell_darkmoon_enemy_tonk_cannon_blast` stuns a tonk within 4 yd of the landing spot for 2 s
   (Death Stun 102229) and takes 1 Tonk Target credit off its driver (quest 29434, only while
   the quest is incomplete).
-- **Status:** untested in game.
+- **Status:** Bergrisst's sound and the enemy cannonballs confirmed by Four, 2026-11-06; Carl's
+  cart and the concert loop needed `2026_11_06_12` / `13`.
 
 ### Darkmoon Faire: retest fixes (Firebird, Ring Toss, Shooting Gallery, Tonk Commander)
 
