@@ -7,6 +7,18 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: profession quests need only the profession
+
+From Four, 2026-11-06 ("Stamp Thunderhorn is only a vendor here"). World SQL
+`2026_11_06_20_darkmoon_profession_quests_skill.sql`. Run the SQL, restart. No rebuild.
+
+- **Found:** all 14 Darkmoon profession quests (29506-29511, 29513-29520) have a skill condition
+  asking for 75 points in the profession's parent skill (Cataclysm rule), so players below 75
+  never see them offered.
+- **Changed:** the conditions ask for 1 point (the profession), as in Battle for Azeroth;
+  `quest_template_addon` already had RequiredSkillPoints 1.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: fished crates and clams open with contents
 
 From Four's Wowhead lists, 2026-11-06. World SQL `2026_11_06_19_darkmoon_fishing_containers.sql`.
