@@ -7,6 +7,20 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet.
 
+### Darkmoon Faire Deathmatch: looting the chest sends everyone out
+
+From Four, 2026-11-06 (Master Pit Fighter done, but nobody left the pit after the chest was
+looted). World SQL `2026_11_06_22_darkmoon_deathmatch_chest_exit.sql`. Run the SQL, restart.
+No rebuild.
+
+- **Found:** the Darkmoon Treasure Chest (209620) uses SmartGameObjectAI but had no script, so
+  looting it only gave the loot.
+- **Changed:** when the chest is looted (loot state 3), every player within 35 yd of it is
+  teleported to the Deathmatch exit by Korgol Crushskull (-4300.9, 6397.3, 16.5, the target
+  position of Exit Deathmatch 108923), facing away from the pit.
+- **Status:** untested in game. The Darkmoon Treasure Chest itself (`2026_11_06_17`) is confirmed:
+  Four looted Pit Fighter and finished Master Pit Fighter.
+
 ### Darkmoon Faire concert: fireworks instead of Rain of Fire
 
 From Four, 2026-11-06 (the concert's fire never showed). World SQL
