@@ -7,6 +7,22 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: fished crates and clams open with contents
+
+From Four's Wowhead lists, 2026-11-06. World SQL `2026_11_06_19_darkmoon_fishing_containers.sql`.
+Run the SQL, restart. No rebuild.
+
+- **Found:** Sealed Darkmoon Crate (124670), Darkwater Clam (36781), Big-Mouth Clam (7973) and
+  Jaggal Clam (24476), all caught at Darkmoon Island, had no `item_loot_template` rows and opened
+  empty.
+- **Changed:** contents from Wowhead, each item rolling on its own. Crate: Darkmoon Firewater 97%,
+  16 faire foods and drinks 6-10% each, 15 Darkmoon Draughts/Tinctures and the Healing Tonic about
+  3% each, Don Carlos Tequila 0.7%, the two Divergence ones 0.2%. Darkwater Clam: Succulent Clam
+  Meat 89% (1-3), Northsea Pearl 10%, Siren's Tear 1%. Big-Mouth Clam: Zesty Clam Meat 100%, Black
+  Pearl 1%, Golden Pearl 1.7%, Iridescent Pearl 2.3%, Small Lustrous Pearl 1%. Jaggal Clam: Jaggal
+  Clam Meat 100% (1-3), Jaggal Pearl 8%, Shadow Pearl 5%.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Darkmoon Island fishing loot
 
 From Four's Wowhead list, 2026-11-06. World SQL `2026_11_06_18_darkmoon_island_fishing.sql` (run
