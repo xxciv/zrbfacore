@@ -229,10 +229,66 @@ index 7e4a359..017c4f2 100644
              player->TeleportTo(974, -4019.00f, 6286.58f, 12.49f, 1.39f);
  
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-index b65819e..6eaf268 100644
+index b65819e..aa07503 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-@@ -199,7 +199,7 @@ public:
+@@ -173,11 +173,55 @@ public:
+ };
+ 
+ // 54485 - Jessica Rogers
++// zrbfacore: the game auras stayed on players who walked away from the booth.
++// Ring Toss: 20 yards from Jessica (the booth focus range). Shooting Gallery: 12 yards from
++// Rinling (his counter focus reaches 10 yards from a spot 3 yards away).
++static void RemoveGameAuraAwayFromBooth(Creature* me, uint32 spellId, float range, char const* text)
++{
++    Map::PlayerList const& players = me->GetMap()->GetPlayers();
++    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++    {
++        Player* player = itr->GetSource();
++        if (!player || !player->HasAura(spellId))
++            continue;
++
++        if (player->GetExactDist2d(me) <= range)
++            continue;
++
++        player->RemoveAurasDueToSpell(spellId);
++        me->Whisper(text, LANG_UNIVERSAL, player);
++    }
++}
++
+ class npc_jessica_rogers : public CreatureScript
+ {
+ public:
+     npc_jessica_rogers() : CreatureScript("npc_jessica_rogers") { }
+ 
++    struct npc_jessica_rogersAI : public ScriptedAI
++    {
++        npc_jessica_rogersAI(Creature* creature) : ScriptedAI(creature), _boothCheck(1000) { }
++
++        void UpdateAI(uint32 diff) override
++        {
++            if (_boothCheck <= diff)
++            {
++                RemoveGameAuraAwayFromBooth(me, 102058, 20.0f, "You left the Ring Toss booth. Game over!");
++                _boothCheck = 1000;
++            }
++            else
++                _boothCheck -= diff;
++        }
++
++    private:
++        uint32 _boothCheck;
++    };
++
++    CreatureAI* GetAI(Creature* creature) const override
++    {
++        return new npc_jessica_rogersAI(creature);
++    }
++
+     bool OnGossipHello(Player* player, Creature* creature) override
+     {
+         if (creature->IsQuestGiver())
+@@ -199,7 +243,7 @@ public:
          if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -241,7 +297,7 @@ index b65819e..6eaf268 100644
          return true;
      }
  
-@@ -214,7 +214,7 @@ public:
+@@ -214,7 +258,7 @@ public:
          default:
              GOSSIP_BUTTON_1 = "How do I play the Ring Toss?";
              GOSSIP_BUTTON_2 = "Ready to play! |cFF0000FF(Darkmoon Game Token)|r";
@@ -250,7 +306,7 @@ index b65819e..6eaf268 100644
              break;
          };
  
-@@ -223,7 +223,7 @@ public:
+@@ -223,7 +267,7 @@ public:
          if (action == GOSSIP_ACTION_INFO_DEF + 1)
          {
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
@@ -259,7 +315,7 @@ index b65819e..6eaf268 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 2)
-@@ -241,7 +241,11 @@ public:
+@@ -241,7 +285,11 @@ public:
                  return true;
              }
              else
@@ -272,7 +328,7 @@ index b65819e..6eaf268 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 3)
-@@ -254,7 +258,7 @@ public:
+@@ -254,7 +302,7 @@ public:
              if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
                  AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -281,7 +337,7 @@ index b65819e..6eaf268 100644
          }
  
          return true;
-@@ -279,16 +283,19 @@ public:
+@@ -279,16 +327,19 @@ public:
              return SPELL_CAST_OK;
          }
  
@@ -307,7 +363,33 @@ index b65819e..6eaf268 100644
  
              player->KilledMonsterCredit(54495, ObjectGuid::Empty);
          }
-@@ -604,8 +611,8 @@ public:
+@@ -525,7 +576,9 @@ public:
+ 
+     struct npc_rinlingAI : public ScriptedAI
+     {
+-        npc_rinlingAI(Creature* creature) : ScriptedAI(creature) { }
++        npc_rinlingAI(Creature* creature) : ScriptedAI(creature), _boothCheck(1000) { }
++
++        uint32 _boothCheck;
+ 
+         EventMap events;
+ 
+@@ -549,6 +602,14 @@ public:
+         {
+             events.Update(diff);
+ 
++            if (_boothCheck <= diff)
++            {
++                RemoveGameAuraAwayFromBooth(me, 101871, 12.0f, "You left the Shooting Gallery. Game over!");
++                _boothCheck = 1000;
++            }
++            else
++                _boothCheck -= diff;
++
+             [[maybe_unused]] Map::PlayerList const& PlayerList = me->GetMap()->GetPlayers();
+ 
+             while (uint32 eventId = events.ExecuteEvent())
+@@ -604,8 +665,8 @@ public:
          switch (player->GetSession()->GetSessionDbcLocale())
          {
          default:
@@ -318,7 +400,7 @@ index b65819e..6eaf268 100644
              break;
          };
  
-@@ -614,7 +621,7 @@ public:
+@@ -614,7 +675,7 @@ public:
          if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -327,7 +409,7 @@ index b65819e..6eaf268 100644
          return true;
      }
  
-@@ -627,9 +634,9 @@ public:
+@@ -627,9 +688,9 @@ public:
          switch (player->GetSession()->GetSessionDbcLocale())
          {
          default:
@@ -340,7 +422,7 @@ index b65819e..6eaf268 100644
              break;
          };
  
-@@ -638,7 +645,7 @@ public:
+@@ -638,7 +699,7 @@ public:
          if (action == GOSSIP_ACTION_INFO_DEF + 1)
          {
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
@@ -349,7 +431,7 @@ index b65819e..6eaf268 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 2)
-@@ -658,7 +665,11 @@ public:
+@@ -658,7 +719,11 @@ public:
                  return true;
              }
              else
@@ -362,7 +444,7 @@ index b65819e..6eaf268 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 3)
-@@ -671,7 +682,7 @@ public:
+@@ -671,7 +736,7 @@ public:
              if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
                  AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  

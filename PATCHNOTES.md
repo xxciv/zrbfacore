@@ -54,6 +54,16 @@ run the SQL, restart.
   301114 "Standing at the Ring Toss Booth" (focus 1729, 20 yd) on Jessica (-4287.87, 6309.00,
   13.20, guid 974000001) and 300129 "Standing at the Booth Counter" (focus 1471, 10 yd) at Rinling's
   counter (-4078.42, 6354.07, 13.08, Pandaria 5.4.8 DB position, guid 974000002). Both are invisible.
+- **Status:** confirmed in game by Four, 2026-11-06 ("Ring toss played well").
+- **Found (Four, 2026-11-06):** the ring aura stays on you after you walk away from the booth, and
+  Dubenko never moves. His spawn (guid 1400112) had MovementType 2 (waypoints) with no path.
+- **Changed:**
+  - `DarkmoonIsland.cpp`: Jessica now has an AI that checks every second; a player more than 20 yd
+    from her loses the Ring Toss aura (102058) and gets the whisper "You left the Ring Toss booth.
+    Game over!". Rinling does the same for the Shooting Gallery aura (101871) past 12 yd ("You
+    left the Shooting Gallery. Game over!").
+  - World SQL `sql/fixes/world/2026_11_06_04_darkmoon_dubenko_wanders.sql`: Dubenko wanders up to
+    3 yd from his spot (MovementType 1, spawndist 3; template MovementType 0).
 - **Status:** untested in game.
 
 ### Darkmoon Faire: Humanoid Cannonball (Maxima Blastenheimer)
