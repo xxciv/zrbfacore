@@ -229,7 +229,7 @@ index 7e4a359..017c4f2 100644
              player->TeleportTo(974, -4019.00f, 6286.58f, 12.49f, 1.39f);
  
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-index b65819e..a4ff38e 100644
+index b65819e..6eaf268 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 @@ -199,7 +199,7 @@ public:
@@ -281,7 +281,33 @@ index b65819e..a4ff38e 100644
          }
  
          return true;
-@@ -604,8 +608,8 @@ public:
+@@ -279,16 +283,19 @@ public:
+             return SPELL_CAST_OK;
+         }
+ 
++        // zrbfacore: 181458 lands where the ring was thrown and hits every unit in its
++        // area. The old handler gave Target: Turtle credit (54495) for any unit hit,
++        // the thrower included, so every toss scored; Dubenko's SAI cast a second
++        // credit on top. Only a ring that lands on Dubenko (54490) counts now, once.
+         void HandleDummy(SpellEffIndex /*effIndex*/)
+         {
+-            Unit* caster = GetCaster();
+             Player* player = GetCaster()->ToPlayer();
++            Creature* dubenko = GetHitCreature();
++            if (!player || !dubenko || dubenko->GetEntry() != 54490)
++                return;
+ 
+-            if (Creature* dubenko = caster->FindNearestCreature(54490, 100.0f, true))
+-            {
+-                caster->CastSpell(dubenko, 101697, false);
+-                dubenko->CastSpell(dubenko, 101737, false);
+-            }
++            player->CastSpell(dubenko, 101697, true);
++            dubenko->CastSpell(dubenko, 101737, true);
+ 
+             player->KilledMonsterCredit(54495, ObjectGuid::Empty);
+         }
+@@ -604,8 +611,8 @@ public:
          switch (player->GetSession()->GetSessionDbcLocale())
          {
          default:
@@ -292,7 +318,7 @@ index b65819e..a4ff38e 100644
              break;
          };
  
-@@ -614,7 +618,7 @@ public:
+@@ -614,7 +621,7 @@ public:
          if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  
@@ -301,7 +327,7 @@ index b65819e..a4ff38e 100644
          return true;
      }
  
-@@ -627,9 +631,9 @@ public:
+@@ -627,9 +634,9 @@ public:
          switch (player->GetSession()->GetSessionDbcLocale())
          {
          default:
@@ -314,7 +340,7 @@ index b65819e..a4ff38e 100644
              break;
          };
  
-@@ -638,7 +642,7 @@ public:
+@@ -638,7 +645,7 @@ public:
          if (action == GOSSIP_ACTION_INFO_DEF + 1)
          {
              AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
@@ -323,7 +349,7 @@ index b65819e..a4ff38e 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 2)
-@@ -658,7 +662,11 @@ public:
+@@ -658,7 +665,11 @@ public:
                  return true;
              }
              else
@@ -336,7 +362,7 @@ index b65819e..a4ff38e 100644
          }
  
          if (action == GOSSIP_ACTION_INFO_DEF + 3)
-@@ -671,7 +679,7 @@ public:
+@@ -671,7 +682,7 @@ public:
              if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
                  AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
  

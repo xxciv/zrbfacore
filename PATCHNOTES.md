@@ -7,6 +7,23 @@ to do to pick it up (rebuild, restart, run SQL).
 
 On branch `claude/project-thread-lzgnii`, not merged yet.
 
+### Darkmoon Faire: Ring Toss (Jessica Rogers)
+
+Four picked Ring Toss next (2026-11-06). World SQL `sql/fixes/world/2026_11_06_01_darkmoon_ring_toss.sql`,
+updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`, `spell_ring_toss`). Rebuild,
+run the SQL, restart.
+
+- **How the game works (retail):** Jessica gives you 10 rings (the bar shows them) and a one-button
+  bar. Aim the ring at Dubenko (54490), the turtle swimming in the pond next to her; 3 rings on his
+  shell complete Target: Turtle (29455).
+- **Found:** the ring's landing spell (181458) has no target conditions, so it hit every unit where
+  it landed, and `spell_ring_toss` gave the quest credit (54495) for any unit hit, the thrower
+  included. Dubenko's SAI (id 1, invoker cast 101807) gave a second credit for each real hit.
+- **Changed:** condition on 181458 effect 0: only creature 54490. The handler only credits (once)
+  when the hit unit is Dubenko, and still plays the ring-on-shell visuals (101697, 101737). Dubenko's
+  SAI credit row is deleted.
+- **Status:** untested in game.
+
 ### Darkmoon Faire: Humanoid Cannonball (Maxima Blastenheimer)
 
 From Four, 2026-11-05 ("It flings you out towards the ocean ... you finally splash down much further
