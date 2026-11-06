@@ -3,6 +3,28 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-06 (Holidays: Darkmoon Faire, second batch)
+
+Draft PR, not merged yet.
+
+### Darkmoon Faire concert: fireworks instead of Rain of Fire
+
+From Four, 2026-11-06 (the concert's fire never showed). World SQL
+`2026_11_06_21_darkmoon_concert_fireworks.sql`. Run the SQL, restart. No rebuild.
+
+- **Found:** the concert's FX Controller (23830) casts L70ETC Rain of Fire (42501) at 18.0, 87.9,
+  142.3, 247.3 and 260.5 s into the song. 42501 is a persistent area aura whose visual does not
+  play in the 8.3.7 client (`.cast self 42501` shows nothing; Lightning Cloud 42500 works). Four
+  tried eight other fire spells in game; none suited the show.
+- **Changed:** those five script rows (ids 3, 6, 9, 12, 15) now cast Darkmoon Firework (103740),
+  which Four picked in game.
+- **Status:** the spell is confirmed with `.cast self`; the concert itself is untested.
+
+### Grisly Trophies confirmed
+
+Four, 2026-11-06: Grisly Trophies drop from kills while carrying the Adventurer's Guide (Test Your
+Strength, `2026_11_06_17` + gossip patch from PR #40). Confirmed in game.
+
 ## 2026-11-04/05 (Holidays: calendar and schedules)
 
 Merged to main via PR #40 (2026-11-06).
