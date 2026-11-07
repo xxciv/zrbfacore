@@ -3,6 +3,126 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-07 (Holidays: Darkmoon Faire races)
+
+Merged to main via PR #42 (2026-11-07).
+
+### Darkmoon Faire: token vendors sell one pouch and one sack
+
+From Four, 2026-11-07 ("If there's only 2 sizes of token bags, why have 12 different bags?").
+World SQL `2026_11_07_05_darkmoon_token_vendors_one_pair.sql` (after `_04`). Run the SQL, restart.
+No rebuild.
+
+- **Found:** the 12 bags are Pouch o' Tokens (5 tokens) and Sack o' Tokens (20 tokens) at six price
+  tiers each (pouch 50 copper to 60 silver, sack 1s 60c to 1g 92s), all shown to everyone, so the
+  cheapest pair was always the best deal. The tiers were probably level bands; the data doesn't
+  say.
+- **Changed:** Four chose the max-level pair. Sazz, Zina and Trixi now sell only Pouch o' Tokens
+  78903 (60 silver) and Sack o' Tokens 78909 (1 gold 92 silver).
+- **Status:** confirmed in game (Four, 2026-11-07).
+
+### Darkmoon Faire: race arch and camp post names, token vendors
+
+From Four, 2026-11-07. World SQL `2026_11_07_04_darkmoon_race_names_token_vendors.sql`. Run the
+SQL, restart, delete the client Cache folder. No rebuild.
+
+- **Found:**
+  - "Arch, Start Race" (74333) and "Camp Post" (74388) at both race start lines showed their names.
+    They are scenery (no gossip, no quests).
+  - The Game Token vendors (Sazz Coincatcher 55264, Zina Sharpworth 55266, Trixi Sharpworth 55339)
+    sold 14 Pouches/Sacks o' Tokens. Pouch o' Tokens 78904 and Sack o' Tokens 78910 hold nothing,
+    and the Pandaria 5.4.8 DB doesn't sell those two. The other 12 hold 5 or 20 Darkmoon Game
+    Tokens.
+- **Changed:** both scenery entries are not selectable, which hides the name; 78904 and 78910 are
+  off the three vendors.
+- **Status:** confirmed in game (Four, 2026-11-07).
+
+### Darkmoon races: turn-in text
+
+From Four, 2026-11-07 (Let's Keep Racing! and More Big Racing! turned in with an empty page).
+World SQL `2026_11_07_03_darkmoon_race_turn_in_text.sql`. Run the SQL, restart, delete the client
+Cache folder. No rebuild.
+
+- **Found:** none of the five race quests had a turn-in text (`quest_offer_reward`).
+- **Changed:** texts from Wowhead's quest pages: "Good job, and nice time!" for The Real Race,
+  Let's Keep Racing!, More Big Racing! and The Real Big Race, and the practice-race text for
+  Welcome to the Darkmoon Races.
+- **Not changed:** Wowhead lists no reward for the two practice runs, so they still give nothing.
+  The other three give the Darkmoon Game Prize, a Prize Ticket and Darkmoon Faire reputation.
+- **Status:** confirmed in game (Four, 2026-11-07).
+
+### Darkmoon races: the practice runs are repeatable
+
+From Four, 2026-11-07 (after finishing the races, Malle Earnhard offered nothing). World SQL
+`2026_11_07_02_darkmoon_race_repeatables.sql`. Run the SQL, restart. No rebuild.
+
+- **Found:** Let's Keep Racing! (33756, Malle) and More Big Racing! (37868, Patti) are the
+  repeatable runs of the two courses (blue repeatable marker flag, no reward, no daily flag), but
+  `quest_template_addon.SpecialFlags` was 0, so the core let you do each only once. The Real Race
+  and The Real Big Race are dailies and come back at the daily reset.
+- **Changed:** SpecialFlags 1 (repeatable) on 33756 and 37868.
+- **Status:** confirmed in game (Four, 2026-11-07).
+
+### Darkmoon races: visible tripwires
+
+From Four, 2026-11-07 ("The Real Race felt a lot better", finished in 108 seconds; "you can't tell
+which way the trap is set because you can't see a wire"). Updated `tools/bfa/darkmoon-race.patch`
+and world SQL `2026_11_07_01_darkmoon_race_tripwire_wires.sql`. Rebuild, run the SQL, restart.
+
+- **Found:** any two tripwire stakes (75044) within 14 yards of each other zapped racers, with
+  nothing drawn between them.
+- **Changed:**
+  - New script `npc_darkmoon_race_tripwire_stake`: each stake wires itself to its nearest stake
+    within 14 yards if that stake picks it too. That makes 30 pairs out of the 95 stakes; the
+    other 35 are safe to pass.
+  - The wire is drawn as the channel beam of Lightning Tether (33628, visual only, never cast,
+    `SPELL_TRIPWIRE_BEAM`) from one stake to the other. Only racers see the stakes and beams.
+  - Only a wired pair zaps you (same 2 seconds without boosts as before).
+- **Status:** confirmed in game (Four, 2026-11-07: "The tripwires worked perfectly").
+
+### Darkmoon races: banners no longer sink under water
+
+From Four, 2026-11-07 (screenshots and the More Big Racing video: banners at sea level stand on
+the sea floor). World SQL `2026_11_07_00_darkmoon_race_course_float.sql`. Run the SQL, restart,
+delete the client Cache folder. No rebuild.
+
+- **Found:** the course creatures (checkpoint banners, tripwire stakes, powerup pads, Racing
+  Posts) are InhabitType 3 (ground and water), so a spawn above water sinks to the bottom.
+- **Changed:** InhabitType 4 (air) for those 12 entries, so the core turns their gravity off and
+  they stay at their spawn height: sea-level banners float at the surface.
+- **Status:** in Four's build for the confirmed race runs of 2026-11-07; the floating banners
+  weren't reported on separately.
+
+### Darkmoon races: pickups vanish, real post positions
+
+From Four's Let's Keep Racing video, 2026-11-07 ("Power pickups never pick up and disappear. Some
+race posts are under water or pointing at the wrong direction towards the next post"). Updated
+`tools/bfa/darkmoon-race.patch` (`DarkmoonIsland.cpp`). Rebuild, restart.
+
+- **Found:**
+  - The race worked (Blue at 8 tolls, Green 13, Red 17, finish), but powerup pads stayed where
+    they were after giving their effect.
+  - The posts' places came from wiki map coordinates with no height, so the post marker was put
+    at the water or ground level under them (the Blue Post stands on a rock in the sea). The
+    marker always faced east.
+  - The island has its own Racing Post spawns: Blue 74362, Green 74365 (two), Red 74368 (two),
+    Purple 74369. The Big Race used the Marker Pointer spawns instead, which aren't its posts:
+    the Purple pointer is 300 yards from the Purple Racing Post.
+  - All 51 checkpoint banners' arrows point along the course (Real Race: start, blue, green,
+    red, start; Big Race: start, purple, green, red, start). Banners at sea level stand in the
+    shallows on purpose (each banner gives 7 seconds of water walking), but they had sunk to the sea
+    floor (fixed in `2026_11_07_00` above). The More Big Racing video shows the old Big Race
+    posts: Purple at the start (reached at 0 tolls) and Red out in the sea.
+- **Changed:**
+  - A pad disappears when you take it and comes back after 20 seconds (`POWERUP_RESPAWN_S`).
+  - Real Race posts use the Blue/Green/Red Racing Post spawns with their heights. Big Race posts
+    use the Purple Racing Post and the second Green and Red Racing Posts.
+  - The post marker faces the next post (or the start banner after the last post).
+- **Not changed:** Let's Keep Racing! (33756) has no reward and no turn-in text in the 8.3.7
+  quest data, so it ends without one.
+- **Status:** confirmed in game (Four, 2026-11-07): The Real Race (108 seconds), The Real Big Race
+  and More Big Racing all finished.
+
 ## 2026-11-06 (Holidays: Darkmoon Faire, second batch)
 
 Merged to main via PR #41 (2026-11-07).
