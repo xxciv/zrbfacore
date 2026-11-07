@@ -55,6 +55,10 @@ to do to pick it up (rebuild, restart, run SQL).
   - Moonfang showed 456K health at level 38 with HealthModifier 400. Death Metal Knight at 300
     was a good solo fight, so Darkmoon Rabbit and Moonfang now use 300 as well. Moonfang's rank
     goes from 3 (boss) to 1 (elite), as in the Pandaria 5.4.8 DB.
+  - Moonfang (Four: "the fight was good"): Fangs of the Moon came every 12.5 s, way too often;
+    now every 25-30 s. She dropped nothing because her items only had independent rolls (about a
+    third of kills dropped nothing). Moonfang's Paw, Shimmering Moonstone, Moonfang Shroud and Moon
+    Moon are now one loot group (31/32/32/5%), so exactly one always drops.
 - **Status:** spawns, scaling and loot confirmed in game by Four (2026-11-07). The follow-up
   (rabbit bite, rank and health, Knight's weapon) is waiting for Four to test.
 - **Pick up:** SQL only, no rebuild:

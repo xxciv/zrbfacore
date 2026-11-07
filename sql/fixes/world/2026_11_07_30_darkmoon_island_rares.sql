@@ -37,6 +37,12 @@
 --    modifier made the rabbit just as tanky, while Death Metal Knight at 300 was a good solo fight
 --    (Four). Darkmoon Rabbit and Moonfang now use 300 as well, and Moonfang is rank 1 (elite)
 --    instead of 3 (boss), as in the Pandaria 5.4.8 DB.
+-- 10. Moonfang tuning after Four's fight: Fangs of the Moon (stun, bleed, more damage taken) came
+--    every 12.5 s, far too often solo: now every 25-30 s, first at 10-12 s. Her loot had only
+--    independent rolls (Moonfang's Paw 22%, Shimmering Moonstone 22%, Moonfang Shroud 21%, Moon Moon
+--    4.8%, plus grey fangs; Moonfang's Pelt is quest-only), so a third of her kills dropped nothing.
+--    The four items are now one loot group, so exactly one always drops: Paw, Moonstone and
+--    Shroud 31-32% each, Moon Moon 5%.
 -- New creature guids 974200001-974200005 (974100001-974100043 are the pet battle thread's crows).
 
 DELETE FROM `creature` WHERE `guid` BETWEEN 974200001 AND 974200005;
@@ -51,7 +57,7 @@ UPDATE `creature` SET `spawndist` = 5, `MovementType` = 1 WHERE `guid` = 1400330
 UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` IN (71992, 72038);
 DELETE FROM `smart_scripts` WHERE `entryorguid` IN (71992, 72038) AND `source_type` = 0;
 INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `event_param5`, `event_param_string`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
-(71992, 0, 0, 0, 0, 0, 100, 0, 8000, 9000, 12000, 13000, 0, '', 11, 144700, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Moonfang - IC - Cast Fangs of the Moon on victim'),
+(71992, 0, 0, 0, 0, 0, 100, 0, 10000, 12000, 25000, 30000, 0, '', 11, 144700, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Moonfang - IC - Cast Fangs of the Moon on victim'),
 (71992, 0, 1, 0, 0, 0, 100, 0, 11000, 11000, 20000, 20000, 0, '', 11, 144579, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Moonfang - IC - Cast Moonfang Tears on victim'),
 (71992, 0, 2, 0, 0, 0, 100, 0, 15000, 15000, 16000, 16000, 0, '', 11, 144546, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Moonfang - IC - Cast Leap for the Kill on victim'),
 (71992, 0, 3, 0, 0, 0, 100, 0, 25000, 25000, 32000, 32000, 0, '', 11, 144602, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Moonfang - IC - Cast Call the Pack'),
@@ -76,3 +82,8 @@ DELETE FROM `creature_equip_template` WHERE `CreatureID` = 122899;
 INSERT INTO `creature_equip_template` (`CreatureID`, `ID`, `ItemID1`, `AppearanceModID1`, `ItemVisual1`, `ItemID2`, `AppearanceModID2`, `ItemVisual2`, `ItemID3`, `AppearanceModID3`, `ItemVisual3`, `VerifiedBuild`) VALUES
 (122899, 1, 151255, 0, 0, 0, 0, 0, 0, 0, 0, 0); -- Death Metal Knight: Necromedes, the Death Resonator
 UPDATE `creature` SET `equipment_id` = 1 WHERE `guid` = 974200005;
+
+UPDATE `creature_loot_template` SET `GroupId` = 1, `Chance` = 31 WHERE `Entry` = 71992 AND `Item` = 105898; -- Moonfang's Paw
+UPDATE `creature_loot_template` SET `GroupId` = 1, `Chance` = 32 WHERE `Entry` = 71992 AND `Item` = 101675; -- Shimmering Moonstone
+UPDATE `creature_loot_template` SET `GroupId` = 1, `Chance` = 32 WHERE `Entry` = 71992 AND `Item` = 101571; -- Moonfang Shroud
+UPDATE `creature_loot_template` SET `GroupId` = 1, `Chance` = 5 WHERE `Entry` = 71992 AND `Item` = 101570; -- Moon Moon
