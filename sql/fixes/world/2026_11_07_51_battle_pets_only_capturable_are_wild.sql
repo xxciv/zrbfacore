@@ -18,7 +18,15 @@
 -- are unchanged. Tamer battles use battlepet_npc_team_member, not this table.
 -- Capturable species (Crow, Darkmoon Glowfly, every wild critter pet) are not touched.
 --
+-- Once they are no longer battle pets, those display pets could be attacked and
+-- killed (Four, Lhara's pets). The wild battle code used to make them immune to NPCs
+-- and turned a click into a pet battle. Now every spawned type 14 creature of these
+-- species gets unit_flags | 0x300 (IMMUNE_TO_PC | IMMUNE_TO_NPC) on its template,
+-- as retail display and companion pets cannot be attacked.
+--
 -- Undo: UPDATE battlepet_info SET NpcID = NpcID - 10000000 WHERE NpcID >= 10000000;
+--       (the unit_flags change is harmless to keep; to undo it, clear 0x300 on the
+--       templates listed by the join below)
 
 UPDATE `battlepet_info` SET `NpcID` = `NpcID` + 10000000
  WHERE `NpcID` < 10000000 AND `Specie` IN (
@@ -88,5 +96,15 @@ UPDATE `battlepet_info` SET `NpcID` = `NpcID` + 10000000
     2093, 2095, 2096, 2097, 2098, 2099, 2100, 2101, 2102, 2103, 2104, 2105, 2106, 2107, 2108, 2109,
     2110, 2111, 2112, 2113, 2115, 2116, 2117, 2118, 2119, 2120, 2121, 2135, 2143, 2158, 2163);
 
+-- Display pets of those species cannot be attacked
+UPDATE `creature_template` ct
+  JOIN `battlepet_info` bi ON ct.`entry` = bi.`NpcID` - 10000000
+   SET ct.`unit_flags` = ct.`unit_flags` | 0x300
+ WHERE bi.`NpcID` >= 10000000 AND ct.`type` = 14
+   AND EXISTS (SELECT 1 FROM `creature` c WHERE c.`id` = ct.`entry`);
+
 SELECT CONCAT((SELECT COUNT(*) FROM `battlepet_info` WHERE `NpcID` >= 10000000), ' non-capturable species no longer wild, ',
-              (SELECT COUNT(*) FROM `battlepet_info` WHERE `NpcID` < 10000000), ' wild species left') AS zr_result;
+              (SELECT COUNT(*) FROM `battlepet_info` WHERE `NpcID` < 10000000), ' wild species left, ',
+              (SELECT COUNT(*) FROM `creature_template` ct JOIN `battlepet_info` bi ON ct.`entry` = bi.`NpcID` - 10000000
+                WHERE bi.`NpcID` >= 10000000 AND ct.`type` = 14 AND ct.`unit_flags` & 0x300 = 0x300
+                  AND EXISTS (SELECT 1 FROM `creature` c WHERE c.`id` = ct.`entry`)), ' display pet templates unattackable') AS zr_result;

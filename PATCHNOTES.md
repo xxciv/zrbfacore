@@ -21,6 +21,9 @@ to do to pick it up (rebuild, restart, run SQL).
   learn a pet, so learned pets don't change. Tamer battles use `battlepet_npc_team_member`, not this
   table. Capturable species (Crow, Glowfly, every wild critter pet) are not touched. Undo line in the
   file header. No core change.
+- **Then found** (Four): without the battle pet flag those display pets could be attacked and killed.
+  The same file now also sets `unit_flags | 0x300` (immune to players and NPCs) on the templates of
+  the 299 spawned type 14 creatures of those species, as on retail.
 - **Status:** not tested in game yet.
 
 #### To pick it up
@@ -29,7 +32,8 @@ cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_07_51_battle_pets_only_capturable_are_wild.sql | mysql -u root -p bfa_world
 ```
-The last line prints `1041 non-capturable species no longer wild, 364 wild species left`. Then
+The last line prints `1041 non-capturable species no longer wild, 364 wild species left, 299 display
+pet templates unattackable`. Then
 restart `worldserver`.
 
 ### Pet battles: no Crows to battle on Darkmoon Island; capturable Darkmoon Rabbit
