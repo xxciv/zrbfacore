@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-07 (Holidays: Darkmoon Faire races)
 
-Draft PR, not merged yet.
+Merged to main via PR #42 (2026-11-07).
 
 ### Darkmoon Faire: token vendors sell one pouch and one sack
 
@@ -19,7 +19,7 @@ No rebuild.
   say.
 - **Changed:** Four chose the max-level pair. Sazz, Zina and Trixi now sell only Pouch o' Tokens
   78903 (60 silver) and Sack o' Tokens 78909 (1 gold 92 silver).
-- **Status:** untested in game.
+- **Status:** confirmed in game (Four, 2026-11-07).
 
 ### Darkmoon Faire: race arch and camp post names, token vendors
 
