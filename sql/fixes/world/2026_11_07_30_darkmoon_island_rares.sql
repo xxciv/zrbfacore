@@ -43,6 +43,8 @@
 --    4.8%, plus grey fangs; Moonfang's Pelt is quest-only), so a third of her kills dropped nothing.
 --    The four items are now one loot group, so exactly one always drops: Paw, Moonstone and
 --    Shroud 31-32% each, Moon Moon 5%.
+-- 11. Death Metal Knight was rank 0 (normal) and showed no elite frame next to the other two rares:
+--    rank 1 (elite). His health (HealthModifier 300) is unchanged.
 -- New creature guids 974200001-974200005 (974100001-974100043 are the pet battle thread's crows).
 
 DELETE FROM `creature` WHERE `guid` BETWEEN 974200001 AND 974200005;
@@ -87,3 +89,4 @@ UPDATE `creature_loot_template` SET `GroupId` = 1, `Chance` = 31 WHERE `Entry` =
 UPDATE `creature_loot_template` SET `GroupId` = 1, `Chance` = 32 WHERE `Entry` = 71992 AND `Item` = 101675; -- Shimmering Moonstone
 UPDATE `creature_loot_template` SET `GroupId` = 1, `Chance` = 32 WHERE `Entry` = 71992 AND `Item` = 101571; -- Moonfang Shroud
 UPDATE `creature_loot_template` SET `GroupId` = 1, `Chance` = 5 WHERE `Entry` = 71992 AND `Item` = 101570; -- Moon Moon
+UPDATE `creature_template` SET `rank` = 1 WHERE `entry` = 122899; -- Death Metal Knight: elite

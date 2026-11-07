@@ -59,6 +59,8 @@ to do to pick it up (rebuild, restart, run SQL).
     now every 25-30 s. She dropped nothing because her items only had independent rolls (about a
     third of kills dropped nothing). Moonfang's Paw, Shimmering Moonstone, Moonfang Shroud and Moon
     Moon are now one loot group (31/32/32/5%), so exactly one always drops.
+  - Death Metal Knight was rank 0 and had no elite frame like the other two: now rank 1 (elite),
+    health unchanged.
 - **Status:** spawns, scaling and loot confirmed in game by Four (2026-11-07). The follow-up
   (rabbit bite, rank and health, Knight's weapon) is waiting for Four to test.
 - **Pick up:** SQL only, no rebuild:
