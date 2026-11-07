@@ -3,6 +3,37 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-07 (Holidays: Darkmoon Faire carousel)
+
+Draft PR, not merged yet.
+
+### Darkmoon Faire: carousel rides turn with the carousel
+
+From Four, 2026-11-07 (rides stationary instead of attached to the carousel, no way to get off, the
+camera follows the platform, the gryphon and some others seat you backwards).
+`tools/bfa/darkmoon-race.patch` (rebuild) and world SQL `2026_11_07_06_darkmoon_carousel_rides.sql`.
+Run the SQL, rebuild, restart.
+
+- **Found:**
+  - The platform (gameobject 216666, spawn 1270005) is turned by the client: TransportRotation.db2
+    gives one full clockwise turn every 12 seconds. This core has no passengers for that kind of
+    transport, so the six rides (Carousel Dragon 68231, Gryphon 68232, Murloc 68233, two Rockets
+    68238, Wyvern 68239) stood still while the floor spun under them.
+  - The rides are vehicles (354 and 2587, seats 3326 and 12198). Both seats allow leaving at will,
+    so the server accepts Leave Vehicle.
+  - The sniffed spawn facings point along a clockwise ring, which matches the platform's turn.
+  - Whee! (46668, more XP and reputation) was meant to grow while on the carousel, but its script
+    only checked for the platform transport, which never happens here.
+- **Changed:**
+  - New script `npc_darkmoon_carousel_ride` on the five templates (AIName was SmartAI with no
+    rows). Each ride keeps its spawn radius (6.5 to 8.1 yards) and its place in the ring, and
+    circles the pole at -4031.01, 6352.32 once every 12 seconds on a 36-point cyclic path, facing the
+    way it travels. The angle comes from the game clock, so all rides stay in step, and the path is
+    relaunched every 5 minutes so it can't drift. Copies of these rides on other maps stay still.
+  - Getting on a ride casts Whee!, and every 5 seconds on a ride adds 5 minutes (up to 1 hour).
+- **Status:** not tested in game yet. Leaving, the camera and the backwards seats still need Four's
+  check with the rides moving.
+
 ## 2026-11-07 (Holidays: Darkmoon Faire races)
 
 Merged to main via PR #42 (2026-11-07).
