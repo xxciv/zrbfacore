@@ -43,7 +43,17 @@ to do to pick it up (rebuild, restart, run SQL).
     - All three rares stay faction 7, neutral until attacked, as on retail (confirmed by Four).
   - Darkmoon Rabbit's pet (item 80008) drop 11% -> 100%, as in the Pandaria 5.4.8 DB, where it is
     his only drop.
-- **Status:** confirmed in game by Four (2026-11-07): all three rares spawn, scale and loot correctly.
+- **Follow-up (Four, after fighting them):** the Darkmoon Rabbit one-shot Four, and Death Metal
+  Knight had no weapon.
+  - The rabbit's core script cast Huge, Sharp Teeth 114078 as soon as he was pulled. It holds you,
+    deals 20% of your health every second and blocks all healing (114109), a group mechanic you
+    can't survive solo. He now uses SmartAI: on aggro he takes his rabbit form (114085, as in the
+    Pandaria 5.4.8 DB), drops it on evade, and fights in melee. `ScriptName` cleared, rank 3 (boss,
+    level ??) -> 1 (elite, shows his scaled level) as in the Pandaria 5.4.8 DB.
+  - Death Metal Knight wields Necromedes, the Death Resonator 151255, the two-hander from his own
+    loot (`creature_equip_template` 122899 id 1, spawn 974200005 `equipment_id` 1).
+- **Status:** spawns, scaling and loot confirmed in game by Four (2026-11-07); the rabbit and
+  weapon follow-up is waiting for Four to test.
 - **Pick up:** SQL only, no rebuild:
 
 ```

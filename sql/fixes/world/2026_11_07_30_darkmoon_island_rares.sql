@@ -25,6 +25,14 @@
 --    are neutral until attacked, as on retail.
 -- 6. Darkmoon Rabbit's pet (Darkmoon Rabbit 80008) dropped 11%; the Pandaria 5.4.8 DB has it at
 --    100% as his only real drop, so 100%.
+-- 7. Darkmoon Rabbit one-shot Four. His core script (npc_darkmoon_rabbit_ird) casts Huge, Sharp
+--    Teeth 114078 the moment he is pulled: it holds you, deals 20% of your health every second
+--    (aura 89) and blocks all healing (114109, -100% healing taken), a group mechanic you can't
+--    survive solo; the dump's own SmartAI recast it every 60 s. He now uses SmartAI without it:
+--    on aggro he takes his rabbit form (114085, as in the Pandaria 5.4.8 DB) and fights in melee.
+--    Rank 3 (boss, level ??) -> 1 (elite, shows his scaled level), as in the Pandaria 5.4.8 DB.
+-- 8. Death Metal Knight had no weapon: he now wields Necromedes, the Death Resonator 151255 (the
+--    two-handed weapon from his own loot table).
 -- New creature guids 974200001-974200005 (974100001-974100043 are the pet battle thread's crows).
 
 DELETE FROM `creature` WHERE `guid` BETWEEN 974200001 AND 974200005;
@@ -33,7 +41,7 @@ INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnDifficult
 (974200002, 71982, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -3889.19, 6470.56, 14.3052, 1.75537, 120, 5, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0), -- Moonfang Dreadhowl
 (974200003, 71982, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -3908.56, 6560.66, 17.1611, 4.10685, 120, 5, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0), -- Moonfang Dreadhowl
 (974200004, 71982, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4001.25, 6568.14, 17.9383, 4.00516, 120, 5, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0), -- Moonfang Dreadhowl
-(974200005, 122899, 974, 5861, 8901, '0', 0, 0, 0, -1, 0, 0, -4181.957, 6019.819, 6.289, 1.285, 300, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0); -- Death Metal Knight (Cauldron of Rock)
+(974200005, 122899, 974, 5861, 8901, '0', 0, 0, 0, -1, 0, 1, -4181.957, 6019.819, 6.289, 1.285, 300, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0); -- Death Metal Knight (Cauldron of Rock)
 UPDATE `creature` SET `spawndist` = 5, `MovementType` = 1 WHERE `guid` = 1400330 AND `id` = 71982;
 
 UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` IN (71992, 72038);
@@ -52,3 +60,14 @@ INSERT INTO `creature_template_scaling` (`Entry`, `DifficultyID`, `LevelScalingM
 UPDATE `creature_template` SET `HealthModifier` = 400 WHERE `entry` IN (58336, 71992);
 UPDATE `creature_template` SET `HealthModifier` = 8 WHERE `entry` = 72038;
 UPDATE `creature_loot_template` SET `Chance` = 100 WHERE `Entry` = 58336 AND `Item` = 80008;
+
+UPDATE `creature_template` SET `ScriptName` = '', `AIName` = 'SmartAI', `rank` = 1 WHERE `entry` = 58336;
+DELETE FROM `smart_scripts` WHERE `entryorguid` = 58336 AND `source_type` = 0;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `event_param5`, `event_param_string`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(58336, 0, 0, 0, 4, 0, 100, 0, 0, 0, 0, 0, 0, '', 11, 114085, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Darkmoon Rabbit - On aggro - Cast Darkmoon Rabbit form'),
+(58336, 0, 1, 0, 7, 0, 100, 0, 0, 0, 0, 0, 0, '', 28, 114085, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Darkmoon Rabbit - On evade - Remove Darkmoon Rabbit form');
+
+DELETE FROM `creature_equip_template` WHERE `CreatureID` = 122899;
+INSERT INTO `creature_equip_template` (`CreatureID`, `ID`, `ItemID1`, `AppearanceModID1`, `ItemVisual1`, `ItemID2`, `AppearanceModID2`, `ItemVisual2`, `ItemID3`, `AppearanceModID3`, `ItemVisual3`, `VerifiedBuild`) VALUES
+(122899, 1, 151255, 0, 0, 0, 0, 0, 0, 0, 0, 0); -- Death Metal Knight: Necromedes, the Death Resonator
+UPDATE `creature` SET `equipment_id` = 1 WHERE `guid` = 974200005;
