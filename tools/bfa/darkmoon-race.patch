@@ -1,18 +1,19 @@
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-index 73dcec1..595dc88 100644
+index 73dcec1..c752488 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-@@ -32,6 +32,9 @@
+@@ -32,6 +32,10 @@
  #include "TemporarySummon.h"
  #include "AreaTrigger.h"
  #include "AreaTriggerAI.h"
 +#include "GameTime.h"
 +#include "MoveSplineInit.h"
 +#include <G3D/Vector3.h>
++#include <unordered_map>
  
  class playerscript_darkmoon_carousel : public PlayerScript
  {
-@@ -46,6 +49,20 @@ class playerscript_darkmoon_carousel : public PlayerScript
+@@ -46,6 +50,20 @@ class playerscript_darkmoon_carousel : public PlayerScript
          }*/
  };
  
@@ -33,7 +34,7 @@ index 73dcec1..595dc88 100644
  // Whee! - 46668
  class spell_darkmoon_carousel_whee : public SpellScriptLoader
  {
-@@ -72,7 +89,17 @@ public:
+@@ -72,7 +90,17 @@ public:
              {
                  if (Player* _player = GetCaster()->ToPlayer())
                  {
@@ -52,7 +53,7 @@ index 73dcec1..595dc88 100644
                      {
                          if (transport->GetEntry() == GOB_DARKMOON_CAROUSEL)
                          {
-@@ -1446,6 +1473,132 @@ public:
+@@ -1446,6 +1474,170 @@ public:
      }
  };
  
@@ -75,7 +76,7 @@ index 73dcec1..595dc88 100644
 +    float const CENTER_X = -4031.01f;            // platform spawn 1270005
 +    float const CENTER_Y = 6352.32f;
 +    uint32 const TURN_MS = 12000;                 // one clockwise turn
-+    uint8 const STEPS = 36;
++    uint8 const STEPS = 72;
 +    uint32 const RESYNC_MS = 5 * MINUTE * IN_MILLISECONDS;
 +    uint32 const SPELL_CAROUSEL_WHEE = 46668;
 +    uint32 const MAP_DARKMOON_ISLAND = 974;
@@ -104,6 +105,7 @@ index 73dcec1..595dc88 100644
 +        {
 +            _placed = false;
 +            _resyncTimer = 0;
++            _boarded.clear();
 +        }
 +
 +        Position RingPoint(float angle) const
@@ -133,6 +135,7 @@ index 73dcec1..595dc88 100644
 +            length += (init.Path().front() - last).length();
 +
 +            init.SetCyclic();
++            init.SetSmooth();
 +            init.SetWalk(true);
 +            init.SetVelocity(length * 1000.0f / float(TURN_MS));
 +            init.Launch();
@@ -164,8 +167,38 @@ index 73dcec1..595dc88 100644
 +
 +        void PassengerBoarded(Unit* passenger, int8 /*seatId*/, bool apply) override
 +        {
-+            if (apply && passenger->GetTypeId() == TYPEID_PLAYER)
++            if (passenger->GetTypeId() != TYPEID_PLAYER)
++                return;
++
++            uint32 now = GameTime::GetGameTimeMS();
++            Boarding& b = _boarded[passenger->GetGUID()];
++            if (apply)
++            {
 +                passenger->CastSpell(passenger, SPELL_CAROUSEL_WHEE, true);
++                // A re-applied ride aura drops and re-seats the rider at once;
++                // that is still the same ride.
++                if (!b.Left || now - b.Left > 500)
++                    b.Boarded = now;
++                b.Left = 0;
++            }
++            else
++                b.Left = now;
++
++            // Send the ride's path again once the rider is attached, so the
++            // rider's client (and its camera) follows the moving ride.
++            if (_placed)
++                _resyncTimer = std::min<uint32>(_resyncTimer, 300);
++        }
++
++        // Clicking the ride you are sitting on gets you off it.
++        void OnSpellClick(Unit* clicker, bool& /*result*/) override
++        {
++            auto itr = _boarded.find(clicker->GetGUID());
++            if (itr == _boarded.end() || clicker->GetVehicleBase() != me)
++                return;
++            if (GameTime::GetGameTimeMS() - itr->second.Boarded < 1500)
++                return;     // the click that put you on
++            clicker->ExitVehicle();
 +        }
 +
 +        // Rides never fight and never go home.
@@ -177,6 +210,12 @@ index 73dcec1..595dc88 100644
 +        float _z = 0.0f;
 +        bool _placed = false;
 +        uint32 _resyncTimer = 0;
++        struct Boarding
++        {
++            uint32 Boarded = 0;
++            uint32 Left = 0;
++        };
++        std::unordered_map<ObjectGuid, Boarding> _boarded;
 +    };
 +}
 +
@@ -185,7 +224,7 @@ index 73dcec1..595dc88 100644
  void AddSC_darkmoon_island()
  {
      new playerscript_darkmoon_carousel();
-@@ -1468,4 +1621,812 @@ void AddSC_darkmoon_island()
+@@ -1468,4 +1660,812 @@ void AddSC_darkmoon_island()
      new spell_put_up_darkmoon_banner();
      new spell_darkmoon_deathmatch();
      new spell_shoot_gallery_shoot();

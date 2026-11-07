@@ -7,6 +7,28 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet.
 
+### Darkmoon Faire: carousel follow-up (camera, getting off, ride order)
+
+From Four's first ride, 2026-11-07: rides go round, but no way off, the camera stayed where you got
+on (and only caught up later), rides shimmied, and the Dragon was out of place.
+`tools/bfa/darkmoon-race.patch` (rebuild) and world SQL `2026_11_07_07_darkmoon_carousel_ring.sql`
+(after `_06`). Run the SQL, rebuild, restart.
+
+- **Found:**
+  - The six spawns were sniffed mid-turn, so their radii (6.5 to 8.1 yards) and gaps were uneven,
+    with the Dragon next to the Gryphon.
+  - The ride's path was only sent when the ride spawned, before anyone sat on it.
+  - The 36-point path turned 10 degrees at each corner, three times a second.
+  - Turning the camera turns you on the seat: the seat data allows it (no server fix).
+- **Changed:**
+  - All six rides sit on one 7.4-yard ring, 60 degrees apart: Murloc, Rocket, Wyvern, Gryphon,
+    Rocket, Dragon.
+  - Getting on or off a ride sends its path again right away, so the rider's client follows it.
+  - The path has 72 points and is a smooth curve.
+  - Clicking the ride you are sitting on (after the first 1.5 seconds) gets you off, as a backup for
+    the Leave Vehicle button.
+- **Status:** not tested in game yet.
+
 ### Darkmoon Faire: carousel rides turn with the carousel
 
 From Four, 2026-11-07 (rides stationary instead of attached to the carousel, no way to get off, the
