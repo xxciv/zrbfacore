@@ -21,7 +21,7 @@
 --    creature_template_scaling row, so they never scaled to the player, and their HealthModifier
 --    was 1. They get the same scaling row as Death Metal Knight, Moonfang Dreadhowl and Moonfang
 --    Packmate (levels 1-100, scales with the player) and the Pandaria 5.4.8 health modifiers
---    (Darkmoon Rabbit 400, Moonfang 400, Moonfang Packmate 8). Faction stays 7: all three rares
+--    (Moonfang Packmate 8; Darkmoon Rabbit and Moonfang 400 at first, see 9). Faction stays 7: all three rares
 --    are neutral until attacked, as on retail.
 -- 6. Darkmoon Rabbit's pet (Darkmoon Rabbit 80008) dropped 11%; the Pandaria 5.4.8 DB has it at
 --    100% as his only real drop, so 100%.
@@ -33,6 +33,10 @@
 --    Rank 3 (boss, level ??) -> 1 (elite, shows his scaled level), as in the Pandaria 5.4.8 DB.
 -- 8. Death Metal Knight had no weapon: he now wields Necromedes, the Death Resonator 151255 (the
 --    two-handed weapon from his own loot table).
+-- 9. Health: Moonfang came out at 456K health at level 38 (HealthModifier 400) and the same
+--    modifier made the rabbit just as tanky, while Death Metal Knight at 300 was a good solo fight
+--    (Four). Darkmoon Rabbit and Moonfang now use 300 as well, and Moonfang is rank 1 (elite)
+--    instead of 3 (boss), as in the Pandaria 5.4.8 DB.
 -- New creature guids 974200001-974200005 (974100001-974100043 are the pet battle thread's crows).
 
 DELETE FROM `creature` WHERE `guid` BETWEEN 974200001 AND 974200005;
@@ -57,7 +61,8 @@ DELETE FROM `creature_template_scaling` WHERE `Entry` IN (58336, 71992) AND `Dif
 INSERT INTO `creature_template_scaling` (`Entry`, `DifficultyID`, `LevelScalingMin`, `LevelScalingMax`, `LevelScalingDeltaMin`, `LevelScalingDeltaMax`, `ContentTuningID`, `VerifiedBuild`) VALUES
 (58336, 0, 1, 100, 0, 0, 0, 0), -- Darkmoon Rabbit
 (71992, 0, 1, 100, 0, 0, 0, 0); -- Moonfang
-UPDATE `creature_template` SET `HealthModifier` = 400 WHERE `entry` IN (58336, 71992);
+UPDATE `creature_template` SET `HealthModifier` = 300 WHERE `entry` IN (58336, 71992);
+UPDATE `creature_template` SET `rank` = 1 WHERE `entry` = 71992;
 UPDATE `creature_template` SET `HealthModifier` = 8 WHERE `entry` = 72038;
 UPDATE `creature_loot_template` SET `Chance` = 100 WHERE `Entry` = 58336 AND `Item` = 80008;
 

@@ -52,8 +52,11 @@ to do to pick it up (rebuild, restart, run SQL).
     level ??) -> 1 (elite, shows his scaled level) as in the Pandaria 5.4.8 DB.
   - Death Metal Knight wields Necromedes, the Death Resonator 151255, the two-hander from his own
     loot (`creature_equip_template` 122899 id 1, spawn 974200005 `equipment_id` 1).
-- **Status:** spawns, scaling and loot confirmed in game by Four (2026-11-07); the rabbit and
-  weapon follow-up is waiting for Four to test.
+  - Moonfang showed 456K health at level 38 with HealthModifier 400. Death Metal Knight at 300
+    was a good solo fight, so Darkmoon Rabbit and Moonfang now use 300 as well. Moonfang's rank
+    goes from 3 (boss) to 1 (elite), as in the Pandaria 5.4.8 DB.
+- **Status:** spawns, scaling and loot confirmed in game by Four (2026-11-07). The follow-up
+  (rabbit bite, rank and health, Knight's weapon) is waiting for Four to test.
 - **Pick up:** SQL only, no rebuild:
 
 ```
