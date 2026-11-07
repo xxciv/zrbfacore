@@ -17,6 +17,14 @@
 -- 4. Death Metal Knight 122899 (Legion rare, has a template and loot here but no spawn in any
 --    reference DB) spawned where Four says he belongs, in the Cauldron of Rock (area 8901), with a
 --    5-minute respawn like Moonfang. He has no SmartAI or core script, so for now he only melees.
+-- 5. Darkmoon Rabbit and Moonfang showed as level 1 with 31 health (Four): neither had a
+--    creature_template_scaling row, so they never scaled to the player, and their HealthModifier
+--    was 1. They get the same scaling row as Death Metal Knight, Moonfang Dreadhowl and Moonfang
+--    Packmate (levels 1-100, scales with the player) and the Pandaria 5.4.8 health modifiers
+--    (Darkmoon Rabbit 400, Moonfang 400, Moonfang Packmate 8). Faction stays 7: all three rares
+--    are neutral until attacked, as on retail.
+-- 6. Darkmoon Rabbit's pet (Darkmoon Rabbit 80008) dropped 11%; the Pandaria 5.4.8 DB has it at
+--    100% as his only real drop, so 100%.
 -- New creature guids 974200001-974200005 (974100001-974100043 are the pet battle thread's crows).
 
 DELETE FROM `creature` WHERE `guid` BETWEEN 974200001 AND 974200005;
@@ -36,3 +44,11 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 (71992, 0, 2, 0, 0, 0, 100, 0, 15000, 15000, 16000, 16000, 0, '', 11, 144546, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Moonfang - IC - Cast Leap for the Kill on victim'),
 (71992, 0, 3, 0, 0, 0, 100, 0, 25000, 25000, 32000, 32000, 0, '', 11, 144602, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Moonfang - IC - Cast Call the Pack'),
 (72038, 0, 0, 0, 54, 0, 100, 0, 0, 0, 0, 0, 0, '', 49, 0, 0, 0, 0, 0, 0, 25, 40, 1, 0, 0, 0, 0, 0, 'Moonfang Packmate - Just Summoned - Attack closest player');
+
+DELETE FROM `creature_template_scaling` WHERE `Entry` IN (58336, 71992) AND `DifficultyID` = 0;
+INSERT INTO `creature_template_scaling` (`Entry`, `DifficultyID`, `LevelScalingMin`, `LevelScalingMax`, `LevelScalingDeltaMin`, `LevelScalingDeltaMax`, `ContentTuningID`, `VerifiedBuild`) VALUES
+(58336, 0, 1, 100, 0, 0, 0, 0), -- Darkmoon Rabbit
+(71992, 0, 1, 100, 0, 0, 0, 0); -- Moonfang
+UPDATE `creature_template` SET `HealthModifier` = 400 WHERE `entry` IN (58336, 71992);
+UPDATE `creature_template` SET `HealthModifier` = 8 WHERE `entry` = 72038;
+UPDATE `creature_loot_template` SET `Chance` = 100 WHERE `Entry` = 58336 AND `Item` = 80008;

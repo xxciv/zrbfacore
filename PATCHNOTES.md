@@ -15,6 +15,7 @@ to do to pick it up (rebuild, restart, run SQL).
   - Moonfang 71992 is spawned, but has no SmartAI rows and no core script, so she only melees.
     The Pandaria 5.4.8 core scripts her as `npc_darkmoon_moonfang`.
   - Moonfang Dreadhowl 71982 has 2 spawns here and 5 in the Pandaria 5.4.8 DB.
+  - Darkmoon Rabbit and Moonfang had no level scaling (level 1, 31 health).
   - Death Metal Knight 122899 has a template and loot but no spawn here, in the Pandaria DB or in
     MaNGOS Three. He is a Legion rare in the Cauldron of Rock (area 8901), which is newer than
     every reference DB we have.
@@ -33,6 +34,15 @@ to do to pick it up (rebuild, restart, run SQL).
     5 yards (guid 1400330 stood still).
   - Death Metal Knight spawned at the spot Four gave in the Cauldron of Rock (guid 974200005,
     -4181.96 6019.82 6.29), respawn 300 s. He has no SmartAI or core script yet, so he only melees.
+  - Darkmoon Rabbit and Moonfang were level 1 with 31 health (Four): neither had a
+    `creature_template_scaling` row, and their HealthModifier was 1.
+    - Both get a scaling row (levels 1-100, scales with the player), the same as Death Metal
+      Knight, Moonfang Dreadhowl and Moonfang Packmate.
+    - They get the Pandaria 5.4.8 health modifiers: Darkmoon Rabbit 400, Moonfang 400, Moonfang
+      Packmate 8.
+    - All three rares stay faction 7, neutral until attacked, as on retail (confirmed by Four).
+  - Darkmoon Rabbit's pet (item 80008) drop 11% -> 100%, as in the Pandaria 5.4.8 DB, where it is
+    his only drop.
 - **Status:** waiting for Four to test.
 - **Pick up:** SQL only, no rebuild:
 
