@@ -90,7 +90,8 @@ delete the client Cache folder. No rebuild.
   Posts) are InhabitType 3 (ground and water), so a spawn above water sinks to the bottom.
 - **Changed:** InhabitType 4 (air) for those 12 entries, so the core turns their gravity off and
   they stay at their spawn height: sea-level banners float at the surface.
-- **Status:** untested in game.
+- **Status:** in Four's build for the confirmed race runs of 2026-11-07; the floating banners
+  weren't reported on separately.
 
 ### Darkmoon races: pickups vanish, real post positions
 
