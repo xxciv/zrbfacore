@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-06 (Holidays: Darkmoon Faire, second batch)
 
-Draft PR, not merged yet.
+Merged to main via PR #41 (2026-11-07).
 
 ### Darkmoon Faire Deathmatch: looting the chest sends everyone out
 
@@ -32,7 +32,7 @@ From Four, 2026-11-06 (the concert's fire never showed). World SQL
   tried eight other fire spells in game; none suited the show.
 - **Changed:** those five script rows (ids 3, 6, 9, 12, 15) now cast Darkmoon Firework (103740),
   which Four picked in game.
-- **Status:** the spell is confirmed with `.cast self`; the concert itself is untested.
+- **Status:** confirmed in game (Four, 2026-11-07).
 
 ### Grisly Trophies confirmed
 
