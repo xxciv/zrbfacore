@@ -3,6 +3,37 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-07 (Holidays: Darkmoon Faire races)
+
+Draft PR, not merged yet.
+
+### Darkmoon races: pickups vanish, real post positions
+
+From Four's Let's Keep Racing video, 2026-11-07 ("Power pickups never pick up and disappear. Some
+race posts are under water or pointing at the wrong direction towards the next post"). Updated
+`tools/bfa/darkmoon-race.patch` (`DarkmoonIsland.cpp`). Rebuild, restart.
+
+- **Found:**
+  - The race worked (Blue at 8 tolls, Green 13, Red 17, finish), but powerup pads stayed where
+    they were after giving their effect.
+  - The posts' places came from wiki map coordinates with no height, so the post marker was put
+    at the water or ground level under them (the Blue Post stands on a rock in the sea). The
+    marker always faced east.
+  - The island has its own Racing Post spawns: Blue 74362, Green 74365 (two), Red 74368 (two),
+    Purple 74369. The Big Race used the Marker Pointer spawns instead, which aren't its posts:
+    the Purple pointer is 300 yards from the Purple Racing Post.
+  - All 51 checkpoint banners' arrows point along the course (Real Race: start, blue, green,
+    red, start; Big Race: start, purple, green, red, start). Banners at sea level stand in the
+    shallows on purpose: each banner gives 7 seconds of water walking.
+- **Changed:**
+  - A pad disappears when you take it and comes back after 20 seconds (`POWERUP_RESPAWN_S`).
+  - Real Race posts use the Blue/Green/Red Racing Post spawns with their heights. Big Race posts
+    use the Purple Racing Post and the second Green and Red Racing Posts.
+  - The post marker faces the next post (or the start banner after the last post).
+- **Not changed:** Let's Keep Racing! (33756) has no reward and no turn-in text in the 8.3.7
+  quest data, so it ends without one.
+- **Status:** untested in game.
+
 ## 2026-11-06 (Holidays: Darkmoon Faire, second batch)
 
 Merged to main via PR #41 (2026-11-07).
