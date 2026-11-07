@@ -7,6 +7,20 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet.
 
+### Darkmoon Faire: token vendors sell one pouch and one sack
+
+From Four, 2026-11-07 ("If there's only 2 sizes of token bags, why have 12 different bags?").
+World SQL `2026_11_07_05_darkmoon_token_vendors_one_pair.sql` (after `_04`). Run the SQL, restart.
+No rebuild.
+
+- **Found:** the 12 bags are Pouch o' Tokens (5 tokens) and Sack o' Tokens (20 tokens) at six price
+  tiers each (pouch 50 copper to 60 silver, sack 1s 60c to 1g 92s), all shown to everyone, so the
+  cheapest pair was always the best deal. The tiers were probably level bands; the data doesn't
+  say.
+- **Changed:** Four chose the max-level pair. Sazz, Zina and Trixi now sell only Pouch o' Tokens
+  78903 (60 silver) and Sack o' Tokens 78909 (1 gold 92 silver).
+- **Status:** untested in game.
+
 ### Darkmoon Faire: race arch and camp post names, token vendors
 
 From Four, 2026-11-07. World SQL `2026_11_07_04_darkmoon_race_names_token_vendors.sql`. Run the
@@ -21,7 +35,7 @@ SQL, restart, delete the client Cache folder. No rebuild.
     Tokens.
 - **Changed:** both scenery entries are not selectable, which hides the name; 78904 and 78910 are
   off the three vendors.
-- **Status:** untested in game.
+- **Status:** confirmed in game (Four, 2026-11-07).
 
 ### Darkmoon races: turn-in text
 

@@ -750,6 +750,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_07_02_darkmoon_race_repeatables.sql` | Darkmoon races: Let's Keep Racing! and More Big Racing! can be repeated |
 | `2026_11_07_03_darkmoon_race_turn_in_text.sql` | Darkmoon races: turn-in text for the five race quests |
 | `2026_11_07_04_darkmoon_race_names_token_vendors.sql` | Darkmoon Faire: race arch and camp post names hidden; empty token bags off the Game Token vendors |
+| `2026_11_07_05_darkmoon_token_vendors_one_pair.sql` | Darkmoon Faire: token vendors sell only the 60s pouch and the 1g 92s sack (after `_04`) |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236).
 
