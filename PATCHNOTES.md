@@ -3,6 +3,83 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-07 (World fixes: Darkmoon Island)
+
+Merged to `main` with PR #45 on 2026-11-07.
+
+### World: Darkmoon Rabbit never spawns, Moonfang has no fight
+
+- **Found** (Four, 2026-11-07): the Darkmoon Island rares Death Metal Knight, Darkmoon Rabbit and
+  Moonfang need reviewing.
+- **Cause:**
+  - Darkmoon Rabbit 58336 had no spawn in the BFA dump. Its core script (`npc_darkmoon_rabbit_ird`)
+    and loot (pet item 80008 at 11%) are fine.
+  - Moonfang 71992 is spawned, but has no SmartAI rows and no core script, so she only melees.
+    The Pandaria 5.4.8 core scripts her as `npc_darkmoon_moonfang`.
+  - Moonfang Dreadhowl 71982 has 2 spawns here and 5 in the Pandaria 5.4.8 DB.
+  - Darkmoon Rabbit and Moonfang had no level scaling (level 1, 31 health).
+  - Death Metal Knight 122899 has a template and loot but no spawn here, in the Pandaria DB or in
+    MaNGOS Three. He is a Legion rare in the Cauldron of Rock (area 8901), which is newer than
+    every reference DB we have.
+- **Changed:** `sql/fixes/world/2026_11_07_30_darkmoon_island_rares.sql`:
+  - Darkmoon Rabbit spawned at the Pandaria spot by the rabbit's cave (guid 974200001,
+    -4291.81 5860.5 3.38), respawn 115200 s (32 h), wander 5 yards.
+  - Moonfang SmartAI, rebuilt from the Pandaria script with the same timers:
+    - Fangs of the Moon 144700 on her target every 12.5 s.
+    - Moonfang Tears pool 144579 every 20 s.
+    - Leap for the Kill 144546 every 16 s.
+    - Call the Pack 144602, which summons Moonfang Packmates 72038, every 32 s.
+
+    Moonfang Curse 144590 is left out: it charms half the players in range, which solo is you.
+    Packmates attack the closest player when summoned.
+  - 3 Moonfang Dreadhowls added at the Pandaria spots (guids 974200002-974200004). All 5 wander
+    5 yards (guid 1400330 stood still).
+  - Death Metal Knight spawned at the spot Four gave in the Cauldron of Rock (guid 974200005,
+    -4181.96 6019.82 6.29), respawn 300 s. He has no SmartAI or core script yet, so he only melees.
+  - Darkmoon Rabbit and Moonfang were level 1 with 31 health (Four): neither had a
+    `creature_template_scaling` row, and their HealthModifier was 1.
+    - Both get a scaling row (levels 1-100, scales with the player), the same as Death Metal
+      Knight, Moonfang Dreadhowl and Moonfang Packmate.
+    - They get the Pandaria 5.4.8 health modifiers: Darkmoon Rabbit 400, Moonfang 400, Moonfang
+      Packmate 8.
+    - All three rares stay faction 7, neutral until attacked, as on retail (confirmed by Four).
+  - Darkmoon Rabbit's pet (item 80008) drop 11% -> 100%, as in the Pandaria 5.4.8 DB, where it is
+    his only drop.
+- **Follow-up (Four, after fighting them):** the Darkmoon Rabbit one-shot Four, and Death Metal
+  Knight had no weapon.
+  - The rabbit's core script cast Huge, Sharp Teeth 114078 as soon as he was pulled. It holds you,
+    deals 20% of your health every second and blocks all healing (114109), a group mechanic you
+    can't survive solo. He now uses SmartAI: on aggro he takes his rabbit form (114085, as in the
+    Pandaria 5.4.8 DB), drops it on evade, and fights in melee. `ScriptName` cleared, rank 3 (boss,
+    level ??) -> 1 (elite, shows his scaled level) as in the Pandaria 5.4.8 DB.
+  - Death Metal Knight wields Necromedes, the Death Resonator 151255, the two-hander from his own
+    loot (`creature_equip_template` 122899 id 1, spawn 974200005 `equipment_id` 1).
+  - Moonfang showed 456K health at level 38 with HealthModifier 400. Death Metal Knight at 300
+    was a good solo fight, so Darkmoon Rabbit and Moonfang now use 300 as well. Moonfang's rank
+    goes from 3 (boss) to 1 (elite), as in the Pandaria 5.4.8 DB.
+  - Moonfang (Four: "the fight was good"): Fangs of the Moon came every 12.5 s, way too often;
+    now every 25-30 s. She dropped nothing because her items only had independent rolls (about a
+    third of kills dropped nothing). Moonfang's Paw, Shimmering Moonstone, Moonfang Shroud and Moon
+    Moon are now one loot group (31/32/32/5%), so exactly one always drops.
+  - Death Metal Knight was rank 0 and had no elite frame like the other two: now rank 1 (elite),
+    health unchanged.
+- **Status:** everything above confirmed in game by Four on 2026-11-07: all three rares spawn and
+  scale, the rabbit and Moonfang fights are good, Moonfang always drops an item, and Death Metal
+  Knight is elite with his sword. Still to do some day: Death Metal Knight's full retail Cauldron
+  of Rock concert event (he is only the boss for now).
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_07_30_darkmoon_island_rares.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ## 2026-11-07 (pet battles)
 
 ### Pet battles: display pets near vendors and tamers can be battled
