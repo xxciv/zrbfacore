@@ -3,6 +3,41 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-07 (pet battles)
+
+### Pet battles: no Crows to battle on Darkmoon Island; capturable Darkmoon Rabbit
+
+- **Found** (Four, with the island's pet list): Darkmoon Island has two wild pets to capture, Crow and
+  Darkmoon Glowfly. The Darkmoon Rabbit pet should only drop from the rare Darkmoon Rabbit.
+- **Cause:**
+  - Darkmoon Glowfly 67329 has 14 battle pet spawns. Nothing wrong there.
+  - The island had only 2 crows, and both were the plain critter 55741, so no Crow could be
+    battled. The battle pet is 67443. `battlepet_wild_zone_pool` names the critter 55741 as the
+    Crow's battle pet, so the wild spawn SQL (2026_11_01_50) skipped it. The Crow template 67443
+    was also 1-25 in `battlepet_info`.
+  - The rare Darkmoon Rabbit 58336 (drops the pet, item 80008, 11%) has no spawn. Instead a
+    companion copy 59358 (guid 10655373) stood in its cave as a capturable wild pet.
+- **Changed:** new `sql/fixes/world/2026_11_07_50_darkmoon_island_wild_pets.sql`:
+  - the 2 existing crows (10655393, 10655394) become battle Crows 67443 that wander 3 yards;
+  - 43 crows in 8 flocks from the alexkulya Pandaria 5.4.8 world DB (guids 974100001-974100043):
+    one battle Crow 67443 per flock (wanders 3 yards), the rest critter crows 55741. That is 10
+    battle Crows on the island;
+  - Crow template 67443 set to level 1-1 in `battlepet_info`, so the zone's range decides;
+  - the companion Darkmoon Rabbit 59358 spawn (10655373) is removed. The rare's own spawn is left
+    to the Darkmoon Island rares fix.
+  The file's header has the undo lines. No core change.
+- **Status:** not tested in game yet.
+
+#### To pick it up
+SQL only, then a restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_07_50_darkmoon_island_wild_pets.sql | mysql -u root -p bfa_world
+```
+The last line prints `10 battle Crows, 35 critter crows, 14 Glowflies on Darkmoon Island`. Then
+restart `worldserver`.
+
 ## 2026-11-07 (Holidays: Darkmoon Faire carousel)
 
 Merged to main via PR #43 (2026-11-07).
