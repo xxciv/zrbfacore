@@ -612,6 +612,21 @@ sets them to follow their zone too (run once, then restart `worldserver`):
 ```sh
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_04_50_wild_battle_pet_zone_levels.sql
 ```
+
+Darkmoon Island had no Crows to battle (only 2 critter crows). This adds the island's crow flocks
+with 10 battle Crows and removes a capturable copy of the drop-only Darkmoon Rabbit:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_07_50_darkmoon_island_wild_pets.sql
+```
+
+Display pets next to vendors and tamers (for example Lhara's on Darkmoon Island) show up as wild
+battle pets, because `battlepet_info` lists every species by creature entry. This keeps only
+capturable species as wild battle pets:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_07_51_battle_pets_only_capturable_are_wild.sql
+```
 #### Legion and BFA pet tamers
 
 Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest
@@ -752,6 +767,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_07_04_darkmoon_race_names_token_vendors.sql` | Darkmoon Faire: race arch and camp post names hidden; empty token bags off the Game Token vendors |
 | `2026_11_07_05_darkmoon_token_vendors_one_pair.sql` | Darkmoon Faire: token vendors sell only the 60s pouch and the 1g 92s sack (after `_04`) |
 | `2026_11_07_06_darkmoon_carousel_empty.sql` | Darkmoon Faire: carousel rides removed, the platform spins empty |
+| `2026_11_07_30_darkmoon_island_rares.sql` | Darkmoon Island rares: Darkmoon Rabbit spawned (its pet always drops, no solo-lethal bite), Moonfang gets her fight and always drops one of her items, Death Metal Knight spawned in the Cauldron of Rock with his sword; all three are elites that scale with your level (verified in game 2026-11-07) |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236).
 

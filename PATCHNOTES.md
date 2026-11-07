@@ -80,6 +80,76 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_07_30_darkmoon_isla
 
 Then restart worldserver.
 
+## 2026-11-07 (pet battles)
+
+### Pet battles: display pets near vendors and tamers can be battled
+
+- **Found** (Four, screenshot): Lhara's display pets on Darkmoon Island (Darkmoon Cub, Turtle,
+  Zeppelin, Hatchling, Balloon) show the pet battle paw.
+- **Cause:** when a creature of type 14 (wild pet) spawns, `Map::AddBattlePet` calls
+  `WildBattlePetMgr::EnableWildBattle`, which makes it a wild battle pet if `battlepet_info` has a
+  row with that creature entry (`NpcID`). `battlepet_info` has a row for every species, including
+  pets you buy, win or get from drops, and tamer team pets. So every display pet spawned next to a
+  vendor or tamer became battleable: about 530 spawns of 375 entries in the world DB.
+- **Changed:** new `sql/fixes/world/2026_11_07_51_battle_pets_only_capturable_are_wild.sql`. Rows
+  whose species is not capturable (BattlePetSpecies flag 0x8 not set, 1,039 species, flags from the
+  10.0.2 BattlePetSpecies.db2 CSV) get `NpcID + 10000000`, so `EnableWildBattle` no longer finds them
+  by creature entry. The rows stay: the core reads them by species for breed and quality when you
+  learn a pet, so learned pets don't change. Tamer battles use `battlepet_npc_team_member`, not this
+  table. Capturable species (Crow, Glowfly, every wild critter pet) are not touched. Undo line in the
+  file header. No core change.
+- **Then found** (Four): without the battle pet flag those display pets could be attacked and killed.
+  The same file now also sets `unit_flags | 0x300` (immune to players and NPCs) on the templates of
+  the 299 spawned type 14 creatures of those species, as on retail.
+- **Status:** confirmed in game by Four on 2026-11-07.
+
+#### To pick it up
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_07_51_battle_pets_only_capturable_are_wild.sql | mysql -u root -p bfa_world
+```
+The last line prints `1041 non-capturable species no longer wild, 364 wild species left, 299 display
+pet templates unattackable`. Then
+restart `worldserver`.
+
+### Pet battles: no Crows to battle on Darkmoon Island; capturable Darkmoon Rabbit
+
+- **Found** (Four, with the island's pet list): Darkmoon Island has two wild pets to capture, Crow and
+  Darkmoon Glowfly. The Darkmoon Rabbit pet should only drop from the rare Darkmoon Rabbit.
+- **Cause:**
+  - Darkmoon Glowfly 67329 has 14 battle pet spawns. Nothing wrong there.
+  - The island had only 2 crows, and both were the plain critter 55741, so no Crow could be
+    battled. The battle pet is 67443. `battlepet_wild_zone_pool` names the critter 55741 as the
+    Crow's battle pet, so the wild spawn SQL (2026_11_01_50) skipped it. The Crow template 67443
+    was also 1-25 in `battlepet_info`.
+  - The rare Darkmoon Rabbit 58336 (drops the pet, item 80008, 11%) has no spawn. Instead a
+    companion copy 59358 (guid 10655373) stood in its cave as a capturable wild pet.
+- **Changed:** new `sql/fixes/world/2026_11_07_50_darkmoon_island_wild_pets.sql`:
+  - the 2 existing crows (10655393, 10655394) become battle Crows 67443 that wander 3 yards;
+  - 43 crows in 8 flocks from the alexkulya Pandaria 5.4.8 world DB (guids 974100001-974100043):
+    one battle Crow 67443 per flock (wanders 3 yards), the rest critter crows 55741. That is 10
+    battle Crows on the island;
+  - Crow template 67443 set to level 1-1 in `battlepet_info`, so the zone's range decides;
+  - the companion Darkmoon Rabbit 59358 spawn (10655373) is removed. The rare's own spawn is left
+    to the Darkmoon Island rares fix.
+  - Lhara's display pets (Darkmoon Cub, Turtle, Hatchling, Zeppelin, Monkey, Tonk) were stacked on
+    one spot in front of her booth. They move to their alexkulya positions: Cub, Turtle, Hatchling and
+    Zeppelin spread over the booth (Cub and Hatchling inside the 1st and 3rd cages, from Four's `.gps`), the Tonk by the Tonk Challenge, the Monkey near Carl Goodup's
+    balloon cart.
+  The file's header has the undo lines. No core change.
+- **Status:** confirmed in game by Four on 2026-11-07.
+
+#### To pick it up
+SQL only, then a restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_07_50_darkmoon_island_wild_pets.sql | mysql -u root -p bfa_world
+```
+The last line prints `10 battle Crows, 35 critter crows, 14 Glowflies on Darkmoon Island`. Then
+restart `worldserver`.
+
 ## 2026-11-07 (Holidays: Darkmoon Faire carousel)
 
 Merged to main via PR #43 (2026-11-07).
