@@ -14,14 +14,18 @@
 --    Packmates now attack the closest player when summoned.
 -- 3. Moonfang Dreadhowl 71982: 2 spawns here, 5 in the Pandaria DB. The 3 missing ones (around
 --    Moonfang's den) are added, and all 5 wander 5 yards like in the Pandaria DB.
--- New creature guids 974200001-974200004 (974100001-974100043 are the pet battle thread's crows).
+-- 4. Death Metal Knight 122899 (Legion rare, has a template and loot here but no spawn in any
+--    reference DB) spawned where Four says he belongs, in the Cauldron of Rock (area 8901), with a
+--    5-minute respawn like Moonfang. He has no SmartAI or core script, so for now he only melees.
+-- New creature guids 974200001-974200005 (974100001-974100043 are the pet battle thread's crows).
 
-DELETE FROM `creature` WHERE `guid` BETWEEN 974200001 AND 974200004;
+DELETE FROM `creature` WHERE `guid` BETWEEN 974200001 AND 974200005;
 INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnDifficulties`, `phaseUseFlags`, `PhaseId`, `PhaseGroup`, `terrainSwapMap`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `spawndist`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `unit_flags2`, `unit_flags3`, `dynamicflags`, `ScriptName`, `VerifiedBuild`) VALUES
 (974200001, 58336, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4291.81, 5860.5, 3.38236, 4.09891, 115200, 5, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0), -- Darkmoon Rabbit
 (974200002, 71982, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -3889.19, 6470.56, 14.3052, 1.75537, 120, 5, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0), -- Moonfang Dreadhowl
 (974200003, 71982, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -3908.56, 6560.66, 17.1611, 4.10685, 120, 5, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0), -- Moonfang Dreadhowl
-(974200004, 71982, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4001.25, 6568.14, 17.9383, 4.00516, 120, 5, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0); -- Moonfang Dreadhowl
+(974200004, 71982, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4001.25, 6568.14, 17.9383, 4.00516, 120, 5, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0), -- Moonfang Dreadhowl
+(974200005, 122899, 974, 5861, 8901, '0', 0, 0, 0, -1, 0, 0, -4181.957, 6019.819, 6.289, 1.285, 300, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0); -- Death Metal Knight (Cauldron of Rock)
 UPDATE `creature` SET `spawndist` = 5, `MovementType` = 1 WHERE `guid` = 1400330 AND `id` = 71982;
 
 UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` IN (71992, 72038);

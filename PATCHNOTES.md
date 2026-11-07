@@ -17,7 +17,7 @@ to do to pick it up (rebuild, restart, run SQL).
   - Moonfang Dreadhowl 71982 has 2 spawns here and 5 in the Pandaria 5.4.8 DB.
   - Death Metal Knight 122899 has a template and loot but no spawn here, in the Pandaria DB or in
     MaNGOS Three. He is a Legion rare in the Cauldron of Rock (area 8901), which is newer than
-    every reference DB we have. **Not fixed yet.**
+    every reference DB we have.
 - **Changed:** `sql/fixes/world/2026_11_07_30_darkmoon_island_rares.sql`:
   - Darkmoon Rabbit spawned at the Pandaria spot by the rabbit's cave (guid 974200001,
     -4291.81 5860.5 3.38), respawn 115200 s (32 h), wander 5 yards.
@@ -31,6 +31,8 @@ to do to pick it up (rebuild, restart, run SQL).
     Packmates attack the closest player when summoned.
   - 3 Moonfang Dreadhowls added at the Pandaria spots (guids 974200002-974200004). All 5 wander
     5 yards (guid 1400330 stood still).
+  - Death Metal Knight spawned at the spot Four gave in the Cauldron of Rock (guid 974200005,
+    -4181.96 6019.82 6.29), respawn 300 s. He has no SmartAI or core script yet, so he only melees.
 - **Status:** waiting for Four to test.
 - **Pick up:** SQL only, no rebuild:
 
