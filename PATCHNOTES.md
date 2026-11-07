@@ -7,6 +7,18 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet.
 
+### Darkmoon races: banners no longer sink under water
+
+From Four, 2026-11-07 (screenshots and the More Big Racing video: banners at sea level stand on
+the sea floor). World SQL `2026_11_07_00_darkmoon_race_course_float.sql`. Run the SQL, restart,
+delete the client Cache folder. No rebuild.
+
+- **Found:** the course creatures (checkpoint banners, tripwire stakes, powerup pads, Racing
+  Posts) are InhabitType 3 (ground and water), so a spawn above water sinks to the bottom.
+- **Changed:** InhabitType 4 (air) for those 12 entries, so the core turns their gravity off and
+  they stay at their spawn height: sea-level banners float at the surface.
+- **Status:** untested in game.
+
 ### Darkmoon races: pickups vanish, real post positions
 
 From Four's Let's Keep Racing video, 2026-11-07 ("Power pickups never pick up and disappear. Some
@@ -24,7 +36,9 @@ race posts are under water or pointing at the wrong direction towards the next p
     the Purple pointer is 300 yards from the Purple Racing Post.
   - All 51 checkpoint banners' arrows point along the course (Real Race: start, blue, green,
     red, start; Big Race: start, purple, green, red, start). Banners at sea level stand in the
-    shallows on purpose: each banner gives 7 seconds of water walking.
+    shallows on purpose (each banner gives 7 seconds of water walking), but they had sunk to the sea
+    floor (fixed in `2026_11_07_00` above). The More Big Racing video shows the old Big Race
+    posts: Purple at the start (reached at 0 tolls) and Red out in the sea.
 - **Changed:**
   - A pad disappears when you take it and comes back after 20 seconds (`POWERUP_RESPAWN_S`).
   - Real Race posts use the Blue/Green/Red Racing Post spawns with their heights. Big Race posts
