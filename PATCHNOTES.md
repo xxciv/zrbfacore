@@ -43,7 +43,7 @@ to do to pick it up (rebuild, restart, run SQL).
     - All three rares stay faction 7, neutral until attacked, as on retail (confirmed by Four).
   - Darkmoon Rabbit's pet (item 80008) drop 11% -> 100%, as in the Pandaria 5.4.8 DB, where it is
     his only drop.
-- **Status:** waiting for Four to test.
+- **Status:** confirmed in game by Four (2026-11-07): all three rares spawn, scale and loot correctly.
 - **Pick up:** SQL only, no rebuild:
 
 ```
