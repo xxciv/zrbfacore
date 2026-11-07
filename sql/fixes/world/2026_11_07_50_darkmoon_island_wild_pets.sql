@@ -22,6 +22,12 @@
 --   the rabbit's cave. That spawn is removed; the rare's own spawn is handled with
 --   the other Darkmoon Island rares.
 --
+-- * Lhara's display pets: Darkmoon Cub, Turtle, Hatchling, Zeppelin, Monkey and Tonk
+--   were all stacked on one spot in front of her booth. They move to their spots in
+--   the alexkulya DB: Cub, Turtle, Hatchling and Zeppelin spread over the booth,
+--   the Tonk by the Tonk Challenge and the Monkey by the balloon cart.
+--   (2026_11_07_51 stops them being battleable.)
+--
 -- Undo: DELETE FROM creature WHERE guid BETWEEN 974100001 AND 974100043;
 --       UPDATE creature SET id=55741, MovementType=0, spawndist=0 WHERE guid IN (10655393,10655394);
 --       UPDATE battlepet_info SET minlevel=1, maxlevel=25 WHERE NpcID=67443;
@@ -79,6 +85,14 @@ INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnDifficult
 (974100041, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4073.96, 6140.43, 16.6615, 5.53269, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
 (974100042, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4085.78, 6142.32, 15.8976, 2.79253, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
 (974100043, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4080.39, 6146.96, 15.4341, 1.79769, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0);
+
+-- Lhara's display pets, unstacked (alexkulya positions)
+UPDATE `creature` SET `position_x` = -4188.92, `position_y` = 6378.94, `position_z` = 13.5803, `orientation` = 0.576346 WHERE `guid` = 10655372 AND `id` = 56031;
+UPDATE `creature` SET `position_x` = -4187.2,  `position_y` = 6379.24, `position_z` = 13.5763, `orientation` = 1.4387   WHERE `guid` = 10655366 AND `id` = 54487;
+UPDATE `creature` SET `position_x` = -4185.75, `position_y` = 6373.43, `position_z` = 14.2478, `orientation` = 5.03021  WHERE `guid` = 10655374 AND `id` = 67319;
+UPDATE `creature` SET `position_x` = -4181.45, `position_y` = 6378.11, `position_z` = 15.0568, `orientation` = 3.7001   WHERE `guid` = 10655370 AND `id` = 55367;
+UPDATE `creature` SET `position_x` = -4158.03, `position_y` = 6399.38, `position_z` = 15.1691, `orientation` = 0.478508 WHERE `guid` = 10655369 AND `id` = 55356;
+UPDATE `creature` SET `position_x` = -4341.73, `position_y` = 6307.5,  `position_z` = 14.9751, `orientation` = 4.69373  WHERE `guid` = 10655367 AND `id` = 55714;
 
 -- Capturable companion Darkmoon Rabbit in the rare's cave
 DELETE FROM `creature_addon` WHERE `guid` = 10655373;

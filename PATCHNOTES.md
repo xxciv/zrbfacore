@@ -5,6 +5,33 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-07 (pet battles)
 
+### Pet battles: display pets near vendors and tamers can be battled
+
+- **Found** (Four, screenshot): Lhara's display pets on Darkmoon Island (Darkmoon Cub, Turtle,
+  Zeppelin, Hatchling, Balloon) show the pet battle paw.
+- **Cause:** when a creature of type 14 (wild pet) spawns, `Map::AddBattlePet` calls
+  `WildBattlePetMgr::EnableWildBattle`, which makes it a wild battle pet if `battlepet_info` has a
+  row with that creature entry (`NpcID`). `battlepet_info` has a row for every species, including
+  pets you buy, win or get from drops, and tamer team pets. So every display pet spawned next to a
+  vendor or tamer became battleable: about 530 spawns of 375 entries in the world DB.
+- **Changed:** new `sql/fixes/world/2026_11_07_51_battle_pets_only_capturable_are_wild.sql`. Rows
+  whose species is not capturable (BattlePetSpecies flag 0x8 not set, 1,039 species, flags from the
+  10.0.2 BattlePetSpecies.db2 CSV) get `NpcID + 10000000`, so `EnableWildBattle` no longer finds them
+  by creature entry. The rows stay: the core reads them by species for breed and quality when you
+  learn a pet, so learned pets don't change. Tamer battles use `battlepet_npc_team_member`, not this
+  table. Capturable species (Crow, Glowfly, every wild critter pet) are not touched. Undo line in the
+  file header. No core change.
+- **Status:** not tested in game yet.
+
+#### To pick it up
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_07_51_battle_pets_only_capturable_are_wild.sql | mysql -u root -p bfa_world
+```
+The last line prints `1041 non-capturable species no longer wild, 364 wild species left`. Then
+restart `worldserver`.
+
 ### Pet battles: no Crows to battle on Darkmoon Island; capturable Darkmoon Rabbit
 
 - **Found** (Four, with the island's pet list): Darkmoon Island has two wild pets to capture, Crow and
@@ -25,6 +52,10 @@ to do to pick it up (rebuild, restart, run SQL).
   - Crow template 67443 set to level 1-1 in `battlepet_info`, so the zone's range decides;
   - the companion Darkmoon Rabbit 59358 spawn (10655373) is removed. The rare's own spawn is left
     to the Darkmoon Island rares fix.
+  - Lhara's display pets (Darkmoon Cub, Turtle, Hatchling, Zeppelin, Monkey, Tonk) were stacked on
+    one spot in front of her booth. They move to their alexkulya positions: Cub, Turtle, Hatchling and
+    Zeppelin spread over the booth, the Tonk by the Tonk Challenge, the Monkey near Carl Goodup's
+    balloon cart.
   The file's header has the undo lines. No core change.
 - **Status:** not tested in game yet.
 
