@@ -58,7 +58,7 @@ restart `worldserver`.
     to the Darkmoon Island rares fix.
   - Lhara's display pets (Darkmoon Cub, Turtle, Hatchling, Zeppelin, Monkey, Tonk) were stacked on
     one spot in front of her booth. They move to their alexkulya positions: Cub, Turtle, Hatchling and
-    Zeppelin spread over the booth, the Tonk by the Tonk Challenge, the Monkey near Carl Goodup's
+    Zeppelin spread over the booth (Cub and Hatchling inside the 1st and 3rd cages, from Four's `.gps`), the Tonk by the Tonk Challenge, the Monkey near Carl Goodup's
     balloon cart.
   The file's header has the undo lines. No core change.
 - **Status:** not tested in game yet.
