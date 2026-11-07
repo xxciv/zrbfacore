@@ -1,5 +1,5 @@
 diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
-index 73dcec1..14c3bb3 100644
+index 73dcec1..e06fe01 100644
 --- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 +++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
 @@ -1446,6 +1446,8 @@ public:
@@ -11,7 +11,7 @@ index 73dcec1..14c3bb3 100644
  void AddSC_darkmoon_island()
  {
      new playerscript_darkmoon_carousel();
-@@ -1468,4 +1470,748 @@ void AddSC_darkmoon_island()
+@@ -1468,4 +1470,811 @@ void AddSC_darkmoon_island()
      new spell_put_up_darkmoon_banner();
      new spell_darkmoon_deathmatch();
      new spell_shoot_gallery_shoot();
@@ -117,7 +117,8 @@ index 73dcec1..14c3bb3 100644
 +    float  const CHECKPOINT_RADIUS      = 6.0f;
 +    float  const POWERUP_RADIUS         = 3.5f;
 +    uint32 const POWERUP_RESPAWN_S      = 20;
-+    float  const TRIPWIRE_SPAN          = 14.0f; // stakes this close are wired together
++    float  const TRIPWIRE_SPAN          = 14.0f; // a stake is wired to its nearest stake this close, if that stake picks it too
++    uint32 const SPELL_TRIPWIRE_BEAM    = 33628; // Lightning Tether: only its channel visual is shown, never cast
 +    float  const TRIPWIRE_WIDTH         = 1.3f;
 +
 +    struct Post
@@ -200,6 +201,19 @@ index 73dcec1..14c3bb3 100644
 +    std::unordered_map<ObjectGuid, Racer> Racers;
 +    std::unordered_map<ObjectGuid, uint32> TokenWarnings;
 +    std::unordered_map<ObjectGuid, uint32> IdleTimers;
++    // Tripwire stake spawn id -> the stake it is wired to (both directions), filled by the stakes' AI.
++    std::unordered_map<ObjectGuid::LowType, ObjectGuid::LowType> TripwirePartners;
++
++    Creature* NearestStake(Creature* stake)
++    {
++        std::list<Creature*> stakes;
++        stake->GetCreatureListWithEntryInGrid(stakes, NPC_TRIPWIRE_STAKE, TRIPWIRE_SPAN);
++        Creature* nearest = nullptr;
++        for (Creature* other : stakes)
++            if (other != stake && (!nearest || stake->GetExactDist2d(other) < stake->GetExactDist2d(nearest)))
++                nearest = other;
++        return nearest;
++    }
 +
 +    float Dist2d(Position const& a, float x, float y)
 +    {
@@ -493,15 +507,20 @@ index 73dcec1..14c3bb3 100644
 +            player->GetCreatureListWithEntryInGrid(stakes, NPC_TRIPWIRE_STAKE, TRIPWIRE_SPAN + 2.0f);
 +            bool zapped = false;
 +            for (size_t i = 0; i < stakes.size() && !zapped; ++i)
++            {
++                auto partner = TripwirePartners.find(stakes[i]->GetSpawnId());
++                if (partner == TripwirePartners.end())
++                    continue;
 +                for (size_t j = i + 1; j < stakes.size() && !zapped; ++j)
 +                {
-+                    if (stakes[i]->GetExactDist2d(stakes[j]) > TRIPWIRE_SPAN)
++                    if (stakes[j]->GetSpawnId() != partner->second)
 +                        continue;
 +                    if (std::fabs(player->GetPositionZ() - (stakes[i]->GetPositionZ() + stakes[j]->GetPositionZ()) / 2.0f) > 4.0f)
 +                        continue;
 +                    if (DistToSegment2d(player->GetPosition(), stakes[i], stakes[j]) <= TRIPWIRE_WIDTH)
 +                        zapped = true;
 +                }
++            }
 +
 +            if (zapped)
 +            {
@@ -755,8 +774,52 @@ index 73dcec1..14c3bb3 100644
 +    };
 +}
 +
++namespace DarkmoonRace
++{
++    // Tripwire stake: wires itself to its nearest stake (when that stake picks it too) and shows
++    // the wire as a lightning beam. Only that pair zaps racers (HandleCourse).
++    struct npc_darkmoon_race_tripwire_stake : public ScriptedAI
++    {
++        npc_darkmoon_race_tripwire_stake(Creature* creature) : ScriptedAI(creature) { }
++
++        uint32 _wireTimer = 1 * IN_MILLISECONDS;
++
++        void Reset() override { }
++
++        void UpdateAI(uint32 diff) override
++        {
++            if (!_wireTimer)
++                return;
++            if (_wireTimer > diff)
++            {
++                _wireTimer -= diff;
++                return;
++            }
++            _wireTimer = 0;
++
++            Creature* partner = NearestStake(me);
++            if (!partner || NearestStake(partner) != me)
++                return;
++
++            TripwirePartners[me->GetSpawnId()] = partner->GetSpawnId();
++            TripwirePartners[partner->GetSpawnId()] = me->GetSpawnId();
++
++            // One beam per pair, from the stake with the lower spawn id.
++            if (me->GetSpawnId() > partner->GetSpawnId())
++                return;
++            if (SpellInfo const* beam = sSpellMgr->GetSpellInfo(SPELL_TRIPWIRE_BEAM))
++            {
++                me->SetChannelSpellId(beam->Id);
++                me->SetChannelSpellXSpellVisualId(beam->GetSpellXSpellVisualId(me));
++                me->AddChannelObject(partner->GetGUID());
++            }
++        }
++    };
++}
++
 +void AddSC_darkmoon_race()
 +{
++    new GenericCreatureScript<DarkmoonRace::npc_darkmoon_race_tripwire_stake>("npc_darkmoon_race_tripwire_stake");
 +    new DarkmoonRace::player_darkmoon_race();
 +    new DarkmoonRace::spell_darkmoon_racer_button();
 +}

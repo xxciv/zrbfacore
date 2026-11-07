@@ -7,6 +7,24 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet.
 
+### Darkmoon races: visible tripwires
+
+From Four, 2026-11-07 ("The Real Race felt a lot better", finished in 108 seconds; "you can't tell
+which way the trap is set because you can't see a wire"). Updated `tools/bfa/darkmoon-race.patch`
+and world SQL `2026_11_07_01_darkmoon_race_tripwire_wires.sql`. Rebuild, run the SQL, restart.
+
+- **Found:** any two tripwire stakes (75044) within 14 yards of each other zapped racers, with
+  nothing drawn between them.
+- **Changed:**
+  - New script `npc_darkmoon_race_tripwire_stake`: each stake wires itself to its nearest stake
+    within 14 yards if that stake picks it too. That makes 30 pairs out of the 95 stakes; the
+    other 35 are safe to pass.
+  - The wire is drawn as the channel beam of Lightning Tether (33628, visual only, never cast,
+    `SPELL_TRIPWIRE_BEAM`) from one stake to the other. Only racers see the stakes and beams.
+  - Only a wired pair zaps you (same 2 seconds without boosts as before).
+- **Status:** untested in game. The beam spell is a guess: if it doesn't show, another one is a
+  one-line change.
+
 ### Darkmoon races: banners no longer sink under water
 
 From Four, 2026-11-07 (screenshots and the More Big Racing video: banners at sea level stand on

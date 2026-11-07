@@ -746,6 +746,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_06_21_darkmoon_concert_fireworks.sql` | Darkmoon Faire concert: Darkmoon Firework at the five moments that cast an invisible Rain of Fire |
 | `2026_11_06_22_darkmoon_deathmatch_chest_exit.sql` | Darkmoon Faire Deathmatch: looting the treasure chest teleports everyone in the pit back out to Korgol |
 | `2026_11_07_00_darkmoon_race_course_float.sql` | Darkmoon races: course banners, pads and posts stay at their spawn height instead of sinking under water |
+| `2026_11_07_01_darkmoon_race_tripwire_wires.sql` | Darkmoon races: tripwire stakes use the new stake script (wired pairs with a visible beam; needs the race patch) |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236).
 
