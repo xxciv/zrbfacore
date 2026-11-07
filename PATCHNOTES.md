@@ -35,7 +35,7 @@ Cache folder. No rebuild.
   Welcome to the Darkmoon Races.
 - **Not changed:** Wowhead lists no reward for the two practice runs, so they still give nothing.
   The other three give the Darkmoon Game Prize, a Prize Ticket and Darkmoon Faire reputation.
-- **Status:** untested in game. The repeatable practice runs (`2026_11_07_02`) are confirmed.
+- **Status:** confirmed in game (Four, 2026-11-07).
 
 ### Darkmoon races: the practice runs are repeatable
 
