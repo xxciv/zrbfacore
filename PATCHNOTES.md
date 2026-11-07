@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-07 (Holidays: Darkmoon Faire carousel)
 
-Draft PR, not merged yet.
+Merged to main via PR #43 (2026-11-07).
 
 ### Darkmoon Faire: carousel spins empty
 
@@ -24,7 +24,7 @@ SQL, restart. No core change.
 - **Changed:** the six Darkmoon Island ride spawns (guids 1400047-1400050, 1400056, 1400058) are
   removed. If an earlier test build's SQL set `npc_darkmoon_carousel_ride` on the five templates,
   this SQL clears it. The ride script is not in `darkmoon-race.patch`.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game (Four, 2026-11-07: platform empty).
 
 ## 2026-11-07 (Holidays: Darkmoon Faire races)
 
