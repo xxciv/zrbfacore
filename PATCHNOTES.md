@@ -18,8 +18,8 @@ No rebuild.
 - **Changed:** when the chest is looted (loot state 3), every player within 35 yd of it is
   teleported to the Deathmatch exit by Korgol Crushskull (-4300.9, 6397.3, 16.5, the target
   position of Exit Deathmatch 108923), facing away from the pit.
-- **Status:** untested in game. The Darkmoon Treasure Chest itself (`2026_11_06_17`) is confirmed:
-  Four looted Pit Fighter and finished Master Pit Fighter.
+- **Status:** confirmed in game (Four, 2026-11-07). The Darkmoon Treasure Chest itself
+  (`2026_11_06_17`) is confirmed too: Four looted Pit Fighter and finished Master Pit Fighter.
 
 ### Darkmoon Faire concert: fireworks instead of Rain of Fire
 
