@@ -7,54 +7,24 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet.
 
-### Darkmoon Faire: carousel follow-up (camera, getting off, ride order)
+### Darkmoon Faire: carousel spins empty
 
-From Four's first ride, 2026-11-07: rides go round, but no way off, the camera stayed where you got
-on (and only caught up later), rides shimmied, and the Dragon was out of place.
-`tools/bfa/darkmoon-race.patch` (rebuild) and world SQL `2026_11_07_07_darkmoon_carousel_ring.sql`
-(after `_06`). Run the SQL, rebuild, restart.
+From Four, 2026-11-07, after two test builds ("let's just remove all the carousel mounts, and leave
+it as a spinning empty platform"). World SQL `2026_11_07_06_darkmoon_carousel_empty.sql`. Run the
+SQL, restart. No core change.
 
 - **Found:**
-  - The six spawns were sniffed mid-turn, so their radii (6.5 to 8.1 yards) and gaps were uneven,
-    with the Dragon next to the Gryphon.
-  - The ride's path was only sent when the ride spawned, before anyone sat on it.
-  - The 36-point path turned 10 degrees at each corner, three times a second.
-  - Turning the camera turns you on the seat: the seat data allows it (no server fix).
-- **Changed:**
-  - All six rides sit on one 7.4-yard ring, 60 degrees apart: Murloc, Rocket, Wyvern, Gryphon,
-    Rocket, Dragon.
-  - Getting on or off a ride sends its path again right away, so the rider's client follows it.
-  - The path has 72 points and is a smooth curve.
-  - Clicking the ride you are sitting on (after the first 1.5 seconds) gets you off, as a backup for
-    the Leave Vehicle button.
+  - The platform (gameobject 216666) is turned by the client, one clockwise turn every 12 seconds
+    (TransportRotation.db2). This core has no passengers for that kind of transport, so the six
+    rides stood still while the floor spun.
+  - A test script that moved the rides around with the platform worked, but nobody could get off.
+    The client refused Leave Vehicle ("You can't do that right now"), even though both seats
+    (3326, 12198, flags `0x4200800b`) allow leaving in Four's 8.3.7 VehicleSeat.db2. A server-side
+    exit (`.unaura 75648`, or clicking the ride) left the rider stuck half on.
+- **Changed:** the six Darkmoon Island ride spawns (guids 1400047-1400050, 1400056, 1400058) are
+  removed. If an earlier test build's SQL set `npc_darkmoon_carousel_ride` on the five templates,
+  this SQL clears it. The ride script is not in `darkmoon-race.patch`.
 - **Status:** not tested in game yet.
-
-### Darkmoon Faire: carousel rides turn with the carousel
-
-From Four, 2026-11-07 (rides stationary instead of attached to the carousel, no way to get off, the
-camera follows the platform, the gryphon and some others seat you backwards).
-`tools/bfa/darkmoon-race.patch` (rebuild) and world SQL `2026_11_07_06_darkmoon_carousel_rides.sql`.
-Run the SQL, rebuild, restart.
-
-- **Found:**
-  - The platform (gameobject 216666, spawn 1270005) is turned by the client: TransportRotation.db2
-    gives one full clockwise turn every 12 seconds. This core has no passengers for that kind of
-    transport, so the six rides (Carousel Dragon 68231, Gryphon 68232, Murloc 68233, two Rockets
-    68238, Wyvern 68239) stood still while the floor spun under them.
-  - The rides are vehicles (354 and 2587, seats 3326 and 12198). Both seats allow leaving at will,
-    so the server accepts Leave Vehicle.
-  - The sniffed spawn facings point along a clockwise ring, which matches the platform's turn.
-  - Whee! (46668, more XP and reputation) was meant to grow while on the carousel, but its script
-    only checked for the platform transport, which never happens here.
-- **Changed:**
-  - New script `npc_darkmoon_carousel_ride` on the five templates (AIName was SmartAI with no
-    rows). Each ride keeps its spawn radius (6.5 to 8.1 yards) and its place in the ring, and
-    circles the pole at -4031.01, 6352.32 once every 12 seconds on a 36-point cyclic path, facing the
-    way it travels. The angle comes from the game clock, so all rides stay in step, and the path is
-    relaunched every 5 minutes so it can't drift. Copies of these rides on other maps stay still.
-  - Getting on a ride casts Whee!, and every 5 seconds on a ride adds 5 minutes (up to 1 hour).
-- **Status:** not tested in game yet. Leaving, the camera and the backwards seats still need Four's
-  check with the rides moving.
 
 ## 2026-11-07 (Holidays: Darkmoon Faire races)
 
