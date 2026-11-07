@@ -612,6 +612,21 @@ sets them to follow their zone too (run once, then restart `worldserver`):
 ```sh
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_04_50_wild_battle_pet_zone_levels.sql
 ```
+
+Darkmoon Island had no Crows to battle (only 2 critter crows). This adds the island's crow flocks
+with 10 battle Crows and removes a capturable copy of the drop-only Darkmoon Rabbit:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_07_50_darkmoon_island_wild_pets.sql
+```
+
+Display pets next to vendors and tamers (for example Lhara's on Darkmoon Island) show up as wild
+battle pets, because `battlepet_info` lists every species by creature entry. This keeps only
+capturable species as wild battle pets:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_07_51_battle_pets_only_capturable_are_wild.sql
+```
 #### Legion and BFA pet tamers
 
 Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest

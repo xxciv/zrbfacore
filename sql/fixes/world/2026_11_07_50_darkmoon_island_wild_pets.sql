@@ -1,0 +1,105 @@
+-- Darkmoon Island wild battle pets (zrbfacore, 2026-11-07)
+--
+-- Four's pet list for Darkmoon Island has two wild pets you can capture there:
+-- Crow (species 1068) and Darkmoon Glowfly (species 1062).
+--
+-- * Darkmoon Glowfly 67329: 14 spawns, already battle pets. Unchanged.
+-- * Crow: the island had only 2 crows, both the plain critter 55741, so no Crow
+--   could be battled. The battle pet entry is 67443 (battlepet_info row exists).
+--   battlepet_wild_zone_pool lists the critter 55741 as the Crow's BattlePetEntry,
+--   so the wild spawn SQL (2026_11_01_50) never touched it.
+--   - The 2 existing crows (10655393, 10655394, next to Glowfly spots) become
+--     battle Crows 67443 that wander 3 yards.
+--   - 43 crows from the alexkulya Pandaria 5.4.8 world DB are added in
+--     their 8 flocks (guids 974100001-974100043): one crow per flock is a battle
+--     Crow 67443 (wanders 3 yards), the rest are plain critter crows 55741.
+--   That is 10 battle Crows on the island.
+--   The Crow template was 1-25 in battlepet_info; set to 1-1 so the zone's
+--   wild pet range decides, like the Glowfly (see 2026_11_04_50).
+-- * Darkmoon Rabbit: retail's pet comes only as a drop from the rare Darkmoon
+--   Rabbit 58336 (item 80008, 11% in creature_loot_template, unchanged). The world
+--   DB had no rare, but a capturable companion copy 59358 (guid 10655373) stood in
+--   the rabbit's cave. That spawn is removed; the rare's own spawn is handled with
+--   the other Darkmoon Island rares.
+--
+-- * Lhara's display pets: Darkmoon Cub, Turtle, Hatchling, Zeppelin, Monkey and Tonk
+--   were all stacked on one spot in front of her booth. They move to their spots in
+--   the alexkulya DB: Turtle and Zeppelin on the booth, Cub and Hatchling inside the
+--   1st and 3rd cages (positions from Four's .gps on top of each cage, z lowered
+--   into the cage),
+--   the Tonk by the Tonk Challenge and the Monkey by the balloon cart.
+--   (2026_11_07_51 stops them being battleable.)
+--
+-- Undo: DELETE FROM creature WHERE guid BETWEEN 974100001 AND 974100043;
+--       UPDATE creature SET id=55741, MovementType=0, spawndist=0 WHERE guid IN (10655393,10655394);
+--       UPDATE battlepet_info SET minlevel=1, maxlevel=25 WHERE NpcID=67443;
+--       and re-add guid 10655373 (59358 at -4398.88 5863.85 -1.07828) if wanted.
+
+UPDATE `battlepet_info` SET `minlevel` = 1, `maxlevel` = 1 WHERE `NpcID` = 67443;
+
+-- Existing crows -> battle Crows
+UPDATE `creature` SET `id` = 67443, `MovementType` = 1, `spawndist` = 3
+ WHERE `guid` IN (10655393, 10655394) AND `id` = 55741;
+
+-- Crow flocks
+DELETE FROM `creature` WHERE `guid` BETWEEN 974100001 AND 974100043;
+INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnDifficulties`, `phaseUseFlags`, `PhaseId`, `PhaseGroup`, `terrainSwapMap`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `spawndist`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `unit_flags2`, `unit_flags3`, `dynamicflags`, `ScriptName`, `VerifiedBuild`) VALUES
+(974100001, 67443, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4137.9, 6592.46, 19.3528, 5.13127, 120, 3, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0),
+(974100002, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4133.21, 6595.88, 19.4549, 5.93412, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100003, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4131.41, 6589.53, 19.7188, 2.14675, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100004, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4135.62, 6597.16, 19.1724, 1.88496, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100005, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4137.85, 6596.07, 19.1129, 4.95674, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100006, 67443, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4013.32, 6630.01, 16.1892, 2.58309, 120, 3, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0),
+(974100007, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4008.63, 6633.43, 15.0628, 1.8326, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100008, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4006.83, 6627.08, 15.8438, 5.53269, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100009, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4011.77, 6636.52, 14.8411, 2.79253, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100010, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4013.27, 6633.62, 15.3919, 1.79769, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100011, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4013.23, 6626.21, 17.0701, 2.79253, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100012, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4002.61, 6631.44, 14.648, 2.79253, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100013, 67443, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4194.64, 6116.85, 12.7951, 2.58309, 120, 3, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0),
+(974100014, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4189.95, 6120.28, 13.1371, 1.8326, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100015, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4188.15, 6113.93, 12.9375, 5.53269, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100016, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4199.96, 6115.83, 12.3438, 2.79253, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100017, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4194.58, 6120.46, 12.9653, 1.79769, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100018, 67443, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -3925.06, 6321.24, 15.7898, 2.58309, 120, 3, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0),
+(974100019, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -3920.36, 6324.66, 15.6935, 1.8326, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100020, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -3918.57, 6318.31, 16.3246, 5.53269, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100021, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -3930.38, 6320.21, 15.5139, 2.79253, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100022, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -3925, 6324.85, 15.3866, 1.79769, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100023, 67443, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -3834.89, 6551.35, 10.4132, 2.58309, 120, 3, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0),
+(974100024, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -3830.2, 6554.77, 10.8299, 1.8326, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100025, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -3828.4, 6548.42, 11.0504, 5.53269, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100026, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -3840.22, 6550.33, 10.8108, 2.79253, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100027, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -3834.83, 6554.96, 10.3316, 1.79769, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100028, 67443, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4298.17, 6136.98, 13.1443, 2.58309, 120, 3, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0),
+(974100029, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4293.47, 6140.4, 15.658, 1.8326, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100030, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4291.67, 6134.06, 15.2865, 5.53269, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100031, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4303.49, 6135.95, 10.4573, 2.79253, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100032, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4298.11, 6140.59, 14.2257, 1.79769, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100033, 67443, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4276.76, 6595.96, 13.5344, 2.58309, 120, 3, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0),
+(974100034, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4272.07, 6599.38, 13.5955, 1.8326, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100035, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4270.27, 6593.03, 13.9496, 2.44346, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100036, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4270.52, 6596.21, 13.8641, 0.10472, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100037, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4276.7, 6599.57, 13.2952, 1.79769, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100038, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4275.08, 6592.89, 13.6076, 3.82227, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100039, 67443, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4080.45, 6143.35, 15.7253, 2.58309, 120, 3, 0, 0, 0, 1, 0, 0, 0, 0, 0, '', 0),
+(974100040, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4075.76, 6146.77, 15.7654, 1.8326, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100041, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4073.96, 6140.43, 16.6615, 5.53269, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100042, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4085.78, 6142.32, 15.8976, 2.79253, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0),
+(974100043, 55741, 974, 5861, 5861, '0', 0, 0, 0, -1, 0, 0, -4080.39, 6146.96, 15.4341, 1.79769, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0);
+
+-- Lhara's display pets, unstacked (alexkulya positions)
+UPDATE `creature` SET `position_x` = -4188.624, `position_y` = 6379.116, `position_z` = 14.6, `orientation` = 4.972375 WHERE `guid` = 10655372 AND `id` = 56031; -- 1st cage (Four's .gps on top, 16.18)
+UPDATE `creature` SET `position_x` = -4187.2,  `position_y` = 6379.24, `position_z` = 13.5763, `orientation` = 1.4387   WHERE `guid` = 10655366 AND `id` = 54487;
+UPDATE `creature` SET `position_x` = -4183.907, `position_y` = 6379.528, `position_z` = 14.6, `orientation` = 4.768171 WHERE `guid` = 10655374 AND `id` = 67319; -- 3rd cage (Four's .gps on top, 16.19)
+UPDATE `creature` SET `position_x` = -4181.45, `position_y` = 6378.11, `position_z` = 15.0568, `orientation` = 3.7001   WHERE `guid` = 10655370 AND `id` = 55367;
+UPDATE `creature` SET `position_x` = -4158.03, `position_y` = 6399.38, `position_z` = 15.1691, `orientation` = 0.478508 WHERE `guid` = 10655369 AND `id` = 55356;
+UPDATE `creature` SET `position_x` = -4341.73, `position_y` = 6307.5,  `position_z` = 14.9751, `orientation` = 4.69373  WHERE `guid` = 10655367 AND `id` = 55714;
+
+-- Capturable companion Darkmoon Rabbit in the rare's cave
+DELETE FROM `creature_addon` WHERE `guid` = 10655373;
+DELETE FROM `creature` WHERE `guid` = 10655373 AND `id` = 59358;
+
+SELECT CONCAT((SELECT COUNT(*) FROM `creature` WHERE `map` = 974 AND `id` = 67443), ' battle Crows, ',
+              (SELECT COUNT(*) FROM `creature` WHERE `map` = 974 AND `id` = 55741), ' critter crows, ',
+              (SELECT COUNT(*) FROM `creature` WHERE `map` = 974 AND `id` = 67329), ' Glowflies on Darkmoon Island') AS zr_result;
