@@ -3,6 +3,42 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-06 (Holidays: Darkmoon Faire, second batch)
+
+Merged to main via PR #41 (2026-11-07).
+
+### Darkmoon Faire Deathmatch: looting the chest sends everyone out
+
+From Four, 2026-11-06 (Master Pit Fighter done, but nobody left the pit after the chest was
+looted). World SQL `2026_11_06_22_darkmoon_deathmatch_chest_exit.sql`. Run the SQL, restart.
+No rebuild.
+
+- **Found:** the Darkmoon Treasure Chest (209620) uses SmartGameObjectAI but had no script, so
+  looting it only gave the loot.
+- **Changed:** when the chest is looted (loot state 3), every player within 35 yd of it is
+  teleported to the Deathmatch exit by Korgol Crushskull (-4300.9, 6397.3, 16.5, the target
+  position of Exit Deathmatch 108923), facing away from the pit.
+- **Status:** confirmed in game (Four, 2026-11-07). The Darkmoon Treasure Chest itself
+  (`2026_11_06_17`) is confirmed too: Four looted Pit Fighter and finished Master Pit Fighter.
+
+### Darkmoon Faire concert: fireworks instead of Rain of Fire
+
+From Four, 2026-11-06 (the concert's fire never showed). World SQL
+`2026_11_06_21_darkmoon_concert_fireworks.sql`. Run the SQL, restart. No rebuild.
+
+- **Found:** the concert's FX Controller (23830) casts L70ETC Rain of Fire (42501) at 18.0, 87.9,
+  142.3, 247.3 and 260.5 s into the song. 42501 is a persistent area aura whose visual does not
+  play in the 8.3.7 client (`.cast self 42501` shows nothing; Lightning Cloud 42500 works). Four
+  tried eight other fire spells in game; none suited the show.
+- **Changed:** those five script rows (ids 3, 6, 9, 12, 15) now cast Darkmoon Firework (103740),
+  which Four picked in game.
+- **Status:** confirmed in game (Four, 2026-11-07).
+
+### Grisly Trophies confirmed
+
+Four, 2026-11-06: Grisly Trophies drop from kills while carrying the Adventurer's Guide (Test Your
+Strength, `2026_11_06_17` + gossip patch from PR #40). Confirmed in game.
+
 ## 2026-11-04/05 (Holidays: calendar and schedules)
 
 Merged to main via PR #40 (2026-11-06).
