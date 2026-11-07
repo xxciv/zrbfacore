@@ -64,7 +64,8 @@ race posts are under water or pointing at the wrong direction towards the next p
   - The post marker faces the next post (or the start banner after the last post).
 - **Not changed:** Let's Keep Racing! (33756) has no reward and no turn-in text in the 8.3.7
   quest data, so it ends without one.
-- **Status:** untested in game.
+- **Status:** confirmed in game (Four, 2026-11-07): The Real Race (108 seconds), The Real Big Race
+  and More Big Racing all finished.
 
 ## 2026-11-06 (Holidays: Darkmoon Faire, second batch)
 
