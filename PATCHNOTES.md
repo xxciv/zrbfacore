@@ -5,6 +5,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-07 (World fixes: Darkmoon Island)
 
+Merged to `main` with PR #45 on 2026-11-07.
+
 ### World: Darkmoon Rabbit never spawns, Moonfang has no fight
 
 - **Found** (Four, 2026-11-07): the Darkmoon Island rares Death Metal Knight, Darkmoon Rabbit and
@@ -61,8 +63,10 @@ to do to pick it up (rebuild, restart, run SQL).
     Moon are now one loot group (31/32/32/5%), so exactly one always drops.
   - Death Metal Knight was rank 0 and had no elite frame like the other two: now rank 1 (elite),
     health unchanged.
-- **Status:** spawns, scaling and loot confirmed in game by Four (2026-11-07). The follow-up
-  (rabbit bite, rank and health, Knight's weapon) is waiting for Four to test.
+- **Status:** everything above confirmed in game by Four on 2026-11-07: all three rares spawn and
+  scale, the rabbit and Moonfang fights are good, Moonfang always drops an item, and Death Metal
+  Knight is elite with his sword. Still to do some day: Death Metal Knight's full retail Cauldron
+  of Rock concert event (he is only the boss for now).
 - **Pick up:** SQL only, no rebuild:
 
 ```
