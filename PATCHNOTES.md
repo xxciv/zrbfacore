@@ -24,7 +24,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Then found** (Four): without the battle pet flag those display pets could be attacked and killed.
   The same file now also sets `unit_flags | 0x300` (immune to players and NPCs) on the templates of
   the 299 spawned type 14 creatures of those species, as on retail.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-07.
 
 #### To pick it up
 ```
@@ -61,7 +61,7 @@ restart `worldserver`.
     Zeppelin spread over the booth (Cub and Hatchling inside the 1st and 3rd cages, from Four's `.gps`), the Tonk by the Tonk Challenge, the Monkey near Carl Goodup's
     balloon cart.
   The file's header has the undo lines. No core change.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-07.
 
 #### To pick it up
 SQL only, then a restart.
