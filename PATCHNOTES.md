@@ -7,6 +7,18 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet.
 
+### Darkmoon races: the practice runs are repeatable
+
+From Four, 2026-11-07 (after finishing the races, Malle Earnhard offered nothing). World SQL
+`2026_11_07_02_darkmoon_race_repeatables.sql`. Run the SQL, restart. No rebuild.
+
+- **Found:** Let's Keep Racing! (33756, Malle) and More Big Racing! (37868, Patti) are the
+  repeatable runs of the two courses (blue repeatable marker flag, no reward, no daily flag), but
+  `quest_template_addon.SpecialFlags` was 0, so the core let you do each only once. The Real Race
+  and The Real Big Race are dailies and come back at the daily reset.
+- **Changed:** SpecialFlags 1 (repeatable) on 33756 and 37868.
+- **Status:** untested in game.
+
 ### Darkmoon races: visible tripwires
 
 From Four, 2026-11-07 ("The Real Race felt a lot better", finished in 108 seconds; "you can't tell
