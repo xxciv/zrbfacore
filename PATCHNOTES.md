@@ -3,6 +3,29 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-07 (Holidays: Darkmoon Faire carousel)
+
+Merged to main via PR #43 (2026-11-07).
+
+### Darkmoon Faire: carousel spins empty
+
+From Four, 2026-11-07, after two test builds ("let's just remove all the carousel mounts, and leave
+it as a spinning empty platform"). World SQL `2026_11_07_06_darkmoon_carousel_empty.sql`. Run the
+SQL, restart. No core change.
+
+- **Found:**
+  - The platform (gameobject 216666) is turned by the client, one clockwise turn every 12 seconds
+    (TransportRotation.db2). This core has no passengers for that kind of transport, so the six
+    rides stood still while the floor spun.
+  - A test script that moved the rides around with the platform worked, but nobody could get off.
+    The client refused Leave Vehicle ("You can't do that right now"), even though both seats
+    (3326, 12198, flags `0x4200800b`) allow leaving in Four's 8.3.7 VehicleSeat.db2. A server-side
+    exit (`.unaura 75648`, or clicking the ride) left the rider stuck half on.
+- **Changed:** the six Darkmoon Island ride spawns (guids 1400047-1400050, 1400056, 1400058) are
+  removed. If an earlier test build's SQL set `npc_darkmoon_carousel_ride` on the five templates,
+  this SQL clears it. The ride script is not in `darkmoon-race.patch`.
+- **Status:** confirmed in game (Four, 2026-11-07: platform empty).
+
 ## 2026-11-07 (Holidays: Darkmoon Faire races)
 
 Merged to main via PR #42 (2026-11-07).
