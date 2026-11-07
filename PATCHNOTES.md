@@ -7,6 +7,22 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet.
 
+### Darkmoon Faire: race arch and camp post names, token vendors
+
+From Four, 2026-11-07. World SQL `2026_11_07_04_darkmoon_race_names_token_vendors.sql`. Run the
+SQL, restart, delete the client Cache folder. No rebuild.
+
+- **Found:**
+  - "Arch, Start Race" (74333) and "Camp Post" (74388) at both race start lines showed their names.
+    They are scenery (no gossip, no quests).
+  - The Game Token vendors (Sazz Coincatcher 55264, Zina Sharpworth 55266, Trixi Sharpworth 55339)
+    sold 14 Pouches/Sacks o' Tokens. Pouch o' Tokens 78904 and Sack o' Tokens 78910 hold nothing,
+    and the Pandaria 5.4.8 DB doesn't sell those two. The other 12 hold 5 or 20 Darkmoon Game
+    Tokens.
+- **Changed:** both scenery entries are not selectable, which hides the name; 78904 and 78910 are
+  off the three vendors.
+- **Status:** untested in game.
+
 ### Darkmoon races: turn-in text
 
 From Four, 2026-11-07 (Let's Keep Racing! and More Big Racing! turned in with an empty page).
@@ -48,8 +64,7 @@ and world SQL `2026_11_07_01_darkmoon_race_tripwire_wires.sql`. Rebuild, run the
   - The wire is drawn as the channel beam of Lightning Tether (33628, visual only, never cast,
     `SPELL_TRIPWIRE_BEAM`) from one stake to the other. Only racers see the stakes and beams.
   - Only a wired pair zaps you (same 2 seconds without boosts as before).
-- **Status:** untested in game. The beam spell is a guess: if it doesn't show, another one is a
-  one-line change.
+- **Status:** confirmed in game (Four, 2026-11-07: "The tripwires worked perfectly").
 
 ### Darkmoon races: banners no longer sink under water
 
