@@ -7,6 +7,20 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet.
 
+### Darkmoon races: turn-in text
+
+From Four, 2026-11-07 (Let's Keep Racing! and More Big Racing! turned in with an empty page).
+World SQL `2026_11_07_03_darkmoon_race_turn_in_text.sql`. Run the SQL, restart, delete the client
+Cache folder. No rebuild.
+
+- **Found:** none of the five race quests had a turn-in text (`quest_offer_reward`).
+- **Changed:** texts from Wowhead's quest pages: "Good job, and nice time!" for The Real Race,
+  Let's Keep Racing!, More Big Racing! and The Real Big Race, and the practice-race text for
+  Welcome to the Darkmoon Races.
+- **Not changed:** Wowhead lists no reward for the two practice runs, so they still give nothing.
+  The other three give the Darkmoon Game Prize, a Prize Ticket and Darkmoon Faire reputation.
+- **Status:** untested in game. The repeatable practice runs (`2026_11_07_02`) are confirmed.
+
 ### Darkmoon races: the practice runs are repeatable
 
 From Four, 2026-11-07 (after finishing the races, Malle Earnhard offered nothing). World SQL
@@ -17,7 +31,7 @@ From Four, 2026-11-07 (after finishing the races, Malle Earnhard offered nothing
   `quest_template_addon.SpecialFlags` was 0, so the core let you do each only once. The Real Race
   and The Real Big Race are dailies and come back at the daily reset.
 - **Changed:** SpecialFlags 1 (repeatable) on 33756 and 37868.
-- **Status:** untested in game.
+- **Status:** confirmed in game (Four, 2026-11-07).
 
 ### Darkmoon races: visible tripwires
 
