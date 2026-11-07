@@ -3,6 +3,48 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-07 (World fixes: Darkmoon Island)
+
+### World: Darkmoon Rabbit never spawns, Moonfang has no fight
+
+- **Found** (Four, 2026-11-07): the Darkmoon Island rares Death Metal Knight, Darkmoon Rabbit and
+  Moonfang need reviewing.
+- **Cause:**
+  - Darkmoon Rabbit 58336 had no spawn in the BFA dump. Its core script (`npc_darkmoon_rabbit_ird`)
+    and loot (pet item 80008 at 11%) are fine.
+  - Moonfang 71992 is spawned, but has no SmartAI rows and no core script, so she only melees.
+    The Pandaria 5.4.8 core scripts her as `npc_darkmoon_moonfang`.
+  - Moonfang Dreadhowl 71982 has 2 spawns here and 5 in the Pandaria 5.4.8 DB.
+  - Death Metal Knight 122899 has a template and loot but no spawn here, in the Pandaria DB or in
+    MaNGOS Three. He is a Legion rare in the Cauldron of Rock (area 8901), which is newer than
+    every reference DB we have. **Not fixed yet.**
+- **Changed:** `sql/fixes/world/2026_11_07_30_darkmoon_island_rares.sql`:
+  - Darkmoon Rabbit spawned at the Pandaria spot by the rabbit's cave (guid 974200001,
+    -4291.81 5860.5 3.38), respawn 115200 s (32 h), wander 5 yards.
+  - Moonfang SmartAI, rebuilt from the Pandaria script with the same timers:
+    - Fangs of the Moon 144700 on her target every 12.5 s.
+    - Moonfang Tears pool 144579 every 20 s.
+    - Leap for the Kill 144546 every 16 s.
+    - Call the Pack 144602, which summons Moonfang Packmates 72038, every 32 s.
+
+    Moonfang Curse 144590 is left out: it charms half the players in range, which solo is you.
+    Packmates attack the closest player when summoned.
+  - 3 Moonfang Dreadhowls added at the Pandaria spots (guids 974200002-974200004). All 5 wander
+    5 yards (guid 1400330 stood still).
+- **Status:** waiting for Four to test.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_07_30_darkmoon_island_rares.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
 ## 2026-11-07 (Holidays: Darkmoon Faire carousel)
 
 Merged to main via PR #43 (2026-11-07).
