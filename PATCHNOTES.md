@@ -3,6 +3,44 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-08
+
+### Core: skinning uses each expansion's own skill
+
+- **Found** (Four, 2026-11-08): Cataclysm beasts (Hyjal, Vashj'ir, Deepholm, Uldum, Twilight Highlands,
+  levels 80-88 in `creature_template`) could never be skinned. `Spell::CheckCast` asked for 5 skill per
+  creature level (400-440) from the profession skill 393, which can't go above 300 (Classic Skinning's
+  max). `Spell::EffectSkinning` always raised Classic Skinning (2564), so Cataclysm Skinning (2561) and
+  the other expansion skills never moved. The same held for every beast above level 60.
+- **Changed:** new `tools/bfa/skinning-tiers.patch`:
+  - New `src/server/game/Spells/SkinningTiers.h`: `GetSkinningTier` picks the beast's expansion
+    skill from `creature_template.HealthScalingExpansion` (1 Outland 2563, 2 Northrend 2562,
+    3 Cataclysm 2561, 4 Pandaria 2560, 5 Draenor 2559, 6 Legion 2558, 7 Kul Tiran 2557). When that is
+    0 it uses `minlevel`: up to 60 Classic (2564), 61-70 Outland, 71-80 Northrend, 81-85 Cataclysm,
+    86-90 Pandaria, 91-100 Draenor, 101-110 Legion, higher Kul Tiran.
+    `GetSkinningTierRequirement` scales the requirement over the expansion's levels, from 1 to the
+    skill's max minus 25. For Cataclysm (levels 80-85, max 75), level 80 needs 1, 83 needs 30, and
+    85 and above need 50.
+  - `Spell::CheckCast` (`SPELL_EFFECT_SKINNING`, `Spell.cpp`) checks that expansion skill. Classic
+    beasts keep the old formula, `(level-10)*10` below 100 skill and `level*5` above, but now check
+    Classic Skinning (2564) instead of 393.
+  - `Spell::EffectSkinning` (`SpellEffects.cpp`) raises that expansion skill, with the same requirement
+    for its skill-up chance. Beasts skinned with Herbalism, Mining or Engineering are unchanged. No SQL.
+  - Compiles with GCC 13 on the full patch chain.
+- **Status:** not yet tested in game.
+
+#### To pick up the skinning tiers
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged, and the new header needs no `cmake build` reconfigure.
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/skinning-tiers.patch && echo "skinning tiers applied"
+grep -c GetSkinningTier src/server/game/Spells/Spell.cpp src/server/game/Spells/SpellEffects.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The echo line prints, and the grep prints 2 for each file. Then restart `worldserver`.
+
 ## 2026-11-07 (World fixes: Darkmoon Island)
 
 Merged to `main` with PR #45 on 2026-11-07.

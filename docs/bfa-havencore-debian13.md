@@ -121,6 +121,7 @@ git apply ../tools-repo/tools/bfa/holiday-schedule.patch
 git apply ../tools-repo/tools/bfa/darkmoon-faire-gossip.patch
 git apply ../tools-repo/tools/bfa/darkmoon-race.patch
 git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
+git apply ../tools-repo/tools/bfa/skinning-tiers.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -150,6 +151,18 @@ Skinning (1/75) dropped Skinning to 1 and the server refused to skin anything (s
 against the profession skill too; fix verified in game). A character from before the patch catches up at its next skill-up,
 or at once with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning), using the value of
 its highest expansion skill.
+
+`skinning-tiers.patch` skins each beast with its own expansion's skill, as on retail 8.3.7: Classic
+Skinning for Classic beasts, Cataclysm Skinning (1-75) for Cataclysm ones, and so on up to Kul Tiran
+Skinning. Upstream checked every beast against the profession skill at 5 skill per level and always
+raised Classic Skinning, so beasts above level 60 (Outland onwards, 400 and more for Cataclysm) could
+never be skinned. The expansion comes from the creature template's `HealthScalingExpansion`, or from
+its level when that is 0 (Classic) and the level is above 60: 61-70 Outland, 71-80 Northrend, 81-85
+Cataclysm, 86-90 Pandaria, 91-100 Draenor, 101-110 Legion, higher Kul Tiran. Within an expansion the
+first beasts need 1 and the last need the skill's max minus 25 (Cataclysm: level 80 needs 1, 83 needs
+30, 85 needs 50). Classic beasts keep upstream's numbers but are checked against Classic Skinning.
+The new code is in `src/server/game/Spells/SkinningTiers.h`, used by `Spell::CheckCast` and
+`Spell::EffectSkinning`. Beasts skinned with Herbalism, Mining or Engineering are unchanged.
 
 `deadmines-fixes.patch` collects the fixes for The Deadmines (map 36):
 
@@ -688,6 +701,7 @@ git apply ../tools-repo/tools/bfa/holiday-schedule.patch
 git apply ../tools-repo/tools/bfa/darkmoon-faire-gossip.patch
 git apply ../tools-repo/tools/bfa/darkmoon-race.patch
 git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
+git apply ../tools-repo/tools/bfa/skinning-tiers.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
