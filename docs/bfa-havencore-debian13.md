@@ -150,7 +150,9 @@ that changed last: upstream copied whichever expansion skill was set last, so le
 Skinning (1/75) dropped Skinning to 1 and the server refused to skin anything (skinning is checked
 against the profession skill too; fix verified in game). A character from before the patch catches up at its next skill-up,
 or at once with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning), using the value of
-its highest expansion skill.
+its highest expansion skill. A lower expansion skill never lowers the profession skill: Classic
+Inscription and Classic Engineering recipes raise the profession skill itself, so learning Cataclysm
+Inscription at 1 would otherwise have reset Inscription to 1.
 
 `skinning-tiers.patch` skins each beast with its own expansion's skill, as on retail 8.3.7, and skinning
 it raises that skill. Upstream checked every beast against the profession skill (393) at 5 skill per
@@ -181,6 +183,40 @@ lowest beasts.
 The new code is in `src/server/game/Spells/SkinningTiers.h`, used by `Spell::CheckCast` (the check)
 and `Spell::EffectSkinning` (the skill-up). Beasts skinned with Herbalism, Mining or Engineering are
 unchanged.
+
+Herb and ore nodes get the same treatment from two SQL fixes, not a patch, because the requirement
+lives in the client's data. In the 8.3.7 `Lock.db2` almost every node from Outland to Legion uses the
+plain Herbalism or Mining lock with the old 1-600 skill (Lichbloom 425, Twilight Jasmine 525, Golden
+Lotus 550), which the client checks against the profession skill. That skill can't go above 300, so
+those nodes could never be gathered, and gathering only raised Classic Herbalism and Mining. Each
+expansion also has its own herb and ore lock types, each with its own gather spell that the trainer
+teaches along with the expansion's skill; Kul Tiran nodes already use them. The hotfix fix adds one
+lock per expansion and requirement (and caps the two Classic ore locks that asked for 305 and 310 at
+300), and the world fix points 93 node templates at them:
+
+```sh
+mysql -u root -p bfa_hotfixes < ~/bfa/tools-repo/sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_08_00_gathering_tier_locks.sql
+```
+
+Then restart `worldserver` and delete the client's `Cache` folder (it keeps the old node data). The
+expansion comes from where the node spawns; the requirement scales its old skill over the expansion's
+old range to 1 up to the expansion skill's max minus 25. What the main nodes need now:
+
+| Expansion | Herbs (skill needed) | Ore (skill needed) |
+|---|---|---|
+| Classic | unchanged | unchanged; Small/Large Obsidian Chunk and Arcanite Lode 300 (were 305 and 310) |
+| Outland (Outland Herbalism/Mining) | Felweed, Dreaming Glory (most nodes), Terocone, Netherbloom, Nightmare Vine, Mana Thistle, Blindweed 1; Dreaming Glory (old 315) 10; Ragveil 17; Flame Cap 23; Ancient Lichen 27; Netherdust Bush 33 | Fel Iron, Adamantite, Rich Adamantite, Khorium, Nethercite 1; Ancient Gem Vein 50 |
+| Northrend | Goldclover 1, Firethorn 5, Tiger Lily 13, Talandra's Rose 18, Adder's Tongue 25, Frozen Herb 25-32, Lichbloom 37, Icethorn 42, Frost Lotus 50 | Cobalt 1, Rich Cobalt 13, Saronite 25, Rich Saronite 37, Titanium and Pure Saronite 50 |
+| Cataclysm | Cinderbloom (already per expansion, no requirement), Stormvine and Azshara's Veil 1, Heartblossom 25, Whiptail 37, Twilight Jasmine 50 | Obsidium 1, Rich Obsidium 13, Elementium 25, Pyrite and Rich Pyrite 50; Rich Elementium already per expansion, no requirement |
+| Pandaria | Green Tea Leaf, Silkweed, Rain Poppy, Fool's Cap 1; Golden Lotus 25; Snow Lily and Sha-Touched Herb 37 | Ghost Iron, Kyparite, Trillium and their rich nodes 1 |
+| Draenor | Frostweed, Fireweed, Gorgrond Flytrap, Starflower, Nagrand Arrowbloom, Talador Orchid 1 | True Iron, Rich True Iron, Rich Blackrock, Smoldering True Iron 1; Blackrock already per expansion, no requirement |
+| Legion | Aethril, Dreamleaf, Foxflower, Fjarnskaggl, Starlight Rose, Felwort, Fel-Encrusted Herb 1 | Leystone, Felslate and their rich nodes and seams 1 |
+| Kul Tiran | unchanged (already per expansion) | unchanged (already per expansion) |
+
+A requirement of 1 means the node needs that expansion's skill learned. Quest objects that also open
+without the skill (by kneeling, or with a quest item) are left alone. The world fix lists every node,
+its old skill and its new requirement.
 
 `deadmines-fixes.patch` collects the fixes for The Deadmines (map 36):
 
@@ -801,7 +837,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_07_06_darkmoon_carousel_empty.sql` | Darkmoon Faire: carousel rides removed, the platform spins empty |
 | `2026_11_07_30_darkmoon_island_rares.sql` | Darkmoon Island rares: Darkmoon Rabbit spawned (its pet always drops, no solo-lethal bite), Moonfang gets her fight and always drops one of her items, Death Metal Knight spawned in the Cauldron of Rock with his sword; all three are elites that scale with your level (verified in game 2026-11-07) |
 
-Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236).
+Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name).
 
 ## 11. Status
 

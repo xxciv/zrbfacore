@@ -47,17 +47,75 @@ to do to pick it up (rebuild, restart, run SQL).
 
 - **Status:** not yet tested in game.
 
-#### To pick up the skinning tiers
-A new patch on top of the others, the build and a restart. The patches you already applied are
-unchanged, and the new header needs no `cmake build` reconfigure.
+### Hotfixes and world: herb and ore nodes use each expansion's own skill
+
+- **Found** (Four asked for every tradeskill to work like skinning, 2026-11-08). Four's `Lock.db2` shows
+  that almost every herb and ore node from Outland to Legion uses the plain Herbalism (lock type 2) or
+  Mining (3) lock with the old 1-600 skill: for example Lichbloom 425, Twilight Jasmine 525, Golden Lotus
+  550, Saronite 400 and Pyrite 525. The client checks that against the profession skill, which can't go
+  above 300, so none of those could be gathered, and gathering only raised Classic Herbalism/Mining
+  (`SkillByLockType` maps types 2 and 3 to 2556 and 2572). Each expansion has its own lock types (33-39
+  herbs, 41-47 mining) and gather spells 265821-265853, which its trainer spell teaches (265822 Outland
+  Herbalism teaches 265821, and so on). Kul Tiran nodes, Cinderbloom, Rich Elementium and Blackrock
+  already used them.
+- **Changed:**
+  - `sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql` (`bfa_hotfixes`) adds 38 `lock` rows,
+    ID `50000 + expansion*1000 + 100 (ore) + requirement`. Each has one slot: Type 2, Index = that
+    expansion's herb or ore lock type, Skill = the requirement.
+  - The same file caps Classic locks 1632 (Small and Large Obsidian Chunk) and 399 (Arcanite Lode) at
+    300, from 305 and 310. `hotfix_data` ids are 9200000 + (ID - 50000) and 9300000 + ID, table hash
+    0xE9BECB23.
+  - `sql/fixes/world/2026_11_08_00_gathering_tier_locks.sql` (`bfa_world`) sets `Data0` (lock) on 93
+    `gameobject_template` herb and ore nodes. Gathering nodes (type 50) that had old-scale trivial
+    skill also get `Data4`/`Data5` = requirement and requirement + 25. Each line names the node, its
+    old skill and its new requirement.
+    - A node's expansion is where most of its spawns are: map 530 Outland, minus the blood elf and
+      draenei zones; Outland and Northrend dungeon maps; 571 Northrend; Cataclysm zones and Deepholm;
+      870 Pandaria; 1116 Draenor; 1220 Legion.
+    - The requirement scales the old skill over the expansion's old range (Outland 300-375, Northrend
+      350-450, Cataclysm 425-525, Pandaria 500-600) to 1 up to the skill's max minus 25. Old 0 becomes
+      1, so the expansion's skill must be learned.
+    - Only locks with a single herb or mining slot change. Quest objects that also open by kneeling or
+      with an item keep their lock.
+  - The guide's section 3 has the full table per expansion.
+  - Both files ran twice in a test database without errors. The client part (new lock rows sent as
+    hotfixes) is untested.
+- **Status:** not yet tested in game.
+
+### Core: a lower expansion skill never lowers the profession skill
+
+- **Found** while checking crafting for Four's request. `Player::UpdateCraftSkill` (upstream) raises the
+  profession skill itself for Classic Inscription (2514) and Classic Engineering (2506) recipes. With
+  `SyncParentProfessionSkill` keeping the profession skill at the highest expansion skill, learning, say,
+  Cataclysm Inscription at 1 would have set Inscription back to 1. Every other crafting profession
+  already raises the recipe's own expansion skill (`SkillLineAbility.SkillupSkillLineID`).
+- **Changed:** `tools/bfa/profession-skill-sync.patch` (`Player.cpp`, `SyncParentProfessionSkill`): it
+  only ever raises the profession skill (returns when the highest expansion skill is below it).
+  Compiles with GCC 13 on the full patch chain.
+- **Status:** not yet tested in game.
+
+#### To pick up the skinning tiers, gathering locks and sync change
+`profession-skill-sync.patch` changed and `skinning-tiers.patch` is new, so this swaps the old
+version of the sync patch for the new one. The other patches you applied are unchanged.
 ```
 cd ~/bfa/source
 git -C ../tools-repo pull
+git -C ../tools-repo show 05f80be:tools/bfa/profession-skill-sync.patch | git apply -R && echo "old sync patch removed"
+git apply ../tools-repo/tools/bfa/profession-skill-sync.patch && echo "new sync patch applied"
 git apply ../tools-repo/tools/bfa/skinning-tiers.patch && echo "skinning tiers applied"
+grep -c "bestValue < player->GetPureSkillValue" src/server/game/Entities/Player/Player.cpp
 grep -c GetSkinningTier src/server/game/Spells/Spell.cpp src/server/game/Spells/SpellEffects.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
-The echo line prints, and the grep prints 2 for each file. Then restart `worldserver`.
+All three echo lines print, the first grep prints 1 and the second prints 2 for each file. Then the
+two SQL files, one at a time (each asks for the password):
+```
+mysql -u root -p bfa_hotfixes < ../tools-repo/sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql
+```
+```
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_08_00_gathering_tier_locks.sql
+```
+Then restart `worldserver` and delete the client's `Cache` folder.
 
 ## 2026-11-07 (World fixes: Darkmoon Island)
 
