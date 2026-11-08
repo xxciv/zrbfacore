@@ -152,17 +152,35 @@ against the profession skill too; fix verified in game). A character from before
 or at once with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning), using the value of
 its highest expansion skill.
 
-`skinning-tiers.patch` skins each beast with its own expansion's skill, as on retail 8.3.7: Classic
-Skinning for Classic beasts, Cataclysm Skinning (1-75) for Cataclysm ones, and so on up to Kul Tiran
-Skinning. Upstream checked every beast against the profession skill at 5 skill per level and always
-raised Classic Skinning, so beasts above level 60 (Outland onwards, 400 and more for Cataclysm) could
-never be skinned. The expansion comes from the creature template's `HealthScalingExpansion`, or from
-its level when that is 0 (Classic) and the level is above 60: 61-70 Outland, 71-80 Northrend, 81-85
-Cataclysm, 86-90 Pandaria, 91-100 Draenor, 101-110 Legion, higher Kul Tiran. Within an expansion the
-first beasts need 1 and the last need the skill's max minus 25 (Cataclysm: level 80 needs 1, 83 needs
-30, 85 needs 50). Classic beasts keep upstream's numbers but are checked against Classic Skinning.
-The new code is in `src/server/game/Spells/SkinningTiers.h`, used by `Spell::CheckCast` and
-`Spell::EffectSkinning`. Beasts skinned with Herbalism, Mining or Engineering are unchanged.
+`skinning-tiers.patch` skins each beast with its own expansion's skill, as on retail 8.3.7, and skinning
+it raises that skill. Upstream checked every beast against the profession skill (393) at 5 skill per
+level and always raised Classic Skinning, so beasts above level 60 (400 and more for Cataclysm) could
+never be skinned, and the expansion skills never moved. What each expansion needs now:
+
+| Expansion | Skill (ID) | Beasts it covers | Skill needed by beast level |
+|---|---|---|---|
+| Classic | Classic Skinning (2564), max 300 | `HealthScalingExpansion` 0 and level 1-60 | unchanged: 1-10 any, 15: 50, 20: 100, 30: 150, 40: 200, 50: 250, 60: 300 (`(level-10)*10` below 100 skill, `level*5` from 100) |
+| Outland | Outland Skinning (2563), max 75 | expansion 1, or level 61-70 | 58: 1, 60: 9, 62: 17, 64: 25, 66: 33, 68: 41, 70: 50 |
+| Northrend | Northrend Skinning (2562), max 75 | expansion 2, or level 71-80 | 68: 1, 70: 9, 72: 17, 74: 25, 76: 33, 78: 41, 80: 50 |
+| Cataclysm | Cataclysm Skinning (2561), max 75 | expansion 3, or level 81-85 | 80: 1, 81: 10, 82: 20, 83: 30, 84: 40, 85: 50 |
+| Pandaria | Pandaria Skinning (2560), max 75 | expansion 4, or level 86-90 | 85: 1, 86: 10, 87: 20, 88: 30, 89: 40, 90: 50 |
+| Draenor | Draenor Skinning (2559), max 100 | expansion 5, or level 91-100 | 90: 1, 92: 15, 94: 30, 96: 45, 98: 60, 100: 75 |
+| Legion | Legion Skinning (2558), max 100 | expansion 6, or level 101-110 | 98: 1, 100: 13, 102: 25, 104: 38, 106: 50, 108: 62, 110: 75 |
+| Kul Tiran | Kul Tiran Skinning (2557), max 150 | expansion 7, or level 111 and up | 110: 1, 112: 25, 114: 50, 116: 75, 118: 100, 120: 125 |
+
+"Expansion N" is the creature's `creature_template.HealthScalingExpansion`. Many templates leave it at 0
+whatever their level, so a 0 above level 60 picks the expansion by `minlevel` instead (the level ranges
+in the third column). Outside those levels, a beast below its expansion's first level needs 1, and one above its
+last level needs the same as the last level. For every expansion except Classic the requirement rises
+evenly from 1 at the first level to the skill's max minus 25 at the last. The max is read from your
+character, so the Draenor, Legion and Kul Tiran columns assume maxes of 100, 100 and 150; if your
+character shows a different max, the top of the range is that max minus 25. Learning the
+expansion's skill from a trainer is enough to start: with it at 1 you can skin that expansion's
+lowest beasts.
+
+The new code is in `src/server/game/Spells/SkinningTiers.h`, used by `Spell::CheckCast` (the check)
+and `Spell::EffectSkinning` (the skill-up). Beasts skinned with Herbalism, Mining or Engineering are
+unchanged.
 
 `deadmines-fixes.patch` collects the fixes for The Deadmines (map 36):
 
