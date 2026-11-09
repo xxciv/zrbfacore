@@ -48,7 +48,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
   Then restart worldserver.
 
-## 2026-11-09 (Quest fixes: empty quest page after accepting)
+## 2026-11-09 (Quest fixes: empty quest page and stuck window after accepting)
 
 Draft PR, not merged yet.
 
@@ -87,8 +87,42 @@ Draft PR, not merged yet.
   NPC or object (not the player) that ends the quest (`hasInvolvedQuest`) and is in interaction
   range (`CanInteractWithQuestGiver`), use it as the quest giver. Turn-ins from the quest log
   pop-up (no NPC) work as before.
+- **Found** (Four's retest with both patches, 2026-11-09): still stuck on the details page. The
+  log now showed a clean conversation (`HELLO` Ahmo, `QUEST_LIST_MESSAGE`, `QUERY_QUEST 14438`,
+  `QUEST_DETAILS`, `ACCEPT_QUEST`). Four then tested: a fresh conversation with Ahmo sticks, Morin
+  Cloudstalker (24459) from the same list sticks, Tonga Runetotem's two-quest list sticks, and it
+  sticks with no addons. Swoop Hunting (761) at Harken Windtotem, who offers a single quest, closes.
+- **Cause:** after Rite of the Winds Ahmo offers two quests, Sharing the Land (14438) and Morin
+  Cloudstalker (24459), so their details page is opened from his quest list
+  (`SMSG_QUEST_GIVER_QUEST_LIST_MESSAGE`). Harken's single quest opens directly. After Accept from a
+  list the client goes back to that list and does not close on the plain `SMSG_GOSSIP_COMPLETE` that
+  `HandleQuestgiverAcceptQuestOpcode` sends (that code matches TrinityCore 8.3.7). Every NPC with a
+  quest list was affected, not only Ahmo.
+- **Changed:** new `tools/bfa/quest-list-accept.patch` (after `quest-autocomplete-turnin.patch`),
+  `GossipDef.h`, `GossipDef.cpp`, `Player.cpp`, `QuestHandler.cpp`:
+  - `PlayerMenu` remembers the NPC or object whose quest list it last sent (`_questListGiver`, set in
+    `SendQuestGiverQuestListMessage`). It is cleared by `SendCloseGossip`, `SendGossipMenu` and at
+    the start of `Player::SendPreparedQuest`, so a single-quest NPC or a gossip menu never counts.
+  - `HandleQuestgiverAcceptQuestOpcode`: after a successful accept from that NPC or object, rebuild
+    its quest menu (`PrepareQuestMenu`) and send the updated list (the accepted quest now shows
+    under Current Quests). Only when the menu is empty does it close the window as before.
+  - Accepts from a single-quest NPC, an item, a shared quest or a gossip menu close as before.
+  - No DB change. Compiles against upstream 2c13546 with the full chain.
 - **Status:** untested in game.
-- **Pick up:** if you already applied the second version of `quest-empty-progress.patch` (be0404e),
+- **Pick up:** `quest-empty-progress.patch` and `quest-autocomplete-turnin.patch` stay applied; this
+  only adds `quest-list-accept.patch`. It touches `GossipDef.h`, so the build is longer:
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-list-accept.patch | git apply && echo "quest list accept applied"
+  grep -c "_questListGiver" src/server/game/Entities/Creature/GossipDef.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The echo line prints and the grep prints 3. Then restart worldserver.
+
+  Earlier pick-up for `quest-autocomplete-turnin.patch`: if you already applied the second version of `quest-empty-progress.patch` (be0404e),
   it is unchanged; this only adds `quest-autocomplete-turnin.patch` (`QuestHandler.cpp`, short build):
 
   ```
