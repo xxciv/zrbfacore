@@ -121,6 +121,8 @@ git apply ../tools-repo/tools/bfa/holiday-schedule.patch
 git apply ../tools-repo/tools/bfa/darkmoon-faire-gossip.patch
 git apply ../tools-repo/tools/bfa/darkmoon-race.patch
 git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
+git apply ../tools-repo/tools/bfa/skinning-tiers.patch
+git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -149,7 +151,120 @@ that changed last: upstream copied whichever expansion skill was set last, so le
 Skinning (1/75) dropped Skinning to 1 and the server refused to skin anything (skinning is checked
 against the profession skill too; fix verified in game). A character from before the patch catches up at its next skill-up,
 or at once with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning), using the value of
-its highest expansion skill.
+its highest expansion skill. A lower expansion skill never lowers the profession skill: Classic
+Inscription and Classic Engineering recipes raise the profession skill itself, so learning Cataclysm
+Inscription at 1 would otherwise have reset Inscription to 1.
+
+`skinning-tiers.patch` skins each beast with its own expansion's skill, as on retail 8.3.7, and skinning
+it raises that skill. Upstream checked every beast against the profession skill (393) at 5 skill per
+level and always raised Classic Skinning, so beasts above level 60 (400 and more for Cataclysm) could
+never be skinned, and the expansion skills never moved. What each expansion needs now:
+
+| Expansion | Skill (ID) | Beasts it covers | Skill needed by beast level |
+|---|---|---|---|
+| Classic | Classic Skinning (2564), max 300 | `HealthScalingExpansion` 0 and level 1-60 | unchanged: 1-10 any, 15: 50, 20: 100, 30: 150, 40: 200, 50: 250, 60: 300 (`(level-10)*10` below 100 skill, `level*5` from 100) |
+| Outland | Outland Skinning (2563), max 75 | expansion 1, or level 61-70 | 58: 1, 60: 9, 62: 17, 64: 25, 66: 33, 68: 41, 70: 50 |
+| Northrend | Northrend Skinning (2562), max 75 | expansion 2, or level 71-80 | 68: 1, 70: 9, 72: 17, 74: 25, 76: 33, 78: 41, 80: 50 |
+| Cataclysm | Cataclysm Skinning (2561), max 75 | expansion 3, or level 81-85 | 80: 1, 81: 10, 82: 20, 83: 30, 84: 40, 85: 50 |
+| Pandaria | Pandaria Skinning (2560), max 75 | expansion 4, or level 86-90 | 85: 1, 86: 10, 87: 20, 88: 30, 89: 40, 90: 50 |
+| Draenor | Draenor Skinning (2559), max 100 | expansion 5, or level 91-100 | 90: 1, 92: 15, 94: 30, 96: 45, 98: 60, 100: 75 |
+| Legion | Legion Skinning (2558), max 100 | expansion 6, or level 101-110 | 98: 1, 100: 13, 102: 25, 104: 38, 106: 50, 108: 62, 110: 75 |
+| Kul Tiran | Kul Tiran Skinning (2557), max 150 | expansion 7, or level 111 and up | 110: 1, 112: 25, 114: 50, 116: 75, 118: 100, 120: 125 |
+
+"Expansion N" is the creature's `creature_template.HealthScalingExpansion`. Many templates leave it at 0
+whatever their level, so a 0 above level 60 picks the expansion by `minlevel` instead (the level ranges
+in the third column). Outside those levels, a beast below its expansion's first level needs 1, and one above its
+last level needs the same as the last level. For every expansion except Classic the requirement rises
+evenly from 1 at the first level to the skill's max minus 25 at the last. The max is read from your
+character, so the Draenor, Legion and Kul Tiran columns assume maxes of 100, 100 and 150; if your
+character shows a different max, the top of the range is that max minus 25. Learning the
+expansion's skill from a trainer is enough to start: with it at 1 you can skin that expansion's
+lowest beasts.
+
+The new code is in `src/server/game/Spells/SkinningTiers.h`, used by `Spell::CheckCast` (the check)
+and `Spell::EffectSkinning` (the skill-up). Beasts skinned with Herbalism, Mining or Engineering are
+unchanged.
+
+Herb and ore nodes get the same treatment from `gathering-tier-locks.patch` and two SQL fixes. In the
+8.3.7 `Lock.db2` almost every node from Outland to Legion uses the plain Herbalism or Mining lock with
+the old 1-600 skill (Lichbloom 425, Twilight Jasmine 525, Golden Lotus 550), which the client checks
+against the profession skill. That skill can't go above 300, so those nodes could never be gathered,
+and gathering only raised Classic Herbalism and Mining. The same file has Blizzard's own lock for each
+expansion's herbs (2856 Outland to 2861 Legion) and ore (2864 to 2869): the expansion's lock type, whose
+gather spell the trainer teaches with the expansion skill, plus a plain Herbalism or Mining slot, both
+with no skill number. Kul Tiran nodes, Cinderbloom, Rich Elementium and Blackrock already use them.
+The world fix points 93 node templates at them, and the hotfix fix caps the two Classic ore locks that
+asked for 305 and 310 at 300:
+
+```sh
+mysql -u root -p bfa_hotfixes < ~/bfa/tools-repo/sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_08_00_gathering_tier_locks.sql
+```
+
+Then restart `worldserver` and delete the client's `Cache` folder (it keeps the old node data). The
+patch does two things in the core:
+
+- `Spell::CanOpenLock` (`Spell.cpp`) never opens a lock through its plain Herbalism or Mining slot when
+  the lock also has an Outland to Kul Tiran slot, so Classic Herbalism or Mining alone can't gather
+  expansion nodes; the client then says "Requires Northrend Herbalism" (or whichever expansion). The
+  client uses the expansion's gather spell when you know it.
+- `AuraEffect::HandleAuraTrackResources` (`SpellAuraEffects.cpp`): the client tracks an expansion node
+  by its expansion lock type, so Find Herbs and Find Minerals now also mark Herbalism 32-39 and Mining
+  40-47 (upstream marked only 2 and 3, and no expansion node showed on the minimap).
+
+A node's expansion comes from where it spawns, and it needs only that expansion's skill learned. Each
+gathering node also gets a difficulty, which sets its colour and how often it gives a skill-up: its old
+skill scaled over the expansion's old range to 1 up to the expansion skill's max minus 25. The main
+nodes' difficulty:
+
+| Expansion | Herbs (difficulty) | Ore (difficulty) |
+|---|---|---|
+| Classic | unchanged | unchanged; Small/Large Obsidian Chunk and Arcanite Lode 300 (were 305 and 310) |
+| Outland (Outland Herbalism/Mining) | Felweed, Dreaming Glory (most nodes), Terocone, Netherbloom, Nightmare Vine, Mana Thistle, Blindweed 1; Dreaming Glory (old 315) 10; Ragveil 17; Flame Cap 23; Ancient Lichen 27; Netherdust Bush 33 | Fel Iron, Adamantite, Rich Adamantite, Khorium, Nethercite 1; Ancient Gem Vein 50 |
+| Northrend | Goldclover 1, Firethorn 5, Tiger Lily 13, Talandra's Rose 18, Adder's Tongue 25, Frozen Herb 25-32, Lichbloom 37, Icethorn 42, Frost Lotus 50 | Cobalt 1, Rich Cobalt 13, Saronite 25, Rich Saronite 37, Titanium and Pure Saronite 50 |
+| Cataclysm | Cinderbloom (already per expansion, no requirement), Stormvine and Azshara's Veil 1, Heartblossom 25, Whiptail 37, Twilight Jasmine 50 | Obsidium 1, Rich Obsidium 13, Elementium 25, Pyrite and Rich Pyrite 50; Rich Elementium already per expansion, no requirement |
+| Pandaria | Green Tea Leaf, Silkweed, Rain Poppy, Fool's Cap 1; Golden Lotus 25; Snow Lily and Sha-Touched Herb 37 | Ghost Iron, Kyparite, Trillium and their rich nodes 1 |
+| Draenor | Frostweed, Fireweed, Gorgrond Flytrap, Starflower, Nagrand Arrowbloom, Talador Orchid 1 | True Iron, Rich True Iron, Rich Blackrock, Smoldering True Iron 1; Blackrock already per expansion, no requirement |
+| Legion | Aethril, Dreamleaf, Foxflower, Fjarnskaggl, Starlight Rose, Felwort, Fel-Encrusted Herb 1 | Leystone, Felslate and their rich nodes and seams 1 |
+| Kul Tiran | unchanged (already per expansion) | unchanged (already per expansion) |
+
+Every one of these needs only its expansion's skill learned. Quest objects that also open without the
+skill (by kneeling, or with a quest item) are left alone. The world fix lists every node, its old skill
+and its new difficulty.
+
+To learn the expansion skills you need a trainer that teaches them, and on this database none taught
+Outland, Northrend, Pandaria, Draenor or Legion for any profession (only some taught Cataclysm). A third
+world fix makes every trainer of a profession teach its Outland to Legion skills next to the Classic one
+(10 copper each, needs the profession). Kul Tiran stays with the Kul Tiras and Zandalar trainers, and
+fishing trainers already teach every expansion. It also points the herbalism trainers in Outland,
+Northrend, both Dalarans and a few Classic towns at the herbalism list (they used a list that doesn't
+exist, so they taught nothing), and Grix "Ironfists" Barlow at his own Kul Tiran blacksmithing list:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_09_00_profession_tier_trainers.sql
+```
+
+A fourth world fix makes the trainers actually open that list. The core picks a trainer's list by the
+gossip option you click; when no `creature_trainer` row matches that option it falls back to the old
+`npc_trainer` list, which has no expansion skills. 266 profession trainers (Rorelien and Ruak Stronghorn
+among them) had no row for the option they show. It also points the Boralus trainers at the Kul Tiras
+lists, so they teach Classic to Kul Tiran:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_09_01_profession_trainer_options.sql
+```
+
+A fifth world fix gates each expansion's skill by that expansion's level (Outland 58, Northrend 68,
+Cataclysm 80, Pandaria 85, Draenor 90, Legion 98; Classic stays 5 and Kul Tiran 110). Run it after the
+other two, and again if you ever re-run them:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_09_02_profession_tier_levels.sql
+```
+
+Then restart `worldserver`. The trainers only teach the skill itself: this database has no trainer
+recipes for the Outland to Legion crafting skills, so those recipes come from recipe items only.
+`PATCHNOTES.md` (2026-11-09) lists every profession trainer by zone.
 
 `deadmines-fixes.patch` collects the fixes for The Deadmines (map 36):
 
@@ -688,6 +803,8 @@ git apply ../tools-repo/tools/bfa/holiday-schedule.patch
 git apply ../tools-repo/tools/bfa/darkmoon-faire-gossip.patch
 git apply ../tools-repo/tools/bfa/darkmoon-race.patch
 git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
+git apply ../tools-repo/tools/bfa/skinning-tiers.patch
+git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -768,8 +885,9 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_07_05_darkmoon_token_vendors_one_pair.sql` | Darkmoon Faire: token vendors sell only the 60s pouch and the 1g 92s sack (after `_04`) |
 | `2026_11_07_06_darkmoon_carousel_empty.sql` | Darkmoon Faire: carousel rides removed, the platform spins empty |
 | `2026_11_07_30_darkmoon_island_rares.sql` | Darkmoon Island rares: Darkmoon Rabbit spawned (its pet always drops, no solo-lethal bite), Moonfang gets her fight and always drops one of her items, Death Metal Knight spawned in the Cauldron of Rock with his sword; all three are elites that scale with your level (verified in game 2026-11-07) |
+| `2026_11_09_30_orgrimmar_balloon_pandaren.sql` | Orgrimmar: Chao-Ju, Jiming, Winwa, Winsum and Jising stay in the hot air balloon basket outside the front gate instead of falling to the ground (verified in game 2026-11-09) |
 
-Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236).
+Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills, `2026_11_09_02_profession_tier_levels.sql` gates them by expansion level).
 
 ## 11. Status
 

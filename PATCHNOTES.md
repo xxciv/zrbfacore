@@ -5,6 +5,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-09 (World fixes: Orgrimmar balloon Pandaren)
 
+Merged to `main` with PR #47 on 2026-11-09.
+
 ### World: five Pandaren fall out of the balloon outside Orgrimmar
 
 - **Found** (Four, 2026-11-09): outside Orgrimmar's front gate, by the Huojin Pandaren and the
@@ -29,6 +31,730 @@ to do to pick it up (rebuild, restart, run SQL).
   ```
 
   Then restart worldserver.
+
+## 2026-11-09
+
+### World: older expansion profession skills need the expansion's level
+
+- **Found** (Four, 2026-11-09): after 2026_11_09_00 the Outland to Legion profession skills had no level
+  requirement (the dump's own rows were mixed: Cataclysm 0, 5 or 78), while Classic needs level 5 and
+  Kul Tiran level 110. Four wants each expansion's skill gated by that expansion's level.
+- **Changed:** `sql/fixes/world/2026_11_09_02_profession_tier_levels.sql` (`bfa_world`): `trainer_spell`
+  `ReqLevel` for every trainer row of the step spells, about 462 rows:
+
+  | Expansion | Level | Step spells (Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, Herbalism, Inscription, Jewelcrafting, Leatherworking, Mining, Skinning, Tailoring) |
+  |---|---|---|
+  | Outland | 0 -> 58 | 264214, 264437, 264635, 264461, 264480, 265822, 264497, 264535, 264580, 265840, 265858, 264619 |
+  | Northrend | 0 -> 68 | 264221, 264439, 264637, 264463, 264482, 265824, 264499, 264538, 264582, 265842, 265860, 264621 |
+  | Cataclysm | 0/5/78 -> 80 | 264244, 264441, 264639, 264466, 264484, 265826, 264501, 264541, 264584, 265844, 265862, 264623 |
+  | Pandaria | 0 -> 85 | 264246, 264443, 264641, 264468, 264486, 265828, 264503, 264543, 264586, 265846, 265864, 264625 |
+  | Draenor | 0 -> 90 | 264248, 264445, 264643, 264470, 264488, 265830, 264505, 264545, 264589, 265848, 265866, 264627 |
+  | Legion | 0 -> 98 | 264251, 264447, 264645, 264472, 264491, 265832, 264507, 264547, 264591, 265850, 265868, 264629 |
+
+  Classic (5) and Kul Tiran (110) unchanged; fishing unchanged. Re-running 2026_11_09_00 or 01 puts
+  their rows back to level 0, so run this file again after them. Ran twice in a test database.
+- **Status:** confirmed in game 2026-11-09 (each expansion's skill shows its level requirement).
+
+#### To pick up the level requirements
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-2e6el5
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_09_02_profession_tier_levels.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
+### World: profession trainers open their proper list (and which trainer teaches what)
+
+- **Found** (Four asked for a list of which trainers teach what, 2026-11-09): most Outland, Northrend
+  and Pandaria trainers, and many others, still did not offer the expansion skills after the trainer
+  fix below. The core picks a trainer's list by the gossip option clicked, `creature_trainer`
+  (`CreatureId`, `MenuId`, `OptionIndex`): a trainer with gossip menu 0 shows the generic "Train me!"
+  (menu 0, option 3), and one without the gossip flag opens its list directly (menu 0, option 0). When no
+  row matches, the core falls back to the old `npc_trainer` list (old rank spells, no expansion skills),
+  the same thing that broke fishing at Astaia (2026_10_10_01). The 2026_09_04 trainer sync left 266
+  profession trainers (210 of them spawned) with no row for the option they actually show; Seymour and
+  Gaston pointed at the Enchanting list. The Boralus trainers had no row at all, so the Alliance side had
+  no trainer for the Kul Tiran skills except Grix (blacksmithing only). Grix's list 133536 and Shuga
+  Blastcaps's list 874 taught only the Kul Tiran / Zandalari skill.
+- **Changed:** `sql/fixes/world/2026_11_09_01_profession_trainer_options.sql` (`bfa_world`, run after
+  2026_11_09_00):
+  - 266 `creature_trainer` rows, one per trainer for the option it shows, pointing at:
+    - the trainer's own list for that profession, when it has one;
+    - Boralus and Tiragarde trainers: the Kul Tiras lists, Alchemy 846, Cooking 858, Enchanting 831,
+      Engineering 873, Herbalism 851, Inscription 836, Jewelcrafting 821, Leatherworking 826, Mining
+      841, Skinning 868, Tailoring 863 (the Alliance twins of the Zuldazar lists 822 to 874);
+    - Cooka Mala and Milliner Hakkit (Zuldazar): Cooking 858, Tailoring 864;
+    - everyone else: the profession's main list, Alchemy 122, Blacksmithing 991, Cooking 136,
+      Enchanting 62, Engineering 993, Herbalism 424, Inscription 63, Jewelcrafting 119,
+      Leatherworking 990, Mining 992, Skinning 989, Tailoring 163.
+  - 14 `trainer_spell` rows: lists 133536 (Grix) and 874 (Shuga) also teach Classic (264435 / 264478,
+    level 5) and Outland to Legion (264437-264447 / 264480-264491, 10 copper, needs Blacksmithing 164 /
+    Engineering 202 at 1).
+  - Each profession's rows are deleted by their exact (`CreatureId`, `MenuId`, `OptionIndex`) first, so
+    it is safe to run more than once. Ran twice in a test database: 266 + 14 rows each time. Checked
+    that no trainer loses a skill it taught before.
+- **Not fixed:**
+  - 23 trainers have their own gossip menu with no "Train me" option at all, so they cannot train
+    (last table below).
+  - No trainer recipes exist for the Outland to Legion crafting skills (see the entry below).
+- **Status:** confirmed in game 2026-11-09: Rorelien (Honor Hold) lists Classic to Legion Herbalism,
+  Declan Senal (Boralus) lists those plus Kul Tiran Herbalism.
+
+#### Which trainer teaches what
+
+Every trainer below teaches its profession's Classic, Outland, Northrend, Cataclysm, Pandaria, Draenor
+and Legion skills (levels 5, 58, 68, 80, 85, 90, 98 after 2026_11_09_02). **(KT)** = also teaches the Kul Tiran / Zandalari skill. † = was opening the old
+fallback list and is fixed by 2026_11_09_01. Only spawned trainers are listed, by the zone of their
+spawn. Fishing trainers already taught every expansion and are not listed.
+
+<details>
+<summary><b>Alchemy</b>: 40 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashenvale | Kylanna † |
+| Ashran | Jaiden Trask †, Kristoph Cossey † |
+| Azuremyst Isle | Daedal |
+| Boralus Harbor | Elric Whalgrene **(KT)** † |
+| Borean Tundra | Arthur Henslowe †, Falorn Nightwhisper |
+| Dalaran (Broken Isles) | Deucus Valdera †, Linzy Blackbolt † |
+| Dalaran (Northrend) | Linzy Blackbolt |
+| Darnassus | Ainethil |
+| Dragonblight | Apothecary Bressa †, Apothecary Wormwick † |
+| Dread Wastes | Poisoncrafter Kil'zit † |
+| Durotar | Miao'zan |
+| Dustwallow Marsh | Alchemist Narett |
+| Elwynn Forest | Alchemist Mallory † |
+| Eversong Woods | Arcanist Sheynathren † |
+| Feralas | Kylanna Windwhisper |
+| Hellfire Peninsula | Alchemist Gribble †, Apothecary Antonivich |
+| Hillsbrad Foothills | Serge Hinott † |
+| Howling Fjord | Lanolis Dewdrop, Wilhelmina Renel |
+| Icecrown | Crystal Brightspark |
+| Ironforge | Tally Berryfizz |
+| Loch Modan | Ghak Healtouch |
+| Orgrimmar | Yelmak |
+| Shattrath City | Aelthin, Alchemist Kanhu † |
+| Silvermoon City | Camberon |
+| Stormwind City | Lilyssia Nightbreeze |
+| Swamp of Sorrows | Rogvar † |
+| Teldrassil | Cyndra Kindwhisper |
+| The Cape of Stranglethorn | Jaxin Chong |
+| The Exodar | Lucc † |
+| Thunder Bluff | Bena Winterhoof |
+| Tirisfal Glades | Carolai Anise |
+| Undercity | Doctor Herbert Halsey |
+| Zuldazar | Clever Kumali **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Blacksmithing</b>: 52 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Aimee Goldforge †, Mazdon Bizratchet † |
+| Azuremyst Isle | Blacksmith Calypso |
+| Boralus Harbor | Grix "Ironfists" Barlow **(KT)** |
+| Borean Tundra | Argo Strongstout, Crog Steelspine |
+| Dalaran (Broken Isles) | Alard Schmied †, Arcanomancer Vridiel † |
+| Dalaran (Northrend) | Alard Schmied, Imindril Spearsong, Orland Schaeffer |
+| Dragonblight | Borus Ironbender †, Josric Fame † |
+| Dun Morogh | Tognus Flintfire |
+| Durotar | Dwukk |
+| Duskwood | Clarise Gnarltree |
+| Elwynn Forest | Smith Argus |
+| Eversong Woods | Arathel Sunforge † |
+| Hellfire Peninsula | Dumphry, Humphry, Rohok † |
+| Highmountain | Barm Stonebreaker †, Muirn Ironhorn † |
+| Howling Fjord | Kristen Smythe †, Rosina Rivet |
+| Icecrown | Rekka the Hammer |
+| Ironforge | Bengus Deepforge, Grumnus Steelshaper †, Ironus Coldsteel † |
+| Northern Barrens | Traugh † |
+| Orgrimmar | Borgosh Corebender, Kelgruk Bloodaxe, Okothos Ironrager, Rogg, Saru Steelfury, Shayis Steelfury |
+| Shadowmoon Valley | Grutah † |
+| Shattrath City | Barien, Kradu Grimblade, Onodo, Zula Slagfury |
+| Silvermoon City | Bemarrin |
+| Stormwind City | Therum Deepforge |
+| Suramar | Felsmith Nal'ryssa † |
+| The Cape of Stranglethorn | Brikk Keencraft |
+| The Exodar | Miall † |
+| The Jade Forest | Len the Hammer † |
+| The Storm Peaks | Brandig |
+| Thunder Bluff | Karn Stonehoof |
+| Undercity | James Van Brunt † |
+| Vale of Eternal Blossoms | Zen Master Lao † |
+| Zuldazar | Forgemaster Zak'aal **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Cooking</b>: 54 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Elton Black †, Guy Fireeye † |
+| Azuremyst Isle | "Cookie" McWeaksauce |
+| Boralus Harbor | "Cap'n" Byron Mehlsack **(KT)** † |
+| Borean Tundra | Orn Tenderhoof †, Rollick MacKreel |
+| Dalaran (Broken Isles) | Awilo Lon'gomba †, Katherine Lee † |
+| Dalaran (Northrend) | Awilo Lon'gomba †, Katherine Lee |
+| Darnassus | Alegorn, Mary Allerton † |
+| Dun Morogh | Caitrin Ironkettle †, Cook Ghilm, Gremlock Pilsnor |
+| Durotar | Ondani Greatmill † |
+| Dustwallow Marsh | Craig Nollward |
+| Elwynn Forest | Ellen Moore †, Tomas |
+| Eversong Woods | Alice Rigsdale †, Quarelestra |
+| Ghostlands | Master Chef Mouldier † |
+| Gilneas | Fielding Chesterhill |
+| Hellfire Peninsula | Allison, Gaston † |
+| Howling Fjord | Brom Brewbaster, Thomas Kolichio † |
+| Icecrown | Bethany Cromwell |
+| Ironforge | Daryl Riknussun |
+| Mulgore | Pyall Silentstride |
+| Northern Barrens | Duhng † |
+| Northern Stranglethorn | Mudduk † |
+| Orgrimmar | Arugi, Feng Su, Zamja |
+| Redridge Mountains | Crystal Boughman |
+| Shadowmoon Valley | Celie Steelwing |
+| Silvermoon City | Sylann |
+| Stormwind City | Dalia Skyblossom, Stephen Ryback |
+| Teldrassil | Zarrin |
+| The Cape of Stranglethorn | Mrs. Gant |
+| The Exodar | Alnar Whitebough †, Mumman |
+| Thunder Bluff | Aska Mistrunner, Mahara Goldwheat † |
+| Tirisfal Glades | Roberta Carter †, The Chef |
+| Undercity | Eunice Burch |
+| Vol'dun | Hessir **(KT)** † |
+| Zangarmarsh | Naka |
+| Zuldazar | Cooka Mala **(KT)** †, Howcha **(KT)**, T'sarah the Royal Chef **(KT)** |
+
+</details>
+
+<details>
+<summary><b>Enchanting</b>: 33 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Bil Sparktonic †, Hane'ke † |
+| Boralus Harbor | Emily Fairweather **(KT)** † |
+| Borean Tundra | Alexis Marlowe, Eorain Dawnstrike |
+| Dalaran (Broken Isles) | Enchanter Nalthanis † |
+| Dalaran (Northrend) | Enchanter Nalthanis |
+| Darnassus | Taladan |
+| Dustwallow Marsh | Lissah Spellwick |
+| Elwynn Forest | Kitta Firewind |
+| Eversong Woods | Magistrix Eredania † |
+| Feralas | Xylinnia Starshine |
+| Hellfire Peninsula | Felannia †, Johan Barnes † |
+| Highmountain | Guron Twaintail † |
+| Howling Fjord | Elizabeth Jackson, Emil Autumn |
+| Icecrown | Fael Morningsong |
+| Ironforge | Gimble Thistlefuzz † |
+| Netherstorm | Asarnan † |
+| Orgrimmar | Godan |
+| Shattrath City | Enchantress Andiala, Enchantress Volali, High Enchanter Bardolan, Zurii |
+| Silvermoon City | Sedana |
+| Stormwind City | Lucan Cordell † |
+| The Exodar | Nahogg † |
+| The Jade Forest | Lai the Spellpaw † |
+| Thunder Bluff | Teg Dawnstrider |
+| Tirisfal Glades | Vance Undergloom |
+| Undercity | Lavinia Crowe |
+| Zuldazar | Enchantress Quinni **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Engineering</b>: 45 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Han Leaprocket †, Hilda Copperfuze † |
+| Azuremyst Isle | Artificer Daelo |
+| Boralus Harbor | Layla Evenkeel **(KT)** † |
+| Borean Tundra | Chief Engineer Leveny, Sock Brightbolt |
+| Dalaran (Broken Isles) | Didi the Wrench †, Timofey Oshenko † |
+| Dalaran (Northrend) | Didi the Wrench, Findle Whistlesteam, Timofey Oshenko |
+| Darkshore | Jenna Lemkenilli |
+| Darnassus | Tana Lentner |
+| Dun Morogh | Bronk Guzzlegear |
+| Durotar | Mukdrak |
+| Duskwood | Finbus Geargrind |
+| Dustwallow Marsh | Caz Twosprocket |
+| Hellfire Peninsula | Lebowski †, Zebig † |
+| Howling Fjord | Jamesina Watterly, Tisha Longbridge |
+| Icecrown | Binkie Brightgear |
+| Ironforge | Springspindle Fizzlegear |
+| Mulgore | Twizwick Sprocketgrind † |
+| Netherstorm | Xyrol † |
+| Northern Barrens | Tinkerwiz † |
+| Orgrimmar | "Jack" Pisarek Slamfix, Roxxik |
+| Shadowmoon Valley | Jonathan Garrett †, Niobe Whizzlespark |
+| Shattrath City | Engineer Sinbei, Technician Mihila |
+| Siege of Orgrimmar | Roxxik |
+| Silvermoon City | Danwe |
+| Stormwind City | Artificer Farud †, Lilliam Sparkspindle |
+| Tanaris | Buzzek Bracketswing |
+| The Cape of Stranglethorn | Oglethorpe Obnoticus † |
+| The Exodar | Ockil |
+| Thunder Bluff | Engineer Palehoof |
+| Undercity | Franklin Lloyd † |
+| Valley of the Four Winds | Sally Fizzlefury † |
+| Zangarmarsh | K. Lee Smallfry, Mack Diver † |
+| Zuldazar | Shuga Blastcaps **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Herbalism</b>: 48 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashenvale | Cylania Rootstalker † |
+| Ashran | Anthony Allain †, Jie Wildblossom † |
+| Azuremyst Isle | Heur † |
+| Bloodmyst Isle | Morae |
+| Boralus Harbor | Declan Senal **(KT)** † |
+| Borean Tundra | Kirea Moondancer, Tansy Wildmane † |
+| Dalaran (Broken Isles) | Dorothy Egan, Kuhuine Tenderstride † |
+| Dalaran (Northrend) | Dorothy Egan |
+| Darnassus | Firodren Mooncaller † |
+| Durotar | Mishiki |
+| Dustwallow Marsh | Brant Jasperbloom |
+| Elwynn Forest | Herbalist Pomeroy |
+| Eversong Woods | Botanist Tyniarrel † |
+| Feralas | Ruw |
+| Hellfire Peninsula | Rorelien †, Ruak Stronghorn † |
+| Highmountain | Sprig Hashhoof † |
+| Hillsbrad Foothills | Aranae Venomblood |
+| Howling Fjord | Fayin Whisperleaf, Marjory Kains |
+| Ironforge | Reyna Stonebranch |
+| Loch Modan | Kali Healtouch |
+| Moonglade | Malvor † |
+| Northern Stranglethorn | Angrun |
+| Orgrimmar | Grove Cultivator Kados, Jandi, Muraga |
+| Redridge Mountains | Alma Jainrose |
+| Shattrath City | Botanist Alaenra, Jijia † |
+| Silvermoon City | Botanist Nathera |
+| Stormwind City | Shylamiir †, Tannysa |
+| Teldrassil | Malorne Bladeleaf |
+| The Cape of Stranglethorn | Flora Silverwind |
+| The Exodar | Cemmorhan |
+| The Jade Forest | Grower Miao †, Orchard Keeper Li Mei † |
+| Thunder Bluff | Komin Winterhoof |
+| Tirisfal Glades | Faruza |
+| Undercity | Martha Alliestar |
+| Val'sharah | Wildcrafter Osme |
+| Valley of the Four Winds | Han Flowerbloom † |
+| Wetlands | Telurinon Moonshadow † |
+| Zuldazar | Jahden Fla **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Inscription</b>: 28 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Joro'man †, Scribe Chi-Yuan † |
+| Boralus Harbor | Zooey Inksprocket **(KT)** † |
+| Borean Tundra | Adelene Sunlance, Tink Brightbolt |
+| Dalaran (Broken Isles) | Professor Pallin † |
+| Dalaran (Northrend) | Professor Pallin |
+| Darnassus | Feyden Darkin |
+| Dustwallow Marsh | Theoden Manners |
+| Hellfire Peninsula | Michael Schwan, Neferatti |
+| Howling Fjord | Booker Kells, Mindri Dinkles |
+| Icecrown | Arthur Denny |
+| Ironforge | Elise Brightletter |
+| Orgrimmar | Jo'mah, Nerog |
+| Shattrath City | Recorder Lidio, Scribe Lanloer |
+| Silvermoon City | Zantasia |
+| Stormwind City | Catarina Stanford |
+| The Exodar | Thoth |
+| The Jade Forest | Scribe Rinji † |
+| Thunder Bluff | Poshken Hardbinder |
+| Undercity | Margaux Parchley |
+| Vale of Eternal Blossoms | Lorewalker Huynh † |
+| Zuldazar | Chronicler Grazzul **(KT)** †, Chronicler Kizani **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Jewelcrafting</b>: 28 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Alixander Swiftsteel †, Artificer Nissea † |
+| Boralus Harbor | Samuel D. Colton III **(KT)** † |
+| Borean Tundra | Alestos, Geba'li † |
+| Dalaran (Broken Isles) | Timothy Jones † |
+| Dalaran (Northrend) | Timothy Jones |
+| Darnassus | Aessa Silverdew |
+| Dustwallow Marsh | Ingo Woolybush |
+| Eversong Woods | Aleinia |
+| Hellfire Peninsula | Kalaen †, Tatiana † |
+| Howling Fjord | Carter Tiffens †, Ounhulo |
+| Icecrown | Oluros |
+| Ironforge | Hanner Gembold |
+| Netherstorm | Jazdalaad † |
+| Orgrimmar | Lugrah |
+| Shattrath City | Hamanar, Kirembri Silvermane, Nemiha |
+| Silvermoon City | Kalinda |
+| Stormwind City | Theresa Denman |
+| The Exodar | Farii |
+| The Jade Forest | Mai the Jade Shaper † |
+| Thunder Bluff | Nahari Cloudchaser |
+| Undercity | Neller Fayne † |
+| Zuldazar | Seshuli **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Leatherworking</b>: 44 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Arathi Highlands | Brumn Winterhoof † |
+| Ashenvale | Aayndia Floralwind |
+| Ashran | Burga Stronghide †, Jistun Sharpfeather † |
+| Azsuna | Celea † |
+| Azuremyst Isle | Moordo |
+| Blade's Edge Mountains | Grikka † |
+| Boralus Harbor | Cassandra Brennor **(KT)** † |
+| Borean Tundra | Awan Iceborn †, Rosemary Bovard |
+| Dalaran (Broken Isles) | Namha Moonwater † |
+| Dalaran (Northrend) | Andellion, Diane Cannings, Manfred Staller, Namha Moonwater |
+| Darnassus | Telonis |
+| Dustwallow Marsh | Eustace Tanwell |
+| Elwynn Forest | Adele Fielder |
+| Eversong Woods | Sathein † |
+| Hellfire Peninsula | Barim Spilthoof †, Brumman † |
+| Highmountain | Hrul Sharphoof † |
+| Howling Fjord | Bernadette Dexter, Gunter Hansen |
+| Icecrown | Kul'de |
+| Ironforge | Fimble Finespindle |
+| Kun-Lai Summit | Clean Pelt † |
+| Mulgore | Chaw Stronghide |
+| Orgrimmar | Karolek |
+| Shattrath City | Daenril, Darmari, Korim |
+| Silvermoon City | Lynalis |
+| Southern Barrens | Krulmoo Fullmoon † |
+| Stormwind City | Simon Tanner |
+| Stranglethorn Vale | Se'Jib † |
+| Suramar | Stalriss Dawnrunner † |
+| Teldrassil | Nadyia Maneweaver |
+| The Exodar | Akham † |
+| The Hinterlands | Drakk Stonehand † |
+| Thunder Bluff | Una |
+| Tirisfal Glades | Shelene Rhobart |
+| Undercity | Arthur Moore † |
+| Zuldazar | Xanjo **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Mining</b>: 37 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Murg Stonecrack † |
+| Azuremyst Isle | Dulvi |
+| Boralus Harbor | Myra Cabot **(KT)** † |
+| Borean Tundra | Brunna Ironaxe, Fendrig Redbeard |
+| Dalaran (Broken Isles) | Mama Diggs † |
+| Dalaran (Northrend) | Jedidiah Handers |
+| Darkshore | Periale |
+| Darnassus | Foreman Pernic |
+| Dun Morogh | Dank Drizzlecut, Yarr Hammerstone |
+| Durotar | Krunn |
+| Duskwood | Matt Johnson |
+| Hellfire Peninsula | Hurnak Grimmord †, Krugosh † |
+| Highmountain | Ronos Ironhorn † |
+| Howling Fjord | Grumbol Stoutpick, Jonathan Lewis † |
+| Ironforge | Geofram Bouldertoe |
+| Kun-Lai Summit | Master Brandom † |
+| Loch Modan | Brock Stoneseeker |
+| Orgrimmar | Gonto, Layla Stonebreaker, Makaru |
+| Shattrath City | Fono, Hanlir |
+| Silvermoon City | Belil |
+| Silverpine Forest | Johan Focht † |
+| Stormwind City | Gelman Stonehand |
+| Tanaris | Pikkle |
+| The Exodar | Muaat |
+| The Jade Forest | Rockseeker Guo †, Smeltmaster Ashpaw †, Stonebreaker Ruian † |
+| Thunder Bluff | Brek Stonehoof |
+| Undercity | Brom Killian † |
+| Zuldazar | Secott the Goldsmith **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Skinning</b>: 41 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashenvale | Jayla † |
+| Ashran | Kondal Huntsworn †, Rangari Laandon † |
+| Azsuna | Glielle † |
+| Azuremyst Isle | Gurf |
+| Borean Tundra | Tiponi Stormwhisper †, Trapper Jack |
+| Dalaran (Broken Isles) | Kondal Huntsworn |
+| Dalaran (Northrend) | Derik Marks |
+| Darnassus | Eladriel |
+| Desolace | Malux † |
+| Dustwallow Marsh | Humbert Tanwell |
+| Elwynn Forest | Helene Peltskinner † |
+| Eversong Woods | Mathreyn † |
+| Feralas | Kulleg Stonehorn † |
+| Hellfire Peninsula | Jelena Nightsky †, Moorutu † |
+| Howling Fjord | Frederic Burrhus, Roberta Jacks |
+| Ironforge | Balthus Stoneflayer |
+| Mulgore | Yonn Deepcut † |
+| Orgrimmar | Rento, Thuwd |
+| Redridge Mountains | Wilma Ranthal † |
+| Shattrath City | Dremm †, Irduil † |
+| Silvermoon City | Tyn |
+| Southern Barrens | Dranh † |
+| Stormheim | Agnes †, Seymour † |
+| Stormwind City | Maris Granger |
+| Suramar | Ske'rit † |
+| Teldrassil | Radnaal Maneweaver |
+| The Exodar | Remere |
+| The Jade Forest | Hao of the Stag's Horns †, Trapper Ri † |
+| Thunder Bluff | Mooranta † |
+| Tiragarde Sound | Camilla Darksky **(KT)** † |
+| Tirisfal Glades | Rand Rhobart |
+| Undercity | Killian Hagey |
+| Zuldazar | Rana the Cutta **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Tailoring</b>: 38 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Joshua Fuesting †, Saesha Silverblood † |
+| Azuremyst Isle | Erin Kelly |
+| Boralus Harbor | Daniel Brineweaver **(KT)** † |
+| Borean Tundra | Darin Goodstitch, Raenah † |
+| Dalaran (Broken Isles) | Ainderu Summerleaf, Tanithria † |
+| Dalaran (Northrend) | Charles Worth † |
+| Darkshore | Faeyrin Willowmoon † |
+| Darnassus | Me'lynn |
+| Dustwallow Marsh | Timothy Worthington |
+| Elwynn Forest | Eldrin |
+| Eversong Woods | Sempstress Ambershine † |
+| Hellfire Peninsula | Hama † |
+| Howling Fjord | Alexandra McQueen †, Benjamin Clegg |
+| Icecrown | Dustin Vail |
+| Ironforge | Jormund Stonebrow |
+| Northern Barrens | Kil'hala † |
+| Orgrimmar | Hiwahi Three-Feathers †, Leyweaver Aurielle, Magar |
+| Shattrath City | Miralisse, Weaver Aoa † |
+| Silvermoon City | Keelen Sheets |
+| Southern Barrens | Mahani † |
+| Stormwind City | Aevedos †, Georgio Bolero, Jalane Ayrole |
+| The Cape of Stranglethorn | Grarnik Goodstitch |
+| The Exodar | Refik |
+| Thunder Bluff | Tepa |
+| Tirisfal Glades | Bowen Brisboise |
+| Undercity | Josef Gregorian †, Josephine Lister † |
+| Zuldazar | Milliner Hakkit **(KT)** †, Pin'jin the Patient **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>No "Train me" option</b>: 23 trainers (not changed)</summary>
+
+| Profession | Trainers |
+|---|---|
+| Alchemy | Lorokeem (Shattrath City) |
+| Blacksmithing | Guillaume Sorouy (Silverpine Forest), Jordan Smith (Stormwind City), Marie Holdston (Dustwallow Marsh), Opuno Ironhorn (Orgrimmar), Rolf Karner (Darnassus), Taryel Firestrike (Darkshore) |
+| Cooking | Jack Trapper (Shattrath City) |
+| Enchanting | Alanna Raveneye (Teldrassil), Annora (Uldaman), Hgarth (Stonetalon Mountains) |
+| Engineering | Deek Fizzlebizz (Loch Modan), Nixx Sprocketspring (Tanaris), Tinkmaster Overspark (Ironforge), Vazario Linkgrease (Northern Barrens) |
+| Inscription | Inkmaster Wei (The Jade Forest) |
+| Leatherworking | Brawn (Northern Stranglethorn), Hahrana Ironhide (Feralas), Narv Hidecrafter (Desolace) |
+| Mining | "Kobold" Kerik (Dustwallow Marsh) |
+| Skinning | Seymour (Shattrath City) |
+| Tailoring | Dalinna (Hellfire Peninsula), Daryl Stack (Hillsbrad Foothills) |
+
+</details>
+
+#### To pick up the trainer list fix
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-2e6el5
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_09_01_profession_trainer_options.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`. Run 2026_11_09_00 first if you have not yet.
+
+### World: trainers teach every expansion's profession skill
+
+- **Found** (Four asked where to learn Outland Herbalism, 2026-11-09): no `trainer_spell` row taught
+  the Outland, Northrend, Pandaria, Draenor or Legion skill of any profession. Classic trainer lists
+  taught Classic and, for some lists, Cataclysm (122, 991, 407, 993, 19778, 990, 163, 136, 995, 5566,
+  989, 91, 992). The herbalism trainers Rorelien, Ruak Stronghorn, Botanist Alaenra, Jijia, Morae, the
+  Northrend and both Dalaran trainers, Kali Healtouch, Aranae Venomblood, Angrun and Ruw pointed at
+  trainer list 133, which has no `trainer` row, so they taught nothing. Grix "Ironfists" Barlow
+  (133536) pointed at the missing list 994.
+- **Changed:** `sql/fixes/world/2026_11_09_00_profession_tier_trainers.sql` (`bfa_world`):
+  - 436 `trainer_spell` rows: every trainer list that teaches a profession's Classic skill also teaches
+    its Outland, Northrend, Cataclysm (where missing), Pandaria, Draenor and Legion skill spells
+    (Herbalism 265822/265824/265826/265828/265830/265832, Mining 265840-265850, Skinning
+    265858-265868, crafting 2642xx-2646xx). 10 copper, `ReqSkillLine` = the profession (182, 186, 393,
+    ...) at 1, no level requirement. Bandage list 877 is left out.
+  - `creature_trainer` list 133 -> 424 (herbalism), and Grix 994 -> 133536 (his own list).
+  - Kul Tiran stays with the Kul Tiras/Zandalar lists; fishing lists already teach every expansion.
+  - Ran twice in a test database: 436 rows each time, no existing row removed.
+- **Not fixed:** the database has no trainer recipes for the Outland to Legion crafting skills
+  (Outland Alchemy's 11 on list 987 aside). Those skills can be learned and raised with recipe items,
+  but trainers don't sell their recipes.
+- **Status:** confirmed in game 2026-11-09: Simon Tanner (Stormwind) lists Outland to Legion
+  Leatherworking.
+
+#### To pick up the trainer fix
+```
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_09_00_profession_tier_trainers.sql
+```
+Run it from `~/bfa/source` after `git -C ../tools-repo pull`, then restart `worldserver`.
+
+## 2026-11-08
+
+### Core: skinning uses each expansion's own skill
+
+- **Found** (Four, 2026-11-08): Cataclysm beasts (Hyjal, Vashj'ir, Deepholm, Uldum, Twilight Highlands,
+  levels 80-88 in `creature_template`) could never be skinned. `Spell::CheckCast` asked for 5 skill per
+  creature level (400-440) from the profession skill 393, which can't go above 300 (Classic Skinning's
+  max). `Spell::EffectSkinning` always raised Classic Skinning (2564), so Cataclysm Skinning (2561) and
+  the other expansion skills never moved. The same held for every beast above level 60.
+- **Changed:** new `tools/bfa/skinning-tiers.patch`:
+  - New `src/server/game/Spells/SkinningTiers.h`. `GetSkinningTier` picks the beast's expansion skill,
+    and `GetSkinningTierRequirement` sets the skill it needs.
+  - `Spell::CheckCast` (`SPELL_EFFECT_SKINNING`, `Spell.cpp`) checks that expansion skill. Classic
+    beasts keep the old numbers, but they now check Classic Skinning (2564) instead of 393.
+  - `Spell::EffectSkinning` (`SpellEffects.cpp`) raises that expansion skill, using the same requirement
+    for its skill-up chance.
+  - Beasts skinned with Herbalism, Mining or Engineering are unchanged. No SQL.
+  - Compiles with GCC 13 on the full patch chain.
+
+  What each expansion needs:
+
+  | Expansion | Skill (ID) | Beasts it covers | Skill needed by beast level |
+  |---|---|---|---|
+  | Classic | Classic Skinning (2564), max 300 | `HealthScalingExpansion` 0 and level 1-60 | unchanged: 1-10 any, 15: 50, 20: 100, 30: 150, 40: 200, 50: 250, 60: 300 (`(level-10)*10` below 100 skill, `level*5` from 100) |
+  | Outland | Outland Skinning (2563), max 75 | expansion 1, or level 61-70 | 58: 1, 60: 9, 62: 17, 64: 25, 66: 33, 68: 41, 70: 50 |
+  | Northrend | Northrend Skinning (2562), max 75 | expansion 2, or level 71-80 | 68: 1, 70: 9, 72: 17, 74: 25, 76: 33, 78: 41, 80: 50 |
+  | Cataclysm | Cataclysm Skinning (2561), max 75 | expansion 3, or level 81-85 | 80: 1, 81: 10, 82: 20, 83: 30, 84: 40, 85: 50 |
+  | Pandaria | Pandaria Skinning (2560), max 75 | expansion 4, or level 86-90 | 85: 1, 86: 10, 87: 20, 88: 30, 89: 40, 90: 50 |
+  | Draenor | Draenor Skinning (2559), max 100 | expansion 5, or level 91-100 | 90: 1, 92: 15, 94: 30, 96: 45, 98: 60, 100: 75 |
+  | Legion | Legion Skinning (2558), max 100 | expansion 6, or level 101-110 | 98: 1, 100: 13, 102: 25, 104: 38, 106: 50, 108: 62, 110: 75 |
+  | Kul Tiran | Kul Tiran Skinning (2557), max 150 | expansion 7, or level 111 and up | 110: 1, 112: 25, 114: 50, 116: 75, 118: 100, 120: 125 |
+
+  "Expansion N" is the creature's `creature_template.HealthScalingExpansion`. Many templates leave it at 0
+  whatever their level, so a 0 above level 60 picks the expansion by `minlevel` instead (the level ranges
+  in the third column). Outside those levels, a beast below its expansion's first level needs 1, and one above its
+  last level needs the same as the last level. For every expansion except Classic the requirement rises
+  evenly from 1 at the first level to the skill's max minus 25 at the last. The max is read from your
+  character, so the Draenor, Legion and Kul Tiran columns assume maxes of 100, 100 and 150; if your
+  character shows a different max, the top of the range is that max minus 25. Learning the
+  expansion's skill from a trainer is enough to start: with it at 1 you can skin that expansion's
+  lowest beasts.
+
+- **Status:** confirmed in game by Four on 2026-11-09: Outland beasts raise Outland Skinning, and
+  Fleeing Stag (47263, Hyjal, level 80) raises Cataclysm Skinning.
+
+### Core and world: herb and ore nodes use each expansion's own skill
+
+- **Found** (Four asked for every tradeskill to work like skinning, 2026-11-08). Four's `Lock.db2` shows
+  that almost every herb and ore node from Outland to Legion uses the plain Herbalism (lock type 2) or
+  Mining (3) lock with the old 1-600 skill: for example Lichbloom 425, Twilight Jasmine 525, Golden Lotus
+  550, Saronite 400 and Pyrite 525. The client checks that against the profession skill, which can't go
+  above 300, so none of those could be gathered, and gathering only raised Classic Herbalism/Mining
+  (`SkillByLockType` maps types 2 and 3 to 2556 and 2572). Each expansion has its own lock types (33-39
+  herbs, 41-47 mining) and gather spells 265821-265853, which its trainer spell teaches (265822 Outland
+  Herbalism teaches 265821, and so on). `Lock.db2` has Blizzard's lock for each: herbs 2856 (Outland)
+  to 2862 (Kul Tiran), ore 2864 to 2870, each with the expansion slot and a plain Herbalism/Mining slot
+  at skill 0. Only Kul Tiran nodes, Cinderbloom, Rich Elementium and Blackrock used them.
+- **Changed:**
+  - `sql/fixes/world/2026_11_08_00_gathering_tier_locks.sql` (`bfa_world`) points `Data0` (lock) of 93
+    `gameobject_template` herb and ore nodes at their expansion's Blizzard lock (2856-2861, 2864-2869).
+    Gathering nodes (type 50) that had old-scale trivial skill also get `Data4`/`Data5` = difficulty
+    and difficulty + 25 (colour and skill-up chance). Each line names the node, its old skill and its
+    new difficulty.
+    - A node's expansion is where most of its spawns are: map 530 Outland, minus the blood elf and
+      draenei zones; Outland and Northrend dungeon maps; 571 Northrend; Cataclysm zones and Deepholm;
+      870 Pandaria; 1116 Draenor; 1220 Legion.
+    - Every node needs only its expansion's skill learned. The difficulty scales the old skill over
+      the expansion's old range (Outland 300-375, Northrend 350-450, Cataclysm 425-525, Pandaria
+      500-600) to 1 up to the skill's max minus 25.
+    - Only locks with a single herb or mining slot change. Quest objects that also open by kneeling or
+      with an item keep their lock.
+  - New `tools/bfa/gathering-tier-locks.patch` (after `skinning-tiers.patch`):
+    - `Spell::CanOpenLock` (`Spell.cpp`) refuses a lock's plain Herbalism/Mining slot when the lock
+      also has an Outland to Kul Tiran slot, so Classic Herbalism/Mining alone can't gather expansion
+      nodes through Blizzard's skill-0 plain slot. It fails with `SPELL_FAILED_MIN_SKILL` and the
+      expansion skill, 1 (`Spell::CheckCast` passes them on), so the client says "Requires Northrend
+      Herbalism" and so on; the first build said "Invalid target" (Four, Goldclover, 2026-11-09). With
+      both spells known the client casts the expansion one.
+    - `AuraEffect::HandleAuraTrackResources` (`SpellAuraEffects.cpp`): Find Herbs (lock type 2) and
+      Find Minerals (3) also mark Herbalism 32-39 and Mining 40-47 in `TrackResourceMask`. The client
+      tracks an expansion node by its expansion lock type, and upstream never set those, so no
+      expansion node (Kul Tiran ones included) showed on the minimap.
+    - Compiles with GCC 13 on the full patch chain.
+  - `sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql` (`bfa_hotfixes`) caps Classic locks
+    1632 (Small and Large Obsidian Chunk) and 399 (Arcanite Lode) at 300, from 305 and 310
+    (`hotfix_data` 9301632 and 9300399, table hash 0xE9BECB23). It also removes the 38 locks
+    (IDs 5xxxx) and their `hotfix_data` that the first version of the fix added.
+  - The guide's section 3 has the full table per expansion.
+  - Both SQL files ran twice in a test database without errors.
+- **History:** the first version added new hotfix locks. With a skill number on them the client refused
+  the node ("Requires Herbalism 1" with Outland Herbalism 1); with skill 0 they opened, but never showed
+  on tracking, even with a plain slot added.
+- **Status:** confirmed in game by Four on 2026-11-09: Felweed raises Outland Herbalism, Fel Iron and
+  Khorium raise Outland Mining, Outland and Northrend herbs and ore show with Find Herbs/Minerals, and
+  Goldclover without Northrend Herbalism says "Your skill is not high enough. Requires Northrend
+  Herbalism (1)". Cataclysm to Legion nodes not tried individually (same locks and code).
+
+### Core: a lower expansion skill never lowers the profession skill
+
+- **Found** while checking crafting for Four's request. `Player::UpdateCraftSkill` (upstream) raises the
+  profession skill itself for Classic Inscription (2514) and Classic Engineering (2506) recipes. With
+  `SyncParentProfessionSkill` keeping the profession skill at the highest expansion skill, learning, say,
+  Cataclysm Inscription at 1 would have set Inscription back to 1. Every other crafting profession
+  already raises the recipe's own expansion skill (`SkillLineAbility.SkillupSkillLineID`).
+- **Changed:** `tools/bfa/profession-skill-sync.patch` (`Player.cpp`, `SyncParentProfessionSkill`): it
+  only ever raises the profession skill (returns when the highest expansion skill is below it).
+  Compiles with GCC 13 on the full patch chain.
+- **Status:** not yet tested in game.
+
+#### To pick up the skinning tiers, gathering locks and sync change
+`profession-skill-sync.patch` changed and `skinning-tiers.patch` and `gathering-tier-locks.patch` are new, so this swaps the old
+version of the sync patch for the new one. The other patches you applied are unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+git -C ../tools-repo show 05f80be:tools/bfa/profession-skill-sync.patch | git apply -R && echo "old sync patch removed"
+git apply ../tools-repo/tools/bfa/profession-skill-sync.patch && echo "new sync patch applied"
+git apply ../tools-repo/tools/bfa/skinning-tiers.patch && echo "skinning tiers applied"
+git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch && echo "gathering locks applied"
+grep -c "bestValue < player->GetPureSkillValue" src/server/game/Entities/Player/Player.cpp
+grep -c GetSkinningTier src/server/game/Spells/Spell.cpp src/server/game/Spells/SpellEffects.cpp
+grep -c expansionSkill src/server/game/Spells/Spell.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+All four echo lines print. The greps print 1, then 2 for each file, then 4. Then the
+two SQL files, one at a time (each asks for the password):
+```
+mysql -u root -p bfa_hotfixes < ../tools-repo/sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql
+```
+```
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_08_00_gathering_tier_locks.sql
+```
+Then restart `worldserver` and delete the client's `Cache` folder.
 
 ## 2026-11-07 (World fixes: Darkmoon Island)
 
