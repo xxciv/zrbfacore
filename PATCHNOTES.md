@@ -39,8 +39,8 @@ to do to pick it up (rebuild, restart, run SQL).
   - 23 trainers have their own gossip menu with no "Train me" option at all, so they cannot train
     (last table below).
   - No trainer recipes exist for the Outland to Legion crafting skills (see the entry below).
-- **Status:** not yet tested in game. Good checks: Rorelien (Honor Hold) or Ruak Stronghorn (Thrallmar)
-  should list Outland to Legion Herbalism; Declan Senal (Boralus) should also list Kul Tiran Herbalism.
+- **Status:** confirmed in game 2026-11-09: Rorelien (Honor Hold) lists Classic to Legion Herbalism,
+  Declan Senal (Boralus) lists those plus Kul Tiran Herbalism.
 
 #### Which trainer teaches what
 
