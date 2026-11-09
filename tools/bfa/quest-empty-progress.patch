@@ -1,0 +1,22 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index a0f5cdd..643e705 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -15921,7 +15921,16 @@ void Player::SendPreparedQuest(WorldObject* source)
+         {
+             if (qmi0.QuestIcon == 4)
+             {
+-                PlayerTalkClass->SendQuestGiverRequestItems(quest, source->GetGUID(), CanRewardQuest(quest, false), true);
++                bool canReward = CanRewardQuest(quest, false);
++                // zrbfacore: the NPC's only entry is a quest still in progress with no progress text
++                // (no quest_request_items row). Auto-opening it showed an empty page with a disabled
++                // Continue button, also right after accepting the quest. Close the window instead.
++                if (!canReward && quest->GetRequestItemsText().empty())
++                {
++                    PlayerTalkClass->SendCloseGossip();
++                    return;
++                }
++                PlayerTalkClass->SendQuestGiverRequestItems(quest, source->GetGUID(), canReward, true);
+                 return;
+             }
+             // Send completable on repeatable and autoCompletable quest if player don't have quest

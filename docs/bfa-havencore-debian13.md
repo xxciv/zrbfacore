@@ -126,6 +126,7 @@ git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
 git apply ../tools-repo/tools/bfa/quest-objective-flags.patch
 git apply ../tools-repo/tools/bfa/mulgore-bristleback-fight.patch
 git apply ../tools-repo/tools/bfa/quest-complete-window.patch
+git apply ../tools-repo/tools/bfa/quest-empty-progress.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -444,6 +445,12 @@ quest giver, so the client sat waiting for a menu that never came, or picked the
 It now sets those bits the way later TrinityCore does: gossip only for quests flagged
 `QUEST_FLAGS_LAUNCH_GOSSIP_COMPLETE`, the next chain quest only when you can take it, and the quest
 list only when the NPC still has something for you.
+
+`quest-empty-progress.patch` stops the quest window from turning into an empty page with a
+disabled Continue button. When an NPC's only entry was a quest you still had in progress, the core
+opened its progress page automatically, even when the quest has no progress text (no
+`quest_request_items` row). That happened right after accepting such a quest, and whenever you
+talked to the NPC again before finishing it. It now closes the window in that case.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -832,6 +839,7 @@ git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
 git apply ../tools-repo/tools/bfa/quest-objective-flags.patch
 git apply ../tools-repo/tools/bfa/mulgore-bristleback-fight.patch
 git apply ../tools-repo/tools/bfa/quest-complete-window.patch
+git apply ../tools-repo/tools/bfa/quest-empty-progress.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
