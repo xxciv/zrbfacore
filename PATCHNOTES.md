@@ -58,30 +58,34 @@ Draft PR, not merged yet.
   Ahmo Thunderhorn (36644, guid 260022), accept Sharing the Land (14438). Instead of closing, the
   window went back to Ahmo's list ("Current Quests: Sharing the Land") and then to a Sharing the Land
   page with no text and a greyed-out Continue button; only Cancel closed it.
-- **Cause:** after the accept the client asks Ahmo for his menu again. His only entry is now
-  Sharing the Land, in progress, and he is also its ender, so `Player::SendPreparedQuest`
-  (`Player.cpp`) auto-opens it with `SendQuestGiverRequestItems` (single-entry case, quest icon 4).
-  The quest has no progress text (no `quest_request_items` row for 14438) and can't be completed
-  yet, so the client gets an empty progress page it can't continue. Stock and current TrinityCore do
-  the same.
+- **Cause:** after the accept the client goes back to Ahmo's quest list, where Sharing the Land is
+  now a current quest ("?"), and opens it. The server answers with its progress page
+  (`PlayerMenu::SendQuestGiverRequestItems`, reached from `Player::SendPreparedQuest` and from
+  `HandleQuestgiverCompleteQuest`). Sharing the Land is a kill quest that isn't done yet and has no
+  progress text (no `quest_request_items` row for 14438), so the page is empty and Continue stays
+  disabled. Stock and current TrinityCore do the same.
 - **Changed:** new `tools/bfa/quest-empty-progress.patch` (after `quest-complete-window.patch`),
-  `Player::SendPreparedQuest` only: in the single-entry, quest-in-progress case, when
-  `CanRewardQuest` is false **and** the quest's `RequestItemsText` is empty, send
-  `SendCloseGossip` (close the window) instead of the empty progress page. Quests that do have
-  progress text, or can be turned in, open as before. No DB change.
+  `GossipDef.cpp`, `PlayerMenu::SendQuestGiverRequestItems` only: when the quest can't be completed
+  yet, needs no items (`QUEST_SPECIAL_FLAGS_DELIVER` not set) and its `RequestItemsText` is empty,
+  send `SendCloseGossip` (close the window) instead of the empty page. Quests with progress text,
+  with items to hand in, or ready to turn in open as before. No DB change.
+  - The first version (ea1cfed) only guarded `Player::SendPreparedQuest`; Four's retest showed the
+    window still stayed open, so the check moved into the function every route uses.
 - **Status:** untested in game.
-- **Pick up:** this only adds a new patch; the patches you already applied are unchanged.
-  `Player.cpp` changes, so the build is short.
+- **Pick up:** this swaps the first version of `quest-empty-progress.patch` (ea1cfed, in
+  `Player.cpp`) for the new one (in `GossipDef.cpp`). The other patches you applied are unchanged.
 
   ```
   cd ~/bfa/source
   git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
-  git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-empty-progress.patch | git apply && echo "quest empty progress applied"
-  grep -c "no progress text" src/server/game/Entities/Player/Player.cpp
+  git -C ../tools-repo show ea1cfed:tools/bfa/quest-empty-progress.patch | git apply -R && echo "old version removed"
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-empty-progress.patch | git apply && echo "new version applied"
+  grep -c "no progress text" src/server/game/Entities/Player/Player.cpp src/server/game/Entities/Creature/GossipDef.cpp
   sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
   ```
 
-  The echo line prints and the grep prints 1. Then restart worldserver.
+  Both echo lines print, and the grep prints 0 for `Player.cpp` and 1 for `GossipDef.cpp`. Then
+  restart worldserver.
 
 ## 2026-11-09 (Quest fixes: quest window hangs or rushes after a turn-in)
 

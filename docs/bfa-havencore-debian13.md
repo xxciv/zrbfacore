@@ -447,8 +447,8 @@ It now sets those bits the way later TrinityCore does: gossip only for quests fl
 list only when the NPC still has something for you.
 
 `quest-empty-progress.patch` stops the quest window from turning into an empty page with a
-disabled Continue button. When an NPC's only entry was a quest you still had in progress, the core
-opened its progress page automatically, even when the quest has no progress text (no
+disabled Continue button. When you opened a quest you still had in progress at its NPC, the core
+sent its progress page, even when the quest has no items to hand in and no progress text (no
 `quest_request_items` row). That happened right after accepting such a quest, and whenever you
 talked to the NPC again before finishing it. It now closes the window in that case.
 

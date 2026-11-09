@@ -1,22 +1,20 @@
-diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
-index a0f5cdd..643e705 100644
---- a/src/server/game/Entities/Player/Player.cpp
-+++ b/src/server/game/Entities/Player/Player.cpp
-@@ -15921,7 +15921,16 @@ void Player::SendPreparedQuest(WorldObject* source)
-         {
-             if (qmi0.QuestIcon == 4)
-             {
--                PlayerTalkClass->SendQuestGiverRequestItems(quest, source->GetGUID(), CanRewardQuest(quest, false), true);
-+                bool canReward = CanRewardQuest(quest, false);
-+                // zrbfacore: the NPC's only entry is a quest still in progress with no progress text
-+                // (no quest_request_items row). Auto-opening it showed an empty page with a disabled
-+                // Continue button, also right after accepting the quest. Close the window instead.
-+                if (!canReward && quest->GetRequestItemsText().empty())
-+                {
-+                    PlayerTalkClass->SendCloseGossip();
-+                    return;
-+                }
-+                PlayerTalkClass->SendQuestGiverRequestItems(quest, source->GetGUID(), canReward, true);
-                 return;
-             }
-             // Send completable on repeatable and autoCompletable quest if player don't have quest
+diff --git a/src/server/game/Entities/Creature/GossipDef.cpp b/src/server/game/Entities/Creature/GossipDef.cpp
+index 5487627..4293578 100644
+--- a/src/server/game/Entities/Creature/GossipDef.cpp
++++ b/src/server/game/Entities/Creature/GossipDef.cpp
+@@ -569,6 +569,15 @@ void PlayerMenu::SendQuestGiverRequestItems(Quest const* quest, ObjectGuid npcGU
+         return;
+     }
+ 
++    // zrbfacore: a quest still in progress with no items to show and no progress text (no
++    // quest_request_items row) got an empty page with a disabled Continue button, e.g. right after
++    // accepting Sharing the Land from Ahmo Thunderhorn. Close the quest window instead.
++    if (!canComplete && !quest->HasSpecialFlag(QUEST_SPECIAL_FLAGS_DELIVER) && quest->GetRequestItemsText().empty())
++    {
++        const_cast<PlayerMenu*>(this)->SendCloseGossip();
++        return;
++    }
++
+     WorldPackets::Quest::QuestGiverRequestItems packet;
+ 
+     packet.QuestTitle = quest->GetLogTitle();
