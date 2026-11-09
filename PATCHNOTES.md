@@ -24,8 +24,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
   Classic (5) and Kul Tiran (110) unchanged; fishing unchanged. Re-running 2026_11_09_00 or 01 puts
   their rows back to level 0, so run this file again after them. Ran twice in a test database.
-- **Status:** not yet tested in game. A character below 58 should see Outland to Legion greyed out
-  ("Requires Level 58" etc.) at any trainer.
+- **Status:** confirmed in game 2026-11-09 (each expansion's skill shows its level requirement).
 
 #### To pick up the level requirements
 ```
