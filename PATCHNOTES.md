@@ -3,6 +3,37 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-09
+
+### World: trainers teach every expansion's profession skill
+
+- **Found** (Four asked where to learn Outland Herbalism, 2026-11-09): no `trainer_spell` row taught
+  the Outland, Northrend, Pandaria, Draenor or Legion skill of any profession. Classic trainer lists
+  taught Classic and, for some lists, Cataclysm (122, 991, 407, 993, 19778, 990, 163, 136, 995, 5566,
+  989, 91, 992). The herbalism trainers Rorelien, Ruak Stronghorn, Botanist Alaenra, Jijia, Morae, the
+  Northrend and both Dalaran trainers, Kali Healtouch, Aranae Venomblood, Angrun and Ruw pointed at
+  trainer list 133, which has no `trainer` row, so they taught nothing. Grix "Ironfists" Barlow
+  (133536) pointed at the missing list 994.
+- **Changed:** `sql/fixes/world/2026_11_09_00_profession_tier_trainers.sql` (`bfa_world`):
+  - 436 `trainer_spell` rows: every trainer list that teaches a profession's Classic skill also teaches
+    its Outland, Northrend, Cataclysm (where missing), Pandaria, Draenor and Legion skill spells
+    (Herbalism 265822/265824/265826/265828/265830/265832, Mining 265840-265850, Skinning
+    265858-265868, crafting 2642xx-2646xx). 10 copper, `ReqSkillLine` = the profession (182, 186, 393,
+    ...) at 1, no level requirement. Bandage list 877 is left out.
+  - `creature_trainer` list 133 -> 424 (herbalism), and Grix 994 -> 133536 (his own list).
+  - Kul Tiran stays with the Kul Tiras/Zandalar lists; fishing lists already teach every expansion.
+  - Ran twice in a test database: 436 rows each time, no existing row removed.
+- **Not fixed:** the database has no trainer recipes for the Outland to Legion crafting skills
+  (Outland Alchemy's 11 on list 987 aside). Those skills can be learned and raised with recipe items,
+  but trainers don't sell their recipes.
+- **Status:** not yet tested in game.
+
+#### To pick up the trainer fix
+```
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_09_00_profession_tier_trainers.sql
+```
+Run it from `~/bfa/source` after `git -C ../tools-repo pull`, then restart `worldserver`.
+
 ## 2026-11-08
 
 ### Core: skinning uses each expansion's own skill
