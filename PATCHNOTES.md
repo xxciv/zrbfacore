@@ -71,21 +71,40 @@ Draft PR, not merged yet.
   with items to hand in, or ready to turn in open as before. No DB change.
   - The first version (ea1cfed) only guarded `Player::SendPreparedQuest`; Four's retest showed the
     window still stayed open, so the check moved into the function every route uses.
+- **Found** (Four's retest of the second version, 2026-11-09): the window now stays on the Sharing
+  the Land details page after Accept (quest accepted, window open). With `Logger.network=2,Server`
+  the log showed, right after `CMSG_QUESTGIVER_CHOOSE_REWARD` for 24215,
+  `CMSG_QUESTGIVER_HELLO 0000000000000000`: the client asked for a quest giver with an empty GUID.
+- **Cause:** Rite of the Winds (24215) has `QUEST_FLAGS_AUTOCOMPLETE` (0x10000).
+  `HandleQuestgiverChooseRewardOpcode` (`QuestHandler.cpp`) only looks up the NPC for quests without
+  that flag; for auto-complete quests it uses the player as quest giver even when the quest is
+  handed in at the NPC. `Player::SendQuestReward` then gets no creature, so
+  `SMSG_QUEST_GIVER_QUEST_COMPLETE` names no NPC and the client drops its conversation with Ahmo.
+  The window it opens next is no longer tied to him, so the server's close after Accept
+  (`SMSG_GOSSIP_COMPLETE`) doesn't close it.
+- **Changed:** new `tools/bfa/quest-autocomplete-turnin.patch` (after `quest-empty-progress.patch`),
+  `HandleQuestgiverChooseRewardOpcode` only: for an auto-complete quest, when the packet names an
+  NPC or object (not the player) that ends the quest (`hasInvolvedQuest`) and is in interaction
+  range (`CanInteractWithQuestGiver`), use it as the quest giver. Turn-ins from the quest log
+  pop-up (no NPC) work as before.
 - **Status:** untested in game.
-- **Pick up:** this swaps the first version of `quest-empty-progress.patch` (ea1cfed, in
-  `Player.cpp`) for the new one (in `GossipDef.cpp`). The other patches you applied are unchanged.
+- **Pick up:** if you already applied the second version of `quest-empty-progress.patch` (be0404e),
+  it is unchanged; this only adds `quest-autocomplete-turnin.patch` (`QuestHandler.cpp`, short build):
 
   ```
   cd ~/bfa/source
   git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
-  git -C ../tools-repo show ea1cfed:tools/bfa/quest-empty-progress.patch | git apply -R && echo "old version removed"
-  git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-empty-progress.patch | git apply && echo "new version applied"
-  grep -c "no progress text" src/server/game/Entities/Player/Player.cpp src/server/game/Entities/Creature/GossipDef.cpp
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-autocomplete-turnin.patch | git apply && echo "autocomplete turn-in applied"
+  grep -c "zrbfacore: an auto-complete quest" src/server/game/Handlers/QuestHandler.cpp
   sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
   ```
 
-  Both echo lines print, and the grep prints 0 for `Player.cpp` and 1 for `GossipDef.cpp`. Then
-  restart worldserver.
+  The echo line prints and the grep prints 1. Then restart worldserver.
+
+  From the first version (ea1cfed, `Player.cpp`) instead: run
+  `git -C ../tools-repo show ea1cfed:tools/bfa/quest-empty-progress.patch | git apply -R` first, then
+  `git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-empty-progress.patch | git apply`, then the
+  block above.
 
 ## 2026-11-09 (Quest fixes: quest window hangs or rushes after a turn-in)
 
