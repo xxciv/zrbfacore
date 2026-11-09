@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-09 (Quest fixes: scout objectives never tick)
 
-PR #49.
+Merged to `main` with PR #49 on 2026-11-09.
 
 ### Core: area trigger ("scout") objectives never show as done in the quest log
 
