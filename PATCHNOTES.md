@@ -16,7 +16,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed:** `sql/fixes/world/2026_11_09_30_orgrimmar_balloon_pandaren.sql`: `creature_template`
   `InhabitType` 3 -> 4 for entries 2756, 5029, 5034, 16868, 16869. `Creature::UpdateMovementFlags`
   then turns gravity off for them, so they stand still in the basket. Their spawns are untouched.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-09 (they stay in the basket).
 - **Pick up:**
 
   ```
@@ -1028,7 +1028,7 @@ Trap - Tripwire - NOT MECHANICAL" posts all over the paths, with GM mode off). S
   turns the group on. The rows are selected from the live `creature` table, so no guid list is
   hard-coded.
 - **Next:** the race itself (Four, 2026-11-05: "yes after").
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-09 (they stay in the basket).
 
 ### Darkmoon Island: Portal Back hung the client on the loading screen
 
@@ -1042,7 +1042,7 @@ From Four's visit, 2026-11-05. SQL only: `sql/fixes/world/2026_11_05_02_darkmoon
     an Alliance player got teleports to Elwynn and to Mulgore at the same time.
 - **Changed:** both `smart_scripts` rows of 216667 (source type 1, ids 0 and 1) are deleted, and
   `gameobject_template` 216667 `AIName` 'SmartGameObjectAI' -> ''.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-09 (they stay in the basket).
 
 ### Darkmoon Faire: Fire Jugglers throwing torches at players and NPCs
 
@@ -1060,7 +1060,7 @@ From Four's visit to the Elwynn Faire camp, 2026-11-05. SQL only:
 - **Changed:** 13 `conditions` rows (source type 13, group 1, entry 102882, condition 31 type 3).
   The torch may now only target a Fire Juggler: 55089, 55093, 55220-55226, 55341, 55342, 55397,
   55398. The jugglers stand in pairs about 18 yards apart, so the torches stay with the jugglers.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-09 (they stay in the basket).
 
 ### Holidays that move every year: missing from the calendar, and two never ran
 
@@ -4605,7 +4605,7 @@ Then restart `worldserver`.
 - **Watch for:** Helix's `DamageModifier` is still 12 from `2026_10_11_01`. Scaled to 35%, he hits for
   about 21 instead of 60. If he's now too soft, his stock 57.5 scaled to 35% comes out at about 20, the
   value ZRPandaria used. The revert line is in that SQL file.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-09 (they stay in the basket).
 
 ### The Deadmines (map 36), Normal
 
@@ -4694,7 +4694,7 @@ Vanessa".
 - **Not changed:** the being stuck in combat and unable to log out wasn't reproduced. With a live
   Mine Bunny still on you, that is normal combat. If it happens with nothing alive near you,
   `.combatstop` clears it.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-09 (they stay in the basket).
 
 ### To pick up everything from 2026-10-12
 `ScriptMgr.h` changed, so this build recompiles nearly everything.
@@ -4823,7 +4823,7 @@ revert lines. Tested at level 16-17 on a rogue with SoloCraft on.
 - **Left as is:** burnt-out Reapers and Watchers show a vehicle cursor. `npc_spellclick_spells` gives
   47403 and 47404 the click spells 58961 and 90102. Whether riding them does anything on Normal hasn't
   been checked.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-09 (they stay in the basket).
 
 #### Admiral Ripsnarl
 - **Found:** once the fog rolled in at 75%, he summoned a Vapor every 3.5 seconds for the rest of the
@@ -4834,7 +4834,7 @@ revert lines. Tested at level 16-17 on a rogue with SoloCraft on.
   happened, his Swipe timer was started twice and he swiped twice as often.
 - **Changed:** he now comes back once per vanish. Vapors killed while he is visible no longer count
   toward bringing him back early.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-09 (they stay in the basket).
 
 #### "Captain" Cookie
 - Reviewed his script, the food NPCs and his spell script bindings. Nothing changed.
