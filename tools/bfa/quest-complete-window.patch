@@ -1,0 +1,31 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index 9fc62fc..a0f5cdd 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -18651,14 +18651,21 @@ void Player::SendQuestReward(Quest const* quest, Creature const* questGiver, uin
+     packet.SkillLineIDReward = quest->GetRewardSkillId();
+     packet.NumSkillUpsReward = quest->GetRewardSkillPoints();
+ 
++    // zrbfacore: ported from TrinityCore master (e746cb2f, 0c7967d4). Every gossip NPC used to get
++    // LaunchGossip and every quest giver LaunchQuest, so the client left the quest window open
++    // (no Complete button) waiting for a gossip or quest menu the server never sent.
+     if (questGiver)
+     {
+         if (questGiver->IsGossip())
+-            packet.LaunchGossip = true;
+-        else if (questGiver->IsQuestGiver())
+-            packet.LaunchQuest = true;
+-        else if (quest->GetNextQuestInChain() && !quest->HasFlag(QUEST_FLAGS_AUTOCOMPLETE))
+-            packet.UseQuestReward = true;
++            packet.LaunchGossip = quest->HasFlag(QUEST_FLAGS_LAUNCH_GOSSIP_COMPLETE);
++
++        if (!quest->HasFlag(QUEST_FLAGS_AUTOCOMPLETE))
++            if (Quest const* rewardQuest = GetNextQuest(questGiver->GetGUID(), quest))
++                packet.UseQuestReward = const_cast<Player*>(this)->CanTakeQuest(rewardQuest, false);
++
++        if (questGiver->IsQuestGiver())
++            packet.LaunchQuest = !packet.UseQuestReward &&
++                (const_cast<Player*>(this)->GetQuestDialogStatus(const_cast<Creature*>(questGiver)) & ~(DIALOG_STATUS_UNAVAILABLE | DIALOG_STATUS_SCRIPTED_NO_STATUS)) != DIALOG_STATUS_NONE;
+     }
+ 
+     packet.HideChatMessage = hideChatMessage;
