@@ -3,6 +3,50 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-09 (World fixes: Camp Narache battle)
+
+### Core: Bristleback Invaders can't be pulled off the braves and heal back up
+
+- **Found** (Four, 2026-11-09): Rite of Strength asks you to kill Bristleback Invaders, but they
+  are locked in the endless battle with the Tauren braves at Camp Narache. A player can barely pull
+  one off its brave, and the invader keeps healing.
+- **Cause:** upstream's core scripts in `src/server/scripts/Kalimdor/zone_mulgore.cpp`
+  (`npc_fledgling_brave` 36942, `npc_bristleback_invader` 36943, set by upstream's
+  `2026_09_20_mulgore_camp_narache_cosmetics.sql`):
+  - Both `DamageTaken` hooks keep NPC hits from taking them under 80% health. They did that by
+    setting the health back **up** to 80% whenever an NPC hit landed below it, so after a player
+    brought an invader lower, the next brave hit healed it to 80%.
+  - Pets counted as NPCs there (`attacker->IsPlayer()`), so pet damage was capped and healed too.
+  - The invader kept the brave on its threat list, and the brave kept attacking it, so the invader
+    stayed on the brave.
+- **Changed:** new `tools/bfa/mulgore-bristleback-fight.patch` (after
+  `quest-objective-flags.patch`), `zone_mulgore.cpp` only:
+  - New helpers in `namespace CampNaracheBattle`: `IsPlayerSide` (player, or a player's pet,
+    guardian or charmed unit), `IsTakenByPlayer` (a creature whose victim is player-side) and
+    `CapNpcDamage` (NPC damage stops at 80% and never raises health).
+  - `npc_bristleback_invader`: the first player-side hit calls `TakeOnPlayer`. The invader drops
+    every NPC from its threat list, takes itself off their threat lists and attacks that player.
+    Every update `KeepPlayerTarget` fixates it on that player (`ThreatManager::FixateTarget`). If
+    that player dies or leaves, it switches to another player or pet on its threat list. If there is
+    none, it evades, resets to full health and rejoins the battle. While a player fights it, NPC hits
+    do 0 damage.
+  - `npc_fledgling_brave`: if its target is an invader fighting a player, it drops it and turns to
+    the next invader on its threat list. When it looks for a new target within 5 yards
+    (`SelectFreeTarget`), it skips invaders a player is fighting.
+  - Both `DamageTaken` hooks use `CapNpcDamage` and count pets as players.
+  - No DB change. Compiles against upstream 2c13546.
+- **Status:** not tested in game yet.
+- **Pick up:** this adds one patch, so only the new patch is applied:
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/mulgore-bristleback-fight.patch | git apply && echo "bristleback fight applied"
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-09 (Quest fixes: scout objectives never tick)
 
 Merged to `main` with PR #49 on 2026-11-09.

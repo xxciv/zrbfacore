@@ -124,6 +124,7 @@ git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 git apply ../tools-repo/tools/bfa/skinning-tiers.patch
 git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
 git apply ../tools-repo/tools/bfa/quest-objective-flags.patch
+git apply ../tools-repo/tools/bfa/mulgore-bristleback-fight.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -434,6 +435,13 @@ count: "scout" area triggers (The Fargodeep Mine), pet battle wins and criteria 
 8.3.7 client reads them from the quest log's `ObjectiveFlags` field (`1 << StorageIndex`, called
 `Field_10` in the core), but the core set bit `256 << StorageIndex` in `StateFlags`, the 7.x layout.
 The server counted the objective and the quest could be turned in, but the tracker never ticked it.
+
+`mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
+Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
+80% health. When a player or a pet hits an invader, the invader drops the braves and fights only
+that player, the braves move on to other invaders, and NPC hits stop touching it. NPC hits also no
+longer heal: the old code set an invader back up to 80%, undoing the player's damage. It only touches
+`zone_mulgore.cpp`.
 
 ## 4. Configure and compile
 
@@ -813,6 +821,7 @@ git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 git apply ../tools-repo/tools/bfa/skinning-tiers.patch
 git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
 git apply ../tools-repo/tools/bfa/quest-objective-flags.patch
+git apply ../tools-repo/tools/bfa/mulgore-bristleback-fight.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
