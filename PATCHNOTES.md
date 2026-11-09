@@ -68,7 +68,7 @@ Draft PR, not merged yet.
   QUEST_FLAGS_LAUNCH_GOSSIP_COMPLETE flag") and 0c7967d4 ("set LaunchQuest bit ... only when
   UseQuestReward is not set", which caused auto-accept chain quests to double-select a quest menu
   entry and other UI bugs).
-- **Changed:** new `tools/bfa/quest-complete-window.patch` (after `quest-objective-flags.patch`),
+- **Changed:** new `tools/bfa/quest-complete-window.patch` (after `mulgore-bristleback-fight.patch`),
   `Player::SendQuestReward` only:
   - `LaunchGossip`: gossip NPC **and** quest flag `QUEST_FLAGS_LAUNCH_GOSSIP_COMPLETE` (0x01000000).
   - `UseQuestReward`: quest is not `QUEST_FLAGS_AUTOCOMPLETE`, the NPC has a next quest in the chain

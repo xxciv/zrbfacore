@@ -124,8 +124,8 @@ git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 git apply ../tools-repo/tools/bfa/skinning-tiers.patch
 git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
 git apply ../tools-repo/tools/bfa/quest-objective-flags.patch
-git apply ../tools-repo/tools/bfa/quest-complete-window.patch
 git apply ../tools-repo/tools/bfa/mulgore-bristleback-fight.patch
+git apply ../tools-repo/tools/bfa/quest-complete-window.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -830,8 +830,8 @@ git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 git apply ../tools-repo/tools/bfa/skinning-tiers.patch
 git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
 git apply ../tools-repo/tools/bfa/quest-objective-flags.patch
-git apply ../tools-repo/tools/bfa/quest-complete-window.patch
 git apply ../tools-repo/tools/bfa/mulgore-bristleback-fight.patch
+git apply ../tools-repo/tools/bfa/quest-complete-window.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
