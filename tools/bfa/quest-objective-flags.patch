@@ -1,0 +1,69 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index e207a45..9fc62fc 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -17755,6 +17755,7 @@ void Player::SetQuestSlot(uint16 slot, uint32 quest_id, uint32 timer /*= 0*/)
+     auto questLogField = m_values.ModifyValue(&Player::m_playerData).ModifyValue(&UF::PlayerData::QuestLog, slot);
+     SetUpdateFieldValue(questLogField.ModifyValue(&UF::QuestLog::QuestID), quest_id);
+     SetUpdateFieldValue(questLogField.ModifyValue(&UF::QuestLog::StateFlags), 0);
++    SetUpdateFieldValue(questLogField.ModifyValue(&UF::QuestLog::Field_10), 0); // ObjectiveFlags
+     for (uint32 i = 0; i < MAX_QUEST_COUNTS; ++i)
+         SetUpdateFieldValue(questLogField.ModifyValue(&UF::QuestLog::ObjectiveProgress, i), 0);
+     SetUpdateFieldValue(questLogField.ModifyValue(&UF::QuestLog::EndTime), timer);
+@@ -17784,6 +17785,22 @@ void Player::RemoveQuestSlotState(uint16 slot, uint32 state)
+         .ModifyValue(&UF::QuestLog::StateFlags), state);
+ }
+ 
++// zrbfacore: 8.3.7 clients read flag-type objectives (area triggers, pet battles, criteria trees)
++// from QuestLog::Field_10 (ObjectiveFlags, 1 << StorageIndex), not from StateFlags (256 << index).
++void Player::SetQuestSlotObjectiveFlag(uint16 slot, int8 objectiveIndex)
++{
++    SetUpdateFieldFlagValue(m_values.ModifyValue(&Player::m_playerData)
++        .ModifyValue(&UF::PlayerData::QuestLog, slot)
++        .ModifyValue(&UF::QuestLog::Field_10), 1u << objectiveIndex);
++}
++
++void Player::RemoveQuestSlotObjectiveFlag(uint16 slot, int8 objectiveIndex)
++{
++    RemoveUpdateFieldFlagValue(m_values.ModifyValue(&Player::m_playerData)
++        .ModifyValue(&UF::PlayerData::QuestLog, slot)
++        .ModifyValue(&UF::QuestLog::Field_10), 1u << objectiveIndex);
++}
++
+ void Player::SetQuestSlotTimer(uint16 slot, uint32 timer)
+ {
+     SetUpdateFieldValue(m_values.ModifyValue(&Player::m_playerData)
+@@ -18593,9 +18610,9 @@ void Player::SetQuestObjectiveData(QuestObjective const& objective, int32 data)
+         if (!objective.IsStoringFlag())
+             SetQuestSlotCounter(log_slot, objective.StorageIndex, status.ObjectiveData[objective.StorageIndex]);
+         else if (data)
+-            SetQuestSlotState(log_slot, 256 << objective.StorageIndex);
++            SetQuestSlotObjectiveFlag(log_slot, objective.StorageIndex);
+         else
+-            RemoveQuestSlotState(log_slot, 256 << objective.StorageIndex);
++            RemoveQuestSlotObjectiveFlag(log_slot, objective.StorageIndex);
+     }
+ }
+ 
+@@ -20845,7 +20862,7 @@ void Player::_LoadQuestStatusObjectives(PreparedQueryResult result)
+                     if (!objectiveItr->IsStoringFlag())
+                         SetQuestSlotCounter(slot, objectiveIndex, data);
+                     else if (data)
+-                        SetQuestSlotState(slot, 256 << objectiveIndex);
++                        SetQuestSlotObjectiveFlag(slot, objectiveIndex);
+                 }
+                 else
+                     TC_LOG_ERROR("entities.player", "Player::_LoadQuestStatusObjectives: Player '%s' (%s) has quest %d out of range objective index %u.", GetName().c_str(), GetGUID().ToString().c_str(), questID, objectiveIndex);
+diff --git a/src/server/game/Entities/Player/Player.h b/src/server/game/Entities/Player/Player.h
+index e503cb6..3bc2fae 100644
+--- a/src/server/game/Entities/Player/Player.h
++++ b/src/server/game/Entities/Player/Player.h
+@@ -1530,6 +1530,8 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
+         void SetQuestSlotCounter(uint16 slot, uint8 counter, uint16 count);
+         void SetQuestSlotState(uint16 slot, uint32 state);
+         void RemoveQuestSlotState(uint16 slot, uint32 state);
++        void SetQuestSlotObjectiveFlag(uint16 slot, int8 objectiveIndex);
++        void RemoveQuestSlotObjectiveFlag(uint16 slot, int8 objectiveIndex);
+         void SetQuestSlotTimer(uint16 slot, uint32 timer);
+         void SetQuestCompletedBit(uint32 questBit, bool completed);
+ 
