@@ -76,7 +76,8 @@ Run it from `~/bfa/source` after `git -C ../tools-repo pull`, then restart `worl
   expansion's skill from a trainer is enough to start: with it at 1 you can skin that expansion's
   lowest beasts.
 
-- **Status:** not yet tested in game.
+- **Status:** confirmed in game by Four on 2026-11-09: Outland beasts raise Outland Skinning, and
+  Fleeing Stag (47263, Hyjal, level 80) raises Cataclysm Skinning.
 
 ### Core and world: herb and ore nodes use each expansion's own skill
 
@@ -125,10 +126,10 @@ Run it from `~/bfa/source` after `git -C ../tools-repo pull`, then restart `worl
 - **History:** the first version added new hotfix locks. With a skill number on them the client refused
   the node ("Requires Herbalism 1" with Outland Herbalism 1); with skill 0 they opened, but never showed
   on tracking, even with a plain slot added.
-- **Status (2026-11-09, Four, first version at skill 0):** Felweed opens with Outland Herbalism 1 and
-  raises Outland Herbalism; Fel Iron and Khorium raise Outland Mining. Blizzard's locks on Felweed and
-  Fel Iron also open them but did not track without the patch. The patch (tracking, plain-slot check)
-  and the other nodes on Blizzard's locks are not yet tested in game.
+- **Status:** confirmed in game by Four on 2026-11-09: Felweed raises Outland Herbalism, Fel Iron and
+  Khorium raise Outland Mining, Outland and Northrend herbs and ore show with Find Herbs/Minerals, and
+  Goldclover without Northrend Herbalism says "Your skill is not high enough. Requires Northrend
+  Herbalism (1)". Cataclysm to Legion nodes not tried individually (same locks and code).
 
 ### Core: a lower expansion skill never lowers the profession skill
 
