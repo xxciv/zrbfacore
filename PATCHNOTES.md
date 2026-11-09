@@ -5,6 +5,36 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-09
 
+### World: older expansion profession skills need the expansion's level
+
+- **Found** (Four, 2026-11-09): after 2026_11_09_00 the Outland to Legion profession skills had no level
+  requirement (the dump's own rows were mixed: Cataclysm 0, 5 or 78), while Classic needs level 5 and
+  Kul Tiran level 110. Four wants each expansion's skill gated by that expansion's level.
+- **Changed:** `sql/fixes/world/2026_11_09_02_profession_tier_levels.sql` (`bfa_world`): `trainer_spell`
+  `ReqLevel` for every trainer row of the step spells, about 462 rows:
+
+  | Expansion | Level | Step spells (Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, Herbalism, Inscription, Jewelcrafting, Leatherworking, Mining, Skinning, Tailoring) |
+  |---|---|---|
+  | Outland | 0 -> 58 | 264214, 264437, 264635, 264461, 264480, 265822, 264497, 264535, 264580, 265840, 265858, 264619 |
+  | Northrend | 0 -> 68 | 264221, 264439, 264637, 264463, 264482, 265824, 264499, 264538, 264582, 265842, 265860, 264621 |
+  | Cataclysm | 0/5/78 -> 80 | 264244, 264441, 264639, 264466, 264484, 265826, 264501, 264541, 264584, 265844, 265862, 264623 |
+  | Pandaria | 0 -> 85 | 264246, 264443, 264641, 264468, 264486, 265828, 264503, 264543, 264586, 265846, 265864, 264625 |
+  | Draenor | 0 -> 90 | 264248, 264445, 264643, 264470, 264488, 265830, 264505, 264545, 264589, 265848, 265866, 264627 |
+  | Legion | 0 -> 98 | 264251, 264447, 264645, 264472, 264491, 265832, 264507, 264547, 264591, 265850, 265868, 264629 |
+
+  Classic (5) and Kul Tiran (110) unchanged; fishing unchanged. Re-running 2026_11_09_00 or 01 puts
+  their rows back to level 0, so run this file again after them. Ran twice in a test database.
+- **Status:** not yet tested in game. A character below 58 should see Outland to Legion greyed out
+  ("Requires Level 58" etc.) at any trainer.
+
+#### To pick up the level requirements
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-2e6el5
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_09_02_profession_tier_levels.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
 ### World: profession trainers open their proper list (and which trainer teaches what)
 
 - **Found** (Four asked for a list of which trainers teach what, 2026-11-09): most Outland, Northrend
@@ -45,7 +75,7 @@ to do to pick it up (rebuild, restart, run SQL).
 #### Which trainer teaches what
 
 Every trainer below teaches its profession's Classic, Outland, Northrend, Cataclysm, Pandaria, Draenor
-and Legion skills. **(KT)** = also teaches the Kul Tiran / Zandalari skill. † = was opening the old
+and Legion skills (levels 5, 58, 68, 80, 85, 90, 98 after 2026_11_09_02). **(KT)** = also teaches the Kul Tiran / Zandalari skill. † = was opening the old
 fallback list and is fixed by 2026_11_09_01. Only spawned trainers are listed, by the zone of their
 spawn. Fishing trainers already taught every expansion and are not listed.
 
