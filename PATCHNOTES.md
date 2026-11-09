@@ -35,7 +35,8 @@ to do to pick it up (rebuild, restart, run SQL).
     (`SelectFreeTarget`), it skips invaders a player is fighting.
   - Both `DamageTaken` hooks use `CapNpcDamage` and count pets as players.
   - No DB change. Compiles against upstream 2c13546.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-09 (invaders switch to the player, braves move on,
+  no healing).
 - **Pick up:** this adds one patch, so only the new patch is applied:
 
   ```
