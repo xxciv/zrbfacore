@@ -50,7 +50,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-09 (Quest fixes: quest window hangs or rushes after a turn-in)
 
-Draft PR, not merged yet.
+Merged to `main` with PR #51 on 2026-11-09.
 
 ### Core: quest window stays open without a Complete button, or auto-accepts the next quest
 
