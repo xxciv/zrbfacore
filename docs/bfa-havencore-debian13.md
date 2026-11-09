@@ -124,6 +124,7 @@ git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 git apply ../tools-repo/tools/bfa/skinning-tiers.patch
 git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
 git apply ../tools-repo/tools/bfa/quest-objective-flags.patch
+git apply ../tools-repo/tools/bfa/quest-complete-window.patch
 git apply ../tools-repo/tools/bfa/mulgore-bristleback-fight.patch
 ```
 
@@ -435,6 +436,14 @@ count: "scout" area triggers (The Fargodeep Mine), pet battle wins and criteria 
 8.3.7 client reads them from the quest log's `ObjectiveFlags` field (`1 << StorageIndex`, called
 `Field_10` in the core), but the core set bit `256 << StorageIndex` in `StateFlags`, the 7.x layout.
 The server counted the objective and the quest could be turned in, but the tracker never ticked it.
+
+`quest-complete-window.patch` stops the quest window from hanging after a turn-in (rewards given,
+no Complete Quest button left) and from rushing through the next quest in a chain. After a turn-in
+the core told the client to reopen the NPC's gossip for every gossip NPC and its quest list for every
+quest giver, so the client sat waiting for a menu that never came, or picked the next quest itself.
+It now sets those bits the way later TrinityCore does: gossip only for quests flagged
+`QUEST_FLAGS_LAUNCH_GOSSIP_COMPLETE`, the next chain quest only when you can take it, and the quest
+list only when the NPC still has something for you.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -821,6 +830,7 @@ git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 git apply ../tools-repo/tools/bfa/skinning-tiers.patch
 git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
 git apply ../tools-repo/tools/bfa/quest-objective-flags.patch
+git apply ../tools-repo/tools/bfa/quest-complete-window.patch
 git apply ../tools-repo/tools/bfa/mulgore-bristleback-fight.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```

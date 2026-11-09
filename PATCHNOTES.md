@@ -48,6 +48,49 @@ to do to pick it up (rebuild, restart, run SQL).
 
   Then restart worldserver.
 
+## 2026-11-09 (Quest fixes: quest window hangs or rushes after a turn-in)
+
+Draft PR, not merged yet.
+
+### Core: quest window stays open without a Complete button, or auto-accepts the next quest
+
+- **Found** (Four, 2026-11-09): sometimes after clicking Complete Quest the rewards arrive but the
+  quest window stays open with no button left, so it has to be closed with the X. Latest case: the
+  Tauren Paladin quest Consecrated Note (27015) turned in to Sunwalker Helaku (37737). Also,
+  sometimes turning in a quest immediately accepts the next quest in the chain and closes the window
+  before its text can be read (no auto-accept addons).
+- **Cause:** `Player::SendQuestReward` (`Player.cpp`) filled `SMSG_QUEST_GIVER_QUEST_COMPLETE` with
+  `LaunchGossip = true` for every NPC with the gossip flag, `LaunchQuest = true` for every other quest
+  giver, and `UseQuestReward` only for non-gossip, non-questgiver NPCs. With `LaunchGossip` the client
+  keeps the quest window waiting for a gossip menu; with `LaunchQuest` it reopens the NPC's quest list
+  and can select the next quest by itself. Stock TrinityCore 8.3.7 has the same code; TrinityCore
+  fixed it later in e746cb2f ("Only launch gossip menu on quest completion when quest has
+  QUEST_FLAGS_LAUNCH_GOSSIP_COMPLETE flag") and 0c7967d4 ("set LaunchQuest bit ... only when
+  UseQuestReward is not set", which caused auto-accept chain quests to double-select a quest menu
+  entry and other UI bugs).
+- **Changed:** new `tools/bfa/quest-complete-window.patch` (after `quest-objective-flags.patch`),
+  `Player::SendQuestReward` only:
+  - `LaunchGossip`: gossip NPC **and** quest flag `QUEST_FLAGS_LAUNCH_GOSSIP_COMPLETE` (0x01000000).
+  - `UseQuestReward`: quest is not `QUEST_FLAGS_AUTOCOMPLETE`, the NPC has a next quest in the chain
+    (`GetNextQuest`) and `CanTakeQuest` says you can take it.
+  - `LaunchQuest`: quest giver, `UseQuestReward` not set, and the NPC's quest dialog status
+    (`GetQuestDialogStatus`) is something other than none / unavailable.
+  - The next chain quest is still offered by the server as before (`HandleQuestgiverChooseRewardOpcode`
+    unchanged). No DB change.
+- **Status:** untested in game.
+- **Pick up:** this only adds a new patch; the patches you already applied are unchanged.
+  `Player.cpp` changes, so the build is short.
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-complete-window.patch | git apply && echo "quest complete window applied"
+  grep -c QUEST_FLAGS_LAUNCH_GOSSIP_COMPLETE src/server/game/Entities/Player/Player.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The echo line prints and the grep prints 1. Then restart worldserver.
+
 ## 2026-11-09 (Quest fixes: scout objectives never tick)
 
 Merged to `main` with PR #49 on 2026-11-09.
