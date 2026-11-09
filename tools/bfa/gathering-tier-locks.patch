@@ -1,0 +1,65 @@
+diff --git a/src/server/game/Spells/Auras/SpellAuraEffects.cpp b/src/server/game/Spells/Auras/SpellAuraEffects.cpp
+index 8bf0353..f9a455b 100644
+--- a/src/server/game/Spells/Auras/SpellAuraEffects.cpp
++++ b/src/server/game/Spells/Auras/SpellAuraEffects.cpp
+@@ -2446,13 +2446,27 @@ void AuraEffect::HandleAuraTrackResources(AuraApplication const* aurApp, uint8 m
+     if (!target)
+         return;
+ 
+-    uint32 bitIndex = GetMiscValue() - 1;
+-    uint32 index = bitIndex / 32;
+-    uint32 flag = 1 << (bitIndex % 32);
+-    if (apply)
+-        target->AddTrackResourceFlag(index, flag);
+-    else
+-        target->RemoveTrackResourceFlag(index, flag);
++    auto setTrackedLockType = [target, apply](uint32 lockType)
++    {
++        uint32 bitIndex = lockType - 1;
++        uint32 index = bitIndex / 32;
++        uint32 flag = 1 << (bitIndex % 32);
++        if (apply)
++            target->AddTrackResourceFlag(index, flag);
++        else
++            target->RemoveTrackResourceFlag(index, flag);
++    };
++
++    setTrackedLockType(GetMiscValue());
++
++    // The client tracks an expansion herb or ore node by its expansion lock type (Classic to Kul Tiran
++    // Herbalism 32-39, Mining 40-47), so Find Herbs and Find Minerals mark those as well.
++    if (GetMiscValue() == LOCKTYPE_HERBALISM)
++        for (uint32 lockType = LOCKTYPE_CLASSIC_HERBALISM; lockType <= LOCKTYPE_KUL_TIRAN_HERBALISM; ++lockType)
++            setTrackedLockType(lockType);
++    else if (GetMiscValue() == LOCKTYPE_MINING)
++        for (uint32 lockType = LOCKTYPE_CLASSIC_MINING; lockType <= LOCKTYPE_KUL_TIRAN_MINING; ++lockType)
++            setTrackedLockType(lockType);
+ }
+ 
+ void AuraEffect::HandleAuraTrackStealthed(AuraApplication const* aurApp, uint8 mode, bool apply) const
+diff --git a/src/server/game/Spells/Spell.cpp b/src/server/game/Spells/Spell.cpp
+index 567f631..488dda4 100644
+--- a/src/server/game/Spells/Spell.cpp
++++ b/src/server/game/Spells/Spell.cpp
+@@ -7670,6 +7670,21 @@ SpellCastResult Spell::CanOpenLock(uint32 effIndex, uint32 lockId, SkillType& sk
+ 
+                 reqKey = true;
+ 
++                // Expansion herb and ore locks (Outland to Kul Tiran) also carry a plain Herbalism/Mining slot
++                // with no skill, which the client uses for tracking. Only the expansion's own gather spell
++                // may open them, so Classic Herbalism/Mining alone can't gather expansion nodes.
++                if (lockInfo->Index[j] == LOCKTYPE_HERBALISM || lockInfo->Index[j] == LOCKTYPE_MINING)
++                {
++                    bool hasExpansionSlot = false;
++                    for (int k = 0; k < MAX_LOCK_CASE; ++k)
++                        if (lockInfo->Type[k] == LOCK_KEY_SKILL &&
++                            ((lockInfo->Index[k] >= LOCKTYPE_OUTLAND_HERBALISM && lockInfo->Index[k] <= LOCKTYPE_KUL_TIRAN_HERBALISM) ||
++                             (lockInfo->Index[k] >= LOCKTYPE_OUTLAND_MINING && lockInfo->Index[k] <= LOCKTYPE_KUL_TIRAN_MINING)))
++                            hasExpansionSlot = true;
++                    if (hasExpansionSlot)
++                        continue;
++                }
++
+                 skillId = SkillByLockType(LockType(lockInfo->Index[j]));
+ 
+                 if (skillId != SKILL_NONE || lockInfo->Index[j] == LOCKTYPE_LOCKPICKING)

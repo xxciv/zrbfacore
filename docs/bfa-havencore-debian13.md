@@ -122,6 +122,7 @@ git apply ../tools-repo/tools/bfa/darkmoon-faire-gossip.patch
 git apply ../tools-repo/tools/bfa/darkmoon-race.patch
 git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 git apply ../tools-repo/tools/bfa/skinning-tiers.patch
+git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -184,15 +185,16 @@ The new code is in `src/server/game/Spells/SkinningTiers.h`, used by `Spell::Che
 and `Spell::EffectSkinning` (the skill-up). Beasts skinned with Herbalism, Mining or Engineering are
 unchanged.
 
-Herb and ore nodes get the same treatment from two SQL fixes, not a patch, because the lock lives in
-the client's data. In the 8.3.7 `Lock.db2` almost every node from Outland to Legion uses the
-plain Herbalism or Mining lock with the old 1-600 skill (Lichbloom 425, Twilight Jasmine 525, Golden
-Lotus 550), which the client checks against the profession skill. That skill can't go above 300, so
-those nodes could never be gathered, and gathering only raised Classic Herbalism and Mining. Each
-expansion also has its own herb and ore lock types, each with its own gather spell that the trainer
-teaches along with the expansion's skill; Kul Tiran nodes already use them. The hotfix fix adds locks of
-those types (and caps the two Classic ore locks that asked for 305 and 310 at
-300), and the world fix points 93 node templates at them:
+Herb and ore nodes get the same treatment from `gathering-tier-locks.patch` and two SQL fixes. In the
+8.3.7 `Lock.db2` almost every node from Outland to Legion uses the plain Herbalism or Mining lock with
+the old 1-600 skill (Lichbloom 425, Twilight Jasmine 525, Golden Lotus 550), which the client checks
+against the profession skill. That skill can't go above 300, so those nodes could never be gathered,
+and gathering only raised Classic Herbalism and Mining. The same file has Blizzard's own lock for each
+expansion's herbs (2856 Outland to 2861 Legion) and ore (2864 to 2869): the expansion's lock type, whose
+gather spell the trainer teaches with the expansion skill, plus a plain Herbalism or Mining slot, both
+with no skill number. Kul Tiran nodes, Cinderbloom, Rich Elementium and Blackrock already use them.
+The world fix points 93 node templates at them, and the hotfix fix caps the two Classic ore locks that
+asked for 305 and 310 at 300:
 
 ```sh
 mysql -u root -p bfa_hotfixes < ~/bfa/tools-repo/sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql
@@ -200,11 +202,19 @@ mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_08_00_gath
 ```
 
 Then restart `worldserver` and delete the client's `Cache` folder (it keeps the old node data). The
-expansion comes from where the node spawns. Like Blizzard's own expansion locks, the new locks ask for
-no skill number: a node only needs its expansion's skill learned (the client refuses a number on these
-lock types and says "Requires Herbalism 1" even when you have it). Each gathering node also gets a
-difficulty, which sets its colour and how often it gives a skill-up: its old skill scaled over the
-expansion's old range to 1 up to the expansion skill's max minus 25. The main nodes' difficulty:
+patch does two things in the core:
+
+- `Spell::CanOpenLock` (`Spell.cpp`) never opens a lock through its plain Herbalism or Mining slot when
+  the lock also has an Outland to Kul Tiran slot, so Classic Herbalism or Mining alone can't gather
+  expansion nodes. The client uses the expansion's gather spell when you know it.
+- `AuraEffect::HandleAuraTrackResources` (`SpellAuraEffects.cpp`): the client tracks an expansion node
+  by its expansion lock type, so Find Herbs and Find Minerals now also mark Herbalism 32-39 and Mining
+  40-47 (upstream marked only 2 and 3, and no expansion node showed on the minimap).
+
+A node's expansion comes from where it spawns, and it needs only that expansion's skill learned. Each
+gathering node also gets a difficulty, which sets its colour and how often it gives a skill-up: its old
+skill scaled over the expansion's old range to 1 up to the expansion skill's max minus 25. The main
+nodes' difficulty:
 
 | Expansion | Herbs (difficulty) | Ore (difficulty) |
 |---|---|---|
@@ -774,6 +784,7 @@ git apply ../tools-repo/tools/bfa/darkmoon-faire-gossip.patch
 git apply ../tools-repo/tools/bfa/darkmoon-race.patch
 git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 git apply ../tools-repo/tools/bfa/skinning-tiers.patch
+git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

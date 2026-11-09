@@ -78,7 +78,7 @@ Run it from `~/bfa/source` after `git -C ../tools-repo pull`, then restart `worl
 
 - **Status:** not yet tested in game.
 
-### Hotfixes and world: herb and ore nodes use each expansion's own skill
+### Core and world: herb and ore nodes use each expansion's own skill
 
 - **Found** (Four asked for every tradeskill to work like skinning, 2026-11-08). Four's `Lock.db2` shows
   that almost every herb and ore node from Outland to Legion uses the plain Herbalism (lock type 2) or
@@ -87,21 +87,15 @@ Run it from `~/bfa/source` after `git -C ../tools-repo pull`, then restart `worl
   above 300, so none of those could be gathered, and gathering only raised Classic Herbalism/Mining
   (`SkillByLockType` maps types 2 and 3 to 2556 and 2572). Each expansion has its own lock types (33-39
   herbs, 41-47 mining) and gather spells 265821-265853, which its trainer spell teaches (265822 Outland
-  Herbalism teaches 265821, and so on). Kul Tiran nodes, Cinderbloom, Rich Elementium and Blackrock
-  already used them.
+  Herbalism teaches 265821, and so on). `Lock.db2` has Blizzard's lock for each: herbs 2856 (Outland)
+  to 2862 (Kul Tiran), ore 2864 to 2870, each with the expansion slot and a plain Herbalism/Mining slot
+  at skill 0. Only Kul Tiran nodes, Cinderbloom, Rich Elementium and Blackrock used them.
 - **Changed:**
-  - `sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql` (`bfa_hotfixes`) adds 38 `lock` rows,
-    ID `50000 + expansion*1000 + 100 (ore) + difficulty`. Each has one slot: Type 2, Index = that
-    expansion's herb or ore lock type, Skill 0, like Blizzard's own expansion locks (Cinderbloom, Kul
-    Tiran nodes). The first version had Skill = 1-50, and the client refused those nodes with "Requires
-    Herbalism 1" although Four had Outland Herbalism 1 (2026-11-09).
-  - The same file caps Classic locks 1632 (Small and Large Obsidian Chunk) and 399 (Arcanite Lode) at
-    300, from 305 and 310. `hotfix_data` ids are 9200000 + (ID - 50000) and 9300000 + ID, table hash
-    0xE9BECB23.
-  - `sql/fixes/world/2026_11_08_00_gathering_tier_locks.sql` (`bfa_world`) sets `Data0` (lock) on 93
-    `gameobject_template` herb and ore nodes. Gathering nodes (type 50) that had old-scale trivial
-    skill also get `Data4`/`Data5` = difficulty and difficulty + 25 (colour and skill-up chance). Each
-    line names the node, its old skill and its new difficulty.
+  - `sql/fixes/world/2026_11_08_00_gathering_tier_locks.sql` (`bfa_world`) points `Data0` (lock) of 93
+    `gameobject_template` herb and ore nodes at their expansion's Blizzard lock (2856-2861, 2864-2869).
+    Gathering nodes (type 50) that had old-scale trivial skill also get `Data4`/`Data5` = difficulty
+    and difficulty + 25 (colour and skill-up chance). Each line names the node, its old skill and its
+    new difficulty.
     - A node's expansion is where most of its spawns are: map 530 Outland, minus the blood elf and
       draenei zones; Outland and Northrend dungeon maps; 571 Northrend; Cataclysm zones and Deepholm;
       870 Pandaria; 1116 Draenor; 1220 Legion.
@@ -110,12 +104,28 @@ Run it from `~/bfa/source` after `git -C ../tools-repo pull`, then restart `worl
       500-600) to 1 up to the skill's max minus 25.
     - Only locks with a single herb or mining slot change. Quest objects that also open by kneeling or
       with an item keep their lock.
+  - New `tools/bfa/gathering-tier-locks.patch` (after `skinning-tiers.patch`):
+    - `Spell::CanOpenLock` (`Spell.cpp`) skips a lock's plain Herbalism/Mining slot when the lock also
+      has an Outland to Kul Tiran slot, so Classic Herbalism/Mining alone can't gather expansion nodes
+      through Blizzard's skill-0 plain slot. With both spells known the client casts the expansion one.
+    - `AuraEffect::HandleAuraTrackResources` (`SpellAuraEffects.cpp`): Find Herbs (lock type 2) and
+      Find Minerals (3) also mark Herbalism 32-39 and Mining 40-47 in `TrackResourceMask`. The client
+      tracks an expansion node by its expansion lock type, and upstream never set those, so no
+      expansion node (Kul Tiran ones included) showed on the minimap.
+    - Compiles with GCC 13 on the full patch chain.
+  - `sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql` (`bfa_hotfixes`) caps Classic locks
+    1632 (Small and Large Obsidian Chunk) and 399 (Arcanite Lode) at 300, from 305 and 310
+    (`hotfix_data` 9301632 and 9300399, table hash 0xE9BECB23). It also removes the 38 locks
+    (IDs 5xxxx) and their `hotfix_data` that the first version of the fix added.
   - The guide's section 3 has the full table per expansion.
-  - Both files ran twice in a test database without errors.
-- **Status:** Felweed confirmed in game by Four (2026-11-09, lock 51001 at Skill 0): it opens with
-  Outland Herbalism 1 and raises Outland Herbalism, not Herbalism. Other expansions and ore untested.
-  If you ran the first version, run the hotfix file again (or `UPDATE bfa_hotfixes.lock SET Skill1 = 0
-  WHERE ID BETWEEN 50000 AND 59999`), restart `worldserver` and delete the client's `Cache` folder.
+  - Both SQL files ran twice in a test database without errors.
+- **History:** the first version added new hotfix locks. With a skill number on them the client refused
+  the node ("Requires Herbalism 1" with Outland Herbalism 1); with skill 0 they opened, but never showed
+  on tracking, even with a plain slot added.
+- **Status (2026-11-09, Four, first version at skill 0):** Felweed opens with Outland Herbalism 1 and
+  raises Outland Herbalism; Fel Iron and Khorium raise Outland Mining. Blizzard's locks on Felweed and
+  Fel Iron also open them but did not track without the patch. The patch (tracking, plain-slot check)
+  and the other nodes on Blizzard's locks are not yet tested in game.
 
 ### Core: a lower expansion skill never lowers the profession skill
 
@@ -130,7 +140,7 @@ Run it from `~/bfa/source` after `git -C ../tools-repo pull`, then restart `worl
 - **Status:** not yet tested in game.
 
 #### To pick up the skinning tiers, gathering locks and sync change
-`profession-skill-sync.patch` changed and `skinning-tiers.patch` is new, so this swaps the old
+`profession-skill-sync.patch` changed and `skinning-tiers.patch` and `gathering-tier-locks.patch` are new, so this swaps the old
 version of the sync patch for the new one. The other patches you applied are unchanged.
 ```
 cd ~/bfa/source
@@ -138,11 +148,13 @@ git -C ../tools-repo pull
 git -C ../tools-repo show 05f80be:tools/bfa/profession-skill-sync.patch | git apply -R && echo "old sync patch removed"
 git apply ../tools-repo/tools/bfa/profession-skill-sync.patch && echo "new sync patch applied"
 git apply ../tools-repo/tools/bfa/skinning-tiers.patch && echo "skinning tiers applied"
+git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch && echo "gathering locks applied"
 grep -c "bestValue < player->GetPureSkillValue" src/server/game/Entities/Player/Player.cpp
 grep -c GetSkinningTier src/server/game/Spells/Spell.cpp src/server/game/Spells/SpellEffects.cpp
+grep -c hasExpansionSlot src/server/game/Spells/Spell.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
-All three echo lines print, the first grep prints 1 and the second prints 2 for each file. Then the
+All four echo lines print. The greps print 1, then 2 for each file, then 3. Then the
 two SQL files, one at a time (each asks for the password):
 ```
 mysql -u root -p bfa_hotfixes < ../tools-repo/sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql
