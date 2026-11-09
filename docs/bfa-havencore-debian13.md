@@ -244,8 +244,19 @@ exist, so they taught nothing), and Grix "Ironfists" Barlow at his own Kul Tiran
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_09_00_profession_tier_trainers.sql
 ```
 
+A fourth world fix makes the trainers actually open that list. The core picks a trainer's list by the
+gossip option you click; when no `creature_trainer` row matches that option it falls back to the old
+`npc_trainer` list, which has no expansion skills. 266 profession trainers (Rorelien and Ruak Stronghorn
+among them) had no row for the option they show. It also points the Boralus trainers at the Kul Tiras
+lists, so they teach Classic to Kul Tiran:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_09_01_profession_trainer_options.sql
+```
+
 Then restart `worldserver`. The trainers only teach the skill itself: this database has no trainer
 recipes for the Outland to Legion crafting skills, so those recipes come from recipe items only.
+`PATCHNOTES.md` (2026-11-09) lists every profession trainer by zone.
 
 `deadmines-fixes.patch` collects the fixes for The Deadmines (map 36):
 
@@ -867,7 +878,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_07_06_darkmoon_carousel_empty.sql` | Darkmoon Faire: carousel rides removed, the platform spins empty |
 | `2026_11_07_30_darkmoon_island_rares.sql` | Darkmoon Island rares: Darkmoon Rabbit spawned (its pet always drops, no solo-lethal bite), Moonfang gets her fight and always drops one of her items, Death Metal Knight spawned in the Cauldron of Rock with his sword; all three are elites that scale with your level (verified in game 2026-11-07) |
 
-Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` lets trainers teach the expansion skills).
+Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills).
 
 ## 11. Status
 
