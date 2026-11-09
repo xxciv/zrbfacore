@@ -77,7 +77,8 @@ Draft PR, not merged yet.
     (`GetQuestDialogStatus`) is something other than none / unavailable.
   - The next chain quest is still offered by the server as before (`HandleQuestgiverChooseRewardOpcode`
     unchanged). No DB change.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four on 2026-11-09 ("flawless": turn-ins close the window and
+  chain quests open on their own page).
 - **Pick up:** this only adds a new patch; the patches you already applied are unchanged.
   `Player.cpp` changes, so the build is short.
 
