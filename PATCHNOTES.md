@@ -3,6 +3,48 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-09 (Quest fixes: scout objectives never tick)
+
+Draft PR, not merged yet.
+
+### Core: area trigger ("scout") objectives never show as done in the quest log
+
+- **Found** (Four, 2026-11-09): The Fargodeep Mine (quest 62, "Scout through the Fargodeep Mine")
+  never counted, however often the mine was run. `.debug areatriggers` showed the server accepting
+  both of its triggers (197 at the entrance, 88 in the lower cavern), and Marshal Dughan accepted
+  the turn-in, but the quest tracker never changed. Reproduced on a second character.
+- **Cause:** the server did credit it. `areatrigger_involvedrelation` (88, 197 -> 62), the
+  SmartTrigger row on 197 and objective 252033 (type 10 area trigger, StorageIndex 0) are all
+  correct, and `Player::AreaExploredOrEventHappens` stores the objective and completes the quest.
+  But for objectives that are a flag rather than a count (`QuestObjective::IsStoringFlag`: area
+  trigger, win pet battle against NPC, defeat battle pet, criteria tree) the core told the client by
+  setting bit `256 << StorageIndex` in `QuestLog::StateFlags`, the Legion layout. The 8.3.7 client
+  reads those from the quest log's `ObjectiveFlags` field (`1 << StorageIndex`), which the core
+  names `Field_10` and never wrote. Stock TrinityCore 8.3.7 has the same bug; TrinityCore 9.0.5
+  names the field `ObjectiveFlags` and writes it this way.
+- **Changed:** new `tools/bfa/quest-objective-flags.patch` (after `gathering-tier-locks.patch`),
+  `Player.cpp` / `Player.h`:
+  - New `Player::SetQuestSlotObjectiveFlag` / `RemoveQuestSlotObjectiveFlag` set or clear
+    `1 << StorageIndex` in `QuestLog::Field_10`.
+  - `Player::SetQuestObjectiveData` (live credit) and `Player::_LoadQuestStatusObjectives` (login)
+    use them instead of `SetQuestSlotState(256 << index)` / `RemoveQuestSlotState(256 << index)`.
+  - `Player::SetQuestSlot` clears `Field_10` when a quest goes into a log slot, so a new quest
+    doesn't inherit the previous quest's ticks.
+  - No DB change. Affects every area trigger, pet battle and criteria objective, not just Fargodeep.
+- **Status:** untested in game.
+- **Pick up:** this only adds a new patch; the patches you already applied are unchanged.
+  `Player.h` changes, so most of the core rebuilds.
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-objective-flags.patch | git apply && echo "quest objective flags applied"
+  grep -c SetQuestSlotObjectiveFlag src/server/game/Entities/Player/Player.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The echo line prints and the grep prints 3. Then restart worldserver.
+
 ## 2026-11-09 (World fixes: Orgrimmar balloon Pandaren)
 
 Merged to `main` with PR #47 on 2026-11-09.

@@ -123,6 +123,7 @@ git apply ../tools-repo/tools/bfa/darkmoon-race.patch
 git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 git apply ../tools-repo/tools/bfa/skinning-tiers.patch
 git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
+git apply ../tools-repo/tools/bfa/quest-objective-flags.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -427,6 +428,12 @@ level, which `transmog-collection.patch` now lets you collect. The check now fol
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
+
+`quest-objective-flags.patch` makes the quest log show objectives that are a flag rather than a
+count: "scout" area triggers (The Fargodeep Mine), pet battle wins and criteria objectives. The
+8.3.7 client reads them from the quest log's `ObjectiveFlags` field (`1 << StorageIndex`, called
+`Field_10` in the core), but the core set bit `256 << StorageIndex` in `StateFlags`, the 7.x layout.
+The server counted the objective and the quest could be turned in, but the tracker never ticked it.
 
 ## 4. Configure and compile
 
@@ -805,6 +812,7 @@ git apply ../tools-repo/tools/bfa/darkmoon-race.patch
 git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 git apply ../tools-repo/tools/bfa/skinning-tiers.patch
 git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
+git apply ../tools-repo/tools/bfa/quest-objective-flags.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
