@@ -3,6 +3,171 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-09
+
+### World: trainers teach every expansion's profession skill
+
+- **Found** (Four asked where to learn Outland Herbalism, 2026-11-09): no `trainer_spell` row taught
+  the Outland, Northrend, Pandaria, Draenor or Legion skill of any profession. Classic trainer lists
+  taught Classic and, for some lists, Cataclysm (122, 991, 407, 993, 19778, 990, 163, 136, 995, 5566,
+  989, 91, 992). The herbalism trainers Rorelien, Ruak Stronghorn, Botanist Alaenra, Jijia, Morae, the
+  Northrend and both Dalaran trainers, Kali Healtouch, Aranae Venomblood, Angrun and Ruw pointed at
+  trainer list 133, which has no `trainer` row, so they taught nothing. Grix "Ironfists" Barlow
+  (133536) pointed at the missing list 994.
+- **Changed:** `sql/fixes/world/2026_11_09_00_profession_tier_trainers.sql` (`bfa_world`):
+  - 436 `trainer_spell` rows: every trainer list that teaches a profession's Classic skill also teaches
+    its Outland, Northrend, Cataclysm (where missing), Pandaria, Draenor and Legion skill spells
+    (Herbalism 265822/265824/265826/265828/265830/265832, Mining 265840-265850, Skinning
+    265858-265868, crafting 2642xx-2646xx). 10 copper, `ReqSkillLine` = the profession (182, 186, 393,
+    ...) at 1, no level requirement. Bandage list 877 is left out.
+  - `creature_trainer` list 133 -> 424 (herbalism), and Grix 994 -> 133536 (his own list).
+  - Kul Tiran stays with the Kul Tiras/Zandalar lists; fishing lists already teach every expansion.
+  - Ran twice in a test database: 436 rows each time, no existing row removed.
+- **Not fixed:** the database has no trainer recipes for the Outland to Legion crafting skills
+  (Outland Alchemy's 11 on list 987 aside). Those skills can be learned and raised with recipe items,
+  but trainers don't sell their recipes.
+- **Status:** not yet tested in game.
+
+#### To pick up the trainer fix
+```
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_09_00_profession_tier_trainers.sql
+```
+Run it from `~/bfa/source` after `git -C ../tools-repo pull`, then restart `worldserver`.
+
+## 2026-11-08
+
+### Core: skinning uses each expansion's own skill
+
+- **Found** (Four, 2026-11-08): Cataclysm beasts (Hyjal, Vashj'ir, Deepholm, Uldum, Twilight Highlands,
+  levels 80-88 in `creature_template`) could never be skinned. `Spell::CheckCast` asked for 5 skill per
+  creature level (400-440) from the profession skill 393, which can't go above 300 (Classic Skinning's
+  max). `Spell::EffectSkinning` always raised Classic Skinning (2564), so Cataclysm Skinning (2561) and
+  the other expansion skills never moved. The same held for every beast above level 60.
+- **Changed:** new `tools/bfa/skinning-tiers.patch`:
+  - New `src/server/game/Spells/SkinningTiers.h`. `GetSkinningTier` picks the beast's expansion skill,
+    and `GetSkinningTierRequirement` sets the skill it needs.
+  - `Spell::CheckCast` (`SPELL_EFFECT_SKINNING`, `Spell.cpp`) checks that expansion skill. Classic
+    beasts keep the old numbers, but they now check Classic Skinning (2564) instead of 393.
+  - `Spell::EffectSkinning` (`SpellEffects.cpp`) raises that expansion skill, using the same requirement
+    for its skill-up chance.
+  - Beasts skinned with Herbalism, Mining or Engineering are unchanged. No SQL.
+  - Compiles with GCC 13 on the full patch chain.
+
+  What each expansion needs:
+
+  | Expansion | Skill (ID) | Beasts it covers | Skill needed by beast level |
+  |---|---|---|---|
+  | Classic | Classic Skinning (2564), max 300 | `HealthScalingExpansion` 0 and level 1-60 | unchanged: 1-10 any, 15: 50, 20: 100, 30: 150, 40: 200, 50: 250, 60: 300 (`(level-10)*10` below 100 skill, `level*5` from 100) |
+  | Outland | Outland Skinning (2563), max 75 | expansion 1, or level 61-70 | 58: 1, 60: 9, 62: 17, 64: 25, 66: 33, 68: 41, 70: 50 |
+  | Northrend | Northrend Skinning (2562), max 75 | expansion 2, or level 71-80 | 68: 1, 70: 9, 72: 17, 74: 25, 76: 33, 78: 41, 80: 50 |
+  | Cataclysm | Cataclysm Skinning (2561), max 75 | expansion 3, or level 81-85 | 80: 1, 81: 10, 82: 20, 83: 30, 84: 40, 85: 50 |
+  | Pandaria | Pandaria Skinning (2560), max 75 | expansion 4, or level 86-90 | 85: 1, 86: 10, 87: 20, 88: 30, 89: 40, 90: 50 |
+  | Draenor | Draenor Skinning (2559), max 100 | expansion 5, or level 91-100 | 90: 1, 92: 15, 94: 30, 96: 45, 98: 60, 100: 75 |
+  | Legion | Legion Skinning (2558), max 100 | expansion 6, or level 101-110 | 98: 1, 100: 13, 102: 25, 104: 38, 106: 50, 108: 62, 110: 75 |
+  | Kul Tiran | Kul Tiran Skinning (2557), max 150 | expansion 7, or level 111 and up | 110: 1, 112: 25, 114: 50, 116: 75, 118: 100, 120: 125 |
+
+  "Expansion N" is the creature's `creature_template.HealthScalingExpansion`. Many templates leave it at 0
+  whatever their level, so a 0 above level 60 picks the expansion by `minlevel` instead (the level ranges
+  in the third column). Outside those levels, a beast below its expansion's first level needs 1, and one above its
+  last level needs the same as the last level. For every expansion except Classic the requirement rises
+  evenly from 1 at the first level to the skill's max minus 25 at the last. The max is read from your
+  character, so the Draenor, Legion and Kul Tiran columns assume maxes of 100, 100 and 150; if your
+  character shows a different max, the top of the range is that max minus 25. Learning the
+  expansion's skill from a trainer is enough to start: with it at 1 you can skin that expansion's
+  lowest beasts.
+
+- **Status:** confirmed in game by Four on 2026-11-09: Outland beasts raise Outland Skinning, and
+  Fleeing Stag (47263, Hyjal, level 80) raises Cataclysm Skinning.
+
+### Core and world: herb and ore nodes use each expansion's own skill
+
+- **Found** (Four asked for every tradeskill to work like skinning, 2026-11-08). Four's `Lock.db2` shows
+  that almost every herb and ore node from Outland to Legion uses the plain Herbalism (lock type 2) or
+  Mining (3) lock with the old 1-600 skill: for example Lichbloom 425, Twilight Jasmine 525, Golden Lotus
+  550, Saronite 400 and Pyrite 525. The client checks that against the profession skill, which can't go
+  above 300, so none of those could be gathered, and gathering only raised Classic Herbalism/Mining
+  (`SkillByLockType` maps types 2 and 3 to 2556 and 2572). Each expansion has its own lock types (33-39
+  herbs, 41-47 mining) and gather spells 265821-265853, which its trainer spell teaches (265822 Outland
+  Herbalism teaches 265821, and so on). `Lock.db2` has Blizzard's lock for each: herbs 2856 (Outland)
+  to 2862 (Kul Tiran), ore 2864 to 2870, each with the expansion slot and a plain Herbalism/Mining slot
+  at skill 0. Only Kul Tiran nodes, Cinderbloom, Rich Elementium and Blackrock used them.
+- **Changed:**
+  - `sql/fixes/world/2026_11_08_00_gathering_tier_locks.sql` (`bfa_world`) points `Data0` (lock) of 93
+    `gameobject_template` herb and ore nodes at their expansion's Blizzard lock (2856-2861, 2864-2869).
+    Gathering nodes (type 50) that had old-scale trivial skill also get `Data4`/`Data5` = difficulty
+    and difficulty + 25 (colour and skill-up chance). Each line names the node, its old skill and its
+    new difficulty.
+    - A node's expansion is where most of its spawns are: map 530 Outland, minus the blood elf and
+      draenei zones; Outland and Northrend dungeon maps; 571 Northrend; Cataclysm zones and Deepholm;
+      870 Pandaria; 1116 Draenor; 1220 Legion.
+    - Every node needs only its expansion's skill learned. The difficulty scales the old skill over
+      the expansion's old range (Outland 300-375, Northrend 350-450, Cataclysm 425-525, Pandaria
+      500-600) to 1 up to the skill's max minus 25.
+    - Only locks with a single herb or mining slot change. Quest objects that also open by kneeling or
+      with an item keep their lock.
+  - New `tools/bfa/gathering-tier-locks.patch` (after `skinning-tiers.patch`):
+    - `Spell::CanOpenLock` (`Spell.cpp`) refuses a lock's plain Herbalism/Mining slot when the lock
+      also has an Outland to Kul Tiran slot, so Classic Herbalism/Mining alone can't gather expansion
+      nodes through Blizzard's skill-0 plain slot. It fails with `SPELL_FAILED_MIN_SKILL` and the
+      expansion skill, 1 (`Spell::CheckCast` passes them on), so the client says "Requires Northrend
+      Herbalism" and so on; the first build said "Invalid target" (Four, Goldclover, 2026-11-09). With
+      both spells known the client casts the expansion one.
+    - `AuraEffect::HandleAuraTrackResources` (`SpellAuraEffects.cpp`): Find Herbs (lock type 2) and
+      Find Minerals (3) also mark Herbalism 32-39 and Mining 40-47 in `TrackResourceMask`. The client
+      tracks an expansion node by its expansion lock type, and upstream never set those, so no
+      expansion node (Kul Tiran ones included) showed on the minimap.
+    - Compiles with GCC 13 on the full patch chain.
+  - `sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql` (`bfa_hotfixes`) caps Classic locks
+    1632 (Small and Large Obsidian Chunk) and 399 (Arcanite Lode) at 300, from 305 and 310
+    (`hotfix_data` 9301632 and 9300399, table hash 0xE9BECB23). It also removes the 38 locks
+    (IDs 5xxxx) and their `hotfix_data` that the first version of the fix added.
+  - The guide's section 3 has the full table per expansion.
+  - Both SQL files ran twice in a test database without errors.
+- **History:** the first version added new hotfix locks. With a skill number on them the client refused
+  the node ("Requires Herbalism 1" with Outland Herbalism 1); with skill 0 they opened, but never showed
+  on tracking, even with a plain slot added.
+- **Status:** confirmed in game by Four on 2026-11-09: Felweed raises Outland Herbalism, Fel Iron and
+  Khorium raise Outland Mining, Outland and Northrend herbs and ore show with Find Herbs/Minerals, and
+  Goldclover without Northrend Herbalism says "Your skill is not high enough. Requires Northrend
+  Herbalism (1)". Cataclysm to Legion nodes not tried individually (same locks and code).
+
+### Core: a lower expansion skill never lowers the profession skill
+
+- **Found** while checking crafting for Four's request. `Player::UpdateCraftSkill` (upstream) raises the
+  profession skill itself for Classic Inscription (2514) and Classic Engineering (2506) recipes. With
+  `SyncParentProfessionSkill` keeping the profession skill at the highest expansion skill, learning, say,
+  Cataclysm Inscription at 1 would have set Inscription back to 1. Every other crafting profession
+  already raises the recipe's own expansion skill (`SkillLineAbility.SkillupSkillLineID`).
+- **Changed:** `tools/bfa/profession-skill-sync.patch` (`Player.cpp`, `SyncParentProfessionSkill`): it
+  only ever raises the profession skill (returns when the highest expansion skill is below it).
+  Compiles with GCC 13 on the full patch chain.
+- **Status:** not yet tested in game.
+
+#### To pick up the skinning tiers, gathering locks and sync change
+`profession-skill-sync.patch` changed and `skinning-tiers.patch` and `gathering-tier-locks.patch` are new, so this swaps the old
+version of the sync patch for the new one. The other patches you applied are unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+git -C ../tools-repo show 05f80be:tools/bfa/profession-skill-sync.patch | git apply -R && echo "old sync patch removed"
+git apply ../tools-repo/tools/bfa/profession-skill-sync.patch && echo "new sync patch applied"
+git apply ../tools-repo/tools/bfa/skinning-tiers.patch && echo "skinning tiers applied"
+git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch && echo "gathering locks applied"
+grep -c "bestValue < player->GetPureSkillValue" src/server/game/Entities/Player/Player.cpp
+grep -c GetSkinningTier src/server/game/Spells/Spell.cpp src/server/game/Spells/SpellEffects.cpp
+grep -c expansionSkill src/server/game/Spells/Spell.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+All four echo lines print. The greps print 1, then 2 for each file, then 4. Then the
+two SQL files, one at a time (each asks for the password):
+```
+mysql -u root -p bfa_hotfixes < ../tools-repo/sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql
+```
+```
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_08_00_gathering_tier_locks.sql
+```
+Then restart `worldserver` and delete the client's `Cache` folder.
+
 ## 2026-11-07 (World fixes: Darkmoon Island)
 
 Merged to `main` with PR #45 on 2026-11-07.
