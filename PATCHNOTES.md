@@ -555,7 +555,8 @@ Then restart `worldserver`. Run 2026_11_09_00 first if you have not yet.
 - **Not fixed:** the database has no trainer recipes for the Outland to Legion crafting skills
   (Outland Alchemy's 11 on list 987 aside). Those skills can be learned and raised with recipe items,
   but trainers don't sell their recipes.
-- **Status:** not yet tested in game.
+- **Status:** confirmed in game 2026-11-09: Simon Tanner (Stormwind) lists Outland to Legion
+  Leatherworking.
 
 #### To pick up the trainer fix
 ```
