@@ -3,6 +3,35 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-09 (World fixes: Orgrimmar balloon Pandaren)
+
+Merged to `main` with PR #47 on 2026-11-09.
+
+### World: five Pandaren fall out of the balloon outside Orgrimmar
+
+- **Found** (Four, 2026-11-09): outside Orgrimmar's front gate, by the Huojin Pandaren and the
+  dragon turtles, a group of Pandaren falls from the tethered hot air balloon to the ground.
+- **Cause:** Chao-Ju 2756, Jiming 5029, Winwa 5034, Winsum 16868 and Jising 16869 have one spawn
+  each (guids 300001459, 300001460, 300001469, 300001475, 300001476) at z 56.7, inside the
+  balloon's basket about 28 yards above the ground (z 28). The basket isn't solid for the server
+  and their templates are ground-only (`InhabitType` 3), so they drop to the ground on spawn.
+- **Changed:** `sql/fixes/world/2026_11_09_30_orgrimmar_balloon_pandaren.sql`: `creature_template`
+  `InhabitType` 3 -> 4 for entries 2756, 5029, 5034, 16868, 16869. `Creature::UpdateMovementFlags`
+  then turns gravity off for them, so they stand still in the basket. Their spawns are untouched.
+- **Status:** confirmed in game by Four on 2026-11-09 (they stay in the basket).
+- **Pick up:**
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+  ```
+
+  ```
+  git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_09_30_orgrimmar_balloon_pandaren.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-09
 
 ### World: older expansion profession skills need the expansion's level
