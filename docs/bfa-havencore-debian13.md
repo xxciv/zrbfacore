@@ -206,7 +206,8 @@ patch does two things in the core:
 
 - `Spell::CanOpenLock` (`Spell.cpp`) never opens a lock through its plain Herbalism or Mining slot when
   the lock also has an Outland to Kul Tiran slot, so Classic Herbalism or Mining alone can't gather
-  expansion nodes. The client uses the expansion's gather spell when you know it.
+  expansion nodes; the client then says "Requires Northrend Herbalism" (or whichever expansion). The
+  client uses the expansion's gather spell when you know it.
 - `AuraEffect::HandleAuraTrackResources` (`SpellAuraEffects.cpp`): the client tracks an expansion node
   by its expansion lock type, so Find Herbs and Find Minerals now also mark Herbalism 32-39 and Mining
   40-47 (upstream marked only 2 and 3, and no expansion node showed on the minimap).

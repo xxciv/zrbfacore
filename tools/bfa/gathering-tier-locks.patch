@@ -38,26 +38,44 @@ index 8bf0353..f9a455b 100644
  
  void AuraEffect::HandleAuraTrackStealthed(AuraApplication const* aurApp, uint8 mode, bool apply) const
 diff --git a/src/server/game/Spells/Spell.cpp b/src/server/game/Spells/Spell.cpp
-index 567f631..488dda4 100644
+index 567f631..4009e52 100644
 --- a/src/server/game/Spells/Spell.cpp
 +++ b/src/server/game/Spells/Spell.cpp
-@@ -7670,6 +7670,21 @@ SpellCastResult Spell::CanOpenLock(uint32 effIndex, uint32 lockId, SkillType& sk
+@@ -5670,6 +5670,11 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* param1 /*= nullptr*/, uint
+ 
+                 // check lock compatibility
+                 SpellCastResult res = CanOpenLock(effect->EffectIndex, lockId, skillId, reqSkillValue, skillValue);
++                if (res == SPELL_FAILED_MIN_SKILL && param1 && param2)
++                {
++                    *param1 = skillId;
++                    *param2 = reqSkillValue;
++                }
+                 if (res != SPELL_CAST_OK)
+                     return res;
+                 break;
+@@ -7670,6 +7675,27 @@ SpellCastResult Spell::CanOpenLock(uint32 effIndex, uint32 lockId, SkillType& sk
  
                  reqKey = true;
  
 +                // Expansion herb and ore locks (Outland to Kul Tiran) also carry a plain Herbalism/Mining slot
 +                // with no skill, which the client uses for tracking. Only the expansion's own gather spell
-+                // may open them, so Classic Herbalism/Mining alone can't gather expansion nodes.
++                // may open them, so Classic Herbalism/Mining alone can't gather expansion nodes: the cast
++                // fails with "Requires <expansion> Herbalism/Mining" instead.
 +                if (lockInfo->Index[j] == LOCKTYPE_HERBALISM || lockInfo->Index[j] == LOCKTYPE_MINING)
 +                {
-+                    bool hasExpansionSlot = false;
++                    SkillType expansionSkill = SKILL_NONE;
 +                    for (int k = 0; k < MAX_LOCK_CASE; ++k)
 +                        if (lockInfo->Type[k] == LOCK_KEY_SKILL &&
 +                            ((lockInfo->Index[k] >= LOCKTYPE_OUTLAND_HERBALISM && lockInfo->Index[k] <= LOCKTYPE_KUL_TIRAN_HERBALISM) ||
 +                             (lockInfo->Index[k] >= LOCKTYPE_OUTLAND_MINING && lockInfo->Index[k] <= LOCKTYPE_KUL_TIRAN_MINING)))
-+                            hasExpansionSlot = true;
-+                    if (hasExpansionSlot)
-+                        continue;
++                            expansionSkill = SkillByLockType(LockType(lockInfo->Index[k]));
++                    if (expansionSkill != SKILL_NONE)
++                    {
++                        skillId = expansionSkill;
++                        reqSkillValue = 1;
++                        skillValue = 0;
++                        return SPELL_FAILED_MIN_SKILL;
++                    }
 +                }
 +
                  skillId = SkillByLockType(LockType(lockInfo->Index[j]));

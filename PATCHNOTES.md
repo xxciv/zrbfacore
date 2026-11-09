@@ -105,9 +105,12 @@ Run it from `~/bfa/source` after `git -C ../tools-repo pull`, then restart `worl
     - Only locks with a single herb or mining slot change. Quest objects that also open by kneeling or
       with an item keep their lock.
   - New `tools/bfa/gathering-tier-locks.patch` (after `skinning-tiers.patch`):
-    - `Spell::CanOpenLock` (`Spell.cpp`) skips a lock's plain Herbalism/Mining slot when the lock also
-      has an Outland to Kul Tiran slot, so Classic Herbalism/Mining alone can't gather expansion nodes
-      through Blizzard's skill-0 plain slot. With both spells known the client casts the expansion one.
+    - `Spell::CanOpenLock` (`Spell.cpp`) refuses a lock's plain Herbalism/Mining slot when the lock
+      also has an Outland to Kul Tiran slot, so Classic Herbalism/Mining alone can't gather expansion
+      nodes through Blizzard's skill-0 plain slot. It fails with `SPELL_FAILED_MIN_SKILL` and the
+      expansion skill, 1 (`Spell::CheckCast` passes them on), so the client says "Requires Northrend
+      Herbalism" and so on; the first build said "Invalid target" (Four, Goldclover, 2026-11-09). With
+      both spells known the client casts the expansion one.
     - `AuraEffect::HandleAuraTrackResources` (`SpellAuraEffects.cpp`): Find Herbs (lock type 2) and
       Find Minerals (3) also mark Herbalism 32-39 and Mining 40-47 in `TrackResourceMask`. The client
       tracks an expansion node by its expansion lock type, and upstream never set those, so no
@@ -151,10 +154,10 @@ git apply ../tools-repo/tools/bfa/skinning-tiers.patch && echo "skinning tiers a
 git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch && echo "gathering locks applied"
 grep -c "bestValue < player->GetPureSkillValue" src/server/game/Entities/Player/Player.cpp
 grep -c GetSkinningTier src/server/game/Spells/Spell.cpp src/server/game/Spells/SpellEffects.cpp
-grep -c hasExpansionSlot src/server/game/Spells/Spell.cpp
+grep -c expansionSkill src/server/game/Spells/Spell.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
-All four echo lines print. The greps print 1, then 2 for each file, then 3. Then the
+All four echo lines print. The greps print 1, then 2 for each file, then 4. Then the
 two SQL files, one at a time (each asks for the password):
 ```
 mysql -u root -p bfa_hotfixes < ../tools-repo/sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql
