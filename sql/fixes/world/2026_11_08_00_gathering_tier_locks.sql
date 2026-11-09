@@ -2,12 +2,12 @@
 -- the hotfix fix sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql.
 --
 -- Points each Outland-to-Legion herb and ore node at the new lock for its expansion (from where it
--- spawns) and requirement. The requirement scales the node's old 1-600 skill over its expansion's old
--- range (Outland and Northrend 300-375 and 350-450, Cataclysm 425-525, Pandaria 500-600) to 1 up to the
--- expansion skill's max minus 25; nodes that asked for nothing need 1, so the expansion's skill must be
--- learned. Only nodes whose lock has no other way to open it change (quest objects you can open by
--- kneeling keep theirs). Gathering nodes (type 50) that carried old-scale trivial skill (Data4/Data5,
--- used for skill-up chance) get the requirement and requirement + 25 instead, like Kul Tiran nodes.
+-- spawns). The lock needs only the expansion's skill learned. The node's difficulty (the number after
+-- the arrow) scales its old 1-600 skill over its expansion's old range (Outland and Northrend 300-375 and
+-- 350-450, Cataclysm 425-525, Pandaria 500-600) to 1 up to the expansion skill's max minus 25. Gathering
+-- nodes (type 50) that carried old-scale trivial skill (Data4/Data5: colour and skill-up chance) get the
+-- difficulty and difficulty + 25 instead, like Kul Tiran nodes. Only nodes whose lock has no other way
+-- to open it change (quest objects you can open by kneeling keep theirs).
 -- Each UPDATE only applies while the node still has its old lock, so it is safe to run more than once.
 -- Restart worldserver and delete the client Cache folder.
 UPDATE `gameobject_template` SET `Data0`=51001, `Data4`=1, `Data5`=26 WHERE `entry`=181270 AND `Data0`=29; -- Felweed herb, Outland old 0 -> 1

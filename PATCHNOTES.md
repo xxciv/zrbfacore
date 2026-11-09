@@ -91,27 +91,31 @@ Run it from `~/bfa/source` after `git -C ../tools-repo pull`, then restart `worl
   already used them.
 - **Changed:**
   - `sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql` (`bfa_hotfixes`) adds 38 `lock` rows,
-    ID `50000 + expansion*1000 + 100 (ore) + requirement`. Each has one slot: Type 2, Index = that
-    expansion's herb or ore lock type, Skill = the requirement.
+    ID `50000 + expansion*1000 + 100 (ore) + difficulty`. Each has one slot: Type 2, Index = that
+    expansion's herb or ore lock type, Skill 0, like Blizzard's own expansion locks (Cinderbloom, Kul
+    Tiran nodes). The first version had Skill = 1-50, and the client refused those nodes with "Requires
+    Herbalism 1" although Four had Outland Herbalism 1 (2026-11-09).
   - The same file caps Classic locks 1632 (Small and Large Obsidian Chunk) and 399 (Arcanite Lode) at
     300, from 305 and 310. `hotfix_data` ids are 9200000 + (ID - 50000) and 9300000 + ID, table hash
     0xE9BECB23.
   - `sql/fixes/world/2026_11_08_00_gathering_tier_locks.sql` (`bfa_world`) sets `Data0` (lock) on 93
     `gameobject_template` herb and ore nodes. Gathering nodes (type 50) that had old-scale trivial
-    skill also get `Data4`/`Data5` = requirement and requirement + 25. Each line names the node, its
-    old skill and its new requirement.
+    skill also get `Data4`/`Data5` = difficulty and difficulty + 25 (colour and skill-up chance). Each
+    line names the node, its old skill and its new difficulty.
     - A node's expansion is where most of its spawns are: map 530 Outland, minus the blood elf and
       draenei zones; Outland and Northrend dungeon maps; 571 Northrend; Cataclysm zones and Deepholm;
       870 Pandaria; 1116 Draenor; 1220 Legion.
-    - The requirement scales the old skill over the expansion's old range (Outland 300-375, Northrend
-      350-450, Cataclysm 425-525, Pandaria 500-600) to 1 up to the skill's max minus 25. Old 0 becomes
-      1, so the expansion's skill must be learned.
+    - Every node needs only its expansion's skill learned. The difficulty scales the old skill over
+      the expansion's old range (Outland 300-375, Northrend 350-450, Cataclysm 425-525, Pandaria
+      500-600) to 1 up to the skill's max minus 25.
     - Only locks with a single herb or mining slot change. Quest objects that also open by kneeling or
       with an item keep their lock.
   - The guide's section 3 has the full table per expansion.
-  - Both files ran twice in a test database without errors. The client part (new lock rows sent as
-    hotfixes) is untested.
-- **Status:** not yet tested in game.
+  - Both files ran twice in a test database without errors.
+- **Status:** Felweed confirmed in game by Four (2026-11-09, lock 51001 at Skill 0): it opens with
+  Outland Herbalism 1 and raises Outland Herbalism, not Herbalism. Other expansions and ore untested.
+  If you ran the first version, run the hotfix file again (or `UPDATE bfa_hotfixes.lock SET Skill1 = 0
+  WHERE ID BETWEEN 50000 AND 59999`), restart `worldserver` and delete the client's `Cache` folder.
 
 ### Core: a lower expansion skill never lowers the profession skill
 

@@ -184,14 +184,14 @@ The new code is in `src/server/game/Spells/SkinningTiers.h`, used by `Spell::Che
 and `Spell::EffectSkinning` (the skill-up). Beasts skinned with Herbalism, Mining or Engineering are
 unchanged.
 
-Herb and ore nodes get the same treatment from two SQL fixes, not a patch, because the requirement
-lives in the client's data. In the 8.3.7 `Lock.db2` almost every node from Outland to Legion uses the
+Herb and ore nodes get the same treatment from two SQL fixes, not a patch, because the lock lives in
+the client's data. In the 8.3.7 `Lock.db2` almost every node from Outland to Legion uses the
 plain Herbalism or Mining lock with the old 1-600 skill (Lichbloom 425, Twilight Jasmine 525, Golden
 Lotus 550), which the client checks against the profession skill. That skill can't go above 300, so
 those nodes could never be gathered, and gathering only raised Classic Herbalism and Mining. Each
 expansion also has its own herb and ore lock types, each with its own gather spell that the trainer
-teaches along with the expansion's skill; Kul Tiran nodes already use them. The hotfix fix adds one
-lock per expansion and requirement (and caps the two Classic ore locks that asked for 305 and 310 at
+teaches along with the expansion's skill; Kul Tiran nodes already use them. The hotfix fix adds locks of
+those types (and caps the two Classic ore locks that asked for 305 and 310 at
 300), and the world fix points 93 node templates at them:
 
 ```sh
@@ -200,10 +200,13 @@ mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_08_00_gath
 ```
 
 Then restart `worldserver` and delete the client's `Cache` folder (it keeps the old node data). The
-expansion comes from where the node spawns; the requirement scales its old skill over the expansion's
-old range to 1 up to the expansion skill's max minus 25. What the main nodes need now:
+expansion comes from where the node spawns. Like Blizzard's own expansion locks, the new locks ask for
+no skill number: a node only needs its expansion's skill learned (the client refuses a number on these
+lock types and says "Requires Herbalism 1" even when you have it). Each gathering node also gets a
+difficulty, which sets its colour and how often it gives a skill-up: its old skill scaled over the
+expansion's old range to 1 up to the expansion skill's max minus 25. The main nodes' difficulty:
 
-| Expansion | Herbs (skill needed) | Ore (skill needed) |
+| Expansion | Herbs (difficulty) | Ore (difficulty) |
 |---|---|---|
 | Classic | unchanged | unchanged; Small/Large Obsidian Chunk and Arcanite Lode 300 (were 305 and 310) |
 | Outland (Outland Herbalism/Mining) | Felweed, Dreaming Glory (most nodes), Terocone, Netherbloom, Nightmare Vine, Mana Thistle, Blindweed 1; Dreaming Glory (old 315) 10; Ragveil 17; Flame Cap 23; Ancient Lichen 27; Netherdust Bush 33 | Fel Iron, Adamantite, Rich Adamantite, Khorium, Nethercite 1; Ancient Gem Vein 50 |
@@ -214,9 +217,9 @@ old range to 1 up to the expansion skill's max minus 25. What the main nodes nee
 | Legion | Aethril, Dreamleaf, Foxflower, Fjarnskaggl, Starlight Rose, Felwort, Fel-Encrusted Herb 1 | Leystone, Felslate and their rich nodes and seams 1 |
 | Kul Tiran | unchanged (already per expansion) | unchanged (already per expansion) |
 
-A requirement of 1 means the node needs that expansion's skill learned. Quest objects that also open
-without the skill (by kneeling, or with a quest item) are left alone. The world fix lists every node,
-its old skill and its new requirement.
+Every one of these needs only its expansion's skill learned. Quest objects that also open without the
+skill (by kneeling, or with a quest item) are left alone. The world fix lists every node, its old skill
+and its new difficulty.
 
 To learn the expansion skills you need a trainer that teaches them, and on this database none taught
 Outland, Northrend, Pandaria, Draenor or Legion for any profession (only some taught Cataclysm). A third
