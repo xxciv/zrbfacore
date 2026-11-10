@@ -3,7 +3,6 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-<<<<<<< HEAD
 ## 2026-11-10 (Quest fixes: patch chain on newer upstream)
 
 Merged to `main` with PR #55 on 2026-11-10.
@@ -36,7 +35,7 @@ Merged to `main` with PR #55 on 2026-11-10.
   - Checked: the full guide chain (all 43 patches) applies cleanly, in order, on 2c13546, f8f34b1
     and 9876a1a. Not compiled on f8f34b1 or 9876a1a.
 - **Status:** no in-game change. Four's server (2c13546) already has everything; nothing to pick up.
-=======
+
 ## 2026-11-10 (Transmog re-apply)
 
 Merged to `main` with PR #54 on 2026-11-10. Core change in the new `tools/bfa/transmog-reapply.patch`,
@@ -73,7 +72,6 @@ sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target insta
 ```
 Then type `server shutdown 1` in the worldserver console and start it again with
 `cd ~/bfa/server/bin && ./worldserver`.
->>>>>>> origin/main
 
 ## 2026-11-10 (pet battles)
 
