@@ -2,16 +2,15 @@ diff --git a/src/server/scripts/Kalimdor/zone_mulgore.cpp b/src/server/scripts/K
 index 3c6c3fb..1d11d90 100644
 --- a/src/server/scripts/Kalimdor/zone_mulgore.cpp
 +++ b/src/server/scripts/Kalimdor/zone_mulgore.cpp
-@@ -18,7 +18,9 @@
+@@ -17,6 +17,8 @@
+ 
  #include "Creature.h"
  #include "ScriptMgr.h"
- #include "MotionMaster.h"
 +#include "ObjectAccessor.h"
- #include "ScriptedCreature.h"
 +#include "ThreatManager.h"
+ #include "MotionMaster.h"
+ #include "ScriptedCreature.h"
  #include "WaypointMovementGenerator.h"
- 
- enum eAgitatedEarthSpirit
 @@ -211,6 +213,42 @@ class spell_mulgore_funeral_offering : public SpellScript
      }
  };

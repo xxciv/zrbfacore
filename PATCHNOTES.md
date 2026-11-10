@@ -3,6 +3,39 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-10 (Quest fixes: patch chain on newer upstream)
+
+Merged to `main` with PR #55 on 2026-11-10.
+
+### Patches: quest-objective-flags and mulgore-bristleback-fight apply on newer HavenCore
+
+- **Found** (the transmog thread, rebuilding the full patch stack, 2026-11-10): in the guide order,
+  `quest-objective-flags.patch` fails on HavenCore f8f34b1 and on upstream HEAD 9876a1a
+  (`Player.cpp` ~17784, `Player.h` ~1530), and `mulgore-bristleback-fight.patch` fails on 9876a1a.
+  The guide's step 3 and step 10 lists also missed `razorfen-downs.patch` (the README has it).
+- **Cause:**
+  - Upstream 53d125a ("Add Field_10 update to client questlog for areatrigger", 2026-10-11) added
+    the same `SetQuestSlotObjectiveFlag` / `RemoveQuestSlotObjectiveFlag` helpers and the same
+    `SetQuestObjectiveData` change as our patch, so those hunks conflict. Upstream does not have our
+    other two parts: `SetQuestSlot` clearing `Field_10` when a quest slot is reused, and
+    `_LoadQuestStatusObjectives` restoring the flags at login.
+  - Upstream 4561014 (Kyle's Gone Missing, 2026-11-08) added `#include "GameObject.h"` right below
+    the include lines our Mulgore patch adds to.
+- **Changed:**
+  - New `tools/bfa/quest-objective-flags-upstream.patch`: only the `SetQuestSlot` and
+    `_LoadQuestStatusObjectives` hunks, for upstream at or after 53d125a.
+    `quest-objective-flags.patch` itself is unchanged (still right for 2c13546).
+  - Guide step 3 and step 10: the `quest-objective-flags` line is now
+    `if grep -q SetQuestSlotObjectiveFlag src/server/game/Entities/Player/Player.h; then git apply ...-upstream.patch; else git apply ...quest-objective-flags.patch; fi`.
+    Upstream's fix declares that function in `Player.h`; 2c13546 does not.
+  - `tools/bfa/mulgore-bristleback-fight.patch`: the two new includes (`ObjectAccessor.h`,
+    `ThreatManager.h`) now go after `ScriptMgr.h`, where the context lines are the same on every
+    upstream commit. The code it adds is unchanged.
+  - Guide step 3 and step 10: `razorfen-downs.patch` added after `core-branding.patch`.
+  - Checked: the full guide chain (all 43 patches) applies cleanly, in order, on 2c13546, f8f34b1
+    and 9876a1a. Not compiled on f8f34b1 or 9876a1a.
+- **Status:** no in-game change. Four's server (2c13546) already has everything; nothing to pick up.
+
 ## 2026-11-10 (Transmog re-apply)
 
 Merged to `main` with PR #54 on 2026-11-10. Core change in the new `tools/bfa/transmog-reapply.patch`,
