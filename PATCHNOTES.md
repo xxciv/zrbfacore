@@ -19,9 +19,7 @@ the other patches. It only changes `Item.cpp`, which no other patch touches.
 - **Changed:** `Item.cpp`, `Item::SetModifier`: when the modifier is already set, the value is updated in
   place (`SetUpdateFieldValue` on `ItemData::Modifiers` at that index). The same function stores illusions
   and per-spec appearances, so changing an existing illusion works again too. No SQL.
-- **Status:** compiled (`Item.cpp` built against all the other patches); not yet tested in game. Until
-  it's built, the workaround is to revert the slot with its undo arrow, Apply, then pick the new
-  appearance and Apply again.
+- **Status:** confirmed in game by Four on 2026-11-10: the back and waist slots take a new appearance.
 
 ### To pick up the transmog re-apply fix
 This only adds a new patch, so the patches already applied stay as they are. The patch is read straight
