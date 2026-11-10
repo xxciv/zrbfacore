@@ -114,6 +114,7 @@ git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
 git apply ../tools-repo/tools/bfa/battle-pet-player-flags.patch
 git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
 git apply ../tools-repo/tools/bfa/core-branding.patch
+git apply ../tools-repo/tools/bfa/razorfen-downs.patch
 git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
 git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 git apply ../tools-repo/tools/bfa/transmog-apply.patch
@@ -123,7 +124,7 @@ git apply ../tools-repo/tools/bfa/darkmoon-race.patch
 git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 git apply ../tools-repo/tools/bfa/skinning-tiers.patch
 git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
-git apply ../tools-repo/tools/bfa/quest-objective-flags.patch
+if grep -q SetQuestSlotObjectiveFlag src/server/game/Entities/Player/Player.h; then git apply ../tools-repo/tools/bfa/quest-objective-flags-upstream.patch; else git apply ../tools-repo/tools/bfa/quest-objective-flags.patch; fi
 git apply ../tools-repo/tools/bfa/mulgore-bristleback-fight.patch
 git apply ../tools-repo/tools/bfa/quest-complete-window.patch
 git apply ../tools-repo/tools/bfa/quest-empty-progress.patch
@@ -439,6 +440,11 @@ count: "scout" area triggers (The Fargodeep Mine), pet battle wins and criteria 
 8.3.7 client reads them from the quest log's `ObjectiveFlags` field (`1 << StorageIndex`, called
 `Field_10` in the core), but the core set bit `256 << StorageIndex` in `StateFlags`, the 7.x layout.
 The server counted the objective and the quest could be turned in, but the tracker never ticked it.
+Upstream HavenCore fixed the same two functions in 53d125a (2026-10-11), so on a checkout from
+then on the patch no longer applies. `quest-objective-flags-upstream.patch` holds only the two parts
+upstream lacks (clear the field when a quest slot is reused, and restore the flags at login). The
+`if grep` line above picks the right one: upstream's fix declares `SetQuestSlotObjectiveFlag` in
+`Player.h`.
 
 `quest-complete-window.patch` stops the quest window from hanging after a turn-in (rewards given,
 no Complete Quest button left) and from rushing through the next quest in a chain. After a turn-in
@@ -846,6 +852,7 @@ git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
 git apply ../tools-repo/tools/bfa/battle-pet-player-flags.patch
 git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
 git apply ../tools-repo/tools/bfa/core-branding.patch
+git apply ../tools-repo/tools/bfa/razorfen-downs.patch
 git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
 git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 git apply ../tools-repo/tools/bfa/transmog-apply.patch
@@ -855,7 +862,7 @@ git apply ../tools-repo/tools/bfa/darkmoon-race.patch
 git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
 git apply ../tools-repo/tools/bfa/skinning-tiers.patch
 git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
-git apply ../tools-repo/tools/bfa/quest-objective-flags.patch
+if grep -q SetQuestSlotObjectiveFlag src/server/game/Entities/Player/Player.h; then git apply ../tools-repo/tools/bfa/quest-objective-flags-upstream.patch; else git apply ../tools-repo/tools/bfa/quest-objective-flags.patch; fi
 git apply ../tools-repo/tools/bfa/mulgore-bristleback-fight.patch
 git apply ../tools-repo/tools/bfa/quest-complete-window.patch
 git apply ../tools-repo/tools/bfa/quest-empty-progress.patch

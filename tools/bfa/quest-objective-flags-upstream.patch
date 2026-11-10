@@ -1,0 +1,20 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -17755,6 +17755,7 @@ void Player::SetQuestSlot(uint16 slot, uint32 quest_id, uint32 timer /*= 0*/)
+     auto questLogField = m_values.ModifyValue(&Player::m_playerData).ModifyValue(&UF::PlayerData::QuestLog, slot);
+     SetUpdateFieldValue(questLogField.ModifyValue(&UF::QuestLog::QuestID), quest_id);
+     SetUpdateFieldValue(questLogField.ModifyValue(&UF::QuestLog::StateFlags), 0);
++    SetUpdateFieldValue(questLogField.ModifyValue(&UF::QuestLog::Field_10), 0); // ObjectiveFlags
+     for (uint32 i = 0; i < MAX_QUEST_COUNTS; ++i)
+         SetUpdateFieldValue(questLogField.ModifyValue(&UF::QuestLog::ObjectiveProgress, i), 0);
+     SetUpdateFieldValue(questLogField.ModifyValue(&UF::QuestLog::EndTime), timer);
+@@ -20845,7 +20846,7 @@ void Player::_LoadQuestStatusObjectives(PreparedQueryResult result)
+                     if (!objectiveItr->IsStoringFlag())
+                         SetQuestSlotCounter(slot, objectiveIndex, data);
+                     else if (data)
+-                        SetQuestSlotState(slot, 256 << objectiveIndex);
++                        SetQuestSlotObjectiveFlag(slot, objectiveIndex);
+                 }
+                 else
+                     TC_LOG_ERROR("entities.player", "Player::_LoadQuestStatusObjectives: Player '%s' (%s) has quest %d out of range objective index %u.", GetName().c_str(), GetGUID().ToString().c_str(), questID, objectiveIndex);
