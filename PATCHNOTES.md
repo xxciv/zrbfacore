@@ -5,8 +5,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-10 (Transmog re-apply)
 
-On PR #54 (not merged yet). Core change in the new `tools/bfa/transmog-reapply.patch`, applied after all
-the other patches. It only changes `Item.cpp`, which no other patch touches.
+Merged to `main` with PR #54 on 2026-11-10. Core change in the new `tools/bfa/transmog-reapply.patch`,
+applied after all the other patches. It only changes `Item.cpp`, which no other patch touches.
 
 ### A transmogrified item couldn't be given another appearance
 - **Found** (reported by Four): the back and waist slots wouldn't take a new appearance. Apply charged
@@ -22,12 +22,19 @@ the other patches. It only changes `Item.cpp`, which no other patch touches.
 - **Status:** confirmed in game by Four on 2026-11-10: the back and waist slots take a new appearance.
 
 ### To pick up the transmog re-apply fix
-This only adds a new patch, so the patches already applied stay as they are. The patch is read straight
-from the PR branch, so `tools-repo` stays on `main`. `Item.cpp` isn't a header, so the build is short:
+Everything is on `main` now. If you applied the patch from the PR branch, the file on `main` is the same,
+so nothing needs rebuilding; just pull:
+```
+git -C ~/bfa/tools-repo checkout main
+git -C ~/bfa/tools-repo pull
+```
+
+Without it applied yet, add the new patch. `Item.cpp` isn't a header, so the build is short. There's no SQL:
 ```
 cd ~/bfa/source
-git -C ../tools-repo fetch origin claude/transmog-collection-0qdzrj
-git -C ../tools-repo show FETCH_HEAD:tools/bfa/transmog-reapply.patch | git apply
+git -C ../tools-repo checkout main
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
 Then type `server shutdown 1` in the worldserver console and start it again with
