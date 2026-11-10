@@ -1,0 +1,17 @@
+diff --git a/src/server/game/Entities/Item/Item.cpp b/src/server/game/Entities/Item/Item.cpp
+index 26e5437..a914c10 100644
+--- a/src/server/game/Entities/Item/Item.cpp
++++ b/src/server/game/Entities/Item/Item.cpp
+@@ -2351,8 +2351,12 @@ void Item::SetModifier(ItemModifier modifier, uint32 value)
+ 
+     if (value)
+     {
++        // Already present: change the value in place, or re-transmogrifying an item silently kept its old appearance.
+         if (mask & (1 << modifier))
++        {
++            SetUpdateFieldValue(m_values.ModifyValue(&Item::m_itemData).ModifyValue(&UF::ItemData::Modifiers, valueIndex), value);
+             return;
++        }
+ 
+         SetUpdateFieldFlagValue(m_values.ModifyValue(&Item::m_itemData).ModifyValue(&UF::ItemData::ModifiersMask), 1 << modifier);
+         InsertDynamicUpdateFieldValue(m_values.ModifyValue(&Item::m_itemData).ModifyValue(&UF::ItemData::Modifiers), valueIndex) = value;

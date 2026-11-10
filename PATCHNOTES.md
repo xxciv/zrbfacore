@@ -3,6 +3,38 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-10 (Transmog re-apply)
+
+On PR #NN (not merged yet). Core change in the new `tools/bfa/transmog-reapply.patch`, applied after all
+the other patches. It only changes `Item.cpp`, which no other patch touches.
+
+### A transmogrified item couldn't be given another appearance
+- **Found** (reported by Four): the back and waist slots wouldn't take a new appearance. Apply charged
+  the cost every time and the old appearance stayed. Both items already had a transmog. Every check in
+  `HandleTransmogrifyItems` passed (the cost is only taken after them), and the handler then calls
+  `Item::SetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_ALL_SPECS, appearance)`. `SetModifier` (`Item.cpp`)
+  returned straight away when the item already had that modifier, so the new value was never stored and
+  the item kept its old appearance. Items with no transmog yet worked, which is why only some slots
+  failed. Removing a transmog (the revert arrow) worked, because value 0 takes the remove branch.
+- **Changed:** `Item.cpp`, `Item::SetModifier`: when the modifier is already set, the value is updated in
+  place (`SetUpdateFieldValue` on `ItemData::Modifiers` at that index). The same function stores illusions
+  and per-spec appearances, so changing an existing illusion works again too. No SQL.
+- **Status:** compiled (`Item.cpp` built against all the other patches); not yet tested in game. Until
+  it's built, the workaround is to revert the slot with its undo arrow, Apply, then pick the new
+  appearance and Apply again.
+
+### To pick up the transmog re-apply fix
+This only adds a new patch, so the patches already applied stay as they are. The patch is read straight
+from the PR branch, so `tools-repo` stays on `main`. `Item.cpp` isn't a header, so the build is short:
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/transmog-collection-0qdzrj
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/transmog-reapply.patch | git apply
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+Then type `server shutdown 1` in the worldserver console and start it again with
+`cd ~/bfa/server/bin && ./worldserver`.
+
 ## 2026-11-10 (pet battles)
 
 ### Pet battles: spawn the six zone pets with no spawn data
