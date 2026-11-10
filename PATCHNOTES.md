@@ -5,6 +5,41 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-10 (pet battles)
 
+### Pet battles: zone audit, 11 zone pets that never spawned
+
+- **Asked** (Four): check every zone's wild pets are enabled.
+- **Audit** (world dump plus every pet SQL so far, in a local MySQL): 647 `battlepet_wild_zone_pool`
+  rows are for capturable species. 626 had battle pets in their zone (446 at the zone's cap, the rest
+  ran out of critters to convert). 21 had none.
+- **Changed:** new `sql/fixes/world/2026_11_10_51_wild_battle_pet_missing_zones.sql` fixes 11 of them:
+  - 7 pool rows named the plain critter as the battle pet and had no critter entry, so 2026_11_01_50
+    skipped them (the Darkmoon Crow's problem). Their critters become the real battle pet up to the
+    zone's cap: Tanaris Sea Gull (9), Howling Fjord Turkey (1), Ghostlands Small Frog (3), Jade Forest
+    Temple Snake (2), Frostfire Ridge Icespine Hatchling (20), Gorgrond Thicket Skitterer (16),
+    Nagrand (Draenor) Shore Crab (13);
+  - Swamp of Sorrows Moccasin: its pool row pointed at the Water Snake. 32 Water Snake critters become
+    Moccasins 61372;
+  - Undercity Rat: the DB files Undercity's rats under Tirisfal (Ruins of Lordaeron, area 153). Those
+    28 rat critters become Undercity Rats 61889;
+  - Ironforge Long-tailed Mole and Undercity Bat had no critters at all. Added from the alexkulya
+    Pandaria DB (guids 1000100001-1000100028): 21 Ironforge moles (3 battle Moles) and 7 bats in the
+    Ruins of Lordaeron (2 battle Bats).
+  Conversions are logged in `zr_wild_battlepet_conversion`, like 2026_11_01_50. No core change.
+- **Not fixed** (no critters or spawn data to use): Wetlands Highlands Mouse, Exodar Mouse, Outland
+  Shadowmoon Valley Warpstalker Hatchling (lives in Terokkar, 27 there), Talador Crimsonwing Moth,
+  Frostfire Ironclaw Scuttler, Gorgrond Sapphire Firefly, Azsuna Fledgling Kingfeather and Eldritch
+  Manafiend, Undercity Lost of Lordaeron (33 in Tirisfal).
+- **Status:** not tested in game yet.
+
+#### To pick it up
+Run after the two Rabbit/Squirrel files below, then restart `worldserver`.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_10_51_wild_battle_pet_missing_zones.sql | mysql -u root -p bfa_world
+```
+The last line prints `9 Sea Gulls, 20 Icespine Hatchlings, 32 Moccasins, 28 Undercity Rats, 3 Ironforge Moles`.
+
 ### Pet battles: Rabbits and Squirrels can't be battled
 
 - **Found** (Four): no Rabbit, Squirrel or Chicken battle pets to be seen in Elwynn Forest, only Black
