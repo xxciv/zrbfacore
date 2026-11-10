@@ -32,7 +32,7 @@ Draft PR, not merged yet.
     `ThreatManager.h`) now go after `ScriptMgr.h`, where the context lines are the same on every
     upstream commit. The code it adds is unchanged.
   - Guide step 3 and step 10: `razorfen-downs.patch` added after `core-branding.patch`.
-  - Checked: the full guide chain (all 44 patches) applies cleanly, in order, on 2c13546, f8f34b1
+  - Checked: the full guide chain (all 43 patches) applies cleanly, in order, on 2c13546, f8f34b1
     and 9876a1a. Not compiled on f8f34b1 or 9876a1a.
 - **Status:** no in-game change. Four's server (2c13546) already has everything; nothing to pick up.
 
