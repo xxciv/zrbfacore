@@ -126,6 +126,9 @@ git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
 git apply ../tools-repo/tools/bfa/quest-objective-flags.patch
 git apply ../tools-repo/tools/bfa/mulgore-bristleback-fight.patch
 git apply ../tools-repo/tools/bfa/quest-complete-window.patch
+git apply ../tools-repo/tools/bfa/quest-empty-progress.patch
+git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
+git apply ../tools-repo/tools/bfa/quest-list-accept.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -444,6 +447,23 @@ quest giver, so the client sat waiting for a menu that never came, or picked the
 It now sets those bits the way later TrinityCore does: gossip only for quests flagged
 `QUEST_FLAGS_LAUNCH_GOSSIP_COMPLETE`, the next chain quest only when you can take it, and the quest
 list only when the NPC still has something for you.
+
+`quest-empty-progress.patch` stops the quest window from turning into an empty page with a
+disabled Continue button. When you opened a quest you still had in progress at its NPC, the core
+sent its progress page, even when the quest has no items to hand in and no progress text (no
+`quest_request_items` row). That happened right after accepting such a quest, and whenever you
+talked to the NPC again before finishing it. It now closes the window in that case.
+
+`quest-autocomplete-turnin.patch` makes an auto-complete quest handed in at its NPC (Rite of the
+Winds at Ahmo Thunderhorn) count as handed in to that NPC. The core booked it as if you had
+completed it from your quest log, so the client lost track of the NPC: the next quest's window then
+stayed open after Accept.
+
+`quest-list-accept.patch` closes the quest window after you accept a quest picked from an NPC's
+quest list (an NPC offering two or more quests, such as Ahmo Thunderhorn or Tonga Runetotem). The
+client goes back to that list after Accept and ignored the plain close the core sent, so the details
+page stayed open. The core now sends the NPC's updated quest list instead, as retail does, and only
+closes the window when the NPC has nothing left to show.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -832,6 +852,9 @@ git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
 git apply ../tools-repo/tools/bfa/quest-objective-flags.patch
 git apply ../tools-repo/tools/bfa/mulgore-bristleback-fight.patch
 git apply ../tools-repo/tools/bfa/quest-complete-window.patch
+git apply ../tools-repo/tools/bfa/quest-empty-progress.patch
+git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
+git apply ../tools-repo/tools/bfa/quest-list-accept.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

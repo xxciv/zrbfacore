@@ -48,6 +48,98 @@ to do to pick it up (rebuild, restart, run SQL).
 
   Then restart worldserver.
 
+## 2026-11-09 (Quest fixes: empty quest page and stuck window after accepting)
+
+Merged to `main` with PR #52 on 2026-11-10.
+
+### Core: quest window turns into an empty page with a disabled Continue button
+
+- **Found** (Four, 2026-11-09, two screen recordings): Tauren, turn in Rite of the Winds (24215) to
+  Ahmo Thunderhorn (36644, guid 260022), accept Sharing the Land (14438). Instead of closing, the
+  window went back to Ahmo's list ("Current Quests: Sharing the Land") and then to a Sharing the Land
+  page with no text and a greyed-out Continue button; only Cancel closed it.
+- **Cause:** after the accept the client goes back to Ahmo's quest list, where Sharing the Land is
+  now a current quest ("?"), and opens it. The server answers with its progress page
+  (`PlayerMenu::SendQuestGiverRequestItems`, reached from `Player::SendPreparedQuest` and from
+  `HandleQuestgiverCompleteQuest`). Sharing the Land is a kill quest that isn't done yet and has no
+  progress text (no `quest_request_items` row for 14438), so the page is empty and Continue stays
+  disabled. Stock and current TrinityCore do the same.
+- **Changed:** new `tools/bfa/quest-empty-progress.patch` (after `quest-complete-window.patch`),
+  `GossipDef.cpp`, `PlayerMenu::SendQuestGiverRequestItems` only: when the quest can't be completed
+  yet, needs no items (`QUEST_SPECIAL_FLAGS_DELIVER` not set) and its `RequestItemsText` is empty,
+  send `SendCloseGossip` (close the window) instead of the empty page. Quests with progress text,
+  with items to hand in, or ready to turn in open as before. No DB change.
+  - The first version (ea1cfed) only guarded `Player::SendPreparedQuest`; Four's retest showed the
+    window still stayed open, so the check moved into the function every route uses.
+- **Found** (Four's retest of the second version, 2026-11-09): the window now stays on the Sharing
+  the Land details page after Accept (quest accepted, window open). With `Logger.network=2,Server`
+  the log showed, right after `CMSG_QUESTGIVER_CHOOSE_REWARD` for 24215,
+  `CMSG_QUESTGIVER_HELLO 0000000000000000`: the client asked for a quest giver with an empty GUID.
+- **Cause:** Rite of the Winds (24215) has `QUEST_FLAGS_AUTOCOMPLETE` (0x10000).
+  `HandleQuestgiverChooseRewardOpcode` (`QuestHandler.cpp`) only looks up the NPC for quests without
+  that flag; for auto-complete quests it uses the player as quest giver even when the quest is
+  handed in at the NPC. `Player::SendQuestReward` then gets no creature, so
+  `SMSG_QUEST_GIVER_QUEST_COMPLETE` names no NPC and the client drops its conversation with Ahmo.
+  The window it opens next is no longer tied to him, so the server's close after Accept
+  (`SMSG_GOSSIP_COMPLETE`) doesn't close it.
+- **Changed:** new `tools/bfa/quest-autocomplete-turnin.patch` (after `quest-empty-progress.patch`),
+  `HandleQuestgiverChooseRewardOpcode` only: for an auto-complete quest, when the packet names an
+  NPC or object (not the player) that ends the quest (`hasInvolvedQuest`) and is in interaction
+  range (`CanInteractWithQuestGiver`), use it as the quest giver. Turn-ins from the quest log
+  pop-up (no NPC) work as before.
+- **Found** (Four's retest with both patches, 2026-11-09): still stuck on the details page. The
+  log now showed a clean conversation (`HELLO` Ahmo, `QUEST_LIST_MESSAGE`, `QUERY_QUEST 14438`,
+  `QUEST_DETAILS`, `ACCEPT_QUEST`). Four then tested: a fresh conversation with Ahmo sticks, Morin
+  Cloudstalker (24459) from the same list sticks, Tonga Runetotem's two-quest list sticks, and it
+  sticks with no addons. Swoop Hunting (761) at Harken Windtotem, who offers a single quest, closes.
+- **Cause:** after Rite of the Winds Ahmo offers two quests, Sharing the Land (14438) and Morin
+  Cloudstalker (24459), so their details page is opened from his quest list
+  (`SMSG_QUEST_GIVER_QUEST_LIST_MESSAGE`). Harken's single quest opens directly. After Accept from a
+  list the client goes back to that list and does not close on the plain `SMSG_GOSSIP_COMPLETE` that
+  `HandleQuestgiverAcceptQuestOpcode` sends (that code matches TrinityCore 8.3.7). Every NPC with a
+  quest list was affected, not only Ahmo.
+- **Changed:** new `tools/bfa/quest-list-accept.patch` (after `quest-autocomplete-turnin.patch`),
+  `GossipDef.h`, `GossipDef.cpp`, `Player.cpp`, `QuestHandler.cpp`:
+  - `PlayerMenu` remembers the NPC or object whose quest list it last sent (`_questListGiver`, set in
+    `SendQuestGiverQuestListMessage`). It is cleared by `SendCloseGossip`, `SendGossipMenu` and at
+    the start of `Player::SendPreparedQuest`, so a single-quest NPC or a gossip menu never counts.
+  - `HandleQuestgiverAcceptQuestOpcode`: after a successful accept from that NPC or object, rebuild
+    its quest menu (`PrepareQuestMenu`) and send the updated list (the accepted quest now shows
+    under Current Quests). Only when the menu is empty does it close the window as before.
+  - Accepts from a single-quest NPC, an item, a shared quest or a gossip menu close as before.
+  - No DB change. Compiles against upstream 2c13546 with the full chain.
+- **Status:** confirmed in game by Four on 2026-11-10: accepting from a quest list now returns to the NPC's updated list and Goodbye closes it. This covers all three patches in this entry.
+- **Pick up:** `quest-empty-progress.patch` and `quest-autocomplete-turnin.patch` stay applied; this
+  only adds `quest-list-accept.patch`. It touches `GossipDef.h`, so the build is longer:
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-list-accept.patch | git apply && echo "quest list accept applied"
+  grep -c "_questListGiver" src/server/game/Entities/Creature/GossipDef.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The echo line prints and the grep prints 3. Then restart worldserver.
+
+  Earlier pick-up for `quest-autocomplete-turnin.patch`: if you already applied the second version of `quest-empty-progress.patch` (be0404e),
+  it is unchanged; this only adds `quest-autocomplete-turnin.patch` (`QuestHandler.cpp`, short build):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-autocomplete-turnin.patch | git apply && echo "autocomplete turn-in applied"
+  grep -c "zrbfacore: an auto-complete quest" src/server/game/Handlers/QuestHandler.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The echo line prints and the grep prints 1. Then restart worldserver.
+
+  From the first version (ea1cfed, `Player.cpp`) instead: run
+  `git -C ../tools-repo show ea1cfed:tools/bfa/quest-empty-progress.patch | git apply -R` first, then
+  `git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-empty-progress.patch | git apply`, then the
+  block above.
+
 ## 2026-11-09 (Quest fixes: quest window hangs or rushes after a turn-in)
 
 Merged to `main` with PR #51 on 2026-11-09.
