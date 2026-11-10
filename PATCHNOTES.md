@@ -3,6 +3,97 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-10 (pet battles)
+
+### Pet battles: spawn the six zone pets with no spawn data
+
+- **Asked** (Four, 2026-11-10): place the zone pets that had nothing to convert or copy from.
+- **Changed:** new `sql/fixes/world/2026_11_10_52_wild_battle_pet_unspawned.sql` adds 10 spawns
+  (guids 1000100029-1000100038), each 1 yard from a random unscripted, unphased critter of the zone,
+  wandering 3 yards. Counts follow each zone's cap: Exodar Mouse 61143 (1), Talador Crimsonwing Moth
+  88413 (1), Frostfire Ridge Ironclaw Scuttler 88474 (2), Gorgrond Sapphire Firefly 88356 (1), Azsuna
+  Fledgling Kingfeather 97076 (1), Azsuna Eldritch Manafiend 98386 (4). The spots don't match retail.
+  Eldritch Manafiend's `battlepet_info` level range 1-25 is set to 1-1 so the zone decides.
+- **Left alone:** Undercity Rat and Lost of Lordaeron exist (filed under Tirisfal); the Shadowmoon
+  Valley Warpstalker Hatchling and Wetlands Highlands Mouse rows look like wrong pool rows.
+- **Status:** run on Four's live DB; confirmed by Four on 2026-11-10.
+
+#### To pick it up
+Run after 2026_11_10_51, then restart `worldserver`.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_10_52_wild_battle_pet_unspawned.sql | mysql -u root -p bfa_world
+```
+The last line prints `10 new zone pet spawns`.
+
+### Pet battles: zone audit, 11 zone pets that never spawned
+
+- **Asked** (Four): check every zone's wild pets are enabled.
+- **Audit** (world dump plus every pet SQL so far, in a local MySQL): 647 `battlepet_wild_zone_pool`
+  rows are for capturable species. 626 had battle pets in their zone (446 at the zone's cap, the rest
+  ran out of critters to convert). 21 had none.
+- **Changed:** new `sql/fixes/world/2026_11_10_51_wild_battle_pet_missing_zones.sql` fixes 11 of them:
+  - 7 pool rows named the plain critter as the battle pet and had no critter entry, so 2026_11_01_50
+    skipped them (the Darkmoon Crow's problem). Their critters become the real battle pet up to the
+    zone's cap: Tanaris Sea Gull (9), Howling Fjord Turkey (1), Ghostlands Small Frog (3), Jade Forest
+    Temple Snake (2), Frostfire Ridge Icespine Hatchling (20), Gorgrond Thicket Skitterer (16),
+    Nagrand (Draenor) Shore Crab (13);
+  - Swamp of Sorrows Moccasin: its pool row pointed at the Water Snake. 32 Water Snake critters become
+    Moccasins 61372;
+  - Undercity Rat: the DB files Undercity's rats under Tirisfal (Ruins of Lordaeron, area 153). Those
+    28 rat critters become Undercity Rats 61889;
+  - Ironforge Long-tailed Mole and Undercity Bat had no critters at all. Added from the alexkulya
+    Pandaria DB (guids 1000100001-1000100028): 21 Ironforge moles (3 battle Moles) and 7 bats in the
+    Ruins of Lordaeron (2 battle Bats).
+  Conversions are logged in `zr_wild_battlepet_conversion`, like 2026_11_01_50. No core change.
+- **Not fixed here** (no critters or spawn data to use; six of them are placed by 2026_11_10_52): Wetlands Highlands Mouse, Exodar Mouse, Outland
+  Shadowmoon Valley Warpstalker Hatchling (lives in Terokkar, 27 there), Talador Crimsonwing Moth,
+  Frostfire Ironclaw Scuttler, Gorgrond Sapphire Firefly, Azsuna Fledgling Kingfeather and Eldritch
+  Manafiend, Undercity Lost of Lordaeron (33 in Tirisfal).
+- **Status:** run on Four's live DB; confirmed by Four on 2026-11-10.
+
+#### To pick it up
+Run after the two Rabbit/Squirrel files below, then restart `worldserver`.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_10_51_wild_battle_pet_missing_zones.sql | mysql -u root -p bfa_world
+```
+The last line prints `9 Sea Gulls, 20 Icespine Hatchlings, 32 Moccasins, 28 Undercity Rats, 3 Ironforge Moles`.
+
+### Pet battles: Rabbits and Squirrels can't be battled
+
+- **Found** (Four): no Rabbit, Squirrel or Chicken battle pets to be seen in Elwynn Forest, only Black
+  Lambs, Small Frogs and Fawns. The live DB has 3 Rabbits, 7 Squirrels and 2 Chickens there.
+- **Cause:** a creature only becomes a wild battle pet when its template is type 14 (wild pet). The
+  battle pet templates Rabbit 61080 and Squirrel 61081 are type 0, Echo Batling 88542 is type 12 and
+  Globe Yeti 128156 is type 0. Their spawns (43 Rabbits, 208 Squirrels, 7 Echo Batlings in the world
+  DB) were plain critters you couldn't battle, and the wild spawn SQL (2026_11_01_50) skipped them,
+  because it only converts critters into type 14 pets. These are the only capturable species in
+  `battlepet_info` with a non-wild template. Chickens are fine; Elwynn just allows only 2.
+- **Then found** (Four): Squirrels could be battled, but the mouse-over cursor stayed the normal one.
+  The client takes the cursor from the creature query's CursorName, filled from
+  `creature_template.IconName`. Every other capturable pet has `wildpetcapturable`; Rabbit, Squirrel,
+  Globe Yeti and Young Mutant Warturtle 110666 had NULL, Echo Batling an empty string.
+- **Changed:** new `sql/fixes/world/2026_11_10_50_wild_battle_pet_types.sql` sets type 14 on those 4
+  templates and `IconName = 'wildpetcapturable'` on those 5. Running `2026_11_01_50_wild_battle_pet_spawns.sql` again afterwards converts critter
+  rabbits and squirrels up to each zone's cap (Elwynn: 10 Rabbits, 12 Squirrels). No core change.
+- **Status:** confirmed in game by Four on 2026-11-10 (Squirrel battle and paw cursor).
+
+#### To pick it up
+SQL only, then delete the client's `Cache` folder (the client caches creature types) and restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_10_50_wild_battle_pet_types.sql | mysql -u root -p bfa_world
+```
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_50_wild_battle_pet_spawns.sql | mysql -u root -p bfa_world
+```
+The first prints `4 of 4 pet templates are wild pets, 5 of 5 have the pet battle cursor`; the second prints the running total of converted
+spawns (more than the 5,900 from 2026-11-01). Then restart `worldserver`.
+
 ## 2026-11-09 (World fixes: Camp Narache battle)
 
 ### Core: Bristleback Invaders can't be pulled off the braves and heal back up
