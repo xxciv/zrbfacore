@@ -16,7 +16,7 @@ to do to pick it up (rebuild, restart, run SQL).
   Eldritch Manafiend's `battlepet_info` level range 1-25 is set to 1-1 so the zone decides.
 - **Left alone:** Undercity Rat and Lost of Lordaeron exist (filed under Tirisfal); the Shadowmoon
   Valley Warpstalker Hatchling and Wetlands Highlands Mouse rows look like wrong pool rows.
-- **Status:** not tested in game yet.
+- **Status:** run on Four's live DB; confirmed by Four on 2026-11-10.
 
 #### To pick it up
 Run after 2026_11_10_51, then restart `worldserver`.
@@ -51,7 +51,7 @@ The last line prints `10 new zone pet spawns`.
   Shadowmoon Valley Warpstalker Hatchling (lives in Terokkar, 27 there), Talador Crimsonwing Moth,
   Frostfire Ironclaw Scuttler, Gorgrond Sapphire Firefly, Azsuna Fledgling Kingfeather and Eldritch
   Manafiend, Undercity Lost of Lordaeron (33 in Tirisfal).
-- **Status:** not tested in game yet.
+- **Status:** run on Four's live DB; confirmed by Four on 2026-11-10.
 
 #### To pick it up
 Run after the two Rabbit/Squirrel files below, then restart `worldserver`.
@@ -79,7 +79,7 @@ The last line prints `9 Sea Gulls, 20 Icespine Hatchlings, 32 Moccasins, 28 Unde
 - **Changed:** new `sql/fixes/world/2026_11_10_50_wild_battle_pet_types.sql` sets type 14 on those 4
   templates and `IconName = 'wildpetcapturable'` on those 5. Running `2026_11_01_50_wild_battle_pet_spawns.sql` again afterwards converts critter
   rabbits and squirrels up to each zone's cap (Elwynn: 10 Rabbits, 12 Squirrels). No core change.
-- **Status:** Squirrels confirmed in game by Four on 2026-11-10 (battle and paw cursor).
+- **Status:** confirmed in game by Four on 2026-11-10 (Squirrel battle and paw cursor).
 
 #### To pick it up
 SQL only, then delete the client's `Cache` folder (the client caches creature types) and restart.
