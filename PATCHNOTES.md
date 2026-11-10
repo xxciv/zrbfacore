@@ -3,9 +3,10 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+<<<<<<< HEAD
 ## 2026-11-10 (Quest fixes: patch chain on newer upstream)
 
-Draft PR, not merged yet.
+Merged to `main` with PR #55 on 2026-11-10.
 
 ### Patches: quest-objective-flags and mulgore-bristleback-fight apply on newer HavenCore
 
@@ -35,6 +36,44 @@ Draft PR, not merged yet.
   - Checked: the full guide chain (all 43 patches) applies cleanly, in order, on 2c13546, f8f34b1
     and 9876a1a. Not compiled on f8f34b1 or 9876a1a.
 - **Status:** no in-game change. Four's server (2c13546) already has everything; nothing to pick up.
+=======
+## 2026-11-10 (Transmog re-apply)
+
+Merged to `main` with PR #54 on 2026-11-10. Core change in the new `tools/bfa/transmog-reapply.patch`,
+applied after all the other patches. It only changes `Item.cpp`, which no other patch touches.
+
+### A transmogrified item couldn't be given another appearance
+- **Found** (reported by Four): the back and waist slots wouldn't take a new appearance. Apply charged
+  the cost every time and the old appearance stayed. Both items already had a transmog. Every check in
+  `HandleTransmogrifyItems` passed (the cost is only taken after them), and the handler then calls
+  `Item::SetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_ALL_SPECS, appearance)`. `SetModifier` (`Item.cpp`)
+  returned straight away when the item already had that modifier, so the new value was never stored and
+  the item kept its old appearance. Items with no transmog yet worked, which is why only some slots
+  failed. Removing a transmog (the revert arrow) worked, because value 0 takes the remove branch.
+- **Changed:** `Item.cpp`, `Item::SetModifier`: when the modifier is already set, the value is updated in
+  place (`SetUpdateFieldValue` on `ItemData::Modifiers` at that index). The same function stores illusions
+  and per-spec appearances, so changing an existing illusion works again too. No SQL.
+- **Status:** confirmed in game by Four on 2026-11-10: the back and waist slots take a new appearance.
+
+### To pick up the transmog re-apply fix
+Everything is on `main` now. If you applied the patch from the PR branch, the file on `main` is the same,
+so nothing needs rebuilding; just pull:
+```
+git -C ~/bfa/tools-repo checkout main
+git -C ~/bfa/tools-repo pull
+```
+
+Without it applied yet, add the new patch. `Item.cpp` isn't a header, so the build is short. There's no SQL:
+```
+cd ~/bfa/source
+git -C ../tools-repo checkout main
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/transmog-reapply.patch
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+Then type `server shutdown 1` in the worldserver console and start it again with
+`cd ~/bfa/server/bin && ./worldserver`.
+>>>>>>> origin/main
 
 ## 2026-11-10 (pet battles)
 
