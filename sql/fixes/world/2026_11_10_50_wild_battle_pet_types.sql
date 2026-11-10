@@ -13,13 +13,22 @@
 -- species (BattlePetSpecies flag 0x8) in battlepet_info whose template is not type 14.
 -- Elwynn's Chickens are fine (type 14); the zone only allows 2 of them.
 --
--- Changed: type = 14 for those 4 templates. After this, run 2026_11_01_50 again so it
+-- Then found (Four): the Squirrels could be battled but the mouse-over cursor stayed the normal
+-- one. The client takes the cursor from the creature query's CursorName, which the core fills
+-- from creature_template.IconName. Every other capturable pet has 'wildpetcapturable'; Rabbit,
+-- Squirrel, Globe Yeti and Young Mutant Warturtle 110666 had NULL and Echo Batling ''.
+--
+-- Changed: type = 14 for those 4 templates, IconName = 'wildpetcapturable' for those 5. After this, run 2026_11_01_50 again so it
 -- converts critter rabbits and squirrels up to each zone's cap.
 --
 -- Undo: UPDATE creature_template SET type = 0 WHERE entry IN (61080, 61081, 128156);
 --       UPDATE creature_template SET type = 12 WHERE entry = 88542;
+--       UPDATE creature_template SET IconName = NULL WHERE entry IN (61080, 61081, 110666, 128156);
 
 UPDATE `creature_template` SET `type` = 14 WHERE `entry` IN (61080, 61081, 88542, 128156);
+UPDATE `creature_template` SET `IconName` = 'wildpetcapturable' WHERE `entry` IN (61080, 61081, 88542, 110666, 128156);
 
 SELECT CONCAT((SELECT COUNT(*) FROM `creature_template` WHERE `entry` IN (61080, 61081, 88542, 128156) AND `type` = 14),
-              ' of 4 pet templates are wild pets') AS zr_result;
+              ' of 4 pet templates are wild pets, ',
+              (SELECT COUNT(*) FROM `creature_template` WHERE `entry` IN (61080, 61081, 88542, 110666, 128156) AND `IconName` = 'wildpetcapturable'),
+              ' of 5 have the pet battle cursor') AS zr_result;

@@ -72,8 +72,12 @@ The last line prints `9 Sea Gulls, 20 Icespine Hatchlings, 32 Moccasins, 28 Unde
   DB) were plain critters you couldn't battle, and the wild spawn SQL (2026_11_01_50) skipped them,
   because it only converts critters into type 14 pets. These are the only capturable species in
   `battlepet_info` with a non-wild template. Chickens are fine; Elwynn just allows only 2.
+- **Then found** (Four): Squirrels could be battled, but the mouse-over cursor stayed the normal one.
+  The client takes the cursor from the creature query's CursorName, filled from
+  `creature_template.IconName`. Every other capturable pet has `wildpetcapturable`; Rabbit, Squirrel,
+  Globe Yeti and Young Mutant Warturtle 110666 had NULL, Echo Batling an empty string.
 - **Changed:** new `sql/fixes/world/2026_11_10_50_wild_battle_pet_types.sql` sets type 14 on those 4
-  templates. Running `2026_11_01_50_wild_battle_pet_spawns.sql` again afterwards converts critter
+  templates and `IconName = 'wildpetcapturable'` on those 5. Running `2026_11_01_50_wild_battle_pet_spawns.sql` again afterwards converts critter
   rabbits and squirrels up to each zone's cap (Elwynn: 10 Rabbits, 12 Squirrels). No core change.
 - **Status:** not tested in game yet.
 
@@ -87,7 +91,7 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_10_50_wild_battle_p
 ```
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_50_wild_battle_pet_spawns.sql | mysql -u root -p bfa_world
 ```
-The first prints `4 of 4 pet templates are wild pets`; the second prints the running total of converted
+The first prints `4 of 4 pet templates are wild pets, 5 of 5 have the pet battle cursor`; the second prints the running total of converted
 spawns (more than the 5,900 from 2026-11-01). Then restart `worldserver`.
 
 ## 2026-11-09 (World fixes: Camp Narache battle)
