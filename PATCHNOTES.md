@@ -79,7 +79,7 @@ The last line prints `9 Sea Gulls, 20 Icespine Hatchlings, 32 Moccasins, 28 Unde
 - **Changed:** new `sql/fixes/world/2026_11_10_50_wild_battle_pet_types.sql` sets type 14 on those 4
   templates and `IconName = 'wildpetcapturable'` on those 5. Running `2026_11_01_50_wild_battle_pet_spawns.sql` again afterwards converts critter
   rabbits and squirrels up to each zone's cap (Elwynn: 10 Rabbits, 12 Squirrels). No core change.
-- **Status:** not tested in game yet.
+- **Status:** Squirrels confirmed in game by Four on 2026-11-10 (battle and paw cursor).
 
 #### To pick it up
 SQL only, then delete the client's `Cache` folder (the client caches creature types) and restart.
