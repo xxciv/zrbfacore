@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-10 (Transmog re-apply)
 
-On PR #NN (not merged yet). Core change in the new `tools/bfa/transmog-reapply.patch`, applied after all
+On PR #54 (not merged yet). Core change in the new `tools/bfa/transmog-reapply.patch`, applied after all
 the other patches. It only changes `Item.cpp`, which no other patch touches.
 
 ### A transmogrified item couldn't be given another appearance
