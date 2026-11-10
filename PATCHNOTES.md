@@ -108,7 +108,7 @@ Draft PR, not merged yet.
     under Current Quests). Only when the menu is empty does it close the window as before.
   - Accepts from a single-quest NPC, an item, a shared quest or a gossip menu close as before.
   - No DB change. Compiles against upstream 2c13546 with the full chain.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four on 2026-11-10: accepting from a quest list now returns to the NPC's updated list and Goodbye closes it. This covers all three patches in this entry.
 - **Pick up:** `quest-empty-progress.patch` and `quest-autocomplete-turnin.patch` stay applied; this
   only adds `quest-list-accept.patch`. It touches `GossipDef.h`, so the build is longer:
 
