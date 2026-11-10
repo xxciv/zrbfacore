@@ -5,6 +5,28 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-10 (pet battles)
 
+### Pet battles: spawn the six zone pets with no spawn data
+
+- **Asked** (Four, 2026-11-10): place the zone pets that had nothing to convert or copy from.
+- **Changed:** new `sql/fixes/world/2026_11_10_52_wild_battle_pet_unspawned.sql` adds 10 spawns
+  (guids 1000100029-1000100038), each 1 yard from a random unscripted, unphased critter of the zone,
+  wandering 3 yards. Counts follow each zone's cap: Exodar Mouse 61143 (1), Talador Crimsonwing Moth
+  88413 (1), Frostfire Ridge Ironclaw Scuttler 88474 (2), Gorgrond Sapphire Firefly 88356 (1), Azsuna
+  Fledgling Kingfeather 97076 (1), Azsuna Eldritch Manafiend 98386 (4). The spots don't match retail.
+  Eldritch Manafiend's `battlepet_info` level range 1-25 is set to 1-1 so the zone decides.
+- **Left alone:** Undercity Rat and Lost of Lordaeron exist (filed under Tirisfal); the Shadowmoon
+  Valley Warpstalker Hatchling and Wetlands Highlands Mouse rows look like wrong pool rows.
+- **Status:** not tested in game yet.
+
+#### To pick it up
+Run after 2026_11_10_51, then restart `worldserver`.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_10_52_wild_battle_pet_unspawned.sql | mysql -u root -p bfa_world
+```
+The last line prints `10 new zone pet spawns`.
+
 ### Pet battles: zone audit, 11 zone pets that never spawned
 
 - **Asked** (Four): check every zone's wild pets are enabled.
@@ -25,7 +47,7 @@ to do to pick it up (rebuild, restart, run SQL).
     Pandaria DB (guids 1000100001-1000100028): 21 Ironforge moles (3 battle Moles) and 7 bats in the
     Ruins of Lordaeron (2 battle Bats).
   Conversions are logged in `zr_wild_battlepet_conversion`, like 2026_11_01_50. No core change.
-- **Not fixed** (no critters or spawn data to use): Wetlands Highlands Mouse, Exodar Mouse, Outland
+- **Not fixed here** (no critters or spawn data to use; six of them are placed by 2026_11_10_52): Wetlands Highlands Mouse, Exodar Mouse, Outland
   Shadowmoon Valley Warpstalker Hatchling (lives in Terokkar, 27 there), Talador Crimsonwing Moth,
   Frostfire Ironclaw Scuttler, Gorgrond Sapphire Firefly, Azsuna Fledgling Kingfeather and Eldritch
   Manafiend, Undercity Lost of Lordaeron (33 in Tirisfal).
