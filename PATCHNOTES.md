@@ -50,7 +50,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-09 (Quest fixes: empty quest page and stuck window after accepting)
 
-Draft PR, not merged yet.
+Merged to `main` with PR #52 on 2026-11-10.
 
 ### Core: quest window turns into an empty page with a disabled Continue button
 
