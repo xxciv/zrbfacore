@@ -740,10 +740,12 @@ appear as themselves instead of Murkimus the Gladiator) and releasing pets.
 
 The core never swaps critters for battle pets at runtime, so out of the box only the battle pets
 spawned directly in the world DB exist, and many zones have none of the species a pet tracker addon
-lists for them. Run this once after the world DB is installed and updated (after the first
-`worldserver` start), then restart `worldserver`:
+lists for them. Run these once after the world DB is installed and updated (after the first
+`worldserver` start), in this order, then restart `worldserver`. The first makes the Rabbit,
+Squirrel, Echo Batling and Globe Yeti pet templates wild pets so the second converts them too:
 
 ```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_10_50_wild_battle_pet_types.sql
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_01_50_wild_battle_pet_spawns.sql
 ```
 

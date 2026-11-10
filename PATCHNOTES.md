@@ -3,6 +3,36 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-10 (pet battles)
+
+### Pet battles: Rabbits and Squirrels can't be battled
+
+- **Found** (Four): no Rabbit, Squirrel or Chicken battle pets to be seen in Elwynn Forest, only Black
+  Lambs, Small Frogs and Fawns. The live DB has 3 Rabbits, 7 Squirrels and 2 Chickens there.
+- **Cause:** a creature only becomes a wild battle pet when its template is type 14 (wild pet). The
+  battle pet templates Rabbit 61080 and Squirrel 61081 are type 0, Echo Batling 88542 is type 12 and
+  Globe Yeti 128156 is type 0. Their spawns (43 Rabbits, 208 Squirrels, 7 Echo Batlings in the world
+  DB) were plain critters you couldn't battle, and the wild spawn SQL (2026_11_01_50) skipped them,
+  because it only converts critters into type 14 pets. These are the only capturable species in
+  `battlepet_info` with a non-wild template. Chickens are fine; Elwynn just allows only 2.
+- **Changed:** new `sql/fixes/world/2026_11_10_50_wild_battle_pet_types.sql` sets type 14 on those 4
+  templates. Running `2026_11_01_50_wild_battle_pet_spawns.sql` again afterwards converts critter
+  rabbits and squirrels up to each zone's cap (Elwynn: 10 Rabbits, 12 Squirrels). No core change.
+- **Status:** not tested in game yet.
+
+#### To pick it up
+SQL only, then delete the client's `Cache` folder (the client caches creature types) and restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_10_50_wild_battle_pet_types.sql | mysql -u root -p bfa_world
+```
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_50_wild_battle_pet_spawns.sql | mysql -u root -p bfa_world
+```
+The first prints `4 of 4 pet templates are wild pets`; the second prints the running total of converted
+spawns (more than the 5,900 from 2026-11-01). Then restart `worldserver`.
+
 ## 2026-11-09 (World fixes: Camp Narache battle)
 
 ### Core: Bristleback Invaders can't be pulled off the braves and heal back up
