@@ -129,6 +129,7 @@ git apply ../tools-repo/tools/bfa/quest-complete-window.patch
 git apply ../tools-repo/tools/bfa/quest-empty-progress.patch
 git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
 git apply ../tools-repo/tools/bfa/quest-list-accept.patch
+git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -430,6 +431,10 @@ one chosen appearance came from an item the character couldn't use, including on
 level, which `transmog-collection.patch` now lets you collect. The check now follows the same
 `Transmog.*` settings, and every refusal prints `Transmogrify refused: <reason>` in chat. It only touches
 `TransmogrificationHandler.cpp` and needs `transmog-collection.patch` applied first.
+
+`transmog-reapply.patch` fixes `Item::SetModifier` in `Item.cpp`. Setting an item modifier that was
+already set returned without changing it, so a second transmog on the same item was charged but kept the
+old appearance. It now changes the value in place. It touches no file the other patches change.
 
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
@@ -861,6 +866,7 @@ git apply ../tools-repo/tools/bfa/quest-complete-window.patch
 git apply ../tools-repo/tools/bfa/quest-empty-progress.patch
 git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
 git apply ../tools-repo/tools/bfa/quest-list-accept.patch
+git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

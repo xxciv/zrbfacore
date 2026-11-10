@@ -36,6 +36,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   appearances as soon as items reach your bags, for every armor and weapon type (`Transmog.*` settings).
 - [`tools/bfa/transmog-apply.patch`](tools/bfa/transmog-apply.patch): Apply at the transmogrifier
   accepts every appearance you collected, and says in chat why when it refuses.
+- [`tools/bfa/transmog-reapply.patch`](tools/bfa/transmog-reapply.patch): changing the appearance of an
+  item that is already transmogrified works (before, it charged you and kept the old look).
 - [`tools/bfa/loot-fixes.patch`](tools/bfa/loot-fixes.patch): core fixes so items from shared
   loot tables (world drops, most greens) drop at all, every dungeon boss drops at least one item, and
   corpses can be skinned when they still hold a quest item you can't see.
