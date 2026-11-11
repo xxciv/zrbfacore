@@ -260,7 +260,38 @@ function SortedItemButton_OnEnter(self)
     end)
 end
 
+-- zrbfacore addition (2026-11-11): the closed bank, the closed reagent bank and other
+-- characters' bags are saved snapshots, so the live SetInventoryItem/SetBagItem calls
+-- below return nothing for them. Show the tooltip from the saved item link instead.
+local function SortedItemButton_ShowSavedLinkTooltip(self)
+	local parent = self:GetParent()
+	if not (parent.isBankSlot and not Sorted_bankIsOpened) and Sorted_currentPlayerSelected then
+		return false
+	end
+	local link = parent.link
+	if not link or link == "" then
+		GameTooltip:Hide()
+		return true
+	end
+	GameTooltip:SetOwner(self, "ANCHOR_NONE")
+	SortedItemButton_CalculateItemTooltipAnchors(self, GameTooltip)
+	local speciesID, level, breedQuality, maxHealth, power, speed = link:match("|Hbattlepet:(%d+):(%d+):(%d+):(%d+):(%d+):(%d+)")
+	if speciesID and BattlePetToolTip_Show then
+		BattlePetToolTip_Show(tonumber(speciesID), tonumber(level), tonumber(breedQuality), tonumber(maxHealth), tonumber(power), tonumber(speed), link:match("|h%[(.-)%]|h"))
+		return true
+	end
+	if BattlePetTooltip then BattlePetTooltip:Hide() end
+	GameTooltip:SetHyperlink(link)
+	if IsModifiedClick("COMPAREITEMS") or GetCVarBool("alwaysCompareItems") then
+		GameTooltip_ShowCompareItem(GameTooltip)
+	end
+	GameTooltip:Show()
+	ResetCursor()
+	return true
+end
+
 function SortedItemButton_DelayedOnEnter(self)
+	if SortedItemButton_ShowSavedLinkTooltip(self) then return end
 	GameTooltip:SetOwner(self, "ANCHOR_NONE");
 
 	-- Keyring specific code

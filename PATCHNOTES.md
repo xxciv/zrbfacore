@@ -45,6 +45,18 @@ Client addons only, in `client/`. No server change: nothing to rebuild, no SQL, 
   cooldown poll uses `0, 0, 0` (no cooldown) when `itemID` is nil. `Sorted.toc`: version `1.2.4-zr1`.
 - **Status:** confirmed in game by Four on 2026-11-11.
 
+### Sorted: tooltips for the closed bank and other characters' bags
+- **Found** (asked by Four): hovering an item in the Bank or Reagents list shows no tooltip unless the
+  bank is open at a banker. Stock Sorted behaves the same: its tooltip uses the live
+  `GameTooltip:SetInventoryItem` / `SetBagItem` calls, and the client has no live data for a closed bank
+  or another character's bags, which Sorted shows from a saved snapshot.
+- **Changed:** `client/Sorted/ItemButton.lua`: new `SortedItemButton_ShowSavedLinkTooltip`, called first in
+  `SortedItemButton_DelayedOnEnter`. For a bank/reagent slot while the bank is closed, or any slot while
+  another character is selected, it shows the tooltip from the slot's saved item link
+  (`GameTooltip:SetHyperlink`; caged battle pets via `BattlePetToolTip_Show`), with the usual compare
+  tooltips. Live slots are unchanged. `Sorted.toc`: version `1.2.4-zr2`.
+- **Status:** not tested in game yet.
+
 ## 2026-11-10 (Quest fixes: patch chain on newer upstream)
 
 Merged to `main` with PR #55 on 2026-11-10.

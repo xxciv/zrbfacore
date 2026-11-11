@@ -717,8 +717,9 @@ from `_retail_/Interface/AddOns`, and copy the folder from `client/` there.
   `securecallfunction`, which 8.3.7 lacks; it now falls back to `xpcall`. TOC set to 80300.
 - `client/FishingBuddy` (1.10.10-zr1): its bundled CallbackHandler-1.0 is raised to minor 100 so its
   8.3.7-safe copy wins over newer copies other addons ship.
-- `client/Sorted` (1.2.4-zr1): bag addon. Bank buttons get an upgrade icon (nil error with the item level
-  column on) and empty slots skip `GetItemCooldown`.
+- `client/Sorted` (1.2.4-zr2): bag addon. Bank buttons get an upgrade icon (nil error with the item level
+  column on), empty slots skip `GetItemCooldown`, and items in the closed bank or another character's bags
+  show a tooltip from their saved link.
 
 ### Solo dungeons (DungeonScale)
 
