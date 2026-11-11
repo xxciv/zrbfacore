@@ -38,7 +38,7 @@ dungeon 34), and all their spells exist. Dire Maul has one scenario for all thre
   by phase 1-5; each answer closes the gossip, says his line and runs the next path; at the end of a
   path he is talkable again. The fifth answer makes him hostile (faction 16), casts Spirit of Runn
   Tum (22735) and summons five Wildspawn Imps (13276, new row id 1: summoned imps join the fight).
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-11 (full chase, fight, kill).
 
 ### The Conservatory Door to Alzzin never opened
 - **Found:** Old Ironbark (11491) offers "We are ready for you to open the door" but had no script,
@@ -46,7 +46,7 @@ dungeon 34), and all their spells exist. Dire Maul has one scenario for all thre
   (14241, guid 323214) stood on the same spot with the same gossip and no script either.
 - **Changed:** Old Ironbark: on that option he closes the gossip, walks AzerothCore's 14-point path
   (new `waypoints` path 1149100) to the door and opens it. Guid 323214 deleted.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-11 (Ironbark walks to the door and opens it).
 
 ### Alzzin the Wildshaper, Lethtendris and Pimgib scripts
 - **Found:** Alzzin had 24 rows from two script versions (orphan "reset on evade" links, a broken
