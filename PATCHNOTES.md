@@ -3,6 +3,40 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-11 (World fixes: Stormwind Harbor ship)
+
+### World: 7th Legion warship crew spawned twice in Stormwind Harbor
+
+- **Found** (Four, 2026-11-11): the 7th Legion warship in Stormwind Harbor, with Vereesa
+  Windrunner and Arator the Redeemer, has a lot of doubled NPCs.
+- **Cause:** the dump has the ship crew twice. Guids 401232-401247 are the sniffed spawns. A later
+  block (guids 300001112-300001158) repeats 14 of them with the same entry, position and phase, so
+  each of those NPCs stands twice on one spot. Upstream's `sql/updates` don't touch any of them.
+- **Changed:** `sql/fixes/world/2026_11_11_30_stormwind_harbor_ship_double_spawns.sql` deletes the
+  14 copies (each checked by guid and entry):
+  - Grand Admiral Jes-Tereth 121753: 300001112 (copy of 401236).
+  - Arator the Redeemer 121755: 300001148 (copy of 401232).
+  - 7th Legion Marine 121757: 300001123, 300001129, 300001150, 300001153, 300001155, 300001158
+    (copies of 401235, 401247, 401246, 401245, 401244, 401243).
+  - 7th Legion Rifleman 121775: 300001119, 300001124, 300001141, 300001143, 300001146, 300001152
+    (copies of 401242, 401237, 401238, 401239, 401240, 401241).
+  - Kept: the two 7th Legion Cannoneers (300001147, 300001159), which have no other copy, and
+    Vereesa 3000000 / Vindicator Boros 3000003. Those two sit on top of 401233 / 401231 but are in
+    phase 7439, which nothing turns on, so players never see them.
+- **Status:** not tested in game yet.
+- **Pick up:**
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+  ```
+
+  ```
+  git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_11_30_stormwind_harbor_ship_double_spawns.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-11 (Dire Maul: Warpwood Quarter)
 
 Merged to `main` with PR #36 on 2026-11-11. SQL `sql/fixes/world/2026_11_03_04` to `_06` and
