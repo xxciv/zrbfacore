@@ -98,6 +98,9 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   races (Malle and Patti Earnhard's four race quests): Racing Strider, posts, tolls, checkpoint boosts,
   powerup pads, electrified tripwires and the race achievements. Needs
   `sql/fixes/world/2026_11_05_05_darkmoon_race_course.sql`.
+- [`tools/bfa/spell-teleport-combat.patch`](tools/bfa/spell-teleport-combat.patch): a spell that
+  pulls a player somewhere else on the same map (Zevrim Thornhoof's Sacrifice) no longer drops them
+  out of combat, so the boss no longer resets to full health.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.

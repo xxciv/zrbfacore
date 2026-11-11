@@ -131,6 +131,7 @@ git apply ../tools-repo/tools/bfa/quest-empty-progress.patch
 git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
 git apply ../tools-repo/tools/bfa/quest-list-accept.patch
 git apply ../tools-repo/tools/bfa/transmog-reapply.patch
+git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -888,6 +889,7 @@ git apply ../tools-repo/tools/bfa/quest-empty-progress.patch
 git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
 git apply ../tools-repo/tools/bfa/quest-list-accept.patch
 git apply ../tools-repo/tools/bfa/transmog-reapply.patch
+git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

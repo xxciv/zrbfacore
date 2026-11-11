@@ -3,6 +3,107 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-11 (Dire Maul: Warpwood Quarter)
+
+Merged to `main` with PR #36 on 2026-11-11. SQL `sql/fixes/world/2026_11_03_04` to `_06` and
+`2026_11_11_00` to `_02` (Dire Maul files), plus the new core patch `tools/bfa/spell-teleport-combat.patch`
+(applied last; rebuild). The thinning files copy the removed rows into backup tables first. Needs a
+fresh instance (`.instance unbind all`).
+
+Pre-run check of the east wing (Pusillin, Zevrim Thornhoof, Hydrospawn, Lethtendris, Alzzin). All
+bosses are spawned with Normal scaling rows, `instance_encounters` 343-346 exist (Alzzin ends LFG
+dungeon 34), and all their spells exist. Dire Maul has one scenario for all three wings (668, step
+1212 "Defeat the bosses of Dire Maul", 14 bosses), so it cannot finish from one wing.
+
+### Zevrim Thornhoof healed to full on every Sacrifice
+- **Found** (reported by Four): Sacrifice (22651) stuns the player, which is right, but Zevrim
+  went back to full health each time, so he could not be killed solo. Sacrifice's first effect
+  teleports the player onto his altar (`spell_target_position` -25.95, -448.24, -36.09).
+  `Spell::EffectTeleportUnits` (`SpellEffects.cpp`) passes no options when the target is not the
+  caster, and `Player::TeleportTo` calls `CombatStop()` on a same-map teleport without
+  `TELE_TO_NOT_LEAVE_COMBAT`. The player left combat, Zevrim had nobody left to fight, evaded
+  and reset.
+- **Changed:** new `tools/bfa/spell-teleport-combat.patch` (applied after `razorfen-downs.patch`):
+  a spell teleport of another player that stays on the same map adds `TELE_TO_NOT_LEAVE_COMBAT`.
+  Teleports to another map still leave combat. This covers every boss pull-to-me spell, not
+  just Zevrim's.
+- **Status:** confirmed in game by Four on 2026-11-11 (Zevrim killed; Sacrifice stuns without resetting him).
+
+### Pusillin's chase stopped early and always showed the same text
+- **Found:** two versions of his script on top of each other. All five Gossip Hello rows had no
+  phase mask, so every one fired and the last menu won. Rows "stop at waypoint 3/14/12/7" belong to
+  an old 3-point path and cut each run short. His four paths (14354, 143540, 287080, 430620) are
+  complete and join end to start.
+- **Changed:** `smart_scripts` 14354 and action lists 1435400-1435404 rebuilt: gossip menu 5709-5713
+  by phase 1-5; each answer closes the gossip, says his line and runs the next path; at the end of a
+  path he is talkable again. The fifth answer makes him hostile (faction 16), casts Spirit of Runn
+  Tum (22735) and summons five Wildspawn Imps (13276, new row id 1: summoned imps join the fight).
+- **Status:** confirmed in game by Four on 2026-11-11 (full chase, fight, kill).
+
+### The Conservatory Door to Alzzin never opened
+- **Found:** Old Ironbark (11491) offers "We are ready for you to open the door" but had no script,
+  so choosing it did nothing and the Conservatory Door (176907) stayed shut. Ironbark the Redeemed
+  (14241, guid 323214) stood on the same spot with the same gossip and no script either.
+- **Changed:** Old Ironbark: on that option he closes the gossip, walks AzerothCore's 14-point path
+  (new `waypoints` path 1149100) to the door and opens it. Guid 323214 deleted.
+- **Status:** confirmed in game by Four on 2026-11-11 (Ironbark walks to the door and opens it).
+
+### Alzzin the Wildshaper, Lethtendris and Pimgib scripts
+- **Found:** Alzzin had 24 rows from two script versions (orphan "reset on evade" links, a broken
+  40% chain). Lethtendris cast Curse of Tongues twice (ids 3 and 4). Pimgib had two caster scripts
+  on top of each other. Hydroling (14350) had no Normal scaling row.
+- **Changed:** Alzzin rebuilt from AzerothCore: Disarm, Enervate, Knock Away and Wither as a night
+  elf; Mangle and Vicious Bite in Dire Wolf Form (22660); Wither and Wild Regeneration in Tree Form
+  (22688); a random form every 20 seconds (lists 1149200-1149202); four Alzzin's Minions (11460) from
+  the crumbled wall at 50% health (list 1149203; new row: summoned minions join the fight).
+  Lethtendris id 4 casts Curse of Thorns (16247). Pimgib: Fireball, Flame Buffet, Blast Wave.
+  Hydroling gets a scaling row for difficulty 1.
+- **Status:** confirmed in game by Four on 2026-11-11 (all east-wing bosses killed).
+
+### Warpwood packs stacked on top of each other (thinned)
+- **Found** (reported by Four): Warpwood elites hit very hard solo, and in a few spots two or more
+  stand on the same spot. Classic Dire Maul has about the same number of them (BFA 16 Treants,
+  12 Guardians, 8 Tanglers; AzerothCore 14, 10, 8), so this is pack size, not a duplicate dump.
+- **Changed:** Four chose thinning over a damage change.
+  `sql/fixes/world/2026_11_11_00_dire_maul_east_thin_warpwood_packs.sql` removes ten spawns that
+  stand within 0.7-5 yards of a twin: Guardians 323183, 324036, 324037, 323198; Treants 323391,
+  323704, 323985, 323983, 323996; Tangler 323981 (and treant 323391's path 429000019). Every pack
+  keeps at least one of each kind. The removed rows are copied first into the backup tables
+  `zr_backup_dm_east_creature`, `zr_backup_dm_east_creature_addon` and
+  `zr_backup_dm_east_waypoint_data`; the file header has the three lines that restore them.
+- **Status:** confirmed in game by Four on 2026-11-11.
+
+### Death Lash pairs stacked on top of each other (thinned)
+- **Found:** 23 Death Lash (13285) in the east wing against 14 in classic, five pairs standing
+  within 0.8-2.3 yards of each other.
+- **Changed:** Four asked to thin them too.
+  `sql/fixes/world/2026_11_11_01_dire_maul_east_thin_death_lash.sql` removes one of each pair:
+  323213, 324089, 324114, 324078, 324100 (23 -> 18). Rows are copied first into the same backup
+  tables as the Warpwood thinning.
+- **Status:** confirmed in game by Four on 2026-11-11.
+
+### Alzzin's wolf phase could not be survived solo
+- **Found** (reported by Four): in wolf form Alzzin attacked so fast that no healing kept up.
+  Dire Wolf Form (22660) adds +75% melee attack speed and +50% damage done on top of the
+  transform, Mangle and Vicious Bite come with it, and the random form every 20 seconds brought
+  it back often.
+- **Changed:** `sql/fixes/world/2026_11_11_02_dire_maul_alzzin_wolf_form.sql`: the wolf phase
+  (list 1149201) morphs him into Fenrus the Devourer (4274, the creature the spell transforms into)
+  instead of casting 22660, so he keeps Mangle and Vicious Bite but gets no haste or damage bonus.
+  The night elf and tree lists (1149200, 1149202) and his reset drop the wolf look first.
+- **Status:** confirmed in game by Four on 2026-11-11: challenging but doable solo.
+
+### Nothing in the east wing moved
+- **Found:** 449 spawns, 30 random wanderers, no paths.
+- **Changed:** 52 patrols (Pandaria paths for the same guids, else AzerothCore, ids 429000002+),
+  2 formations, 183 wanderers. Bosses, Pusillin, Old Ironbark and the Alzzin's Minions are left still.
+- **Found** (reported by Four): Warpwood Treant 323675 bounced through the air on its patrol. It
+  and two more spawns (treant 323700, Warpwood Tangler 323994) had the same 300-yard AzerothCore
+  loop round the whole courtyard (paths 429000031, 429000033, 429000038).
+- **Changed:** `sql/fixes/world/2026_11_03_06_dire_maul_east_treant_loop.sql`: those three wander
+  2 yards at their spawn point instead, and the three paths are deleted. 49 patrols left.
+- **Status:** the wing was played through on 2026-11-11 with this in; Four did not report the treants separately.
+
 ## 2026-11-11 (Addon fixes: BugTabs, FishingBuddy, Sorted)
 
 Client addons only, in `client/`. No server change: nothing to rebuild, no SQL, no restart.
