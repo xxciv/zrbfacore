@@ -15,7 +15,7 @@
 -- zr_backup_dm_east_creature_addon. To put them all back:
 --   INSERT IGNORE INTO `creature` SELECT * FROM `zr_backup_dm_east_creature`;
 --   INSERT IGNORE INTO `creature_addon` SELECT * FROM `zr_backup_dm_east_creature_addon`;
--- (the path 429000019 rows are in zr_backup_dm_east_waypoint_data the same way).
+--   INSERT IGNORE INTO `waypoint_data` SELECT * FROM `zr_backup_dm_east_waypoint_data`;
 
 CREATE TABLE IF NOT EXISTS `zr_backup_dm_east_creature` LIKE `creature`;
 CREATE TABLE IF NOT EXISTS `zr_backup_dm_east_creature_addon` LIKE `creature_addon`;

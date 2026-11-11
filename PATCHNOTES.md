@@ -56,7 +56,7 @@ dungeon 34), and all their spells exist. Dire Maul has one scenario for all thre
   323704, 323985, 323983, 323996; Tangler 323981 (and treant 323391's path 429000019). Every pack
   keeps at least one of each kind. The removed rows are copied first into the backup tables
   `zr_backup_dm_east_creature`, `zr_backup_dm_east_creature_addon` and
-  `zr_backup_dm_east_waypoint_data`; the file header has the two lines that restore them.
+  `zr_backup_dm_east_waypoint_data`; the file header has the three lines that restore them.
 - **Status:** not tested in game yet.
 
 ### Nothing in the east wing moved
