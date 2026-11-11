@@ -951,7 +951,7 @@ index c77b10b..0000000
 -}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_instructor_chillheart.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_instructor_chillheart.cpp
 new file mode 100644
-index 0000000..b027a95
+index 0000000..37f7e72
 --- /dev/null
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/boss_instructor_chillheart.cpp
 @@ -0,0 +1,547 @@
@@ -1127,7 +1127,7 @@ index 0000000..b027a95
 +        }
 +    }
 +
-+    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
++    void DamageTaken(Unit* attacker, uint32& damage) override
 +    {
 +        if (_fakeDeath)
 +        {
@@ -1135,7 +1135,7 @@ index 0000000..b027a95
 +            return;
 +        }
 +
-+        if (damage < me->GetHealth())
++        if (RealDamage(me, attacker, damage) < me->GetHealth())
 +            return;
 +
 +        // he does not die: his soul flees into the phylactery, which has to be destroyed
@@ -1667,7 +1667,7 @@ index 3b20f7f..0000000
 -    new boss_instructor_malicia();
 -}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_jandice_barov.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_jandice_barov.cpp
-index 3e17026..e7e5c1a 100644
+index 3e17026..56c6d3c 100644
 --- a/src/server/scripts/EasternKingdoms/Scholomance/boss_jandice_barov.cpp
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/boss_jandice_barov.cpp
 @@ -1,6 +1,8 @@
@@ -1679,7 +1679,7 @@ index 3e17026..e7e5c1a 100644
   * This program is free software; you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the
   * Free Software Foundation, either version 3 of the License, or
-@@ -16,112 +18,242 @@
+@@ -16,112 +18,246 @@
   */
  
  #include "ScriptMgr.h"
@@ -1805,7 +1805,7 @@ index 3e17026..e7e5c1a 100644
 +    }
  
 -        void JustDied(Unit* /*killer*/) override
-+    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
++    void DamageTaken(Unit* attacker, uint32& damage) override
 +    {
 +        if (_illusionPhase)
          {
@@ -1818,18 +1818,19 @@ index 3e17026..e7e5c1a 100644
          }
  
 -        void UpdateAI(uint32 diff) override
--        {
++        uint32 realDamage = RealDamage(me, attacker, damage);
++        if (!_nextIllusionPct || me->HealthBelowPctDamaged(_nextIllusionPct, realDamage) == false)
++            return;
++
++        if (realDamage >= me->GetHealth())
+         {
 -            if (!UpdateVictim())
 -                return;
-+        if (!_nextIllusionPct || me->HealthBelowPctDamaged(_nextIllusionPct, damage) == false)
-+            return;
++            damage = 0;
++            me->SetHealth(1);
++        }
  
 -            events.Update(diff);
-+        if (damage >= me->GetHealth())
-+            damage = me->GetHealth() - 1;
- 
--            if (me->HasUnitState(UNIT_STATE_CASTING))
--                return;
 +        _illusionPhase = true;
 +        _nextIllusionPct = _nextIllusionPct > 33 ? 33 : 0;
 +        events.Reset();
@@ -1841,7 +1842,9 @@ index 3e17026..e7e5c1a 100644
 +        me->SetVisible(false);
 +        events.ScheduleEvent(EVENT_ILLUSION, 2000);
 +    }
-+
+ 
+-            if (me->HasUnitState(UNIT_STATE_CASTING))
+-                return;
 +    void UpdateAI(uint32 diff) override
 +    {
 +        if (!UpdateVictim())
@@ -2525,10 +2528,10 @@ index 6c50502..0000000
 -}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_lilian_voss.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_lilian_voss.cpp
 new file mode 100644
-index 0000000..5eef6b5
+index 0000000..961797e
 --- /dev/null
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/boss_lilian_voss.cpp
-@@ -0,0 +1,522 @@
+@@ -0,0 +1,535 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -2730,7 +2733,7 @@ index 0000000..5eef6b5
 +        }
 +    }
 +
-+    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
++    void DamageTaken(Unit* attacker, uint32& damage) override
 +    {
 +        if (_purified || !_ready)
 +        {
@@ -2738,12 +2741,17 @@ index 0000000..5eef6b5
 +            return;
 +        }
 +
-+        if (!_soulPhase && me->HealthBelowPctDamaged(50, damage))
++        uint32 realDamage = RealDamage(me, attacker, damage);
++
++        if (!_soulPhase && me->HealthBelowPctDamaged(50, realDamage))
 +        {
 +            // Gandling tears her soul out of her body
 +            _soulPhase = true;
-+            if (damage >= me->GetHealth())
-+                damage = me->GetHealth() - 1;
++            if (realDamage >= me->GetHealth())
++            {
++                damage = 0;
++                me->SetHealth(1);
++            }
 +            events.Reset();
 +            me->InterruptNonMeleeSpells(true);
 +            me->AttackStop();
@@ -2759,7 +2767,7 @@ index 0000000..5eef6b5
 +            return;
 +        }
 +
-+        if (_soulPhase && damage >= me->GetHealth())
++        if (_soulPhase && realDamage >= me->GetHealth())
 +        {
 +            // beaten, she breaks free and turns on Gandling
 +            damage = 0;
@@ -2934,7 +2942,7 @@ index 0000000..5eef6b5
 +            me->DespawnOrUnsummon();
 +    }
 +
-+    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
++    void DamageTaken(Unit* attacker, uint32& damage) override
 +    {
 +        if (_immortal)
 +        {
@@ -2942,7 +2950,7 @@ index 0000000..5eef6b5
 +            return;
 +        }
 +
-+        if (damage < me->GetHealth())
++        if (RealDamage(me, attacker, damage) < me->GetHealth())
 +            return;
 +
 +        damage = 0;
@@ -2954,6 +2962,14 @@ index 0000000..5eef6b5
 +        me->AddUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE));
 +        me->GetMotionMaster()->MoveRandom(4.0f);
 +        _events.ScheduleEvent(EVENT_RESURRECT, 5000);
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        // should not happen (the soul turns immortal instead), but never leave Lilian lying there
++        if (!_immortal && _instance)
++            if (Creature* lilian = _instance->GetCreature(DATA_LILIAN_VOSS))
++                lilian->AI()->DoAction(ACTION_LILIAN_RESURRECTED);
 +    }
 +
 +    void UpdateAI(uint32 diff) override
@@ -3969,10 +3985,10 @@ index 59bc53d..0000000
 -    new boss_vectus();
 -}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp b/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp
-index 187eca5..ffc9975 100644
+index 187eca5..6df65e2 100644
 --- a/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp
-@@ -1,158 +1,202 @@
+@@ -1,158 +1,216 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -4002,13 +4018,24 @@ index 187eca5..ffc9975 100644
  #include "Map.h"
 -#include "Player.h"
  #include "scholomance.h"
- 
--Position const GandlingLoc = { 180.7712f, -5.428603f, 75.57024f, 1.291544f };
++#include <algorithm>
++#include <limits>
++
 +void PlayVoiceLine(Creature* creature, uint32 soundKitId)
 +{
 +    if (creature && soundKitId)
 +        creature->PlayDirectSound(soundKitId);
 +}
+ 
+-Position const GandlingLoc = { 180.7712f, -5.428603f, 75.57024f, 1.291544f };
++uint32 RealDamage(Creature* creature, Unit* attacker, uint32 damage)
++{
++    if (!creature || !attacker || !damage)
++        return damage;
++
++    float multiplier = creature->GetHealthMultiplierForTarget(attacker);
++    if (multiplier <= 0.0f)
++        return damage;
  
 -ObjectGuid GateKirtonosGUID;
 -ObjectGuid GateGandlingGUID;
@@ -4019,8 +4046,17 @@ index 187eca5..ffc9975 100644
 -ObjectGuid GateBarovGUID;
 -ObjectGuid GateIlluciaGUID;
 -ObjectGuid BrazierOfTheHeraldGUID;
++    return uint32(std::min<double>(double(damage) / multiplier, double(std::numeric_limits<uint32>::max())));
++}
+ 
+-struct instance_scholomance : public InstanceScript
 +DoorData const doorData[] =
-+{
+ {
+-    instance_scholomance(InstanceMap* map) : InstanceScript(map)
+-    {
+-        SetHeaders(DataHeader);
+-        SetBossNumber(EncounterCount);
+-    }
 +    { GO_CHILLHEART_EXIT_DOOR,       DATA_INSTRUCTOR_CHILLHEART, DOOR_TYPE_PASSAGE, BOUNDARY_NONE },
 +    { GO_JANDICE_INTRO_DOOR,         DATA_JANDICE_BAROV,         DOOR_TYPE_ROOM,    BOUNDARY_NONE },
 +    { GO_JANDICE_TO_RATTLEGORE_DOOR, DATA_JANDICE_BAROV,         DOOR_TYPE_PASSAGE, BOUNDARY_NONE },
@@ -4033,15 +4069,9 @@ index 187eca5..ffc9975 100644
 +    { GO_GANDLING_INTRO_DOOR,        DATA_GRANDMASTER_GANDLING,  DOOR_TYPE_ROOM,    BOUNDARY_NONE },
 +    { 0,                             0,                          DOOR_TYPE_ROOM,    BOUNDARY_NONE } // END
 +};
- 
--struct instance_scholomance : public InstanceScript
++
 +ObjectData const creatureData[] =
- {
--    instance_scholomance(InstanceMap* map) : InstanceScript(map)
--    {
--        SetHeaders(DataHeader);
--        SetBossNumber(EncounterCount);
--    }
++{
 +    { NPC_INSTRUCTOR_CHILLHEART,      DATA_INSTRUCTOR_CHILLHEART      },
 +    { NPC_JANDICE_BAROV,              DATA_JANDICE_BAROV              },
 +    { NPC_RATTLEGORE,                 DATA_RATTLEGORE                 },
@@ -4099,12 +4129,12 @@ index 187eca5..ffc9975 100644
 +            LoadObjectData(creatureData, nullptr);
          }
 -    }
- 
+-
 -    bool SetBossState(uint32 type, EncounterState state) override
 -    {
 -        if (!InstanceScript::SetBossState(type, state))
 -            return false;
--
+ 
 -        switch (type)
 +        void OnCreatureCreate(Creature* creature) override
          {
@@ -4225,10 +4255,10 @@ index 187eca5..ffc9975 100644
 -            if (GetBossState(DATA_INSTRUCTORMALICIA) != DONE)
 -                return false;
 -            if (GetBossState(DATA_LADYILLUCIABAROV) != DONE)
--                return false;
--            if (GetBossState(DATA_DARKMASTERGANDLING) == DONE)
 +            if (!InstanceScript::SetBossState(type, state))
                  return false;
+-            if (GetBossState(DATA_DARKMASTERGANDLING) == DONE)
+-                return false;
 -            break;
 -        default:
 -            break;
@@ -4686,7 +4716,7 @@ index 0000000..f5389d9
 +    RegisterCreatureAI(npc_talking_skull);
 +}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
-index 4d46bc7..88ca31d 100644
+index 4d46bc7..70149ec 100644
 --- a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
 @@ -1,6 +1,8 @@
@@ -4698,7 +4728,7 @@ index 4d46bc7..88ca31d 100644
   * This program is free software; you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the
   * Free Software Foundation, either version 3 of the License, or
-@@ -18,48 +20,235 @@
+@@ -18,48 +20,240 @@
  #ifndef DEF_SCHOLOMANCE_H
  #define DEF_SCHOLOMANCE_H
  
@@ -4715,8 +4745,7 @@ index 4d46bc7..88ca31d 100644
 +
 +uint8 const MAX_ILLUSIONS   = 15;
 +uint8 const MAX_BONE_PILES  = 6;
- 
--uint32 const EncounterCount             = 8;
++
 +Position const IllusionsPoints[MAX_ILLUSIONS] =
 +{
 +    { 311.34f, 47.12f, 113.40f, 3.15f },
@@ -4735,21 +4764,12 @@ index 4d46bc7..88ca31d 100644
 +    { 283.32f, 23.06f, 113.40f, 3.15f },
 +    { 274.00f, 23.14f, 113.40f, 3.15f }
 +};
- 
--enum SCDataTypes
++
 +// The Talking Skull leads the group through the school. It stops at the points listed in
 +// npc_talking_skull and waits there until the next boss falls.
 +uint8 const SKULL_PATH_SIZE = 30;
 +Position const SkullPath[SKULL_PATH_SIZE] =
- {
--    DATA_DOCTORTHEOLENKRASTINOV         = 0,
--    DATA_INSTRUCTORMALICIA              = 1,
--    DATA_LADYILLUCIABAROV               = 2,
--    DATA_LORDALEXEIBAROV                = 3,
--    DATA_LOREKEEPERPOLKELT              = 4,
--    DATA_THERAVENIAN                    = 5,
--    DATA_DARKMASTERGANDLING             = 6,
--    DATA_KIRTONOS                       = 7
++{
 +    { 200.70f,  45.02f,  132.37f, 4.70f }, // 0: Chillheart's balcony
 +    { 209.48f,  48.92f,  132.33f, 0.41f },
 +    { 229.89f,  49.09f,  119.22f, 0.00f },
@@ -4780,9 +4800,8 @@ index 4d46bc7..88ca31d 100644
 +    { 75.70f,   68.49f,   87.03f, 4.69f },
 +    { 59.60f,   58.23f,   87.02f, 3.69f },
 +    { 53.56f,   59.90f,   87.22f, 2.87f }  // 29: Gandling
- };
- 
--enum SCCreatureIds
++};
++
 +Position const LilianTeleportPos        = { 200.17f, 83.82f, 107.76f, 1.56f };
 +Position const GandlingTeleportPos      = { 220.98f, 68.88f, 109.64f, 2.25f };
 +Position const GandlingLilianDoorPoint  = { 261.03f, 132.80f, 113.49f, 1.59f };
@@ -4790,9 +4809,7 @@ index 4d46bc7..88ca31d 100644
 +Position const GandlingLeavePoint       = { 176.94f, 73.73f, 108.23f, 3.15f };
 +
 +enum ScholomanceDataTypes
- {
--    NPC_DARKMASTER_GANDLING             = 1853,
--    NPC_BONE_MINION                     = 16119
++{
 +    // bosses
 +    DATA_INSTRUCTOR_CHILLHEART          = 0,
 +    DATA_JANDICE_BAROV                  = 1,
@@ -4804,20 +4821,10 @@ index 4d46bc7..88ca31d 100644
 +    DATA_GRANDMASTER_GANDLING_INTRO     = 5,
 +    DATA_TALKING_SKULL                  = 6,
 +    DATA_LILIAN_SOUL                    = 7,
- };
- 
--enum SCGameobjectIds
++};
++
 +enum ScholomanceSharedSpells
- {
--    GO_GATE_KIRTONOS                    = 175570,
--    GO_GATE_GANDLING                    = 177374,
--    GO_GATE_RAVENIAN                    = 177372,
--    GO_GATE_THEOLEN                     = 177377,
--    GO_GATE_ILLUCIA                     = 177371,
--    GO_GATE_MALICIA                     = 177375,
--    GO_GATE_BAROV                       = 177373,
--    GO_GATE_POLKELT                     = 177376,
--    GO_BRAZIER_OF_THE_HERALD            = 175564
++{
 +    // Chillheart
 +    SPELL_ICE_WALL_DUMMY_1              = 122443, // wall visual
 +    SPELL_ICE_WALL_DUMMY_2              = 122449,
@@ -4843,14 +4850,10 @@ index 4d46bc7..88ca31d 100644
 +    SPELL_GANDLING_INTRO_CHANNEL        = 114201,
 +    SPELL_LILIAN_VOSS_DEAD              = 112057,
 +    SPELL_LILIAN_KNEEL                  = 123821,
- };
- 
--template<typename AI>
--inline AI* GetScholomanceAI(Creature* creature)
++};
++
 +enum ScholomanceCreatures
- {
--    return GetInstanceAI<AI>(creature, ScholomanceScriptName);
--}
++{
 +    NPC_INSTRUCTOR_CHILLHEART           = 58633,
 +    NPC_JANDICE_BAROV                   = 59184,
 +    NPC_RATTLEGORE                      = 59153,
@@ -4864,7 +4867,8 @@ index 4d46bc7..88ca31d 100644
 +    NPC_ICE_WALL_MOVE                   = 62731,
 +    NPC_FROSTGRASP_STALKER              = 57860,
 +    NPC_GRAVITY_FLUX_STALKER            = 67272,
-+
+ 
+-uint32 const EncounterCount             = 8;
 +    // Chillheart
 +    NPC_ANARCHIST_ARCANIST              = 59707,
 +    NPC_ANTONIDAS_GUIDE                 = 66240,
@@ -4875,7 +4879,8 @@ index 4d46bc7..88ca31d 100644
 +    NPC_BOOK_SPAWN_TARGET               = 58917,
 +    NPC_SCHOLOMANCE_NEOPHYTE            = 58823,
 +    NPC_SCHOLOMANCE_ACOLYTE             = 58757,
-+
+ 
+-enum SCDataTypes
 +    // Jandice
 +    NPC_JANDICE_ILLUSION                = 59220,
 +    NPC_CANDLESTICK_MAGE                = 59467,
@@ -4902,7 +4907,15 @@ index 4d46bc7..88ca31d 100644
 +};
 +
 +enum ScholomanceActions
-+{
+ {
+-    DATA_DOCTORTHEOLENKRASTINOV         = 0,
+-    DATA_INSTRUCTORMALICIA              = 1,
+-    DATA_LADYILLUCIABAROV               = 2,
+-    DATA_LORDALEXEIBAROV                = 3,
+-    DATA_LOREKEEPERPOLKELT              = 4,
+-    DATA_THERAVENIAN                    = 5,
+-    DATA_DARKMASTERGANDLING             = 6,
+-    DATA_KIRTONOS                       = 7
 +    ACTION_LILIAN_RESURRECTED           = 1,
 +    ACTION_REMOVE_LILIAN_SOUL           = 2,
 +    ACTION_INTRO                        = 3,
@@ -4913,10 +4926,13 @@ index 4d46bc7..88ca31d 100644
 +    ACTION_CANDLESTICK_DEATH            = 8,
 +    ACTION_ACTIVATE                     = 9,
 +    ACTION_DESTROY_WALL                 = 10,
-+};
-+
+ };
+ 
+-enum SCCreatureIds
 +enum ScholomanceGameObjects
-+{
+ {
+-    NPC_DARKMASTER_GANDLING             = 1853,
+-    NPC_BONE_MINION                     = 16119
 +    GO_CHILLHEART_INTRO_DOOR            = 211259,
 +    GO_CHILLHEART_EXIT_DOOR             = 211258,
 +    GO_JANDICE_INTRO_DOOR               = 211257,
@@ -4934,10 +4950,20 @@ index 4d46bc7..88ca31d 100644
 +    GO_HARSH_LESSON_WEST_HIGH           = 210786,
 +    GO_HARSH_LESSON_NORTH_HIGH          = 210787,
 +    GO_HARSH_LESSON_EAST_HIGH           = 210785,
-+};
-+
+ };
+ 
+-enum SCGameobjectIds
 +enum TalkingSkullTexts
-+{
+ {
+-    GO_GATE_KIRTONOS                    = 175570,
+-    GO_GATE_GANDLING                    = 177374,
+-    GO_GATE_RAVENIAN                    = 177372,
+-    GO_GATE_THEOLEN                     = 177377,
+-    GO_GATE_ILLUCIA                     = 177371,
+-    GO_GATE_MALICIA                     = 177375,
+-    GO_GATE_BAROV                       = 177373,
+-    GO_GATE_POLKELT                     = 177376,
+-    GO_BRAZIER_OF_THE_HERALD            = 175564
 +    TALK_SKULL_CHILLHEART_ENTRANCE      = 0,
 +    TALK_SKULL_CHILLHEART               = 1,
 +    TALK_SKULL_CHILLHEART_DEATH         = 2,
@@ -4950,10 +4976,14 @@ index 4d46bc7..88ca31d 100644
 +    TALK_SKULL_LILIAN_ENTRANCE          = 9,
 +    TALK_SKULL_LILIAN_DEFEAT            = 10,
 +    TALK_SKULL_GANDLING_ENTRANCE        = 11,
-+};
-+
+ };
+ 
+-template<typename AI>
+-inline AI* GetScholomanceAI(Creature* creature)
 +enum ScholomanceMisc
-+{
+ {
+-    return GetInstanceAI<AI>(creature, ScholomanceScriptName);
+-}
 +    // Scenario 645 (normal) / 646 (heroic), criteria 19262 "Lilian Voss defeated" is this event
 +    EVENT_SCENARIO_LILIAN_VOSS          = 30834,
 +};
@@ -4961,6 +4991,11 @@ index 4d46bc7..88ca31d 100644
 +// Some voice lines have no text in this database (no BroadcastText row), so they are played as
 +// sound only instead of an empty yell.
 +void PlayVoiceLine(Creature* creature, uint32 soundKitId);
++
++// Unit::DealDamage divides the damage by the level-scaling health multiplier only after
++// DamageTaken has run, so a scaled creature loses more health than DamageTaken sees. Use the
++// health it will really lose when checking for a killing blow or a health threshold.
++uint32 RealDamage(Creature* creature, Unit* attacker, uint32 damage);
  
 -#endif
 +#endif // DEF_SCHOLOMANCE_H

@@ -104,6 +104,23 @@ Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
   Highlight 211670. Delete the client's Cache folder to see them.
 - **Status:** not tested in game yet.
 
+### Scholomance: Lilian's Soul died for good (scaled damage)
+
+- **Found** (Four, 2026-11-11): killing Lilian's Soul left it dead ("Dead 0 / 10,312"). Lilian stayed
+  on the floor, Gandling kept floating, and Four stayed in combat.
+- **Cause:** `Unit::DealDamage` calls the creature's `DamageTaken` first and only afterwards divides
+  the damage by the level-scaling health multiplier (`GetHealthMultiplierForTarget`). On a scaled
+  creature the health that comes off is much bigger than the damage `DamageTaken` sees, so the
+  scripts' "is this the killing blow" checks missed: the soul really died instead of turning
+  immortal, and Chillheart died once before her phylactery killed her (her scenario criteria showed
+  progress 2).
+- **Changed:** `tools/bfa/scholomance.patch`: new `RealDamage()` (`instance_scholomance.cpp`,
+  `scholomance.h`) returns damage / multiplier. Chillheart's fake death, Jandice's 66%/33%
+  thresholds, Lilian's 50% soul phase and final blow, and the soul's "death" all check it. When a
+  hit would kill at a threshold, it now sets 1 health instead of `damage = health - 1`. If the soul
+  ever dies anyway, its `JustDied` still raises Lilian.
+- **Status:** not tested in game yet. Compiles.
+
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
 
 Merged to `main` with PR #57 on 2026-11-11.
