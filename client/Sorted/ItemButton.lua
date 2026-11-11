@@ -630,6 +630,12 @@ function Sorted_CreateItemButton(self, bag, slot)
     parent.button:SetScript("OnEnter", SortedItemButton_OnEnter)
     parent.button:SetScript("OnLeave", SortedTooltip_Cancel)
     parent.button.UpdateTooltip = SortedItemButton_DelayedOnEnter --SortedItemButton_OnEnter
+    -- zrbfacore (2026-11-11): Sorted disables the buttons of snapshot slots (closed bank,
+    -- other characters). Disabled buttons skip OnEnter/OnLeave unless this is set, so the
+    -- saved-link tooltip never ran.
+    if parent.button.SetMotionScriptsWhileDisabled then
+        parent.button:SetMotionScriptsWhileDisabled(true)
+    end
     
     local button = parent.button
     button:SetAllPoints()

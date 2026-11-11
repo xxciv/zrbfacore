@@ -54,7 +54,11 @@ Client addons only, in `client/`. No server change: nothing to rebuild, no SQL, 
   `SortedItemButton_DelayedOnEnter`. For a bank/reagent slot while the bank is closed, or any slot while
   another character is selected, it shows the tooltip from the slot's saved item link
   (`GameTooltip:SetHyperlink`; caged battle pets via `BattlePetToolTip_Show`), with the usual compare
-  tooltips. Live slots are unchanged. `Sorted.toc`: version `1.2.4-zr2`.
+  tooltips. Live slots are unchanged.
+- **Follow-up** (Four, 2026-11-11: zr2 still showed no tooltip): Sorted calls `Disable()` on the buttons
+  of snapshot slots, and a disabled button skips `OnEnter`/`OnLeave` by default, so the new code never
+  ran. `Sorted_CreateItemButton` now calls `SetMotionScriptsWhileDisabled(true)` on each item button.
+  Clicks stay blocked. `Sorted.toc`: version `1.2.4-zr3`.
 - **Status:** not tested in game yet.
 
 ## 2026-11-10 (Quest fixes: patch chain on newer upstream)

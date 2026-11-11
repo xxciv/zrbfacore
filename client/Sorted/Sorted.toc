@@ -1,7 +1,7 @@
 ## Interface: 80300
 ## Title: |c00000000|TInterface\Addons\Sorted\Textures\Title:24:96|t
 ## Notes: Modern bag interface with efficient searching and filters.
-## Version: 1.2.4-zr2
+## Version: 1.2.4-zr3
 ## Author: Daft Vader
 ## SavedVariables: Sorted_Data, Sorted_enabledTabs, Sorted_settingsProfiles, Sorted_sortButtonOrder
 ## DefaultState: enabled
