@@ -92,6 +92,18 @@ Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
   210785, 210786. 211259 becomes (0, 0, 0.7071, 0.7071).
 - **Status:** not tested in game yet.
 
+### Scholomance: French object names
+
+- **Found** (Four, 2026-11-11): the gate in front of Chillheart's room is called "Porte de fer".
+- **Cause:** 13 Scholomance gameobject templates have French names in this database, cut off at the
+  first accented letter.
+- **Changed:** `sql/fixes/world/2026_11_11_05_scholomance_object_names.sql` sets the English names
+  from the Pandaria 5.4.8 DB: Iron Gate (211256, 211257, 211259, 211260, 211261, 211262), Vault of
+  Souls 210781, Reinforced Wooden Door 210771, Grandmaster Architect Holmberg 214178, Alchemy Bottle
+  White/Green/Blue 211647/211648/211649, Polyformic Acid Potion 211669, Polyformic Acid Potion
+  Highlight 211670. Delete the client's Cache folder to see them.
+- **Status:** not tested in game yet.
+
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
 
 Merged to `main` with PR #57 on 2026-11-11.
