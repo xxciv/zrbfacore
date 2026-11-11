@@ -23,7 +23,7 @@ to do to pick it up (rebuild, restart, run SQL).
   - Kept: the two 7th Legion Cannoneers (300001147, 300001159), which have no other copy, and
     Vereesa 3000000 / Vindicator Boros 3000003. Those two sit on top of 401233 / 401231 but are in
     phase 7439, which nothing turns on, so players never see them.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-11.
 
 ### World: two Shaman Trainers stacked in Bloodhoof Village
 
@@ -35,7 +35,7 @@ to do to pick it up (rebuild, restart, run SQL).
   NPC in Bloodhoof Village is stacked.
 - **Changed:** `sql/fixes/world/2026_11_11_31_bloodhoof_shaman_trainers_stacked.sql` deletes Tarl
   Cloudsong's spawn (guid 302648, entry 51637). Narm Skychaser stays.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-11.
 - **Pick up (both fixes of this date):**
 
   ```
