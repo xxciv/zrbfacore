@@ -5,6 +5,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
 
+Merged to `main` with PR #57 on 2026-11-11.
+
 ### World: 7th Legion warship crew spawned twice in Stormwind Harbor
 
 - **Found** (Four, 2026-11-11): the 7th Legion warship in Stormwind Harbor, with Vereesa
