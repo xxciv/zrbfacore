@@ -82,6 +82,17 @@ dungeon 34), and all their spells exist. Dire Maul has one scenario for all thre
   tables as the Warpwood thinning.
 - **Status:** not tested in game yet.
 
+### Alzzin's wolf phase could not be survived solo
+- **Found** (reported by Four): in wolf form Alzzin attacked so fast that no healing kept up.
+  Dire Wolf Form (22660) adds +75% melee attack speed and +50% damage done on top of the
+  transform, Mangle and Vicious Bite come with it, and the random form every 20 seconds brought
+  it back often.
+- **Changed:** `sql/fixes/world/2026_11_11_02_dire_maul_alzzin_wolf_form.sql`: the wolf phase
+  (list 1149201) morphs him into Fenrus the Devourer (4274, the creature the spell transforms into)
+  instead of casting 22660, so he keeps Mangle and Vicious Bite but gets no haste or damage bonus.
+  The night elf and tree lists (1149200, 1149202) and his reset drop the wolf look first.
+- **Status:** not tested in game yet.
+
 ### Nothing in the east wing moved
 - **Found:** 449 spawns, 30 random wanderers, no paths.
 - **Changed:** 52 patrols (Pandaria paths for the same guids, else AzerothCore, ids 429000002+),
