@@ -58,7 +58,7 @@ dungeon 34), and all their spells exist. Dire Maul has one scenario for all thre
   the crumbled wall at 50% health (list 1149203; new row: summoned minions join the fight).
   Lethtendris id 4 casts Curse of Thorns (16247). Pimgib: Fireball, Flame Buffet, Blast Wave.
   Hydroling gets a scaling row for difficulty 1.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-11 (all east-wing bosses killed).
 
 ### Warpwood packs stacked on top of each other (thinned)
 - **Found** (reported by Four): Warpwood elites hit very hard solo, and in a few spots two or more
@@ -91,7 +91,7 @@ dungeon 34), and all their spells exist. Dire Maul has one scenario for all thre
   (list 1149201) morphs him into Fenrus the Devourer (4274, the creature the spell transforms into)
   instead of casting 22660, so he keeps Mangle and Vicious Bite but gets no haste or damage bonus.
   The night elf and tree lists (1149200, 1149202) and his reset drop the wolf look first.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-11: challenging but doable solo.
 
 ### Nothing in the east wing moved
 - **Found:** 449 spawns, 30 random wanderers, no paths.
