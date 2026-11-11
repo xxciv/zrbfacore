@@ -1,0 +1,228 @@
+diff --git a/src/server/scripts/Kalimdor/zone_mulgore.cpp b/src/server/scripts/Kalimdor/zone_mulgore.cpp
+index 3c6c3fb..1d11d90 100644
+--- a/src/server/scripts/Kalimdor/zone_mulgore.cpp
++++ b/src/server/scripts/Kalimdor/zone_mulgore.cpp
+@@ -17,6 +17,8 @@
+ 
+ #include "Creature.h"
+ #include "ScriptMgr.h"
++#include "ObjectAccessor.h"
++#include "ThreatManager.h"
+ #include "MotionMaster.h"
+ #include "ScriptedCreature.h"
+ #include "WaypointMovementGenerator.h"
+@@ -211,6 +213,42 @@ class spell_mulgore_funeral_offering : public SpellScript
+     }
+ };
+ 
++// Camp Narache battle: Fledgling Braves 36942 fight Bristleback Invaders 36943 forever (NPC hits
++// stop at 80% health). A player who attacks an invader takes it over: the invader drops the
++// braves and fights only that player, the braves move on to other invaders, and NPC hits no
++// longer touch it.
++namespace CampNaracheBattle
++{
++    enum
++    {
++        NPC_BRISTLEBACK_INVADER = 36943
++    };
++
++    // A player, or a pet / guardian / charmed unit a player controls.
++    bool IsPlayerSide(Unit const* unit)
++    {
++        return unit && unit->GetCharmerOrOwnerPlayerOrPlayerItself();
++    }
++
++    // A creature that is fighting a player (or a player's pet).
++    bool IsTakenByPlayer(Unit const* unit)
++    {
++        return unit && unit->GetTypeId() == TYPEID_UNIT && IsPlayerSide(unit->GetVictim());
++    }
++
++    // NPC damage stops at 80% health. It never raises health: the old code set the health back
++    // up to 80%, so a brave's hit healed an invader a player had already brought lower.
++    void CapNpcDamage(Creature* me, uint32& damage)
++    {
++        uint64 minimumHealth = me->CountPctFromMaxHealth(80);
++        uint64 health = me->GetHealth();
++        if (health <= minimumHealth)
++            damage = 0;
++        else if (damage > health - minimumHealth)
++            damage = uint32(health - minimumHealth);
++    }
++}
++
+ // NPC Fledgling Brave 36942
+ class npc_fledgling_brave : public CreatureScript
+ {
+@@ -315,25 +353,53 @@ public:
+         void DamageTaken(Unit* attacker, uint32& damage) override
+         {
+             // Players are allowed to damage the creature below 80%.
+-            if (attacker && attacker->IsPlayer())
++            if (CampNaracheBattle::IsPlayerSide(attacker))
+                 return;
+ 
+-            uint64 minimumHealth = me->CountPctFromMaxHealth(80);
++            CampNaracheBattle::CapNpcDamage(me, damage);
++        }
+ 
+-            //If the creature is below 80% set the HP to 80%
+-            if (me->GetHealth() <= minimumHealth ||
+-                me->GetHealth() - damage <= minimumHealth)
++        // Nearest enemy within 5 yards, skipping invaders a player is fighting.
++        Unit* SelectFreeTarget()
++        {
++            Unit* target = me->SelectNearestTarget(5.0f);
++            if (!CampNaracheBattle::IsTakenByPlayer(target))
++                return target;
++
++            target = nullptr;
++            float closest = 5.0f;
++            std::list<Creature*> invaders;
++            me->GetCreatureListWithEntryInGrid(invaders, CampNaracheBattle::NPC_BRISTLEBACK_INVADER, 5.0f);
++            for (Creature* invader : invaders)
+             {
+-                damage = 0;
+-                me->SetHealth(minimumHealth);
++                if (!invader->IsAlive() || CampNaracheBattle::IsTakenByPlayer(invader) || !me->IsValidAttackTarget(invader))
++                    continue;
++
++                float distance = me->GetDistance(invader);
++                if (distance <= closest)
++                {
++                    closest = distance;
++                    target = invader;
++                }
+             }
++            return target;
+         }
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            // A player took our invader: let it go and fight whoever else is on us.
++            if (Unit* victim = me->GetVictim())
++            {
++                if (CampNaracheBattle::IsTakenByPlayer(victim))
++                {
++                    me->GetThreatManager().ClearThreat(victim);
++                    me->AttackStop();
++                }
++            }
++
+             if (!UpdateVictim())
+             {
+-                if (Unit* nearestTarget = me->SelectNearestTarget(5.0f))
++                if (Unit* nearestTarget = SelectFreeTarget())
+                 {
+                     AttackStart(nearestTarget);
+                 }
+@@ -389,9 +455,63 @@ public:
+         void Reset() override
+         {
+             events.Reset();
++            _playerSideGuid.Clear();
+             DoCastSelf(SPELL_BRISTLEBACK);
+         }
+ 
++        // A player (or pet) hit us: break off from the braves and fight the player.
++        void TakeOnPlayer(Unit* attacker)
++        {
++            _playerSideGuid = attacker->GetGUID();
++
++            std::vector<Unit*> npcs;
++            for (ThreatReference const* ref : me->GetThreatManager().GetUnsortedThreatList())
++                if (!CampNaracheBattle::IsPlayerSide(ref->GetVictim()))
++                    npcs.push_back(ref->GetVictim());
++
++            for (Unit* npc : npcs)
++            {
++                me->GetThreatManager().ClearThreat(npc);
++                npc->GetThreatManager().ClearThreat(me);
++            }
++
++            me->GetThreatManager().AddThreat(attacker, 0.0f);
++            AttackStart(attacker);
++        }
++
++        // Keep the player we fight as our target. If that one is gone, take the next player (or
++        // pet) on our threat list; if there is none, go home and rejoin the battle at full health.
++        bool KeepPlayerTarget()
++        {
++            ThreatManager& threat = me->GetThreatManager();
++            Unit* foe = ObjectAccessor::GetUnit(*me, _playerSideGuid);
++            if (!foe || !foe->IsAlive() || !threat.IsThreatenedBy(foe))
++            {
++                foe = nullptr;
++                for (ThreatReference const* ref : threat.GetSortedThreatList())
++                {
++                    if (CampNaracheBattle::IsPlayerSide(ref->GetVictim()) && ref->GetVictim()->IsAlive())
++                    {
++                        foe = ref->GetVictim();
++                        break;
++                    }
++                }
++            }
++
++            if (!foe)
++            {
++                _playerSideGuid.Clear();
++                threat.ClearFixate();
++                EnterEvadeMode(EVADE_REASON_OTHER);
++                return false;
++            }
++
++            _playerSideGuid = foe->GetGUID();
++            if (threat.GetFixateTarget() != foe)
++                threat.FixateTarget(foe);
++            return true;
++        }
++
+         void JustEngagedWith(Unit* /*who*/) override
+         {
+             events.ScheduleEvent(EVENT_REND, urand(2000, 4000));
+@@ -411,22 +531,28 @@ public:
+         void DamageTaken(Unit* attacker, uint32& damage) override
+         {
+             // Players are allowed to damage the creature below 80%.
+-            if (attacker && attacker->IsPlayer())
++            if (CampNaracheBattle::IsPlayerSide(attacker))
++            {
++                if (_playerSideGuid.IsEmpty())
++                    TakeOnPlayer(attacker);
+                 return;
++            }
+ 
+-            uint64 minimumHealth = me->CountPctFromMaxHealth(80);
+-
+-            //If the creature is below 80% set the HP to 80%
+-            if (me->GetHealth() <= minimumHealth ||
+-                me->GetHealth() - damage <= minimumHealth)
++            // While a player fights us, NPC hits do nothing.
++            if (!_playerSideGuid.IsEmpty())
+             {
+                 damage = 0;
+-                me->SetHealth(minimumHealth);
++                return;
+             }
++
++            CampNaracheBattle::CapNpcDamage(me, damage);
+         }
+ 
+         void UpdateAI(uint32 diff) override
+         {
++            if (!_playerSideGuid.IsEmpty() && !KeepPlayerTarget())
++                return;
++
+             if (!UpdateVictim())
+                 return;
+ 
+@@ -440,6 +566,9 @@ public:
+ 
+             DoMeleeAttackIfReady();
+         }
++
++    private:
++        ObjectGuid _playerSideGuid;
+     };
+ };
+ 

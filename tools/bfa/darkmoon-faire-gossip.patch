@@ -1,0 +1,1451 @@
+diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
+index 7e4a359..017c4f2 100644
+--- a/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
++++ b/src/server/scripts/DarkmoonIsland/DarkmoonCanon.cpp
+@@ -19,6 +19,7 @@
+ #include "ScriptMgr.h"
+ #include "ScriptedGossip.h"
+ #include "DarkmoonIsland.h"
++#include "SpellAuras.h"
+ 
+ enum eSpells
+ {
+@@ -46,24 +47,47 @@ class npc_canon_maxima : public CreatureScript
+             if (creature->IsQuestGiver())
+                 player->PrepareQuestMenu(creature->GetGUID());
+ 
+-            if (player->GetQuestStatus(QUEST_HUMANOID_CANNONBALL) == QUEST_STATUS_INCOMPLETE)
+-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Je souhaite devenir un homme canon !", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
++            // zrbfacore: the launch is open to everyone (the quest only counts the
++            // landings), and the old option text was French.
++            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "How do I use the cannon?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
++            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Launch me! |cFF0000FF(Darkmoon Game Token)|r", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+ 
+             SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+             return true;
+         }
+ 
+-        bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 /*action*/) override
++        bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+         {
++            // zrbfacore: "How do I use the cannon?" shows the game's instructions (npc_text 7790),
++            // "I understand." goes back to the first page.
++            if (action == GOSSIP_ACTION_INFO_DEF + 2)
++            {
++                ClearGossipMenuFor(player);
++                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "I understand.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
++                SendGossipMenuFor(player, 7790, creature->GetGUID());
++                return true;
++            }
++            if (action == GOSSIP_ACTION_INFO_DEF + 3)
++            {
++                ClearGossipMenuFor(player);
++                return OnGossipHello(player, creature);
++            }
++
+             if (!player->HasItemCount(ITEM_DARKMOON_TOKEN))
+             {
+-                creature->Whisper("Vous devez posseder un Jeton de Sombrelune pour utiliser le canon !", LANG_UNIVERSAL, player);
++                creature->Whisper("You need a Darkmoon Game Token to use the cannon!", LANG_UNIVERSAL, player);
+                 CloseGossipMenuFor(player);
+                 return true;
+             }
+ 
+             player->DestroyItemCount(ITEM_DARKMOON_TOKEN, 1, true);
+ 
++            // zrbfacore: a mounted (or shapeshifted) player stayed stuck in the cannon:
++            // Cannon Prep never fired them. Take them off the mount first (Four, 2026-11-06).
++            player->RemoveAurasByType(SPELL_AURA_MOUNTED);
++            player->RemoveAurasByType(SPELL_AURA_MOD_SHAPESHIFT);
++            player->Dismount();
++
+             player->NearTeleportTo(-4018.15f, 6299.57f, 13.11f, 3.31f, true);
+             player->CastSpell(player, SPELL_CANON_PREPARATION, false);
+             player->CastSpell(player, SPELL_ROOT, false);
+@@ -83,54 +107,106 @@ class npc_darkmoon_canon_target : public CreatureScript
+             return new npc_darkmoon_canon_targetAI(pCreature);
+         }
+ 
++        // zrbfacore: the target bunny (33068) floats on the water south-west of the
++        // cannon. The old AI only looked for players within 30 yards that had sunk
++        // below z 0, so a shot that went long (the usual case without "Cancel Magic
++        // Wings") never ended: the override bar stayed, no result, no rings on the
++        // water (Four, 2026-11-05). Now the bunny keeps its three target rings up
++        // (62171/62174/62178, persistent area auras), and any launched player who
++        // lands, in the water or on land, gets a result and loses the cannon auras.
+         struct npc_darkmoon_canon_targetAI : ScriptedAI
+         {
+             npc_darkmoon_canon_targetAI(Creature* pCreature) : ScriptedAI(pCreature)
+             {}
+ 
++            uint32 ringTimer = 0;
++            uint32 checkTimer = 0;
++
+             void Reset() override
+             {
++                ringTimer = 0;
++                checkTimer = 0;
++                // Keep this grid loaded so a long shot is still scored.
++                me->setActive(true);
+             }
+ 
+-            void UpdateAI(uint32 /*diff*/) override
++            void KeepRingsUp()
+             {
+-                std::list<Player*> playerList;
+-                me->GetPlayerListInGrid(playerList, 30.0f);
++                for (uint32 spellId : { 62171u, 62174u, 62178u })
++                    if (!me->GetDynObject(spellId))
++                        me->CastSpell(me, spellId, true);
++            }
+ 
+-                if (playerList.empty())
+-                    return;
++            static bool HasLanded(Player* player)
++            {
++                if (player->IsInWater())
++                    return true;
++
++                // On land: give the launch two seconds before trusting "not falling".
++                if (Aura const* blast = player->GetAura(SPELL_CANON_DEFLAGRATION))
++                    if (time(nullptr) - blast->GetApplyTime() < 2)
++                        return false;
++
++                return !player->IsFalling();
++            }
++
++            void Score(Player* player)
++            {
++                player->RemoveAurasDueToSpell(SPELL_CANON_DEFLAGRATION);
++                player->RemoveAurasDueToSpell(SPELL_MAGIC_WINGS);
++
++                float dist = me->GetExactDist2d(player);
++                uint32 creditCount = 0;
++
++                if (dist <= 3.0f)
++                {
++                    if (AchievementEntry const* achievementEntry = sAchievementStore.LookupEntry(ACHIEVEMENT_BLASTENHEIMER_BULLSEYE))
++                        player->CompletedAchievement(achievementEntry);
++                    me->AddAura(SPELL_TARGET_CENTER, player);
++                    creditCount = 5;
++                }
++                else if (dist <= 10.0f)
++                {
++                    me->AddAura(SPELL_TARGET_NEAR, player);
++                    creditCount = 3;
++                }
++                else if (dist <= 30.0f)
++                {
++                    me->AddAura(SPELL_TARGET_MISS, player);
++                    creditCount = 1;
++                }
++                else
++                    me->Whisper("You missed the target! Use Cancel Magic Wings when you are over it.", LANG_UNIVERSAL, player);
+ 
+-                for (auto player: playerList)
++                for (uint8 i = 0; i < creditCount; ++i)
++                    player->CastSpell(player, SPELL_TARGET_CREDIT, true);
++            }
++
++            void UpdateAI(uint32 diff) override
++            {
++                if (ringTimer <= diff)
+                 {
+-                    if (player->GetPositionZ() > 0.0f)
+-                        continue;
+-
+-                    if (!player->HasAura(SPELL_CANON_DEFLAGRATION))
+-                        continue;
+-
+-                    player->RemoveAurasDueToSpell(SPELL_CANON_DEFLAGRATION);
+-
+-                    uint32 dist = me->GetDistance(player);
+-                    uint32 creditCount = 1;
+-
+-                    if (dist <= 3.0f)
+-                    {
+-                        if (AchievementEntry const* achievementEntry = sAchievementStore.LookupEntry(ACHIEVEMENT_BLASTENHEIMER_BULLSEYE))
+-                            player->CompletedAchievement(achievementEntry);
+-                        me->AddAura(SPELL_TARGET_CENTER, player);
+-                        creditCount = 5;
+-                    }
+-                    else if (dist <= 10.0f)
+-                    {
+-                        me->AddAura(SPELL_TARGET_NEAR, player);
+-                        creditCount = 3;
+-                    }
+-                    else
+-                        me->AddAura(SPELL_TARGET_MISS, player);
+-
+-                    for (uint8 i = 0; i < creditCount; ++i)
+-                        player->CastSpell(player, SPELL_TARGET_CREDIT, false);
++                    KeepRingsUp();
++                    ringTimer = 5 * IN_MILLISECONDS;
+                 }
++                else
++                    ringTimer -= diff;
++
++                if (checkTimer > diff)
++                {
++                    checkTimer -= diff;
++                    return;
++                }
++                checkTimer = 200;
++
++                std::list<Player*> landed;
++                for (auto const& ref : me->GetMap()->GetPlayers())
++                    if (Player* player = ref.GetSource())
++                        if (player->IsAlive() && player->HasAura(SPELL_CANON_DEFLAGRATION) && HasLanded(player))
++                            landed.push_back(player);
++
++                for (Player* player : landed)
++                    Score(player);
+             }
+         };
+ };
+@@ -145,8 +221,8 @@ class npc_canon_fozlebub : public CreatureScript
+             if (creature->IsQuestGiver())
+                 player->PrepareQuestMenu(creature->GetGUID());
+ 
+-            if (player->GetQuestStatus(QUEST_HUMANOID_CANNONBALL) != QUEST_STATUS_NONE)
+-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Teleportez moi au canon !", GOSSIP_SENDER_MAIN, 0, "Souhaitez-vous payer 30 piece d'argent ?", 3000, false);
++            // zrbfacore: open to everyone, English text.
++            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Teleport me to the cannon.", GOSSIP_SENDER_MAIN, 0, "Travel to the cannon for 30 silver?", 3000, false);
+ 
+             player->PlayerTalkClass->SendGossipMenu(player->GetGossipTextId(creature), creature->GetGUID());
+             return true;
+@@ -154,6 +230,13 @@ class npc_canon_fozlebub : public CreatureScript
+ 
+         bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 /*action*/) override
+         {
++            if (!player->HasEnoughMoney(uint64(3000)))
++            {
++                player->SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, nullptr, 0, 0);
++                CloseGossipMenuFor(player);
++                return true;
++            }
++
+             player->ModifyMoney(-3000);
+             player->TeleportTo(974, -4019.00f, 6286.58f, 12.49f, 1.39f);
+ 
+diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
+index b65819e..73dcec1 100644
+--- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
++++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
+@@ -28,6 +28,10 @@
+ #include "GameObject.h"
+ #include "Transport.h"
+ #include "DarkmoonIsland.h"
++#include "Vehicle.h"
++#include "TemporarySummon.h"
++#include "AreaTrigger.h"
++#include "AreaTriggerAI.h"
+ 
+ class playerscript_darkmoon_carousel : public PlayerScript
+ {
+@@ -173,11 +177,89 @@ public:
+ };
+ 
+ // 54485 - Jessica Rogers
++// zrbfacore: the game auras stayed on players who walked away from the booth.
++// Ring Toss: 20 yards from Jessica (the booth focus range). Shooting Gallery: 12 yards from
++// Rinling (his counter focus reaches 10 yards from a spot 3 yards away).
++static void RemoveGameAuraAwayFromBooth(Creature* me, uint32 spellId, float range, char const* text)
++{
++    Map::PlayerList const& players = me->GetMap()->GetPlayers();
++    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++    {
++        Player* player = itr->GetSource();
++        if (!player || !player->HasAura(spellId))
++            continue;
++
++        if (player->GetExactDist2d(me) <= range)
++            continue;
++
++        player->RemoveAurasDueToSpell(spellId);
++        me->Whisper(text, LANG_UNIVERSAL, player);
++    }
++}
++
+ class npc_jessica_rogers : public CreatureScript
+ {
+ public:
+     npc_jessica_rogers() : CreatureScript("npc_jessica_rogers") { }
+ 
++    struct npc_jessica_rogersAI : public ScriptedAI
++    {
++        npc_jessica_rogersAI(Creature* creature) : ScriptedAI(creature), _boothCheck(1000) { }
++
++        void UpdateAI(uint32 diff) override
++        {
++            if (_boothCheck <= diff)
++            {
++                RemoveGameAuraAwayFromBooth(me, 102058, 20.0f, "You left the Ring Toss booth. Game over!");
++                RemoveRingTossWhenOutOfRings();
++                _boothCheck = 1000;
++            }
++            else
++                _boothCheck -= diff;
++        }
++
++    private:
++        // zrbfacore: the Ring Toss bar stayed after the last ring was thrown. Remove it once
++        // the player has had no rings left for two checks (the last ring lands first).
++        void RemoveRingTossWhenOutOfRings()
++        {
++            Map::PlayerList const& players = me->GetMap()->GetPlayers();
++            for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++            {
++                Player* player = itr->GetSource();
++                if (!player || !player->HasAura(102058) || player->GetPower(POWER_ALTERNATE_POWER) > 0)
++                {
++                    if (player)
++                        _outOfRings.erase(player->GetGUID());
++                    continue;
++                }
++
++                if (_outOfRings.insert(player->GetGUID()).second)
++                    continue;
++
++                _outOfRings.erase(player->GetGUID());
++                player->RemoveAurasDueToSpell(102058);
++                me->Whisper("You're out of rings!", LANG_UNIVERSAL, player);
++            }
++        }
++
++        uint32 _boothCheck;
++        GuidSet _outOfRings;
++    };
++
++    CreatureAI* GetAI(Creature* creature) const override
++    {
++        return new npc_jessica_rogersAI(creature);
++    }
++
++    // zrbfacore: turning in Target: Turtle (29455) ends the game.
++    bool OnQuestReward(Player* player, Creature* /*creature*/, Quest const* quest, uint32 /*opt*/) override
++    {
++        if (quest->GetQuestId() == 29455)
++            player->RemoveAurasDueToSpell(102058);
++        return false;
++    }
++
+     bool OnGossipHello(Player* player, Creature* creature) override
+     {
+         if (creature->IsQuestGiver())
+@@ -199,7 +281,7 @@ public:
+         if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
+             AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+ 
+-        SendGossipMenuFor(player, 54485, creature->GetGUID());
++        SendGossipMenuFor(player, 18284, creature->GetGUID()); // zrbfacore: menu 13012 text (was 54485, no such text)
+         return true;
+     }
+ 
+@@ -214,7 +296,7 @@ public:
+         default:
+             GOSSIP_BUTTON_1 = "How do I play the Ring Toss?";
+             GOSSIP_BUTTON_2 = "Ready to play! |cFF0000FF(Darkmoon Game Token)|r";
+-            GOSSIP_BUTTON_3 = "Alright.";
++            GOSSIP_BUTTON_3 = "I understand.";
+             break;
+         };
+ 
+@@ -223,7 +305,7 @@ public:
+         if (action == GOSSIP_ACTION_INFO_DEF + 1)
+         {
+             AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
+-            SendGossipMenuFor(player, 54486, creature->GetGUID());
++            SendGossipMenuFor(player, 18286, creature->GetGUID()); // zrbfacore: menu 13013 "how to play" text
+         }
+ 
+         if (action == GOSSIP_ACTION_INFO_DEF + 2)
+@@ -241,7 +323,11 @@ public:
+                 return true;
+             }
+             else
+-                SendGossipMenuFor(player, 54603, creature->GetGUID());
++            {
++                // zrbfacore: text 54603 does not exist; say it instead.
++                creature->Whisper("You need a Darkmoon Game Token to play!", LANG_UNIVERSAL, player);
++                CloseGossipMenuFor(player);
++            }
+         }
+ 
+         if (action == GOSSIP_ACTION_INFO_DEF + 3)
+@@ -254,7 +340,7 @@ public:
+             if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
+                 AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+ 
+-            SendGossipMenuFor(player, 54485, creature->GetGUID());
++            SendGossipMenuFor(player, 18284, creature->GetGUID()); // zrbfacore: menu 13012 text (was 54485, no such text)
+         }
+ 
+         return true;
+@@ -279,16 +365,19 @@ public:
+             return SPELL_CAST_OK;
+         }
+ 
++        // zrbfacore: 181458 lands where the ring was thrown and hits every unit in its
++        // area. The old handler gave Target: Turtle credit (54495) for any unit hit,
++        // the thrower included, so every toss scored; Dubenko's SAI cast a second
++        // credit on top. Only a ring that lands on Dubenko (54490) counts now, once.
+         void HandleDummy(SpellEffIndex /*effIndex*/)
+         {
+-            Unit* caster = GetCaster();
+             Player* player = GetCaster()->ToPlayer();
++            Creature* dubenko = GetHitCreature();
++            if (!player || !dubenko || dubenko->GetEntry() != 54490)
++                return;
+ 
+-            if (Creature* dubenko = caster->FindNearestCreature(54490, 100.0f, true))
+-            {
+-                caster->CastSpell(dubenko, 101697, false);
+-                dubenko->CastSpell(dubenko, 101737, false);
+-            }
++            player->CastSpell(dubenko, 101697, true);
++            dubenko->CastSpell(dubenko, 101737, true);
+ 
+             player->KilledMonsterCredit(54495, ObjectGuid::Empty);
+         }
+@@ -306,6 +395,149 @@ public:
+     }
+ };
+ 
++// zrbfacore: Firebird's Challenge (Ziggie Sparks 85546, quest 36481, 15 rings). Wings of
++// Flame (170819) casts 170820 every 2.5 s, which triggers Summon Rings (170817): a script
++// effect with no script, so no ring ever appeared. It now puts a ring (170815, areatrigger
++// 3069) in the air 20-30 yards ahead of the player. Flying through your own ring casts
++// Blazing Ring (170823, kill credit 85559) and removes it; unused rings fade after 15 s.
++enum FirebirdChallenge
++{
++    SPELL_FIREBIRD_WINGS_OF_FLAME = 170819,
++    SPELL_FIREBIRD_RING_AT        = 170815,
++    SPELL_FIREBIRD_BLAZING_RING   = 170823,
++    SPELL_FIREBIRD_WINGS_PERIODIC = 170820,
++    FIREBIRD_RING_DURATION        = 15000,
++};
++
++// zrbfacore (2026-11-06 retest: the first ring never counted and no more came): Wings of
++// Flame 170819 itself may be short; the flight is the 170820 aura it keeps refreshing.
++static bool IsFlyingFirebird(Unit const* unit)
++{
++    return unit && (unit->HasAura(SPELL_FIREBIRD_WINGS_OF_FLAME) || unit->HasAura(SPELL_FIREBIRD_WINGS_PERIODIC));
++}
++
++class spell_darkmoon_firebird_summon_rings : public SpellScriptLoader
++{
++public:
++    spell_darkmoon_firebird_summon_rings() : SpellScriptLoader("spell_darkmoon_firebird_summon_rings") { }
++
++    class spell_darkmoon_firebird_summon_rings_SpellScript : public SpellScript
++    {
++        PrepareSpellScript(spell_darkmoon_firebird_summon_rings_SpellScript);
++
++        void HandleScript(SpellEffIndex /*effIndex*/)
++        {
++            Player* player = GetHitUnit() ? GetHitUnit()->ToPlayer() : nullptr;
++            if (!player || !IsFlyingFirebird(player))
++                return;
++
++            // zrbfacore (2026-11-06 retests): rings came too close and some sat inside the roller
++            // coaster, then (35-50 yd out) some went out over the ocean. Rings now stay inside the
++            // area Four marked over the island (X -4454..-4144, Y 6151..6361), at a height of
++            // 104-115 (Four: "keep them above this height, but not much higher"), 50 yards
++            // from the player (Four: "rings should probably always appear 50 yards"), and only where the line from the player and the ring's 5-yard
++            // circle are clear of buildings and objects. The first tries go ahead of the player,
++            // later ones toward the middle of the area; up to 16 tries, else the middle.
++            Map* map = player->GetMap();
++            PhaseShift const& phase = player->GetPhaseShift();
++            float const minX = -4454.0f, maxX = -4144.0f, minY = 6151.0f, maxY = 6361.0f;
++            float const minZ = 104.0f, maxZ = 115.0f;
++            float const midX = (minX + maxX) / 2.0f, midY = (minY + maxY) / 2.0f;
++            float px = player->GetPositionX(), py = player->GetPositionY(), pz = player->GetPositionZ();
++            float x = 0.0f, y = 0.0f, z = 0.0f;
++            bool found = false;
++            for (uint8 i = 0; i < 16 && !found; ++i)
++            {
++                float base = i < 8 ? player->GetOrientation() : std::atan2(midY - py, midX - px);
++                float angle = base + frand(-0.6f, 0.6f);
++                float dist = 50.0f;
++                x = px + dist * std::cos(angle);
++                y = py + dist * std::sin(angle);
++                if (x < minX || x > maxX || y < minY || y > maxY)
++                    continue;
++
++                z = frand(minZ, maxZ);
++                float ground = map->GetHeight(phase, x, y, z + 50.0f, true, 150.0f);
++                if (z < ground + 10.0f)
++                    z = ground + 10.0f;
++
++                found = map->isInLineOfSight(phase, px, py, pz + 1.0f, x, y, z, VMAP::ModelIgnoreFlags::Nothing)
++                    && map->isInLineOfSight(phase, x - 5.0f, y, z, x + 5.0f, y, z, VMAP::ModelIgnoreFlags::Nothing)
++                    && map->isInLineOfSight(phase, x, y - 5.0f, z, x, y + 5.0f, z, VMAP::ModelIgnoreFlags::Nothing)
++                    && map->isInLineOfSight(phase, x, y, z - 5.0f, x, y, z + 5.0f, VMAP::ModelIgnoreFlags::Nothing);
++            }
++
++            if (!found)
++            {
++                x = midX + frand(-40.0f, 40.0f);
++                y = midY + frand(-40.0f, 40.0f);
++                z = std::max(frand(minZ, maxZ), map->GetHeight(phase, x, y, maxZ + 50.0f, true, 150.0f) + 10.0f);
++            }
++
++            player->CastSpell(x, y, z, SPELL_FIREBIRD_RING_AT, true);
++        }
++
++        void Register() override
++        {
++            OnEffectHitTarget += SpellEffectFn(spell_darkmoon_firebird_summon_rings_SpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
++        }
++    };
++
++    SpellScript* GetSpellScript() const override
++    {
++        return new spell_darkmoon_firebird_summon_rings_SpellScript();
++    }
++};
++
++class at_darkmoon_firebird_ring : public AreaTriggerEntityScript
++{
++public:
++    at_darkmoon_firebird_ring() : AreaTriggerEntityScript("at_darkmoon_firebird_ring") { }
++
++    struct at_darkmoon_firebird_ringAI : AreaTriggerAI
++    {
++        at_darkmoon_firebird_ringAI(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger), _taken(false) { }
++
++        void OnCreate() override
++        {
++            at->SetDuration(FIREBIRD_RING_DURATION);
++        }
++
++        void OnUnitEnter(Unit* unit) override
++        {
++            if (unit && unit == at->GetCaster())
++                Take(unit->ToPlayer());
++        }
++
++        // A fast flier can pass through between two target-list updates; check the
++        // distance to the owner on every update as well.
++        void OnUpdate(uint32 /*diff*/) override
++        {
++            Unit* caster = at->GetCaster();
++            if (caster && caster->IsWithinDist3d(at, 6.0f))
++                Take(caster->ToPlayer());
++        }
++
++        void Take(Player* player)
++        {
++            if (_taken || !player || !IsFlyingFirebird(player))
++                return;
++
++            _taken = true;
++            player->CastSpell(player, SPELL_FIREBIRD_BLAZING_RING, true);
++            at->Remove();
++        }
++
++    private:
++        bool _taken;
++    };
++
++    AreaTriggerAI* GetAI(AreaTrigger* areatrigger) const override
++    {
++        return new at_darkmoon_firebird_ringAI(areatrigger);
++    }
++};
++
+ enum DarkmoonFaireYells
+ {
+     // Selina
+@@ -507,6 +739,9 @@ public:
+     }
+ };
+ 
++// zrbfacore: the marked target of each Shooting Gallery round (see spell_shoot_gallery_shoot).
++static GuidSet sMarkedShootingTargets;
++
+ enum ShootGallery
+ {
+     EVENT_SHOOTGALLERY_START_GAME = 1,
+@@ -525,7 +760,9 @@ public:
+ 
+     struct npc_rinlingAI : public ScriptedAI
+     {
+-        npc_rinlingAI(Creature* creature) : ScriptedAI(creature) { }
++        npc_rinlingAI(Creature* creature) : ScriptedAI(creature), _boothCheck(1000) { }
++
++        uint32 _boothCheck;
+ 
+         EventMap events;
+ 
+@@ -549,6 +786,14 @@ public:
+         {
+             events.Update(diff);
+ 
++            if (_boothCheck <= diff)
++            {
++                RemoveGameAuraAwayFromBooth(me, 101871, 12.0f, "You left the Shooting Gallery. Game over!");
++                _boothCheck = 1000;
++            }
++            else
++                _boothCheck -= diff;
++
+             [[maybe_unused]] Map::PlayerList const& PlayerList = me->GetMap()->GetPlayers();
+ 
+             while (uint32 eventId = events.ExecuteEvent())
+@@ -559,40 +804,62 @@ public:
+                     switch (urand(0, 2))
+                     {
+                     case 0:
+-                        if (Creature* summon = me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
+-                            summon->CastSpell(summon, 102341, false);
++                        if (Creature* summon = me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000))
++                            { summon->CastSpell(summon, 102341, false); sMarkedShootingTargets.insert(summon->GetGUID()); }
+ 
+-                        me->SummonCreature(54225, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
+-                        me->SummonCreature(54225, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4070.09f, 6354.87f, 13.30f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000);
++                        me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000);
+                         break;
+                     case 1:
+-                        me->SummonCreature(54225, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000);
+ 
+-                        if (Creature* summon = me->SummonCreature(54231, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
+-                            summon->CastSpell(summon, 102341, false);
++                        if (Creature* summon = me->SummonCreature(54231, -4070.09f, 6354.87f, 13.30f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000))
++                            { summon->CastSpell(summon, 102341, false); sMarkedShootingTargets.insert(summon->GetGUID()); }
+ 
+-                        me->SummonCreature(54225, -4068.41f, 6353.09f, 12.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000);
+                         break;
+                     case 2:
+-                        me->SummonCreature(54225, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
+-                        me->SummonCreature(54225, -4070.09f, 6354.87f, 12.57f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000);
++                        me->SummonCreature(54231, -4072.19f, 6356.46f, 13.35f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000);
++                        me->SummonCreature(54231, -4070.09f, 6354.87f, 13.30f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000);
+ 
+-                        if (Creature* summon = me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 5000))
+-                            summon->CastSpell(summon, 102341, false);
++                        if (Creature* summon = me->SummonCreature(54231, -4068.41f, 6353.09f, 13.24f, 4.21f, TEMPSUMMON_TIMED_DESPAWN, 2000))
++                            { summon->CastSpell(summon, 102341, false); sMarkedShootingTargets.insert(summon->GetGUID()); }
+ 
+                         break;
+                     }
+-                    events.ScheduleEvent(EVENT_SHOOTGALLERY_START_GAME, 5000);
++                    // zrbfacore: a new target every 2 s (was 5 s). At 5 s only 12 marked targets showed up
++                    // in the 60 s game, so 25 hits were impossible (Four, 2026-11-06).
++                    events.ScheduleEvent(EVENT_SHOOTGALLERY_START_GAME, 2000);
+                     break;
+                 case EVENT_SHOOTGALLERY_FINISH_GAME:
++                {
+                     Active = false;
+                     events.CancelEvent(EVENT_SHOOTGALLERY_START_GAME);
++
++                    // zrbfacore: the gun stayed after the 60 s game.
++                    Map::PlayerList const& players = me->GetMap()->GetPlayers();
++                    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++                        if (Player* player = itr->GetSource())
++                            if (player->HasAura(101871) && player->GetExactDist2d(me) <= 30.0f)
++                            {
++                                player->RemoveAurasDueToSpell(101871);
++                                me->Whisper("Time's up!", LANG_UNIVERSAL, player);
++                            }
+                     break;
+                 }
++                }
+             }
+         }
+     };
+ 
++    // zrbfacore: turning in the Shooting Gallery quest (29438) ends the game.
++    bool OnQuestReward(Player* player, Creature* /*creature*/, Quest const* quest, uint32 /*opt*/) override
++    {
++        if (quest->GetQuestId() == 29438)
++            player->RemoveAurasDueToSpell(101871);
++        return false;
++    }
++
+     bool OnGossipHello(Player* player, Creature* creature) override
+     {
+         if (creature->IsQuestGiver())
+@@ -604,8 +871,8 @@ public:
+         switch (player->GetSession()->GetSessionDbcLocale())
+         {
+         default:
+-            GOSSIP_BUTTON_1 = "How does the shooting gallery work? ";
+-            GOSSIP_BUTTON_2 = "I'm ready to shoot! |cFF0000FF(Darkmoon Game Token)|r";
++            GOSSIP_BUTTON_1 = "How does the Shooting Gallery work?";
++            GOSSIP_BUTTON_2 = "Let's shoot! |cFF0000FF(Darkmoon Game Token)|r";
+             break;
+         };
+ 
+@@ -614,7 +881,7 @@ public:
+         if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
+             AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+ 
+-        SendGossipMenuFor(player, 23002, creature->GetGUID());
++        SendGossipMenuFor(player, 7397, creature->GetGUID()); // zrbfacore: menu 6225 text (was 23002, no such text)
+         return true;
+     }
+ 
+@@ -627,9 +894,9 @@ public:
+         switch (player->GetSession()->GetSessionDbcLocale())
+         {
+         default:
+-            GOSSIP_BUTTON_1 = "How does the shooting gallery work? ";
+-            GOSSIP_BUTTON_2 = "I'm ready to shoot! |cFF0000FF(Darkmoon Game Token)|r";
+-            GOSSIP_BUTTON_3 = "Alright.";
++            GOSSIP_BUTTON_1 = "How does the Shooting Gallery work?";
++            GOSSIP_BUTTON_2 = "Let's shoot! |cFF0000FF(Darkmoon Game Token)|r";
++            GOSSIP_BUTTON_3 = "I understand.";
+             break;
+         };
+ 
+@@ -638,7 +905,7 @@ public:
+         if (action == GOSSIP_ACTION_INFO_DEF + 1)
+         {
+             AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
+-            SendGossipMenuFor(player, 23003, creature->GetGUID());
++            SendGossipMenuFor(player, 18353, creature->GetGUID()); // zrbfacore: menu 13068 "how it works" text
+         }
+ 
+         if (action == GOSSIP_ACTION_INFO_DEF + 2)
+@@ -658,7 +925,11 @@ public:
+                 return true;
+             }
+             else
+-                SendGossipMenuFor(player, 54603, creature->GetGUID());
++            {
++                // zrbfacore: text 54603 does not exist; say it instead.
++                creature->Whisper("You need a Darkmoon Game Token to play!", LANG_UNIVERSAL, player);
++                CloseGossipMenuFor(player);
++            }
+         }
+ 
+         if (action == GOSSIP_ACTION_INFO_DEF + 3)
+@@ -671,7 +942,7 @@ public:
+             if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
+                 AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+ 
+-            SendGossipMenuFor(player, 23002, creature->GetGUID());
++            SendGossipMenuFor(player, 7397, creature->GetGUID()); // zrbfacore: menu 6225 text (was 23002, no such text)
+         }
+ 
+         return true;
+@@ -983,8 +1254,12 @@ public:
+         {
+             Player* player = GetCaster()->ToPlayer();
+ 
+-            if (GetHitCreature()->GetEntry() == 54231)
++            // zrbfacore: only the marked target counts; the decoys are the same creature
++            // now, because the old decoy entry (54225) does not exist in 8.3.7.
++            Creature* target = GetHitCreature();
++            if (player && target && target->GetEntry() == 54231 && sMarkedShootingTargets.erase(target->GetGUID()))
+             {
++                target->RemoveAurasDueToSpell(102341);
+                 player->KilledMonsterCredit(54231, ObjectGuid::Empty);
+ 
+                 AchievementEntry const* AchievShooter = sAchievementStore.LookupEntry(6022);
+@@ -993,8 +1268,40 @@ public:
+             }
+         }
+ 
++        // zrbfacore: Shoot (101872) is a cone whose radius row is tiny in 8.3.7, so nothing was
++        // ever hit. Hit the gallery target (54231) closest to where the player faces, within
++        // 30 yards and 90 degrees.
++        void SelectTarget(std::list<WorldObject*>& targets)
++        {
++            targets.clear();
++            Unit* caster = GetCaster();
++            if (!caster)
++                return;
++
++            std::list<Creature*> found;
++            caster->GetCreatureListWithEntryInGrid(found, 54231, 30.0f);
++            Creature* best = nullptr;
++            float bestOff = 0.0f;
++            for (Creature* creature : found)
++            {
++                if (!creature->IsAlive() || !caster->HasInArc(float(M_PI) / 2.0f, creature))
++                    continue;
++
++                float off = std::fabs(Position::NormalizeOrientation(caster->GetRelativeAngle(creature) + float(M_PI)) - float(M_PI));
++                if (!best || off < bestOff)
++                {
++                    best = creature;
++                    bestOff = off;
++                }
++            }
++
++            if (best)
++                targets.push_back(best);
++        }
++
+         void Register()
+         {
++            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_shoot_gallery_shoot_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_CONE_ENTRY);
+             AfterHit += SpellHitFn(spell_shoot_gallery_shoot_SpellScript::OnHit);
+             OnCheckCast += SpellCheckCastFn(spell_shoot_gallery_shoot_SpellScript::CheckRequirement);
+         }
+@@ -1006,6 +1313,139 @@ public:
+     }
+ };
+ 
++// zrbfacore: Firebird's Challenge gave one ring and then nothing (Four, 2026-11-06). Wings of
++// Flame (170819) lasts 2.5 s and starts the flight (170820, 10 s), which brings one ring.
++// Each ring caught casts Blazing Ring (170823), whose script effect had no script: it is
++// what keeps the flight going. It now renews the flight, which brings the next ring.
++class spell_darkmoon_firebird_blazing_ring : public SpellScriptLoader
++{
++public:
++    spell_darkmoon_firebird_blazing_ring() : SpellScriptLoader("spell_darkmoon_firebird_blazing_ring") { }
++
++    class spell_darkmoon_firebird_blazing_ring_SpellScript : public SpellScript
++    {
++        PrepareSpellScript(spell_darkmoon_firebird_blazing_ring_SpellScript);
++
++        void HandleScript(SpellEffIndex /*effIndex*/)
++        {
++            Unit* target = GetHitUnit();
++            if (!target || !IsFlyingFirebird(target))
++                return;
++
++            target->CastSpell(target, SPELL_FIREBIRD_WINGS_PERIODIC, true);
++        }
++
++        void Register() override
++        {
++            OnEffectHitTarget += SpellEffectFn(spell_darkmoon_firebird_blazing_ring_SpellScript::HandleScript, EFFECT_1, SPELL_EFFECT_SCRIPT_EFFECT);
++        }
++    };
++
++    SpellScript* GetSpellScript() const override
++    {
++        return new spell_darkmoon_firebird_blazing_ring_SpellScript();
++    }
++};
++
++// zrbfacore: Carl Goodup's Balloon Cart (55306). The balloons are the Balloon Cart Bunny
++// (55307) sitting in the cart's seat (1 yard up). Loaded the normal way, the bunny boarded
++// the cart before the cart was on Carl and stayed behind when Carl walked off (Four,
++// 2026-11-06). The cart now seats the bunny itself once it is riding on Carl.
++enum BalloonCart
++{
++    NPC_BALLOON_CART_BUNNY = 55307,
++};
++
++class npc_darkmoon_balloon_cart : public CreatureScript
++{
++public:
++    npc_darkmoon_balloon_cart() : CreatureScript("npc_darkmoon_balloon_cart") { }
++
++    struct npc_darkmoon_balloon_cartAI : public ScriptedAI
++    {
++        npc_darkmoon_balloon_cartAI(Creature* creature) : ScriptedAI(creature), _checkTimer(1000), _tries(0) { }
++
++        void UpdateAI(uint32 diff) override
++        {
++            if (_tries >= 5)
++                return;
++
++            if (_checkTimer > diff)
++            {
++                _checkTimer -= diff;
++                return;
++            }
++            _checkTimer = 2000;
++
++            Vehicle* kit = me->GetVehicleKit();
++            if (!kit || !me->GetVehicle())
++                return; // wait until the cart rides on Carl
++
++            if (kit->GetPassenger(0))
++            {
++                _tries = 5; // balloons are on
++                return;
++            }
++
++            ++_tries;
++            kit->InstallAccessory(NPC_BALLOON_CART_BUNNY, 0, true, TEMPSUMMON_MANUAL_DESPAWN, 0);
++        }
++
++    private:
++        uint32 _checkTimer;
++        uint8 _tries;
++    };
++
++    CreatureAI* GetAI(Creature* creature) const override
++    {
++        return new npc_darkmoon_balloon_cartAI(creature);
++    }
++};
++
++// zrbfacore: Test Your Strength (29433) needs 250 Grisly Trophies (71096), and nothing gave
++// them (Four, 2026-11-06). On retail a trophy comes from each kill of an enemy that gives
++// experience or honor, while the player carries the Darkmoon Adventurer's Guide (71634) and
++// has the quest. Only the player's own killing blows count (the core has no kill hook for pets).
++enum GrislyTrophy
++{
++    QUEST_TEST_YOUR_STRENGTH       = 29433,
++    ITEM_GRISLY_TROPHY             = 71096,
++    ITEM_DARKMOON_ADVENTURERS_GUIDE = 71634,
++};
++
++class playerscript_darkmoon_grisly_trophy : public PlayerScript
++{
++public:
++    playerscript_darkmoon_grisly_trophy() : PlayerScript("playerscript_darkmoon_grisly_trophy") { }
++
++    static void TryGiveTrophy(Player* player, Unit* victim)
++    {
++        if (!player || !victim || victim == player)
++            return;
++
++        if (player->GetQuestStatus(QUEST_TEST_YOUR_STRENGTH) != QUEST_STATUS_INCOMPLETE)
++            return;
++
++        if (!player->HasItemCount(ITEM_DARKMOON_ADVENTURERS_GUIDE, 1, true))
++            return;
++
++        if (!player->isHonorOrXPTarget(victim))
++            return;
++
++        player->AddItem(ITEM_GRISLY_TROPHY, 1);
++    }
++
++    void OnCreatureKill(Player* killer, Creature* killed) override
++    {
++        TryGiveTrophy(killer, killed);
++    }
++
++    void OnPVPKill(Player* killer, Player* killed) override
++    {
++        TryGiveTrophy(killer, killed);
++    }
++};
++
+ void AddSC_darkmoon_island()
+ {
+     new playerscript_darkmoon_carousel();
+@@ -1013,6 +1453,11 @@ void AddSC_darkmoon_island()
+     new npc_selina_dourman();
+     new npc_rinling();
+     new spell_ring_toss();
++    new spell_darkmoon_firebird_summon_rings();
++    new at_darkmoon_firebird_ring();
++    new spell_darkmoon_firebird_blazing_ring();
++    new npc_darkmoon_balloon_cart();
++    new playerscript_darkmoon_grisly_trophy();
+     new item_darkmoon_faire_fireworks();
+     new spell_darkmoon_carousel_whee();
+     new spell_darkmoon_staging_area_teleport();
+diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
+index e90fb3a..6865b83 100644
+--- a/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
++++ b/src/server/scripts/DarkmoonIsland/DarkmoonTonk.cpp
+@@ -26,6 +26,8 @@
+ #include "ScriptedGossip.h"
+ #include "MotionMaster.h"
+ #include <G3D/Quat.h>
++#include "Vehicle.h"
++#include "ObjectMgr.h"
+ 
+ enum eSpells
+ {
+@@ -70,6 +72,10 @@ public:
+ 
+         bool Active;
+ 
++        // zrbfacore: where each player stood when they started the game, so the end of the
++        // game can put them back there (Four, 2026-11-06).
++        std::map<ObjectGuid, Position> StartPositions;
++
+         void Reset()
+         {
+             Active = false;
+@@ -266,12 +272,42 @@ public:
+                     events.ScheduleEvent(EVENT_TONKCOMMANDER_START_GAME_3, 5000);
+                     break;
+                 case EVENT_TONKCOMMANDER_FINISH_GAME:
++                {
++                    // zrbfacore: the game never ended for the player. When the steam tonk
++                    // (54588) timed out they were dropped on the battlefield with the Tonk!
++                    // bar still up (Four, 2026-11-06). End it here: take the bar, leave the
++                    // tonk, go back to where they started the game (falls back to the consoles),
++                    // and clear the tonks. Players are found from the start list too, so a player
++                    // whose Tonk! bar ran out a moment early still goes back.
++                    std::list<Player*> players;
++                    me->GetPlayerListInGrid(players, 80.0f);
++                    for (Player* player : players)
++                    {
++                        auto itr = StartPositions.find(player->GetGUID());
++                        if (!player->HasAura(SPELL_PROGRESS_BAR) && itr == StartPositions.end())
++                            continue;
++
++                        player->RemoveAurasDueToSpell(SPELL_PROGRESS_BAR);
++                        player->ExitVehicle();
++                        if (itr != StartPositions.end())
++                            player->NearTeleportTo(itr->second.GetPositionX(), itr->second.GetPositionY(), itr->second.GetPositionZ(), itr->second.GetOrientation());
++                        else
++                            player->NearTeleportTo(-4127.5f, 6327.0f, 13.12f, 4.37f);
++                    }
++                    StartPositions.clear();
++
++                    std::list<Creature*> tonks;
++                    me->GetCreatureListWithEntryInGrid(tonks, 54588, 80.0f);
++                    for (Creature* tonk : tonks)
++                        tonk->DespawnOrUnsummon();
++
+                     Active = false;
+                     events.CancelEvent(EVENT_TONKCOMMANDER_START_GAME_1);
+                     events.CancelEvent(EVENT_TONKCOMMANDER_START_GAME_2);
+                     events.CancelEvent(EVENT_TONKCOMMANDER_START_GAME_3);
+                     break;
+                 }
++                }
+             }
+         }
+     };
+@@ -297,7 +333,7 @@ public:
+         if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
+             AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+ 
+-        SendGossipMenuFor(player, 54605, creature->GetGUID());
++        SendGossipMenuFor(player, 18290, creature->GetGUID()); // zrbfacore: menu 13019 text (was 54605, no such text)
+         return true;
+     }
+ 
+@@ -312,7 +348,7 @@ public:
+         default:
+             GOSSIP_BUTTON_1 = "How do I play the Tonk Challenge?";
+             GOSSIP_BUTTON_2 = "Ready to play! |cFF0000FF(Darkmoon Game Token)|r";
+-            GOSSIP_BUTTON_3 = "Alright.";
++            GOSSIP_BUTTON_3 = "I understand.";
+             break;
+         };
+ 
+@@ -321,7 +357,7 @@ public:
+         if (action == GOSSIP_ACTION_INFO_DEF + 1)
+         {
+             AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
+-            SendGossipMenuFor(player, 54606, creature->GetGUID());
++            SendGossipMenuFor(player, 18352, creature->GetGUID()); // zrbfacore: menu 13066 "how to play" text
+         }
+ 
+         if (action == GOSSIP_ACTION_INFO_DEF + 2)
+@@ -334,9 +370,14 @@ public:
+                 player->RemoveAurasByType(SPELL_AURA_MOUNTED);
+                 player->RemoveAurasByType(SPELL_AURA_MOD_SHAPESHIFT);
+ 
++                // zrbfacore: remember where the player started, for the end of the game.
++                CAST_AI(npc_finlay_coolshot::npc_finlay_coolshotAI, creature->AI())->StartPositions[player->GetGUID()] = player->GetPosition();
++
+                 player->AddAura(102178, player);
+ 
+-                if (Creature* summon = creature->SummonCreature(54588, -4131.37f, 6317.32f, 13.11f, 4.31f, TEMPSUMMON_TIMED_DESPAWN, 60000))
++                // zrbfacore: the tonk lasts 2 s longer than the game, so the end of the game
++                // (which sends the player back) runs before the tonk despawns under them.
++                if (Creature* summon = creature->SummonCreature(54588, -4131.37f, 6317.32f, 13.11f, 4.31f, TEMPSUMMON_TIMED_DESPAWN, 62000))
+                     player->CastSpell(summon, 46598, false);
+ 
+                 CAST_AI(npc_finlay_coolshot::npc_finlay_coolshotAI, creature->AI())->StartGame();
+@@ -345,7 +386,11 @@ public:
+                 return true;
+             }
+             else
+-                SendGossipMenuFor(player, 54603, creature->GetGUID());
++            {
++                // zrbfacore: text 54603 does not exist; say it instead.
++                creature->Whisper("You need a Darkmoon Game Token to play!", LANG_UNIVERSAL, player);
++                CloseGossipMenuFor(player);
++            }
+         }
+ 
+         if (action == GOSSIP_ACTION_INFO_DEF + 3)
+@@ -358,15 +403,144 @@ public:
+             if (!player->HasAura(101612) && !player->HasAura(110230) && !player->HasAura(102121) && !player->HasAura(102178) && !player->HasAura(102058) && !player->HasAura(101871))
+                 AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_BUTTON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+ 
+-            SendGossipMenuFor(player, 54605, creature->GetGUID());
++            SendGossipMenuFor(player, 18290, creature->GetGUID()); // zrbfacore: menu 13019 text (was 54605, no such text)
+         }
+ 
+         return true;
+     }
+ };
+ 
++// zrbfacore: the steam tonk's Cannon (102292) only hit things touching the tonk (its cone
++// radius comes from a SpellRadius row that is tiny in 8.3.7). It now hits one Tonk Target,
++// Enemy Tonk or MiniZep up to 30 yards away in a 60 degree cone in front of the tonk: the one
++// closest to straight ahead.
++class spell_darkmoon_tonk_cannon : public SpellScriptLoader
++{
++public:
++    spell_darkmoon_tonk_cannon() : SpellScriptLoader("spell_darkmoon_tonk_cannon") { }
++
++    class spell_darkmoon_tonk_cannon_SpellScript : public SpellScript
++    {
++        PrepareSpellScript(spell_darkmoon_tonk_cannon_SpellScript);
++
++        void SelectTargets(std::list<WorldObject*>& targets)
++        {
++            targets.clear();
++            Unit* caster = GetCaster();
++            if (!caster)
++                return;
++
++            Creature* best = nullptr;
++            float bestOff = 0.0f;
++            static uint32 const entries[] = { 33081, 54642, 54643 };
++            for (uint32 entry : entries)
++            {
++                std::list<Creature*> found;
++                caster->GetCreatureListWithEntryInGrid(found, entry, 30.0f);
++                for (Creature* creature : found)
++                {
++                    if (!creature->IsAlive() || !caster->HasInArc(float(M_PI) / 3.0f, creature))
++                        continue;
++
++                    float off = std::fabs(Position::NormalizeOrientation(caster->GetRelativeAngle(creature) + float(M_PI)) - float(M_PI));
++                    if (!best || off < bestOff)
++                    {
++                        best = creature;
++                        bestOff = off;
++                    }
++                }
++            }
++
++            if (best)
++                targets.push_back(best);
++        }
++
++        void Register() override
++        {
++            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_darkmoon_tonk_cannon_SpellScript::SelectTargets, EFFECT_0, TARGET_UNIT_CONE_ENTRY);
++        }
++    };
++
++    SpellScript* GetSpellScript() const override
++    {
++        return new spell_darkmoon_tonk_cannon_SpellScript();
++    }
++};
++
++// zrbfacore: Enemy Tonks and MiniZeps fire Cannon Blast (102227) at the player's tonk (SAI:
++// 25% chance every 3-4 s). The cannonball lands where the tonk was (6 yd/s, so it can be
++// dodged); a tonk within 4 yd of the landing spot is stunned for 2 s and its driver loses
++// 1 Tonk Target credit (quest 29434) while the quest is not complete yet.
++class spell_darkmoon_enemy_tonk_cannon_blast : public SpellScriptLoader
++{
++public:
++    spell_darkmoon_enemy_tonk_cannon_blast() : SpellScriptLoader("spell_darkmoon_enemy_tonk_cannon_blast") { }
++
++    class spell_darkmoon_enemy_tonk_cannon_blast_SpellScript : public SpellScript
++    {
++        PrepareSpellScript(spell_darkmoon_enemy_tonk_cannon_blast_SpellScript);
++
++        void HandleHit(SpellEffIndex /*effIndex*/)
++        {
++            Unit* caster = GetCaster();
++            WorldLocation const* dest = GetHitDest();
++            if (!caster || !dest)
++                return;
++
++            std::list<Creature*> tonks;
++            caster->GetCreatureListWithEntryInGrid(tonks, 54588, 80.0f);
++            for (Creature* tonk : tonks)
++            {
++                if (!tonk->IsAlive() || tonk->GetExactDist2d(dest) > 4.0f)
++                    continue;
++
++                if (Aura* stun = tonk->AddAura(102229, tonk))
++                {
++                    stun->SetMaxDuration(2000);
++                    stun->SetDuration(2000);
++                }
++
++                Vehicle* kit = tonk->GetVehicleKit();
++                if (!kit)
++                    continue;
++
++                for (int8 seat = 0; seat < MAX_VEHICLE_SEATS; ++seat)
++                {
++                    Unit* passenger = kit->GetPassenger(seat);
++                    Player* player = passenger ? passenger->ToPlayer() : nullptr;
++                    if (!player || player->GetQuestStatus(29434) != QUEST_STATUS_INCOMPLETE)
++                        continue;
++
++                    if (Quest const* quest = sObjectMgr->GetQuestTemplate(29434))
++                        for (QuestObjective const& objective : quest->GetObjectives())
++                        {
++                            int32 count = player->GetQuestObjectiveData(quest, objective.StorageIndex);
++                            if (objective.ObjectID == 33081 && count > 0)
++                            {
++                                player->SetQuestObjectiveData(objective, count - 1);
++                                player->SendQuestUpdate(29434);
++                            }
++                        }
++                }
++            }
++        }
++
++        void Register() override
++        {
++            OnEffectHit += SpellEffectFn(spell_darkmoon_enemy_tonk_cannon_blast_SpellScript::HandleHit, EFFECT_0, SPELL_EFFECT_TRANS_DOOR);
++        }
++    };
++
++    SpellScript* GetSpellScript() const override
++    {
++        return new spell_darkmoon_enemy_tonk_cannon_blast_SpellScript();
++    }
++};
++
+ void AddSC_darkmoon_tonk()
+ {
++    new spell_darkmoon_enemy_tonk_cannon_blast();
++    new spell_darkmoon_tonk_cannon();
+     //npc
+     new npc_finlay_coolshot();
+     //go
+diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
+index 37f4f99..ceb8acb 100644
+--- a/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
++++ b/src/server/scripts/DarkmoonIsland/DarkmoonWhackGnoll.cpp
+@@ -18,6 +18,8 @@
+ #include "ScriptMgr.h"
+ #include "DarkmoonIsland.h"
+ #include "ScriptedGossip.h"
++#include "ObjectMgr.h"
++#include "QuestDef.h"
+ 
+ enum whackCreatures
+ {
+@@ -59,9 +61,25 @@ enum whackEvents
+ 
+ #define MAX_BARRELS         9
+ 
+-#define GNOLL_TIMER         3  * IN_MILLISECONDS
+-#define DOLL_TIMER          6  * IN_MILLISECONDS
+-#define BOSS_TIMER          10 * IN_MILLISECONDS
++// zrbfacore: was 3 / 6 / 10 seconds, which allowed only about 15 of the 30
++// points in the one-minute game; 1.5 s still topped out around 26 (Four, 2026-11-05).
++#define GNOLL_TIMER         1000
++#define DOLL_TIMER          5  * IN_MILLISECONDS
++#define BOSS_TIMER          7  * IN_MILLISECONDS
++#define QUEST_CREDIT_NPC    54505
++#define POPUP_LIFETIME      4  * IN_MILLISECONDS
++#define RETRY_TIMER         500
++
++// zrbfacore: the score bar (alternate power) follows the quest count.
++static void SyncWhackScore(Player* player)
++{
++    if (player->GetQuestStatus(QUEST_WHACK_A_GNOLL) != QUEST_STATUS_INCOMPLETE)
++        return;
++
++    int32 count = int32(player->GetReqKillOrCastCurrentCount(QUEST_WHACK_A_GNOLL, QUEST_CREDIT_NPC));
++    if (player->GetPower(POWER_ALTERNATE_POWER) != count)
++        player->SetPower(POWER_ALTERNATE_POWER, count);
++}
+ 
+ class npc_whack_gnoll_bunny : public CreatureScript
+ {
+@@ -103,26 +121,35 @@ class npc_whack_gnoll_bunny : public CreatureScript
+                     barrelList.push_back(barrel->GetGUID());
+             }
+ 
+-            // We need to find a barrel that do not already have a summon
+-            Creature* GetRandomBarrel()
++            // zrbfacore: a barrel is free when nothing alive stands in it. The old
++            // check waited for the barrel's "ok to hit" aura to run out, which kept
++            // barrels blocked long after their gnoll was whacked (and looped forever
++            // on a barrel that could not be found).
++            static bool IsBarrelFree(Creature* barrel)
+             {
+-                std::list<ObjectGuid> tempList = barrelList;
+-
+-                while (tempList.size())
++                for (uint32 entry : { uint32(NPC_GNOLL), uint32(NPC_DOLL), uint32(NPC_BOSS) })
+                 {
+-                    auto it = tempList.begin();
+-                    std::advance(it, urand(0, tempList.size() - 1));
+-
+-                    if (Creature* barrel = ObjectAccessor::GetCreature(*me, *it))
+-                    {
+-                        if (barrel->HasAura(SPELL_OK_TO_HIT))
+-                            tempList.erase(it);
+-                        else
+-                            return barrel;
+-                    }
++                    std::list<Creature*> standing;
++                    barrel->GetCreatureListWithEntryInGrid(standing, entry, 2.0f);
++                    for (Creature* summon : standing)
++                        if (summon->IsAlive())
++                            return false;
+                 }
++                return true;
++            }
++
++            Creature* GetRandomBarrel()
++            {
++                std::vector<Creature*> freeBarrels;
++                for (ObjectGuid const& guid : barrelList)
++                    if (Creature* barrel = ObjectAccessor::GetCreature(*me, guid))
++                        if (IsBarrelFree(barrel))
++                            freeBarrels.push_back(barrel);
+ 
+-                return nullptr;
++                if (freeBarrels.empty())
++                    return nullptr;
++
++                return freeBarrels[urand(0, freeBarrels.size() - 1)];
+             }
+ 
+             void SummonFromBarrel(Creature* barrel, uint32 spellId)
+@@ -133,7 +160,13 @@ class npc_whack_gnoll_bunny : public CreatureScript
+                 if (spellId != SPELL_SUMMON_GNOLL && spellId != SPELL_SUMMON_DOLL && spellId != SPELL_SUMMON_BOSS)
+                     return;
+ 
+-                barrel->CastSpell(barrel, spellId, false);
++                // zrbfacore: summon straight from the barrel with a fixed lifetime. The
++                // summon spells left gnolls standing until whacked, so all 9 barrels
++                // filled up and the 1 s gnoll timer took every freed barrel before the
++                // bonus gnoll (7 s) ever found one (Four, 2026-11-05: "i have yet to
++                // see one").
++                uint32 entry = spellId == SPELL_SUMMON_GNOLL ? uint32(NPC_GNOLL) : spellId == SPELL_SUMMON_DOLL ? uint32(NPC_DOLL) : uint32(NPC_BOSS);
++                barrel->SummonCreature(entry, barrel->GetPosition(), TEMPSUMMON_TIMED_DESPAWN, POPUP_LIFETIME);
+                 barrel->CastSpell(barrel, SPELL_SPAWN_VISUAL, false);
+                 barrel->AddAura(SPELL_OK_TO_HIT, barrel);
+             }
+@@ -160,17 +193,23 @@ class npc_whack_gnoll_bunny : public CreatureScript
+                         case EVENT_SUMMON_DOLL:
+                         {
+                             if (Creature* barrel = GetRandomBarrel())
++                            {
+                                 SummonFromBarrel(barrel, SPELL_SUMMON_DOLL);
+-
+-                            events.ScheduleEvent(EVENT_SUMMON_DOLL, DOLL_TIMER);
++                                events.ScheduleEvent(EVENT_SUMMON_DOLL, DOLL_TIMER);
++                            }
++                            else
++                                events.ScheduleEvent(EVENT_SUMMON_DOLL, RETRY_TIMER);
+                             break;
+                         }
+                         case EVENT_SUMMON_BOSS:
+                         {
+                             if (Creature* barrel = GetRandomBarrel())
++                            {
+                                 SummonFromBarrel(barrel, SPELL_SUMMON_BOSS);
+-
+-                            events.ScheduleEvent(EVENT_SUMMON_BOSS, BOSS_TIMER);
++                                events.ScheduleEvent(EVENT_SUMMON_BOSS, BOSS_TIMER);
++                            }
++                            else
++                                events.ScheduleEvent(EVENT_SUMMON_BOSS, RETRY_TIMER);
+                             break;
+                         }
+                         case EVENT_CHECK_PLAYER_POS:
+@@ -182,6 +221,7 @@ class npc_whack_gnoll_bunny : public CreatureScript
+                             {
+                                 if (player->HasAura(SPELL_ENABLE_POWERBAR))
+                                 {
++                                    SyncWhackScore(player);
+                                     if (me->GetDistance(player) >= 15.0f)
+                                         player->NearTeleportTo(-3994.28f, 6283.58f, 13.12f, 0.727784f, true);
+                                 }
+@@ -211,18 +251,35 @@ class npc_whack_gnoll_mola : public CreatureScript
+             if (creature->IsQuestGiver())
+                 player->PrepareQuestMenu(creature->GetGUID());
+ 
+-            if (player->GetQuestStatus(QUEST_WHACK_A_GNOLL) == QUEST_STATUS_INCOMPLETE)
+-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Je souhaite jouer a Cogne-Gnoll !", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
++            // zrbfacore: open to everyone (the quest only counts the hits), English text.
++            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "How do I play Whack-a-Gnoll?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
++            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Ready to play! |cFF0000FF(Darkmoon Game Token)|r", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+ 
+             player->PlayerTalkClass->SendGossipMenu(player->GetGossipTextId(creature), creature->GetGUID());
+             return true;
+         }
+ 
+-        bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 /*action*/) override
++        bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+         {
++            // zrbfacore: "How do I play Whack-a-Gnoll?" shows the game's instructions (npc_text 18350),
++            // "I understand." goes back to the first page.
++            if (action == GOSSIP_ACTION_INFO_DEF + 2)
++            {
++                ClearGossipMenuFor(player);
++                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "I understand.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
++                SendGossipMenuFor(player, 18350, creature->GetGUID());
++                return true;
++            }
++            if (action == GOSSIP_ACTION_INFO_DEF + 3)
++            {
++                ClearGossipMenuFor(player);
++                return OnGossipHello(player, creature);
++            }
++
+             if (!player->HasItemCount(ITEM_DARKMOON_TOKEN))
+             {
+-                creature->Whisper("Vous devez posseder un Jeton de Sombrelune pour jouer a Cogne-Gnoll !", LANG_UNIVERSAL, player);
++                creature->Whisper("You need a Darkmoon Game Token to play Whack-a-Gnoll!", LANG_UNIVERSAL, player);
++                CloseGossipMenuFor(player);
+                 return true;
+             }
+ 
+@@ -231,7 +288,8 @@ class npc_whack_gnoll_mola : public CreatureScript
+ 
+             creature->AddAura(SPELL_OVERRIDE_ACTION, player);
+             creature->AddAura(SPELL_ENABLE_POWERBAR, player);
+-            player->SetPower(POWER_ALTERNATE_POWER, player->GetReqKillOrCastCurrentCount(QUEST_WHACK_A_GNOLL, 54505));
++            player->SetPower(POWER_ALTERNATE_POWER, 0);
++            SyncWhackScore(player);
+ 
+             CloseGossipMenuFor(player);
+             return true;
+@@ -280,6 +338,12 @@ class PositionCheck
+ 
+         bool operator()(WorldObject* unit)
+         {
++            // zrbfacore: a whacked gnoll's corpse stayed in the barrel and every swing
++            // at it scored again (Four, 2026-11-05).
++            if (Unit* target = unit->ToUnit())
++                if (!target->IsAlive())
++                    return true;
++
+             bool isTooFar = _caster->GetDistance2d(unit) >= 3.0f;
+             bool isNotInFront = !_caster->isInFront(unit, 90.0f);
+             return isTooFar || isNotInFront;
+@@ -341,6 +405,11 @@ class spell_whack_gnoll_whack : public SpellScriptLoader
+                 }
+ 
+                 caster->Kill(target);
++                target->DespawnOrUnsummon(500);
++
++                if (Player* player = caster->ToPlayer())
++                    SyncWhackScore(player);
++
+                 return SPELL_CAST_OK;
+             }
+ 
+@@ -380,6 +449,18 @@ public:
+                 return;
+ 
+             target->SetPower(POWER_ALTERNATE_POWER, 0);
++
++            // zrbfacore: "score 30 points in a minute". A game that ends short of 30
++            // starts the count over, instead of carrying the points to the next token.
++            if (Player* player = target->ToPlayer())
++                if (player->GetQuestStatus(QUEST_WHACK_A_GNOLL) == QUEST_STATUS_INCOMPLETE)
++                    if (Quest const* quest = sObjectMgr->GetQuestTemplate(QUEST_WHACK_A_GNOLL))
++                    {
++                        for (QuestObjective const& objective : quest->GetObjectives())
++                            player->SetQuestObjectiveData(objective, 0);
++                        player->SendQuestUpdate(QUEST_WHACK_A_GNOLL);
++                    }
++
+             target->RemoveAurasDueToSpell(SPELL_ENABLE_POWERBAR);
+             target->RemoveAurasDueToSpell(SPELL_DOLL_STUN);
+             target->CastSpell(target, SPELL_FORBIDDEN_ZONE, true);

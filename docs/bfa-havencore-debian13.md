@@ -114,10 +114,23 @@ git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
 git apply ../tools-repo/tools/bfa/battle-pet-player-flags.patch
 git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
 git apply ../tools-repo/tools/bfa/core-branding.patch
+git apply ../tools-repo/tools/bfa/razorfen-downs.patch
 git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
 git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 git apply ../tools-repo/tools/bfa/transmog-apply.patch
-git apply ../tools-repo/tools/bfa/razorfen-downs.patch
+git apply ../tools-repo/tools/bfa/holiday-schedule.patch
+git apply ../tools-repo/tools/bfa/darkmoon-faire-gossip.patch
+git apply ../tools-repo/tools/bfa/darkmoon-race.patch
+git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
+git apply ../tools-repo/tools/bfa/skinning-tiers.patch
+git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
+if grep -q SetQuestSlotObjectiveFlag src/server/game/Entities/Player/Player.h; then git apply ../tools-repo/tools/bfa/quest-objective-flags-upstream.patch; else git apply ../tools-repo/tools/bfa/quest-objective-flags.patch; fi
+git apply ../tools-repo/tools/bfa/mulgore-bristleback-fight.patch
+git apply ../tools-repo/tools/bfa/quest-complete-window.patch
+git apply ../tools-repo/tools/bfa/quest-empty-progress.patch
+git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
+git apply ../tools-repo/tools/bfa/quest-list-accept.patch
+git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
 ```
 
@@ -147,7 +160,120 @@ that changed last: upstream copied whichever expansion skill was set last, so le
 Skinning (1/75) dropped Skinning to 1 and the server refused to skin anything (skinning is checked
 against the profession skill too; fix verified in game). A character from before the patch catches up at its next skill-up,
 or at once with `.setskill 182 <value> 300` (186 for Mining, 393 for Skinning), using the value of
-its highest expansion skill.
+its highest expansion skill. A lower expansion skill never lowers the profession skill: Classic
+Inscription and Classic Engineering recipes raise the profession skill itself, so learning Cataclysm
+Inscription at 1 would otherwise have reset Inscription to 1.
+
+`skinning-tiers.patch` skins each beast with its own expansion's skill, as on retail 8.3.7, and skinning
+it raises that skill. Upstream checked every beast against the profession skill (393) at 5 skill per
+level and always raised Classic Skinning, so beasts above level 60 (400 and more for Cataclysm) could
+never be skinned, and the expansion skills never moved. What each expansion needs now:
+
+| Expansion | Skill (ID) | Beasts it covers | Skill needed by beast level |
+|---|---|---|---|
+| Classic | Classic Skinning (2564), max 300 | `HealthScalingExpansion` 0 and level 1-60 | unchanged: 1-10 any, 15: 50, 20: 100, 30: 150, 40: 200, 50: 250, 60: 300 (`(level-10)*10` below 100 skill, `level*5` from 100) |
+| Outland | Outland Skinning (2563), max 75 | expansion 1, or level 61-70 | 58: 1, 60: 9, 62: 17, 64: 25, 66: 33, 68: 41, 70: 50 |
+| Northrend | Northrend Skinning (2562), max 75 | expansion 2, or level 71-80 | 68: 1, 70: 9, 72: 17, 74: 25, 76: 33, 78: 41, 80: 50 |
+| Cataclysm | Cataclysm Skinning (2561), max 75 | expansion 3, or level 81-85 | 80: 1, 81: 10, 82: 20, 83: 30, 84: 40, 85: 50 |
+| Pandaria | Pandaria Skinning (2560), max 75 | expansion 4, or level 86-90 | 85: 1, 86: 10, 87: 20, 88: 30, 89: 40, 90: 50 |
+| Draenor | Draenor Skinning (2559), max 100 | expansion 5, or level 91-100 | 90: 1, 92: 15, 94: 30, 96: 45, 98: 60, 100: 75 |
+| Legion | Legion Skinning (2558), max 100 | expansion 6, or level 101-110 | 98: 1, 100: 13, 102: 25, 104: 38, 106: 50, 108: 62, 110: 75 |
+| Kul Tiran | Kul Tiran Skinning (2557), max 150 | expansion 7, or level 111 and up | 110: 1, 112: 25, 114: 50, 116: 75, 118: 100, 120: 125 |
+
+"Expansion N" is the creature's `creature_template.HealthScalingExpansion`. Many templates leave it at 0
+whatever their level, so a 0 above level 60 picks the expansion by `minlevel` instead (the level ranges
+in the third column). Outside those levels, a beast below its expansion's first level needs 1, and one above its
+last level needs the same as the last level. For every expansion except Classic the requirement rises
+evenly from 1 at the first level to the skill's max minus 25 at the last. The max is read from your
+character, so the Draenor, Legion and Kul Tiran columns assume maxes of 100, 100 and 150; if your
+character shows a different max, the top of the range is that max minus 25. Learning the
+expansion's skill from a trainer is enough to start: with it at 1 you can skin that expansion's
+lowest beasts.
+
+The new code is in `src/server/game/Spells/SkinningTiers.h`, used by `Spell::CheckCast` (the check)
+and `Spell::EffectSkinning` (the skill-up). Beasts skinned with Herbalism, Mining or Engineering are
+unchanged.
+
+Herb and ore nodes get the same treatment from `gathering-tier-locks.patch` and two SQL fixes. In the
+8.3.7 `Lock.db2` almost every node from Outland to Legion uses the plain Herbalism or Mining lock with
+the old 1-600 skill (Lichbloom 425, Twilight Jasmine 525, Golden Lotus 550), which the client checks
+against the profession skill. That skill can't go above 300, so those nodes could never be gathered,
+and gathering only raised Classic Herbalism and Mining. The same file has Blizzard's own lock for each
+expansion's herbs (2856 Outland to 2861 Legion) and ore (2864 to 2869): the expansion's lock type, whose
+gather spell the trainer teaches with the expansion skill, plus a plain Herbalism or Mining slot, both
+with no skill number. Kul Tiran nodes, Cinderbloom, Rich Elementium and Blackrock already use them.
+The world fix points 93 node templates at them, and the hotfix fix caps the two Classic ore locks that
+asked for 305 and 310 at 300:
+
+```sh
+mysql -u root -p bfa_hotfixes < ~/bfa/tools-repo/sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_08_00_gathering_tier_locks.sql
+```
+
+Then restart `worldserver` and delete the client's `Cache` folder (it keeps the old node data). The
+patch does two things in the core:
+
+- `Spell::CanOpenLock` (`Spell.cpp`) never opens a lock through its plain Herbalism or Mining slot when
+  the lock also has an Outland to Kul Tiran slot, so Classic Herbalism or Mining alone can't gather
+  expansion nodes; the client then says "Requires Northrend Herbalism" (or whichever expansion). The
+  client uses the expansion's gather spell when you know it.
+- `AuraEffect::HandleAuraTrackResources` (`SpellAuraEffects.cpp`): the client tracks an expansion node
+  by its expansion lock type, so Find Herbs and Find Minerals now also mark Herbalism 32-39 and Mining
+  40-47 (upstream marked only 2 and 3, and no expansion node showed on the minimap).
+
+A node's expansion comes from where it spawns, and it needs only that expansion's skill learned. Each
+gathering node also gets a difficulty, which sets its colour and how often it gives a skill-up: its old
+skill scaled over the expansion's old range to 1 up to the expansion skill's max minus 25. The main
+nodes' difficulty:
+
+| Expansion | Herbs (difficulty) | Ore (difficulty) |
+|---|---|---|
+| Classic | unchanged | unchanged; Small/Large Obsidian Chunk and Arcanite Lode 300 (were 305 and 310) |
+| Outland (Outland Herbalism/Mining) | Felweed, Dreaming Glory (most nodes), Terocone, Netherbloom, Nightmare Vine, Mana Thistle, Blindweed 1; Dreaming Glory (old 315) 10; Ragveil 17; Flame Cap 23; Ancient Lichen 27; Netherdust Bush 33 | Fel Iron, Adamantite, Rich Adamantite, Khorium, Nethercite 1; Ancient Gem Vein 50 |
+| Northrend | Goldclover 1, Firethorn 5, Tiger Lily 13, Talandra's Rose 18, Adder's Tongue 25, Frozen Herb 25-32, Lichbloom 37, Icethorn 42, Frost Lotus 50 | Cobalt 1, Rich Cobalt 13, Saronite 25, Rich Saronite 37, Titanium and Pure Saronite 50 |
+| Cataclysm | Cinderbloom (already per expansion, no requirement), Stormvine and Azshara's Veil 1, Heartblossom 25, Whiptail 37, Twilight Jasmine 50 | Obsidium 1, Rich Obsidium 13, Elementium 25, Pyrite and Rich Pyrite 50; Rich Elementium already per expansion, no requirement |
+| Pandaria | Green Tea Leaf, Silkweed, Rain Poppy, Fool's Cap 1; Golden Lotus 25; Snow Lily and Sha-Touched Herb 37 | Ghost Iron, Kyparite, Trillium and their rich nodes 1 |
+| Draenor | Frostweed, Fireweed, Gorgrond Flytrap, Starflower, Nagrand Arrowbloom, Talador Orchid 1 | True Iron, Rich True Iron, Rich Blackrock, Smoldering True Iron 1; Blackrock already per expansion, no requirement |
+| Legion | Aethril, Dreamleaf, Foxflower, Fjarnskaggl, Starlight Rose, Felwort, Fel-Encrusted Herb 1 | Leystone, Felslate and their rich nodes and seams 1 |
+| Kul Tiran | unchanged (already per expansion) | unchanged (already per expansion) |
+
+Every one of these needs only its expansion's skill learned. Quest objects that also open without the
+skill (by kneeling, or with a quest item) are left alone. The world fix lists every node, its old skill
+and its new difficulty.
+
+To learn the expansion skills you need a trainer that teaches them, and on this database none taught
+Outland, Northrend, Pandaria, Draenor or Legion for any profession (only some taught Cataclysm). A third
+world fix makes every trainer of a profession teach its Outland to Legion skills next to the Classic one
+(10 copper each, needs the profession). Kul Tiran stays with the Kul Tiras and Zandalar trainers, and
+fishing trainers already teach every expansion. It also points the herbalism trainers in Outland,
+Northrend, both Dalarans and a few Classic towns at the herbalism list (they used a list that doesn't
+exist, so they taught nothing), and Grix "Ironfists" Barlow at his own Kul Tiran blacksmithing list:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_09_00_profession_tier_trainers.sql
+```
+
+A fourth world fix makes the trainers actually open that list. The core picks a trainer's list by the
+gossip option you click; when no `creature_trainer` row matches that option it falls back to the old
+`npc_trainer` list, which has no expansion skills. 266 profession trainers (Rorelien and Ruak Stronghorn
+among them) had no row for the option they show. It also points the Boralus trainers at the Kul Tiras
+lists, so they teach Classic to Kul Tiran:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_09_01_profession_trainer_options.sql
+```
+
+A fifth world fix gates each expansion's skill by that expansion's level (Outland 58, Northrend 68,
+Cataclysm 80, Pandaria 85, Draenor 90, Legion 98; Classic stays 5 and Kul Tiran 110). Run it after the
+other two, and again if you ever re-run them:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_09_02_profession_tier_levels.sql
+```
+
+Then restart `worldserver`. The trainers only teach the skill itself: this database has no trainer
+recipes for the Outland to Legion crafting skills, so those recipes come from recipe items only.
+`PATCHNOTES.md` (2026-11-09) lists every profession trainer by zone.
 
 `deadmines-fixes.patch` collects the fixes for The Deadmines (map 36):
 
@@ -308,8 +434,55 @@ level, which `transmog-collection.patch` now lets you collect. The check now fol
 `Transmog.*` settings, and every refusal prints `Transmogrify refused: <reason>` in chat. It only touches
 `TransmogrificationHandler.cpp` and needs `transmog-collection.patch` applied first.
 
+`transmog-reapply.patch` fixes `Item::SetModifier` in `Item.cpp`. Setting an item modifier that was
+already set returned without changing it, so a second transmog on the same item was charged but kept the
+old appearance. It now changes the value in place. It touches no file the other patches change.
+
 If `git apply` reports that a patch doesn't apply, upstream has changed one of those files. Check
 whether it already contains the fix before applying the rest by hand.
+
+`quest-objective-flags.patch` makes the quest log show objectives that are a flag rather than a
+count: "scout" area triggers (The Fargodeep Mine), pet battle wins and criteria objectives. The
+8.3.7 client reads them from the quest log's `ObjectiveFlags` field (`1 << StorageIndex`, called
+`Field_10` in the core), but the core set bit `256 << StorageIndex` in `StateFlags`, the 7.x layout.
+The server counted the objective and the quest could be turned in, but the tracker never ticked it.
+Upstream HavenCore fixed the same two functions in 53d125a (2026-10-11), so on a checkout from
+then on the patch no longer applies. `quest-objective-flags-upstream.patch` holds only the two parts
+upstream lacks (clear the field when a quest slot is reused, and restore the flags at login). The
+`if grep` line above picks the right one: upstream's fix declares `SetQuestSlotObjectiveFlag` in
+`Player.h`.
+
+`quest-complete-window.patch` stops the quest window from hanging after a turn-in (rewards given,
+no Complete Quest button left) and from rushing through the next quest in a chain. After a turn-in
+the core told the client to reopen the NPC's gossip for every gossip NPC and its quest list for every
+quest giver, so the client sat waiting for a menu that never came, or picked the next quest itself.
+It now sets those bits the way later TrinityCore does: gossip only for quests flagged
+`QUEST_FLAGS_LAUNCH_GOSSIP_COMPLETE`, the next chain quest only when you can take it, and the quest
+list only when the NPC still has something for you.
+
+`quest-empty-progress.patch` stops the quest window from turning into an empty page with a
+disabled Continue button. When you opened a quest you still had in progress at its NPC, the core
+sent its progress page, even when the quest has no items to hand in and no progress text (no
+`quest_request_items` row). That happened right after accepting such a quest, and whenever you
+talked to the NPC again before finishing it. It now closes the window in that case.
+
+`quest-autocomplete-turnin.patch` makes an auto-complete quest handed in at its NPC (Rite of the
+Winds at Ahmo Thunderhorn) count as handed in to that NPC. The core booked it as if you had
+completed it from your quest log, so the client lost track of the NPC: the next quest's window then
+stayed open after Accept.
+
+`quest-list-accept.patch` closes the quest window after you accept a quest picked from an NPC's
+quest list (an NPC offering two or more quests, such as Ahmo Thunderhorn or Tonga Runetotem). The
+client goes back to that list after Accept and ignored the plain close the core sent, so the details
+page stayed open. The core now sends the NPC's updated quest list instead, as retail does, and only
+closes the window when the NPC has nothing left to show.
+
+`mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
+Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
+80% health. When a player or a pet hits an invader, the invader drops the braves and fights only
+that player, the braves move on to other invaders, and NPC hits stop touching it. NPC hits also no
+longer heal: the old code set an invader back up to 80%, undoing the player's damage. It only touches
+`zone_mulgore.cpp`.
 
 ## 4. Configure and compile
 
@@ -535,6 +708,20 @@ To let characters learn up to 4 primary professions, set `MaxPrimaryTradeSkill =
 are known, whatever the server allows, and its Professions tab only shows 2. The addon re-enables
 **Train** and adds a `/profs` panel listing every primary profession (verified in game 2026-10-10).
 
+### Patched third-party addons
+
+`client/` also holds three third-party addons with fixes for the 8.3.7 client (all confirmed in game
+2026-11-11; PATCHNOTES.md has the details). Install them like any addon: close WoW, delete the old folder
+from `_retail_/Interface/AddOns`, and copy the folder from `client/` there.
+
+- `client/BugTabs` (1.5.0-zr1): error catcher. Its bundled CallbackHandler-1.0 called
+  `securecallfunction`, which 8.3.7 lacks; it now falls back to `xpcall`. TOC set to 80300.
+- `client/FishingBuddy` (1.10.10-zr1): its bundled CallbackHandler-1.0 is raised to minor 100 so its
+  8.3.7-safe copy wins over newer copies other addons ship.
+- `client/Sorted` (1.2.4-zr3): bag addon. Bank buttons get an upgrade icon (nil error with the item level
+  column on), empty slots skip `GetItemCooldown`, and items in the closed bank or another character's bags
+  show a tooltip from their saved link.
+
 ### Solo dungeons (DungeonScale)
 
 `dungeon-scale.patch` (step 3) installs its settings into `~/bfa/server/etc/worldserver.conf.dist`. Copy
@@ -579,11 +766,17 @@ appear as themselves instead of Murkimus the Gladiator) and releasing pets.
 
 The core never swaps critters for battle pets at runtime, so out of the box only the battle pets
 spawned directly in the world DB exist, and many zones have none of the species a pet tracker addon
-lists for them. Run this once after the world DB is installed and updated (after the first
-`worldserver` start), then restart `worldserver`:
+lists for them. Run these once after the world DB is installed and updated (after the first
+`worldserver` start), in this order, then restart `worldserver`. The first makes the Rabbit,
+Squirrel, Echo Batling and Globe Yeti pet templates wild pets so the second converts them too; the
+third fills 11 zone pets whose pool rows the second can't handle, and the fourth places six pets
+that have no spawn data at all:
 
 ```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_10_50_wild_battle_pet_types.sql
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_01_50_wild_battle_pet_spawns.sql
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_10_51_wild_battle_pet_missing_zones.sql
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_10_52_wild_battle_pet_unspawned.sql
 ```
 
 It turns critter spawns into their battle pet version per `battlepet_wild_zone_pool`, up to each
@@ -601,6 +794,29 @@ pets wander within 2 yards of their spawn instead (run once, then restart `world
 
 ```sh
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_02_51_pet_tamer_display_pets_wander.sql
+```
+
+Wild pet levels follow the zone (the range a pet tracker map shows), except for 30 wild pet types
+whose template forced level 5 or allowed up to 25 (for example every Elwynn Fawn was level 5). This
+sets them to follow their zone too (run once, then restart `worldserver`):
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_04_50_wild_battle_pet_zone_levels.sql
+```
+
+Darkmoon Island had no Crows to battle (only 2 critter crows). This adds the island's crow flocks
+with 10 battle Crows and removes a capturable copy of the drop-only Darkmoon Rabbit:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_07_50_darkmoon_island_wild_pets.sql
+```
+
+Display pets next to vendors and tamers (for example Lhara's on Darkmoon Island) show up as wild
+battle pets, because `battlepet_info` lists every species by creature entry. This keeps only
+capturable species as wild battle pets:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_07_51_battle_pets_only_capturable_are_wild.sql
 ```
 #### Legion and BFA pet tamers
 
@@ -656,10 +872,23 @@ git apply ../tools-repo/tools/bfa/battle-pet-journal.patch
 git apply ../tools-repo/tools/bfa/battle-pet-player-flags.patch
 git apply ../tools-repo/tools/bfa/battle-pet-level-achievements.patch
 git apply ../tools-repo/tools/bfa/core-branding.patch
+git apply ../tools-repo/tools/bfa/razorfen-downs.patch
 git apply ../tools-repo/tools/bfa/battle-pet-achievements.patch
 git apply ../tools-repo/tools/bfa/battle-pet-trainers.patch
 git apply ../tools-repo/tools/bfa/transmog-apply.patch
-git apply ../tools-repo/tools/bfa/razorfen-downs.patch
+git apply ../tools-repo/tools/bfa/holiday-schedule.patch
+git apply ../tools-repo/tools/bfa/darkmoon-faire-gossip.patch
+git apply ../tools-repo/tools/bfa/darkmoon-race.patch
+git apply ../tools-repo/tools/bfa/goober-quest-credit.patch
+git apply ../tools-repo/tools/bfa/skinning-tiers.patch
+git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch
+if grep -q SetQuestSlotObjectiveFlag src/server/game/Entities/Player/Player.h; then git apply ../tools-repo/tools/bfa/quest-objective-flags-upstream.patch; else git apply ../tools-repo/tools/bfa/quest-objective-flags.patch; fi
+git apply ../tools-repo/tools/bfa/mulgore-bristleback-fight.patch
+git apply ../tools-repo/tools/bfa/quest-complete-window.patch
+git apply ../tools-repo/tools/bfa/quest-empty-progress.patch
+git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
+git apply ../tools-repo/tools/bfa/quest-list-accept.patch
+git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
@@ -700,6 +929,50 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_10_16_01_shadowfang_lesser_gargoyles.sql` | Shadowfang Keep's Lesser Gargoyles on the wall walk never attacking: they were flagged as civilians |
 | `2026_10_16_02_shadowfang_godfrey_text.sql` | Typos in Lord Godfrey's aggro and death yells |
 | `2026_11_03_20_holiday_emote_casts.sql` | Day of the Dead: `/dance` with Catrina gave no skeleton and no Dead Man's Party achievement (verified in game 2026-11-03). Winter Veil: `/kiss` on a Winter Reveler gave no Mistletoe (same cause, not tested yet). Both NPCs' emote spells had no target |
+| `2026_11_04_00_darkmoon_faire_first_sunday.sql` | The Darkmoon Faire starting on a different weekday every month (a fixed 30-day cycle). It now opens on the first Sunday of each month for 7 days, as on retail. Needs `holiday-schedule.patch` built first, or `worldserver` crashes on start |
+| `2026_11_05_00_holiday_dates_schedule.sql` | Lunar Festival, Pilgrim's Bounty and the 4th of July fireworks never running (they ended in 2020), and Noblegarden drifting away from Easter. These holidays and Love is in the Air, Children's Week and Harvest Festival now run on the dates of their holiday (the same dates the calendar shows). Needs `holiday-schedule.patch` and the hotfix file below |
+| `2026_11_05_01_darkmoon_fire_juggler_torches.sql` | Darkmoon Faire Fire Jugglers throwing their torches at players and nearby NPCs: the torch spell had no condition saying it targets Fire Jugglers |
+| `2026_11_05_02_darkmoon_portal_back.sql` | Darkmoon Island's Portal Back hanging the client on the loading screen: it teleported Alliance players to Elwynn and Mulgore at once |
+| `2026_11_05_03_darkmoon_race_course_hidden.sql` | Darkmoon Island's strider race course (checkpoint arches, power-up crates, tripwire posts) standing on every path for everyone: despawned in spawn group 450 until the race is scripted |
+| `2026_11_05_04_darkmoon_faire_npcs.sql` | Darkmoon Faire: Selina Dourman not talking (missing gossip), the paired Fire Jugglers not throwing to each other, and the Alliance/Horde citizens and children being attackable |
+| `2026_11_05_05_darkmoon_race_course.sql` | Darkmoon Island strider races: brings the race course back (undoes `2026_11_05_03`) and shows it only to players in a race. Needs `darkmoon-race.patch` |
+| `2026_11_05_06_darkmoon_strider_ride.sql` | "Dusty" Brandom at the Darkmoon Island arrival hill not talking, and his Darkmoon Striders not giving the free ride to the Faire |
+| `2026_11_05_07_darkmoon_race_names_and_game_prize.sql` | Race course bunnies showing their names. Delete the client's Cache folder afterwards. (Its Game Prize ticket row is undone by `_08`) |
+| `2026_11_05_08_darkmoon_prize_ticket_as_quest_reward.sql` | Darkmoon Game Prize hanging the client: the Darkmoon Prize Ticket is now a currency reward of the Faire game and race quests |
+| `2026_11_06_00_darkmoon_faire_npc_audit.sql` | Darkmoon Faire NPC audit: missing gossip texts (Silas, Jessica Rogers, Mola, game instructions), Ziggie Sparks menu, Christoph VonFeasel gossip flag, deprecated Chronos quest removed, old Terokkar Faire spawns removed (copies kept in `zr_dmf_terokkar_*`) |
+| `2026_11_06_01_darkmoon_ring_toss.sql` | Darkmoon Faire Ring Toss: rings only hit Dubenko the turtle; his duplicate SAI credit removed |
+| `2026_11_06_02_darkmoon_booth_spell_focus.sql` | Darkmoon Faire Ring Toss and Shooting Gallery: spawns the booth spell focus objects the game spells require |
+| `2026_11_06_03_darkmoon_tonk_commander.sql` | Darkmoon Faire Tonk Commander: tonk cannon targets, quest credit for targets and enemy tonks, enemy tonks stay passive and respawn in 10 s |
+| `2026_11_06_04_darkmoon_dubenko_wanders.sql` | Darkmoon Faire Ring Toss: Dubenko (54490) wanders up to 3 yards in his pen instead of standing still |
+| `2026_11_06_05_darkmoon_firebird_rings.sql` | Darkmoon Faire Firebird's Challenge: Summon Rings script name and ring areatrigger 3069 (needs darkmoon-faire-gossip.patch) |
+| `2026_11_06_06_darkmoon_horde_citizens.sql` | Darkmoon Faire Horde Citizens (55348) use orc, troll, blood elf and Forsaken models instead of Stormwind humans |
+| `2026_11_06_07_darkmoon_champions_aggro.sql` | Darkmoon Faire Champions Faesrol (55732) and Isimode (55733) only attack hostile players within 5 yards |
+| `2026_11_06_08_darkmoon_game_targets.sql` | Darkmoon Faire: Shooting Gallery and Tonk targets spawn alive, Shoot (101872) and tonk Cannon (102292) script names (needs darkmoon-faire-gossip.patch) |
+| `2026_11_06_09_darkmoon_tauren_chieftains.sql` | Darkmoon Faire Tauren Chieftains: show loops every 5 minutes, constant "Armor" spell sound removed |
+| `2026_11_06_10_darkmoon_balloon_cart.sql` | Darkmoon Faire Carl Goodup carries his balloon cart and balloons (vehicle accessories), wanders 5 yards |
+| `2026_11_06_11_darkmoon_tonk_cannonballs.sql` | Darkmoon Faire Tonk Commander: enemy tonks and MiniZeps fire cannonballs (needs darkmoon-faire-gossip.patch) |
+| `2026_11_06_12_darkmoon_concert_sync.sql` | Darkmoon Faire Tauren Chieftains follow the FX Controller (the song), controller respawns after 30 s (replaces the `_09` loop) |
+| `2026_11_06_13_darkmoon_balloon_cart_spellclick.sql` | Darkmoon Faire Carl Goodup: spellclick rows so his cart accessories load (needs `_10`) |
+| `2026_11_06_14_darkmoon_gallery_names_balloons.sql` | Darkmoon Faire: no names over the Shooting Gallery targets; Carl Goodup's balloons sit on his cart (after `_13`) |
+| `2026_11_06_15_darkmoon_names_rings_balloons.sql` | Darkmoon Faire: Shooting Gallery names hidden by flags, Firebird rings keep coming, Carl's balloons back on the bunny 1 yd up (after `_14`, needs the gossip patch) |
+| `2026_11_06_16_darkmoon_gallery_unselectable.sql` | Darkmoon Faire: Shooting Gallery targets not selectable, so no names over them |
+| `2026_11_06_17_darkmoon_quest_items.sql` | Darkmoon Faire: Salty Sea Dog fishing, Staked Skins, Darkmoon Treasure Chest (Pit Fighter) placed (Grisly Trophies come from the gossip patch) |
+| `2026_11_06_18_darkmoon_island_fishing.sql` | Darkmoon Island fishing loot from Wowhead's list (Darkmoon Daggermaw and the rest; after `_17`) |
+| `2026_11_06_19_darkmoon_fishing_containers.sql` | Contents for the Sealed Darkmoon Crate and the Darkwater, Big-Mouth and Jaggal Clams |
+| `2026_11_06_20_darkmoon_profession_quests_skill.sql` | Darkmoon Faire profession quests need 1 skill point instead of 75 |
+| `2026_11_06_21_darkmoon_concert_fireworks.sql` | Darkmoon Faire concert: Darkmoon Firework at the five moments that cast an invisible Rain of Fire |
+| `2026_11_06_22_darkmoon_deathmatch_chest_exit.sql` | Darkmoon Faire Deathmatch: looting the treasure chest teleports everyone in the pit back out to Korgol |
+| `2026_11_07_00_darkmoon_race_course_float.sql` | Darkmoon races: course banners, pads and posts stay at their spawn height instead of sinking under water |
+| `2026_11_07_01_darkmoon_race_tripwire_wires.sql` | Darkmoon races: tripwire stakes use the new stake script (wired pairs with a visible beam; needs the race patch) |
+| `2026_11_07_02_darkmoon_race_repeatables.sql` | Darkmoon races: Let's Keep Racing! and More Big Racing! can be repeated |
+| `2026_11_07_03_darkmoon_race_turn_in_text.sql` | Darkmoon races: turn-in text for the five race quests |
+| `2026_11_07_04_darkmoon_race_names_token_vendors.sql` | Darkmoon Faire: race arch and camp post names hidden; empty token bags off the Game Token vendors |
+| `2026_11_07_05_darkmoon_token_vendors_one_pair.sql` | Darkmoon Faire: token vendors sell only the 60s pouch and the 1g 92s sack (after `_04`) |
+| `2026_11_07_06_darkmoon_carousel_empty.sql` | Darkmoon Faire: carousel rides removed, the platform spins empty |
+| `2026_11_07_30_darkmoon_island_rares.sql` | Darkmoon Island rares: Darkmoon Rabbit spawned (its pet always drops, no solo-lethal bite), Moonfang gets her fight and always drops one of her items, Death Metal Knight spawned in the Cauldron of Rock with his sword; all three are elites that scale with your level (verified in game 2026-11-07) |
+| `2026_11_09_30_orgrimmar_balloon_pandaren.sql` | Orgrimmar: Chao-Ju, Jiming, Winwa, Winsum and Jising stay in the hot air balloon basket outside the front gate instead of falling to the ground (verified in game 2026-11-09) |
+
+Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills, `2026_11_09_02_profession_tier_levels.sql` gates them by expansion level).
 
 ## 11. Status
 

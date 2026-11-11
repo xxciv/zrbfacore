@@ -3,12 +3,12 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-03 (Dire Maul: Warpwood Quarter)
+## 2026-11-11 (Dire Maul: Warpwood Quarter)
 
-On branch `claude/project-thread-g6xhsv`, not merged yet. SQL only, no rebuild:
-`sql/fixes/world/2026_11_03_04_dire_maul_east_scripts.sql` and
-`sql/fixes/world/2026_11_03_05_dire_maul_east_movement.sql`. Needs a fresh instance
-(`.instance unbind all`).
+Merged to `main` with PR #36 on 2026-11-11. SQL `sql/fixes/world/2026_11_03_04` to `_06` and
+`2026_11_11_00` to `_02` (Dire Maul files), plus the new core patch `tools/bfa/spell-teleport-combat.patch`
+(applied last; rebuild). The thinning files copy the removed rows into backup tables first. Needs a
+fresh instance (`.instance unbind all`).
 
 Pre-run check of the east wing (Pusillin, Zevrim Thornhoof, Hydrospawn, Lethtendris, Alzzin). All
 bosses are spawned with Normal scaling rows, `instance_encounters` 343-346 exist (Alzzin ends LFG
@@ -102,7 +102,2819 @@ dungeon 34), and all their spells exist. Dire Maul has one scenario for all thre
   loop round the whole courtyard (paths 429000031, 429000033, 429000038).
 - **Changed:** `sql/fixes/world/2026_11_03_06_dire_maul_east_treant_loop.sql`: those three wander
   2 yards at their spawn point instead, and the three paths are deleted. 49 patrols left.
-- **Status:** first run in progress; treant fix not tested in game yet.
+- **Status:** the wing was played through on 2026-11-11 with this in; Four did not report the treants separately.
+
+## 2026-11-11 (Addon fixes: BugTabs, FishingBuddy, Sorted)
+
+Client addons only, in `client/`. No server change: nothing to rebuild, no SQL, no restart.
+
+### BugTabs 1.5.0: CallbackHandler error in every addon that fires callbacks
+- **Found** (reported by Four): `BugTabs\Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua:19: attempt to
+  call upvalue 'securecallfunction' (a nil value)`, raised from FishingBuddy's HereBeDragons library.
+- **Cause:** addons share one CallbackHandler-1.0 through LibStub, and LibStub keeps the copy with the
+  highest minor version. BugTabs ships minor 8 (written for current clients), which dispatches callbacks
+  with `securecallfunction`. That function does not exist in the 8.3.7 client. BugTabs loads early
+  (alphabetical), so its copy also built the shared LibDataBroker-1.1 registry, and every addon's
+  callbacks went through it.
+- **Changed:** `client/BugTabs/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua`: when
+  `securecallfunction` is missing, it is replaced (locally) by `xpcall(method, errorhandler, ...)`, the
+  dispatch minor 7 used; callback errors still reach the error handler. `BugTabs.toc`: `## Interface:
+  80300` (was the retail/classic list starting 120107), version `1.5.0-zr1`. The rest of BugTabs already
+  checks for newer APIs before using them.
+- **Status:** confirmed in game by Four on 2026-11-11.
+
+### FishingBuddy 1.10.10: same CallbackHandler error
+- **Found:** the error above, fired from `FishingBuddy\Libs\HereBeDragons\HereBeDragons-2.0.lua:269`.
+  FishingBuddy's own copy (minor 7) is fine, but BugTabs' minor 8 replaced it.
+- **Changed:** `client/FishingBuddy/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua`: `MINOR` 7 -> 100,
+  code unchanged, so this 8.3.7-safe copy takes over from any newer copy loaded before it.
+  `FishingBuddy.toc`: version `1.10.10-zr1`.
+- **Status:** confirmed in game by Four on 2026-11-11.
+
+### Sorted 1.2.4: UpgradeIcon and GetItemCooldown errors
+- **Found** (reported by Four):
+  - `Interface\FrameXML\ContainerFrame.lua:1115: attempt to index field 'UpgradeIcon' (a nil value)`,
+    from `Sorted\ItemButton.lua:216`, when the item level column is turned on.
+  - `Sorted\ItemButton.lua:538: Usage: GetItemCooldown(itemID)`.
+- **Cause:**
+  - `ItemButton.lua` creates its own upgrade arrow with `if button.UpgradeIcon then`, so only buttons that
+    already had one got it. Bank (`BankItemButtonGenericTemplate`) and reagent bank buttons have none, so
+    Blizzard's `ContainerFrameItemButton_UpdateItemUpgradeIcon` indexed nil on them.
+  - Every slot polls `GetItemCooldown(self.itemID)` in `OnUpdate`, including empty slots, whose `itemID`
+    is nil; the 8.3.7 client rejects nil.
+- **Changed:** `client/Sorted/ItemButton.lua`: the check is now `if not button.UpgradeIcon then`; the
+  cooldown poll uses `0, 0, 0` (no cooldown) when `itemID` is nil. `Sorted.toc`: version `1.2.4-zr1`.
+- **Status:** confirmed in game by Four on 2026-11-11.
+
+### Sorted: tooltips for the closed bank and other characters' bags
+- **Found** (asked by Four): hovering an item in the Bank or Reagents list shows no tooltip unless the
+  bank is open at a banker. Stock Sorted behaves the same: its tooltip uses the live
+  `GameTooltip:SetInventoryItem` / `SetBagItem` calls, and the client has no live data for a closed bank
+  or another character's bags, which Sorted shows from a saved snapshot.
+- **Changed:** `client/Sorted/ItemButton.lua`: new `SortedItemButton_ShowSavedLinkTooltip`, called first in
+  `SortedItemButton_DelayedOnEnter`. For a bank/reagent slot while the bank is closed, or any slot while
+  another character is selected, it shows the tooltip from the slot's saved item link
+  (`GameTooltip:SetHyperlink`; caged battle pets via `BattlePetToolTip_Show`), with the usual compare
+  tooltips. Live slots are unchanged.
+- **Follow-up** (Four, 2026-11-11: zr2 still showed no tooltip): Sorted calls `Disable()` on the buttons
+  of snapshot slots, and a disabled button skips `OnEnter`/`OnLeave` by default, so the new code never
+  ran. `Sorted_CreateItemButton` now calls `SetMotionScriptsWhileDisabled(true)` on each item button.
+  Clicks stay blocked. `Sorted.toc`: version `1.2.4-zr3`.
+- **Status:** confirmed in game by Four on 2026-11-11.
+
+## 2026-11-10 (Quest fixes: patch chain on newer upstream)
+
+Merged to `main` with PR #55 on 2026-11-10.
+
+### Patches: quest-objective-flags and mulgore-bristleback-fight apply on newer HavenCore
+
+- **Found** (the transmog thread, rebuilding the full patch stack, 2026-11-10): in the guide order,
+  `quest-objective-flags.patch` fails on HavenCore f8f34b1 and on upstream HEAD 9876a1a
+  (`Player.cpp` ~17784, `Player.h` ~1530), and `mulgore-bristleback-fight.patch` fails on 9876a1a.
+  The guide's step 3 and step 10 lists also missed `razorfen-downs.patch` (the README has it).
+- **Cause:**
+  - Upstream 53d125a ("Add Field_10 update to client questlog for areatrigger", 2026-10-11) added
+    the same `SetQuestSlotObjectiveFlag` / `RemoveQuestSlotObjectiveFlag` helpers and the same
+    `SetQuestObjectiveData` change as our patch, so those hunks conflict. Upstream does not have our
+    other two parts: `SetQuestSlot` clearing `Field_10` when a quest slot is reused, and
+    `_LoadQuestStatusObjectives` restoring the flags at login.
+  - Upstream 4561014 (Kyle's Gone Missing, 2026-11-08) added `#include "GameObject.h"` right below
+    the include lines our Mulgore patch adds to.
+- **Changed:**
+  - New `tools/bfa/quest-objective-flags-upstream.patch`: only the `SetQuestSlot` and
+    `_LoadQuestStatusObjectives` hunks, for upstream at or after 53d125a.
+    `quest-objective-flags.patch` itself is unchanged (still right for 2c13546).
+  - Guide step 3 and step 10: the `quest-objective-flags` line is now
+    `if grep -q SetQuestSlotObjectiveFlag src/server/game/Entities/Player/Player.h; then git apply ...-upstream.patch; else git apply ...quest-objective-flags.patch; fi`.
+    Upstream's fix declares that function in `Player.h`; 2c13546 does not.
+  - `tools/bfa/mulgore-bristleback-fight.patch`: the two new includes (`ObjectAccessor.h`,
+    `ThreatManager.h`) now go after `ScriptMgr.h`, where the context lines are the same on every
+    upstream commit. The code it adds is unchanged.
+  - Guide step 3 and step 10: `razorfen-downs.patch` added after `core-branding.patch`.
+  - Checked: the full guide chain (all 43 patches) applies cleanly, in order, on 2c13546, f8f34b1
+    and 9876a1a. Not compiled on f8f34b1 or 9876a1a.
+- **Status:** no in-game change. Four's server (2c13546) already has everything; nothing to pick up.
+
+## 2026-11-10 (Transmog re-apply)
+
+Merged to `main` with PR #54 on 2026-11-10. Core change in the new `tools/bfa/transmog-reapply.patch`,
+applied after all the other patches. It only changes `Item.cpp`, which no other patch touches.
+
+### A transmogrified item couldn't be given another appearance
+- **Found** (reported by Four): the back and waist slots wouldn't take a new appearance. Apply charged
+  the cost every time and the old appearance stayed. Both items already had a transmog. Every check in
+  `HandleTransmogrifyItems` passed (the cost is only taken after them), and the handler then calls
+  `Item::SetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_ALL_SPECS, appearance)`. `SetModifier` (`Item.cpp`)
+  returned straight away when the item already had that modifier, so the new value was never stored and
+  the item kept its old appearance. Items with no transmog yet worked, which is why only some slots
+  failed. Removing a transmog (the revert arrow) worked, because value 0 takes the remove branch.
+- **Changed:** `Item.cpp`, `Item::SetModifier`: when the modifier is already set, the value is updated in
+  place (`SetUpdateFieldValue` on `ItemData::Modifiers` at that index). The same function stores illusions
+  and per-spec appearances, so changing an existing illusion works again too. No SQL.
+- **Status:** confirmed in game by Four on 2026-11-10: the back and waist slots take a new appearance.
+
+### To pick up the transmog re-apply fix
+Everything is on `main` now. If you applied the patch from the PR branch, the file on `main` is the same,
+so nothing needs rebuilding; just pull:
+```
+git -C ~/bfa/tools-repo checkout main
+git -C ~/bfa/tools-repo pull
+```
+
+Without it applied yet, add the new patch. `Item.cpp` isn't a header, so the build is short. There's no SQL:
+```
+cd ~/bfa/source
+git -C ../tools-repo checkout main
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/transmog-reapply.patch
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+Then type `server shutdown 1` in the worldserver console and start it again with
+`cd ~/bfa/server/bin && ./worldserver`.
+
+## 2026-11-10 (pet battles)
+
+### Pet battles: spawn the six zone pets with no spawn data
+
+- **Asked** (Four, 2026-11-10): place the zone pets that had nothing to convert or copy from.
+- **Changed:** new `sql/fixes/world/2026_11_10_52_wild_battle_pet_unspawned.sql` adds 10 spawns
+  (guids 1000100029-1000100038), each 1 yard from a random unscripted, unphased critter of the zone,
+  wandering 3 yards. Counts follow each zone's cap: Exodar Mouse 61143 (1), Talador Crimsonwing Moth
+  88413 (1), Frostfire Ridge Ironclaw Scuttler 88474 (2), Gorgrond Sapphire Firefly 88356 (1), Azsuna
+  Fledgling Kingfeather 97076 (1), Azsuna Eldritch Manafiend 98386 (4). The spots don't match retail.
+  Eldritch Manafiend's `battlepet_info` level range 1-25 is set to 1-1 so the zone decides.
+- **Left alone:** Undercity Rat and Lost of Lordaeron exist (filed under Tirisfal); the Shadowmoon
+  Valley Warpstalker Hatchling and Wetlands Highlands Mouse rows look like wrong pool rows.
+- **Status:** run on Four's live DB; confirmed by Four on 2026-11-10.
+
+#### To pick it up
+Run after 2026_11_10_51, then restart `worldserver`.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_10_52_wild_battle_pet_unspawned.sql | mysql -u root -p bfa_world
+```
+The last line prints `10 new zone pet spawns`.
+
+### Pet battles: zone audit, 11 zone pets that never spawned
+
+- **Asked** (Four): check every zone's wild pets are enabled.
+- **Audit** (world dump plus every pet SQL so far, in a local MySQL): 647 `battlepet_wild_zone_pool`
+  rows are for capturable species. 626 had battle pets in their zone (446 at the zone's cap, the rest
+  ran out of critters to convert). 21 had none.
+- **Changed:** new `sql/fixes/world/2026_11_10_51_wild_battle_pet_missing_zones.sql` fixes 11 of them:
+  - 7 pool rows named the plain critter as the battle pet and had no critter entry, so 2026_11_01_50
+    skipped them (the Darkmoon Crow's problem). Their critters become the real battle pet up to the
+    zone's cap: Tanaris Sea Gull (9), Howling Fjord Turkey (1), Ghostlands Small Frog (3), Jade Forest
+    Temple Snake (2), Frostfire Ridge Icespine Hatchling (20), Gorgrond Thicket Skitterer (16),
+    Nagrand (Draenor) Shore Crab (13);
+  - Swamp of Sorrows Moccasin: its pool row pointed at the Water Snake. 32 Water Snake critters become
+    Moccasins 61372;
+  - Undercity Rat: the DB files Undercity's rats under Tirisfal (Ruins of Lordaeron, area 153). Those
+    28 rat critters become Undercity Rats 61889;
+  - Ironforge Long-tailed Mole and Undercity Bat had no critters at all. Added from the alexkulya
+    Pandaria DB (guids 1000100001-1000100028): 21 Ironforge moles (3 battle Moles) and 7 bats in the
+    Ruins of Lordaeron (2 battle Bats).
+  Conversions are logged in `zr_wild_battlepet_conversion`, like 2026_11_01_50. No core change.
+- **Not fixed here** (no critters or spawn data to use; six of them are placed by 2026_11_10_52): Wetlands Highlands Mouse, Exodar Mouse, Outland
+  Shadowmoon Valley Warpstalker Hatchling (lives in Terokkar, 27 there), Talador Crimsonwing Moth,
+  Frostfire Ironclaw Scuttler, Gorgrond Sapphire Firefly, Azsuna Fledgling Kingfeather and Eldritch
+  Manafiend, Undercity Lost of Lordaeron (33 in Tirisfal).
+- **Status:** run on Four's live DB; confirmed by Four on 2026-11-10.
+
+#### To pick it up
+Run after the two Rabbit/Squirrel files below, then restart `worldserver`.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_10_51_wild_battle_pet_missing_zones.sql | mysql -u root -p bfa_world
+```
+The last line prints `9 Sea Gulls, 20 Icespine Hatchlings, 32 Moccasins, 28 Undercity Rats, 3 Ironforge Moles`.
+
+### Pet battles: Rabbits and Squirrels can't be battled
+
+- **Found** (Four): no Rabbit, Squirrel or Chicken battle pets to be seen in Elwynn Forest, only Black
+  Lambs, Small Frogs and Fawns. The live DB has 3 Rabbits, 7 Squirrels and 2 Chickens there.
+- **Cause:** a creature only becomes a wild battle pet when its template is type 14 (wild pet). The
+  battle pet templates Rabbit 61080 and Squirrel 61081 are type 0, Echo Batling 88542 is type 12 and
+  Globe Yeti 128156 is type 0. Their spawns (43 Rabbits, 208 Squirrels, 7 Echo Batlings in the world
+  DB) were plain critters you couldn't battle, and the wild spawn SQL (2026_11_01_50) skipped them,
+  because it only converts critters into type 14 pets. These are the only capturable species in
+  `battlepet_info` with a non-wild template. Chickens are fine; Elwynn just allows only 2.
+- **Then found** (Four): Squirrels could be battled, but the mouse-over cursor stayed the normal one.
+  The client takes the cursor from the creature query's CursorName, filled from
+  `creature_template.IconName`. Every other capturable pet has `wildpetcapturable`; Rabbit, Squirrel,
+  Globe Yeti and Young Mutant Warturtle 110666 had NULL, Echo Batling an empty string.
+- **Changed:** new `sql/fixes/world/2026_11_10_50_wild_battle_pet_types.sql` sets type 14 on those 4
+  templates and `IconName = 'wildpetcapturable'` on those 5. Running `2026_11_01_50_wild_battle_pet_spawns.sql` again afterwards converts critter
+  rabbits and squirrels up to each zone's cap (Elwynn: 10 Rabbits, 12 Squirrels). No core change.
+- **Status:** confirmed in game by Four on 2026-11-10 (Squirrel battle and paw cursor).
+
+#### To pick it up
+SQL only, then delete the client's `Cache` folder (the client caches creature types) and restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_10_50_wild_battle_pet_types.sql | mysql -u root -p bfa_world
+```
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_01_50_wild_battle_pet_spawns.sql | mysql -u root -p bfa_world
+```
+The first prints `4 of 4 pet templates are wild pets, 5 of 5 have the pet battle cursor`; the second prints the running total of converted
+spawns (more than the 5,900 from 2026-11-01). Then restart `worldserver`.
+
+## 2026-11-09 (World fixes: Camp Narache battle)
+
+### Core: Bristleback Invaders can't be pulled off the braves and heal back up
+
+- **Found** (Four, 2026-11-09): Rite of Strength asks you to kill Bristleback Invaders, but they
+  are locked in the endless battle with the Tauren braves at Camp Narache. A player can barely pull
+  one off its brave, and the invader keeps healing.
+- **Cause:** upstream's core scripts in `src/server/scripts/Kalimdor/zone_mulgore.cpp`
+  (`npc_fledgling_brave` 36942, `npc_bristleback_invader` 36943, set by upstream's
+  `2026_09_20_mulgore_camp_narache_cosmetics.sql`):
+  - Both `DamageTaken` hooks keep NPC hits from taking them under 80% health. They did that by
+    setting the health back **up** to 80% whenever an NPC hit landed below it, so after a player
+    brought an invader lower, the next brave hit healed it to 80%.
+  - Pets counted as NPCs there (`attacker->IsPlayer()`), so pet damage was capped and healed too.
+  - The invader kept the brave on its threat list, and the brave kept attacking it, so the invader
+    stayed on the brave.
+- **Changed:** new `tools/bfa/mulgore-bristleback-fight.patch` (after
+  `quest-objective-flags.patch`), `zone_mulgore.cpp` only:
+  - New helpers in `namespace CampNaracheBattle`: `IsPlayerSide` (player, or a player's pet,
+    guardian or charmed unit), `IsTakenByPlayer` (a creature whose victim is player-side) and
+    `CapNpcDamage` (NPC damage stops at 80% and never raises health).
+  - `npc_bristleback_invader`: the first player-side hit calls `TakeOnPlayer`. The invader drops
+    every NPC from its threat list, takes itself off their threat lists and attacks that player.
+    Every update `KeepPlayerTarget` fixates it on that player (`ThreatManager::FixateTarget`). If
+    that player dies or leaves, it switches to another player or pet on its threat list. If there is
+    none, it evades, resets to full health and rejoins the battle. While a player fights it, NPC hits
+    do 0 damage.
+  - `npc_fledgling_brave`: if its target is an invader fighting a player, it drops it and turns to
+    the next invader on its threat list. When it looks for a new target within 5 yards
+    (`SelectFreeTarget`), it skips invaders a player is fighting.
+  - Both `DamageTaken` hooks use `CapNpcDamage` and count pets as players.
+  - No DB change. Compiles against upstream 2c13546.
+- **Status:** confirmed in game by Four on 2026-11-09 (invaders switch to the player, braves move on,
+  no healing).
+- **Pick up:** this adds one patch, so only the new patch is applied:
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/mulgore-bristleback-fight.patch | git apply && echo "bristleback fight applied"
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  Then restart worldserver.
+
+## 2026-11-09 (Quest fixes: empty quest page and stuck window after accepting)
+
+Merged to `main` with PR #52 on 2026-11-10.
+
+### Core: quest window turns into an empty page with a disabled Continue button
+
+- **Found** (Four, 2026-11-09, two screen recordings): Tauren, turn in Rite of the Winds (24215) to
+  Ahmo Thunderhorn (36644, guid 260022), accept Sharing the Land (14438). Instead of closing, the
+  window went back to Ahmo's list ("Current Quests: Sharing the Land") and then to a Sharing the Land
+  page with no text and a greyed-out Continue button; only Cancel closed it.
+- **Cause:** after the accept the client goes back to Ahmo's quest list, where Sharing the Land is
+  now a current quest ("?"), and opens it. The server answers with its progress page
+  (`PlayerMenu::SendQuestGiverRequestItems`, reached from `Player::SendPreparedQuest` and from
+  `HandleQuestgiverCompleteQuest`). Sharing the Land is a kill quest that isn't done yet and has no
+  progress text (no `quest_request_items` row for 14438), so the page is empty and Continue stays
+  disabled. Stock and current TrinityCore do the same.
+- **Changed:** new `tools/bfa/quest-empty-progress.patch` (after `quest-complete-window.patch`),
+  `GossipDef.cpp`, `PlayerMenu::SendQuestGiverRequestItems` only: when the quest can't be completed
+  yet, needs no items (`QUEST_SPECIAL_FLAGS_DELIVER` not set) and its `RequestItemsText` is empty,
+  send `SendCloseGossip` (close the window) instead of the empty page. Quests with progress text,
+  with items to hand in, or ready to turn in open as before. No DB change.
+  - The first version (ea1cfed) only guarded `Player::SendPreparedQuest`; Four's retest showed the
+    window still stayed open, so the check moved into the function every route uses.
+- **Found** (Four's retest of the second version, 2026-11-09): the window now stays on the Sharing
+  the Land details page after Accept (quest accepted, window open). With `Logger.network=2,Server`
+  the log showed, right after `CMSG_QUESTGIVER_CHOOSE_REWARD` for 24215,
+  `CMSG_QUESTGIVER_HELLO 0000000000000000`: the client asked for a quest giver with an empty GUID.
+- **Cause:** Rite of the Winds (24215) has `QUEST_FLAGS_AUTOCOMPLETE` (0x10000).
+  `HandleQuestgiverChooseRewardOpcode` (`QuestHandler.cpp`) only looks up the NPC for quests without
+  that flag; for auto-complete quests it uses the player as quest giver even when the quest is
+  handed in at the NPC. `Player::SendQuestReward` then gets no creature, so
+  `SMSG_QUEST_GIVER_QUEST_COMPLETE` names no NPC and the client drops its conversation with Ahmo.
+  The window it opens next is no longer tied to him, so the server's close after Accept
+  (`SMSG_GOSSIP_COMPLETE`) doesn't close it.
+- **Changed:** new `tools/bfa/quest-autocomplete-turnin.patch` (after `quest-empty-progress.patch`),
+  `HandleQuestgiverChooseRewardOpcode` only: for an auto-complete quest, when the packet names an
+  NPC or object (not the player) that ends the quest (`hasInvolvedQuest`) and is in interaction
+  range (`CanInteractWithQuestGiver`), use it as the quest giver. Turn-ins from the quest log
+  pop-up (no NPC) work as before.
+- **Found** (Four's retest with both patches, 2026-11-09): still stuck on the details page. The
+  log now showed a clean conversation (`HELLO` Ahmo, `QUEST_LIST_MESSAGE`, `QUERY_QUEST 14438`,
+  `QUEST_DETAILS`, `ACCEPT_QUEST`). Four then tested: a fresh conversation with Ahmo sticks, Morin
+  Cloudstalker (24459) from the same list sticks, Tonga Runetotem's two-quest list sticks, and it
+  sticks with no addons. Swoop Hunting (761) at Harken Windtotem, who offers a single quest, closes.
+- **Cause:** after Rite of the Winds Ahmo offers two quests, Sharing the Land (14438) and Morin
+  Cloudstalker (24459), so their details page is opened from his quest list
+  (`SMSG_QUEST_GIVER_QUEST_LIST_MESSAGE`). Harken's single quest opens directly. After Accept from a
+  list the client goes back to that list and does not close on the plain `SMSG_GOSSIP_COMPLETE` that
+  `HandleQuestgiverAcceptQuestOpcode` sends (that code matches TrinityCore 8.3.7). Every NPC with a
+  quest list was affected, not only Ahmo.
+- **Changed:** new `tools/bfa/quest-list-accept.patch` (after `quest-autocomplete-turnin.patch`),
+  `GossipDef.h`, `GossipDef.cpp`, `Player.cpp`, `QuestHandler.cpp`:
+  - `PlayerMenu` remembers the NPC or object whose quest list it last sent (`_questListGiver`, set in
+    `SendQuestGiverQuestListMessage`). It is cleared by `SendCloseGossip`, `SendGossipMenu` and at
+    the start of `Player::SendPreparedQuest`, so a single-quest NPC or a gossip menu never counts.
+  - `HandleQuestgiverAcceptQuestOpcode`: after a successful accept from that NPC or object, rebuild
+    its quest menu (`PrepareQuestMenu`) and send the updated list (the accepted quest now shows
+    under Current Quests). Only when the menu is empty does it close the window as before.
+  - Accepts from a single-quest NPC, an item, a shared quest or a gossip menu close as before.
+  - No DB change. Compiles against upstream 2c13546 with the full chain.
+- **Status:** confirmed in game by Four on 2026-11-10: accepting from a quest list now returns to the NPC's updated list and Goodbye closes it. This covers all three patches in this entry.
+- **Pick up:** `quest-empty-progress.patch` and `quest-autocomplete-turnin.patch` stay applied; this
+  only adds `quest-list-accept.patch`. It touches `GossipDef.h`, so the build is longer:
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-list-accept.patch | git apply && echo "quest list accept applied"
+  grep -c "_questListGiver" src/server/game/Entities/Creature/GossipDef.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The echo line prints and the grep prints 3. Then restart worldserver.
+
+  Earlier pick-up for `quest-autocomplete-turnin.patch`: if you already applied the second version of `quest-empty-progress.patch` (be0404e),
+  it is unchanged; this only adds `quest-autocomplete-turnin.patch` (`QuestHandler.cpp`, short build):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-autocomplete-turnin.patch | git apply && echo "autocomplete turn-in applied"
+  grep -c "zrbfacore: an auto-complete quest" src/server/game/Handlers/QuestHandler.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The echo line prints and the grep prints 1. Then restart worldserver.
+
+  From the first version (ea1cfed, `Player.cpp`) instead: run
+  `git -C ../tools-repo show ea1cfed:tools/bfa/quest-empty-progress.patch | git apply -R` first, then
+  `git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-empty-progress.patch | git apply`, then the
+  block above.
+
+## 2026-11-09 (Quest fixes: quest window hangs or rushes after a turn-in)
+
+Merged to `main` with PR #51 on 2026-11-09.
+
+### Core: quest window stays open without a Complete button, or auto-accepts the next quest
+
+- **Found** (Four, 2026-11-09): sometimes after clicking Complete Quest the rewards arrive but the
+  quest window stays open with no button left, so it has to be closed with the X. Latest case: the
+  Tauren Paladin quest Consecrated Note (27015) turned in to Sunwalker Helaku (37737). Also,
+  sometimes turning in a quest immediately accepts the next quest in the chain and closes the window
+  before its text can be read (no auto-accept addons).
+- **Cause:** `Player::SendQuestReward` (`Player.cpp`) filled `SMSG_QUEST_GIVER_QUEST_COMPLETE` with
+  `LaunchGossip = true` for every NPC with the gossip flag, `LaunchQuest = true` for every other quest
+  giver, and `UseQuestReward` only for non-gossip, non-questgiver NPCs. With `LaunchGossip` the client
+  keeps the quest window waiting for a gossip menu; with `LaunchQuest` it reopens the NPC's quest list
+  and can select the next quest by itself. Stock TrinityCore 8.3.7 has the same code; TrinityCore
+  fixed it later in e746cb2f ("Only launch gossip menu on quest completion when quest has
+  QUEST_FLAGS_LAUNCH_GOSSIP_COMPLETE flag") and 0c7967d4 ("set LaunchQuest bit ... only when
+  UseQuestReward is not set", which caused auto-accept chain quests to double-select a quest menu
+  entry and other UI bugs).
+- **Changed:** new `tools/bfa/quest-complete-window.patch` (after `mulgore-bristleback-fight.patch`),
+  `Player::SendQuestReward` only:
+  - `LaunchGossip`: gossip NPC **and** quest flag `QUEST_FLAGS_LAUNCH_GOSSIP_COMPLETE` (0x01000000).
+  - `UseQuestReward`: quest is not `QUEST_FLAGS_AUTOCOMPLETE`, the NPC has a next quest in the chain
+    (`GetNextQuest`) and `CanTakeQuest` says you can take it.
+  - `LaunchQuest`: quest giver, `UseQuestReward` not set, and the NPC's quest dialog status
+    (`GetQuestDialogStatus`) is something other than none / unavailable.
+  - The next chain quest is still offered by the server as before (`HandleQuestgiverChooseRewardOpcode`
+    unchanged). No DB change.
+- **Status:** confirmed in game by Four on 2026-11-09 ("flawless": turn-ins close the window and
+  chain quests open on their own page).
+- **Pick up:** this only adds a new patch; the patches you already applied are unchanged.
+  `Player.cpp` changes, so the build is short.
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-complete-window.patch | git apply && echo "quest complete window applied"
+  grep -c QUEST_FLAGS_LAUNCH_GOSSIP_COMPLETE src/server/game/Entities/Player/Player.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The echo line prints and the grep prints 1. Then restart worldserver.
+
+## 2026-11-09 (Quest fixes: scout objectives never tick)
+
+Merged to `main` with PR #49 on 2026-11-09.
+
+### Core: area trigger ("scout") objectives never show as done in the quest log
+
+- **Found** (Four, 2026-11-09): The Fargodeep Mine (quest 62, "Scout through the Fargodeep Mine")
+  never counted, however often the mine was run. `.debug areatriggers` showed the server accepting
+  both of its triggers (197 at the entrance, 88 in the lower cavern), and Marshal Dughan accepted
+  the turn-in, but the quest tracker never changed. Reproduced on a second character.
+- **Cause:** the server did credit it. `areatrigger_involvedrelation` (88, 197 -> 62), the
+  SmartTrigger row on 197 and objective 252033 (type 10 area trigger, StorageIndex 0) are all
+  correct, and `Player::AreaExploredOrEventHappens` stores the objective and completes the quest.
+  But for objectives that are a flag rather than a count (`QuestObjective::IsStoringFlag`: area
+  trigger, win pet battle against NPC, defeat battle pet, criteria tree) the core told the client by
+  setting bit `256 << StorageIndex` in `QuestLog::StateFlags`, the Legion layout. The 8.3.7 client
+  reads those from the quest log's `ObjectiveFlags` field (`1 << StorageIndex`), which the core
+  names `Field_10` and never wrote. Stock TrinityCore 8.3.7 has the same bug; TrinityCore 9.0.5
+  names the field `ObjectiveFlags` and writes it this way.
+- **Changed:** new `tools/bfa/quest-objective-flags.patch` (after `gathering-tier-locks.patch`),
+  `Player.cpp` / `Player.h`:
+  - New `Player::SetQuestSlotObjectiveFlag` / `RemoveQuestSlotObjectiveFlag` set or clear
+    `1 << StorageIndex` in `QuestLog::Field_10`.
+  - `Player::SetQuestObjectiveData` (live credit) and `Player::_LoadQuestStatusObjectives` (login)
+    use them instead of `SetQuestSlotState(256 << index)` / `RemoveQuestSlotState(256 << index)`.
+  - `Player::SetQuestSlot` clears `Field_10` when a quest goes into a log slot, so a new quest
+    doesn't inherit the previous quest's ticks.
+  - No DB change. Affects every area trigger, pet battle and criteria objective, not just Fargodeep.
+- **Status:** confirmed in game by Four on 2026-11-09 (The Jasperlode Mine, quest 76: the objective
+  ticks on entering the mine and the quest shows ready for turn-in). The other objective types are
+  covered by the same code path but were not tested one by one.
+- **Affected quests:** every quest with at least one objective of type 10 (area trigger), 11 (win a
+  pet battle against a tamer), 12 (defeat a battle pet) or 14 (criteria tree): **975 quests** in the
+  world dump after upstream's `sql/updates` (61 area trigger, 148 tamer, 78 defeat battle pet, 688
+  criteria; a few have more than one). Before this patch none of those objectives ever ticked in the
+  quest log, though the server counted them. Grouped by the quest's zone or category
+  (`QuestSortID`), with the quest ID; no tag means area trigger:
+
+  <details><summary>All 975 quests</summary>
+
+  - **Acherus: The Ebon Hold**: Investigate the Broken Shore (46031, criteria)
+  - **Alchemy**: Get Your Mix On (39325, criteria), Halls of Valor: The Prime Ingredient (39348, criteria), Black Rook Hold: Heavy, But Helpful (39349, criteria), Maw of Souls: A Hope in Helheim (39350, criteria)
+  - **Alliance War Campaign**: Heart of Darkness (51088, criteria), Fragment of the Firelands (51359, criteria), War of Shadows (51715, criteria), Return to Boralus (51967, criteria), Return to Boralus (51968, criteria), Return to Boralus (51969, criteria), Overseas Assassination (52026, criteria), Crippling the Horde (52147, criteria), Adapting Our Tactics (53583, criteria), Spy Versus Spy (55171, criteria)
+  - **Allied Races**: A Choice of Allies (50242, criteria), A Second Ally For the Cause (50248, criteria), A Second Ally For the Cause (50254, criteria)
+  - **Antoran Wastes**: Securing a Foothold (48200, criteria), Hindering the Legion War Machine (48448, criteria), Take the Edge Off (48600, criteria), Felfire Shattering (48601, criteria), Watcher (49053, defeat battle pet), (no title) (49054, defeat battle pet), Earseeker (49055, defeat battle pet), Pilfer (49056, defeat battle pet), Minixis (49057, defeat battle pet), One-of-Many (49058, defeat battle pet)
+  - **Antorus, the Burning Throne**: Antoran High Command (48288, criteria), The Soulhunter (48292, criteria), The Burning Coven (48293, criteria), The Unmaker (48294, criteria), Antoran High Command (48295, criteria), The Soulhunter (48296, criteria), The Burning Coven (48297, criteria), The Unmaker (48298, criteria), Antoran High Command (48299, criteria), The Soulhunter (48300, criteria), The Burning Coven (48301, criteria), The Unmaker (48302, criteria), Antoran High Command (48303, criteria), The Soulhunter (48304, criteria), The Burning Coven (48305, criteria), The Unmaker (48306, criteria), Antorus, the Burning Throne: The Death of a Titan (49015, criteria)
+  - **Archaeology**: Process of Elimination (41159, criteria), Fit for an Elven Queen (41175, criteria), Surveying Student (41187, criteria)
+  - **Artifact**: The Forge of Odyn (39192, criteria), Forging New Strength (39722, criteria), A Ring Unbroken (39746, criteria), Advanced Runecarving (39761, criteria), The Voice of Thunder (39771, criteria), The Hammer in the Deep (40224, criteria), An Unexpected Message (40267, criteria), The Maelstrom Beckons (40276, criteria), Maw of Souls: Retrieving the Svalnguard (40613, criteria), The Seed of Ages (40651, criteria), Eye of Azshara: The Heart of Zin-Azshari (40668, criteria), Neltharion's Lair: Presentation is Key (40672, criteria), The Arcway: Rite of the Captain (40675, criteria), Purity of Form (40698, criteria), Power Overwhelming (40821, criteria), Injection of Power (40995, criteria), Empowering Your Artifact (41017, criteria), Return to Mardum (41033, criteria), Cursed Forge of the Nathrezim (41064, criteria), Unlocked Potential (41125, criteria), Return to Mardum (41221, criteria), Stolen Thunder (41574, criteria), Ritual Reagents (42128, criteria), Memories of Ebonchill (42429, criteria), Finishing the Job (42501, criteria), No Sanctuary (42502, criteria), The Unseen Blade (42504, criteria), The Unseen Blade (42627, criteria), Seeking Guidance (42770, criteria), Eternal Vigil (42869, criteria), The Power Within (43501, criteria), The Power Within (43505, criteria), Darkheart Thicket: Fallen Power (43517, criteria), Court of Stars: Literary Perfection (43524, criteria), Vault of the Wardens: Borrowing Without Asking (43525, criteria), Saving the Guard (43527, criteria), Balance of Power (43533, criteria), (no title) (43937, criteria), Focusing Our Efforts (43938, criteria), Greater Power for Greater Threats (46744, criteria), The Netherlight Crucible (49224, criteria)
+  - **Ashran**: Survey Ashran (36127, criteria), Survey Ashran (36226, criteria), Ashran Dominance (38923, criteria), Continue the Domination (38924, criteria), Ashran Dominance (38925, criteria), Continue the Domination (38926, criteria), Ashran Dominance (39520, criteria), Continue the Domination (39521, criteria), Ashran Dominance (39522, criteria), Continue the Domination (39523, criteria), An Island of War (45180, criteria), Volrath Must Die (56338, criteria), Tremblade Must Die (56339, criteria)
+  - **Azshara**: Stone Cold (14165), Wasn't It Obvious? (14389), Profitability Scouting (24452)
+  - **Azsuna**: Investigation at Mak'rana (42021, criteria), Size Doesn't Matter (42063, defeat battle pet), Dazed and Confused and Adorable (42146, pet battle (tamer)), The Wine's Gone Bad (42148, defeat battle pet), Help a Whelp (42154, pet battle (tamer)), Training with the Nightwatchers (42159, pet battle (tamer)), Azsuna Specimens (42165, defeat battle pet), Court of Farondis (42420, criteria), Children of Nar'thalas (42692, criteria)
+  - **Battle of Dazar'alor**: Battle of Dazar'alor (54282, criteria)
+  - **Battle Pets**: Julia, The Pet Tamer (31316, pet battle (tamer)), Julia Stevens (31693, pet battle (tamer)), Old MacDonald (31724, pet battle (tamer)), Lindsay (31725, pet battle (tamer)), Eric Davidson (31726, pet battle (tamer)), Bill Buckler (31728, pet battle (tamer)), Steven Lisbane (31729, pet battle (tamer)), Old MacDonald (31780, pet battle (tamer)), Lindsay (31781, pet battle (tamer)), Zunta, The Pet Tamer (31812, pet battle (tamer)), Dagra the Fierce (31813, pet battle (tamer)), Analynn (31814, pet battle (tamer)), Zonya the Sadist (31815, pet battle (tamer)), Merda Stronghoof (31817, pet battle (tamer)), Zunta (31818, pet battle (tamer)), Dagra the Fierce (31819, pet battle (tamer)), Eric Davidson (31850, pet battle (tamer)), Bill Buckler (31851, pet battle (tamer)), Steven Lisbane (31852, pet battle (tamer)), Analynn (31854, pet battle (tamer)), Zonya the Sadist (31862, pet battle (tamer)), Cassandra Kaboom (31870, pet battle (tamer)), Traitor Gluk (31871, pet battle (tamer)), Merda Stronghoof (31872, pet battle (tamer)), Pet Battle Trainers: Kalimdor (31887, pet battle (tamer)), Battle Pet Tamers: Kalimdor (31889, pet battle (tamer)), Battle Pet Tamers: Kalimdor (31891, pet battle (tamer)), Battle Pet Trainers: Kalimdor (31892, pet battle (tamer)), Grand Master Trixxy (31897, pet battle (tamer)), Battle Pet Tamers: Eastern Kingdoms (31902, pet battle (tamer)), Battle Pet Tamers: Eastern Kingdoms (31903, pet battle (tamer)), Cassandra Kaboom (31904, pet battle (tamer)), Grazzle the Great (31905, pet battle (tamer)), Kela Grimtotem (31906, pet battle (tamer)), Zoltan (31907, pet battle (tamer)), Elena Flutterfly (31908, pet battle (tamer)), Grand Master Trixxy (31909, pet battle (tamer)), David Kosse (31910, pet battle (tamer)), Deiza Plaguehorn (31911, pet battle (tamer)), Kortas Darkhammer (31912, pet battle (tamer)), Everessa (31913, pet battle (tamer)), Durin Darkhammer (31914, pet battle (tamer)), Grand Master Lydia Accoste (31915, pet battle (tamer)), Grand Master Lydia Accoste (31916, pet battle (tamer)), Battle Pet Tamers: Outland (31919, pet battle (tamer)), Grand Master Antari (31920, pet battle (tamer)), Battle Pet Tamers: Outland (31921, pet battle (tamer)), Nicki Tinytech (31922, pet battle (tamer)), Ras'an (31923, pet battle (tamer)), Narrok (31924, pet battle (tamer)), Morulu The Elder (31925, pet battle (tamer)), Grand Master Antari (31926, pet battle (tamer)), Battle Pet Tamers: Northrend (31927, pet battle (tamer)), Grand Master Payne (31928, pet battle (tamer)), Battle Pet Tamers: Northrend (31929, pet battle (tamer)), Battle Pet Tamers: Pandaria (31930, pet battle (tamer)), Beegle Blastfuse (31931, pet battle (tamer)), Nearly Headless Jacob (31932, pet battle (tamer)), Okrut Dragonwaste (31933, pet battle (tamer)), Gutretch (31934, pet battle (tamer)), Grand Master Payne (31935, pet battle (tamer)), Battle Pet Trainers: Pandaria (31940, pet battle (tamer)), Grand Master Aki (31951, pet battle (tamer)), Battle Pet Tamers: Pandaria (31952, pet battle (tamer)), Grand Master Hyuna (31953, pet battle (tamer)), Grand Master Mo'ruk (31954, pet battle (tamer)), Grand Master Nishi (31955, pet battle (tamer)), Grand Master Yon (31956, pet battle (tamer)), Grand Master Shu (31957, pet battle (tamer)), Grand Master Aki (31958, pet battle (tamer)), Battle Pet Tamers: Cataclysm (31966, pet battle (tamer)), Battle Pet Tamers: Cataclysm (31967, pet battle (tamer)), Grand Master Obalis (31970, pet battle (tamer)), Grand Master Obalis (31971, pet battle (tamer)), Brok (31972, pet battle (tamer)), Bordin Steadyfist (31973, pet battle (tamer)), Goz Banefury (31974, pet battle (tamer)), Grand Master Zusshi (31991, pet battle (tamer)), Darkmoon Pet Battle! (32175, pet battle (tamer)), Pandaren Spirit Tamer (32428, pet battle (tamer)), Burning Pandaren Spirit (32434, pet battle (tamer)), Flowing Pandaren Spirit (32439, pet battle (tamer)), Whispering Pandaren Spirit (32440, pet battle (tamer)), Thundering Pandaren Spirit (32441, pet battle (tamer)), Beasts of Fable (32603, defeat battle pet), Beasts of Fable Book I (32604, defeat battle pet), Beasts of Fable Book II (32868, defeat battle pet), Beasts of Fable Book III (32869, defeat battle pet), Little Tommy Newcomer (33222, pet battle (tamer)), A New Darkmoon Challenger! (36471, pet battle (tamer)), Unruly Visitors (36570, pet battle (tamer)), Cymre Brightblade (37201, pet battle (tamer)), Ashlei (37203, pet battle (tamer)), Gargra (37205, pet battle (tamer)), Tarr the Terrible (37206, pet battle (tamer)), Vesharr (37207, pet battle (tamer)), Taralune (37208, pet battle (tamer)), Critters of Draenor (38299, criteria), Critters of Draenor (38300, criteria), Critters of Draenor (39058, criteria), Shipwrecked Captive (40310, pet battle (tamer)), Battle Pet Tamers: Warlords (40329, criteria), A Celestial Invitation (44767, pet battle (tamer)), Raising Your Snowfeather (44948, criteria), Hunting Lesson: Northern Hawk Owls (44950, criteria), Allies in Highmountain (44953, criteria), Snowfeather Team Up (44954, criteria), Deadly Prey (44956, criteria), Hunting Lesson: Spiketail Beaver (44957, criteria), The Unfriendly Faction (44958, criteria), Hunting Lesson: Mudshell Conch (44960, criteria), Teamwork Lesson: Naraxas (44961, criteria), Hunting Lesson: Coralback Fiddler (44962, criteria), Teamwork Lesson: Ursoc (44967, criteria), Snowfeather Team Rumble (44968, criteria), Raising Your Direbeak (44973, criteria), Hunting Lesson: Rose Taipan (44976, criteria), Allies in Stormheim (44977, criteria), Direbeak Team Up (44978, criteria), Dire Prey (44979, criteria), Hunting Lesson: Tiny Apparition (44980, criteria), The Unkindly Faction (44981, criteria), Hunting Lesson: Golden Eaglet (44983, criteria), Teamwork Lesson: Fenryr (44984, criteria), Hunting Lesson: Stormstruck Beaver (44985, criteria), Teamwork Lesson: Krosus (44986, criteria), Direbeak Team Rumble (44987, criteria), Raising Your Sharptalon (44989, criteria), Raising Your Bloodgazer (44990, criteria), Hunting Lesson: Spring Strider (44995, criteria), Hunting Lesson: Erudite Manafiend (44996, criteria), Allies in Val'sharah (44997, criteria), Allies in Azsuna (44998, criteria), Sharptalon Team Up (44999, criteria), Bloodgazer Team Up (45000, criteria), Destructive Prey (45001, criteria), Dangerous Prey (45002, criteria), Hunting Lesson: Terror Larva (45003, criteria), Hunting Lesson: Fledgling Kingfeather (45004, criteria), The Uncongenial Faction (45005, criteria), The Unfavorable Faction (45006, criteria), Hunting Lesson: Auburn Ringtail (45009, criteria), Hunting Lesson: Juvenile Scuttleback (45010, criteria), Teamwork Lesson: Dresaron (45011, criteria), Teamwork Lesson: Serpentrix (45012, criteria), Hunting Lesson: Vale Flitter (45013, criteria), Hunting Lesson: Felspider (45014, criteria), Teamwork Lesson: Xavius (45015, criteria), Teamwork Lesson: Skorpyron (45016, criteria), Sharptalon Team Rumble (45017, criteria), Bloodgazer Team Rumble (45018, criteria), Crysa's Flyers (45083, pet battle (tamer)), Wailing Critters (45423, defeat battle pet), Pet Battle Challenge: Wailing Caverns (45539, defeat battle pet), The Deadmines Strike Back (46291, defeat battle pet), Pet Battle Challenge: Deadmines (46292, defeat battle pet), Bert's Bots (47895, pet battle (tamer)), Gnomeregan's New Guardians (54185, defeat battle pet), Pet Battle Challenge: Gnomeregan (54186, defeat battle pet), Tiny Terrors of Stratholme (56491, defeat battle pet), Pet Battle Challenge: Stratholme (56492, defeat battle pet), Shadows of Blackrock (58457, pet battle (tamer)), Pet Battle Challenge: Blackrock Depths (58458, pet battle (tamer))
+  - **Battlegrounds**: To Battle! (45172, criteria), Desperate Times (45173, criteria), Win the Crowd (45179, criteria), Something Different (47148, criteria), Storming the Battlefields (56499, criteria), Storming the Battlefields (56500, criteria)
+  - **Black Empire Campaign**: Ny'alotha, the Waking City: The Corruptor's End (58632, criteria)
+  - **Black Rook Hold**: Black Rook Hold: The Lord of Black Rook Hold (43545, criteria), Black Rook Hold: The Sorrow (43642, criteria), Black Rook Hold: The Lord of Black Rook Hold (44276, criteria), Black Rook Hold: The Lord of Black Rook Hold (44277, criteria)
+  - **Black Temple**: Disturbance Detected: Black Temple (47523, criteria)
+  - **Blackrock Caverns**: This Can Only Mean One Thing... (28732)
+  - **Blacksmithing**: You Are Not Worthy (38514, criteria)
+  - **Blade's Edge Mountains**: Doug Test - Completable Quest4 (50384, criteria)
+  - **Blasted Lands**: A Closer Look (25715)
+  - **Bloodmyst Isle**: I Shoot Magic Into the Darkness (9700)
+  - **Borean Tundra**: The Plains of Nasam (11652), What Are They Up To? (11890)
+  - **Brawler's Guild**: Everyone Loves a Good Fight (45111, criteria), Murder at the Brawl'gar Arena (53914, criteria), Murder at the Brawlpub (55002, criteria)
+  - **Broken Shore**: How Do YOU Like It?! (45541, criteria), Illidari Masters: Sissix (46111, pet battle (tamer)), Illidari Masters: Madam Viciosa (46112, pet battle (tamer)), Illidari Masters: Nameless Mystic (46113, pet battle (tamer)), Armies of Legionfall (48641, criteria)
+  - **Cathedral of Eternal Night**: Cathedral of Eternal Night: Altar of the Aegis (46244, criteria)
+  - **Chamber of Heart**: Infusing the Heart (52428, criteria)
+  - **Cooking**: A Good Recipe List (40990, criteria), Opening the Test Kitchen (40991, criteria)
+  - **Court of Stars**: Court of Stars: Wraith in the Machine (42764, criteria), Court of Stars: Bring Me the Eyes (42769, criteria), Court of Stars: Disarming the Watch (42781, criteria), Court of Stars: They Bloom at Night (42783, criteria), Court of Stars: The Deceitful Student (42784, criteria), Court of Stars: Beware the Fury of a Patient Elf (43314, criteria), Court of Stars: Into the Court of Stars (43550, criteria), Court of Stars: Into the Court of Stars (44274, criteria), Court of Stars: Into the Court of Stars (44275, criteria)
+  - **Crucible of Storms**: Orders from Azshara (54265, criteria), Orders from Azshara (54433, criteria), Crucible of Storms: Relics of Shadow (54438, criteria), Crucible of Storms: Relics of Shadow (54439, criteria)
+  - **Dalaran**: Fight Night: Tiffany Nelson (40277, pet battle (tamer)), Fight Night: Sir Galveston (40298, pet battle (tamer)), Fight Night: Bodhi Sunwayver (40299, pet battle (tamer)), Battle: Pandaren Cuisine - Sungshin Ironpaw (41405, criteria), Battle: Pandaren Cuisine - Torg Slowflame (41406, criteria), Battle: Pandaren Cuisine - Elling Trias (41408, criteria), Fight Night: Heliosus (41881, defeat battle pet), Fight Night: Rats! (41886, defeat battle pet), Fight Night: Stitches Jr. Jr. (42062, defeat battle pet), The Wardens (42422, criteria), Fight Night: Amalia (42442, pet battle (tamer)), The Kirin Tor of Dalaran (43179, criteria), Bringer of the Light (44004, criteria), Edict of the God-King (45422, criteria)
+  - **Dark Iron Dwarf**: Blackrock Depths (51813, criteria), Molten Core (53342, criteria), Firelands (53352, criteria), Stranger in a Strange Land (53500, criteria)
+  - **Darkheart Thicket**: Darkheart Thicket: Into Darkheart Thicket (43551, criteria), Darkheart Thicket: Into Darkheart Thicket (44272, criteria), Darkheart Thicket: Into Darkheart Thicket (44273, criteria)
+  - **Darkshore**: A Lost Companion (13564), Consumed (13881)
+  - **Death Knight Campaign**: Rise, Champions (43264, criteria), Troops in the Field (43267, criteria), Tech It Up A Notch (43268, criteria), Salanar the Horseman (43539, criteria), Advancing the War Effort (43573, criteria), Steeds of the Damned (43899, criteria), Aggregates of Anguish (43928, criteria)
+  - **Deepholm**: Deathwing's Fall (26258), Silvermarsh Rendezvous (27007)
+  - **Demon Hunter Campaign**: Into Our Ranks (39741, criteria), Last, But Not Least (42132, criteria), Into Our Ranks (42665, criteria), Preparations for Invasion (42669, criteria), Rise, Champions (42670, criteria), Rise, Champions (42671, criteria), Things Gaardoun Needs (42677, criteria), Loramus, Is That You? (42681, criteria), Additional Accoutrements (42682, criteria), Demonic Improvements (42683, criteria), Working With the Wardens (42731, criteria), Rune Ruination (42736, criteria), Two Worthies (42776, criteria), Back in Black (42801, criteria), Securing Mardum (42802, criteria), Things Gaardoun Needs (44161, criteria), One Battle at a Time (44694, criteria), Defense of the Fel Hammer (45339, criteria), Investigate the Broken Shore (45994, criteria)
+  - **Dragonblight**: Conversing With the Depths (12032), From the Depths of Azjol-Nerub (12036), The Best of Intentions (12263)
+  - **Dreadscar Rift**: Investigate the Broken Shore (45990, criteria)
+  - **Druid Campaign**: Sampling the Nightmare (42032, criteria), Gathering the Dreamweavers (42037, criteria), Rise, Champions (42583, criteria), A Glade Defense (42586, criteria), Branching Out (42588, criteria), Defending the Isles (43403, criteria)
+  - **Drustvar**: Stick It To 'Em! (50533, criteria), Order of Embers (50600, criteria), Crab People (52009, pet battle (tamer)), Night Horrors (52218, pet battle (tamer)), Rogue Azerite (52278, pet battle (tamer)), What's the Buzz? (52297, pet battle (tamer))
+  - **Dungeon**: Temple of Sethraliss: Avatar of the Loa (50551, criteria), Shrine of the Storm: Whispers Below (50825, criteria), Siege of Boralus: Lady Ashvane's Return (52153, criteria)
+  - **Elwynn Forest**: The Fargodeep Mine (62), The Jasperlode Mine (76)
+  - **Enchanting**: The Beat Goes On (54000, criteria), We're Going In (54001, criteria)
+  - **Engineering**: Modular Modifications (40864, criteria), Court of Stars: Revamping the Recoil (40882, criteria)
+  - **Eredath**: The Path Forward (46941, criteria), The Ruins of Oronaar (48445, criteria), Relics of the Ancient Eredar (48446, criteria), Shadowguard Dispersion (48447, criteria), Argussian Reach (48642, criteria), Bucky (49047, defeat battle pet), Snozz (49048, defeat battle pet), Gloamwing (49049, defeat battle pet), Shadeflicker (49050, defeat battle pet), Corrupted Blood of Argus (49051, defeat battle pet), Mar'cuus (49052, defeat battle pet)
+  - **Eye of Azshara**: Eye of Azshara: Into the Eye of Azshara (43552, criteria), Eye of Azshara: Into the Eye of Azshara (44270, criteria), Eye of Azshara: Into the Eye of Azshara (44271, criteria)
+  - **Felwood**: Rejoining the Forest (28228)
+  - **Firelands**: Disturbance Detected: Firelands (57637, criteria)
+  - **Frostfire Ridge**: Gormaul Tower (33784, criteria), Turning Timber into Profit (36138, criteria), Breaking into the Trap Game (36345, criteria), Warlord of Draenor (36874, criteria), Nemesis: Hunter - Hunted (36889, criteria), The Headhunter's Harvest (37046, criteria), The Headhunter's Harvest (37119, criteria), Treasure Contract: The Thunderlord Sage (37914), Shipbuilding (39241, criteria), Ship Shape (39242, criteria), Naval Commander (39243, criteria), Upgrading The Fleet (39245, criteria), Naval Domination (39246, criteria), Destroying the Competition (39401, criteria), I Sunk Your Battleship (39604, criteria), If At First You Fail, Try Again! (39674, criteria), A True Naval Commander (39676, criteria)
+  - **Garrison Support**: Build Your Barracks (34461, criteria), Build Your Barracks (34587, criteria), Professional Processing (34670, criteria), Delegating on Draenor (34692, criteria), [Deprecated] Profession Quest (34693, criteria), Mission Probable (34775, criteria), What We Got (34824, criteria), Building for Professions (36100, criteria), Pets Versus Pests (36423, defeat battle pet), Pets Versus Pests (36469, defeat battle pet), Bigger is Better (36567, criteria), Bigger is Better (36592, criteria), My Very Own Fortress (36614, criteria), My Very Own Castle (36615, criteria), Your Second Alchemy Work Order (36838, criteria), Your Second Enchanting Work Order (36839, criteria), Your Second Engineering Work Order (36840, criteria), Ogre Waygates (36848, criteria), Unconventional Inventions (37044, criteria), Unconventional Inventions (37091, criteria), Fully Armed and Operational (37418, criteria), Fully Armed and Operational (37420, criteria), Your Second Alchemy Work Order (37584, criteria), Your Second Enchanting Work Order (37589, criteria), Building for Professions (37669, criteria)
+  - **Ghostlands**: Investigate An'daroth (9160), Investigate the Amani Catacombs (9193)
+  - **Gorgrond**: Feeding An Army (36272, criteria), Feeding An Army (36344, criteria), Strike While the Iron is Hot (36573, criteria), Strike While the Iron is Hot (36574, criteria), Strike While the Iron is Hot (36575, criteria), Strike While the Iron is Hot (36576, criteria)
+  - **Hall of the Guardian**: Investigate the Broken Shore (45998, criteria)
+  - **Hallow's End**: Missing Heirlooms (29392), Missing Heirlooms (29415)
+  - **Halls of Valor**: Halls of Valor: Odyn's Challenge (43509, criteria), Halls of Valor: Odyn's Challenge (44268, criteria), Halls of Valor: Odyn's Challenge (44269, criteria)
+  - **Hellfire Citadel**: Hellfire Assault (39193, criteria), The Iron Bulwark (39219, criteria), Pits of Mannoroth (39221, criteria), Court of Blood (39222, criteria), Deadeye's Vision (39223, criteria), Maw of Souls (39225, criteria), Iskar's Clutch (39226, criteria), Amphitheater of the Eternal (39227, criteria), Temple of Tyranny (39228, criteria), Grommash's Torment (39229, criteria), The Felborne Breach (39230, criteria), Destructor's Rise (39231, criteria), The Black Gate (39232, criteria), Pits of Mannoroth (39250, criteria), Maw of Souls (39253, criteria), Temple of Tyranny (39256, criteria), Destructor's Rise (39259, criteria), The Black Gate (39260, criteria)
+  - **Hellfire Peninsula**: The Assassin (9400)
+  - **Helmouth Cliffs**: Maw of Souls: Into the Maw of Souls (43553, criteria), Maw of Souls: Into the Maw of Souls (44266, criteria), Maw of Souls: Into the Maw of Souls (44267, criteria)
+  - **Heritage**: The Fall of the Sunwell (54096, criteria), Let Sleeping Wolves Lie (54984, criteria)
+  - **Highmountain**: Training with Bredda (40280, pet battle (tamer)), Tiny Poacher, Tiny Animals (40282, pet battle (tamer)), Hatchlings of the Talon (41094, criteria), Rocko Needs a Shave (41624, defeat battle pet), Snail Fight! (41687, pet battle (tamer)), Wildlife Protection Force (41766, defeat battle pet), It's Illid... Wait. (42064, defeat battle pet), Highmountain Tribes (42233, criteria)
+  - **Highmountain Tauren**: Stranger in a Strange Land (50319, criteria)
+  - **Hillsbrad Foothills**: A Haunting in Hillsbrad (28635)
+  - **Horde War Campaign**: War of Shadows (51771, criteria), Return to Zuldazar (51984, criteria), Return to Zuldazar (51985, criteria), Return to Zuldazar (51986, criteria), With Prince in Tow (52978, criteria), Adapting Our Tactics (53602, criteria), The Hunt Never Ends (53912), Under False Colors (54999, criteria)
+  - **Hunter Campaign**: Scouting Reports (42384, criteria), Requesting Reinforcements (42402, criteria), Rise, Champions (42519, criteria), Making Contact (42523, criteria), Troops in the Field (42525, criteria), Tech It Up A Notch (42526, criteria), Survival Skills (43335, criteria), Leading by Example (44680, criteria), Taking Control (45554, criteria), Investigate the Broken Shore (46023, criteria)
+  - **Inscription**: By the Book (49874, criteria), Temple of Sethraliss: Booking on a Favor (49877, criteria), Penning In Protection (49878, criteria)
+  - **Invasion Point**: Invasion Point Offensive (48513, criteria), Commander's Downfall (48605, criteria), Invasion Onslaught (49293, criteria)
+  - **Jewelcrafting**: A Colorful Key (48075, criteria), The Missing Chapter (49584, criteria), The Missing Chapter (49599, criteria)
+  - **Karazhan**: Return to Karazhan: In the Eye of the Beholder (44735, criteria), Return to Karazhan: The Tower of Power (44917, criteria)
+  - **Krokuun**: Rendezvous (46816, criteria), Storming the Citadel (47892, criteria), Remnants of Darkfall Ridge (48441, criteria), Nath'raxas Hold: Preparations (48442, criteria), Nath'raxas Hold: Rescue Mission (48443, criteria), Where They Least Expect It (48461, criteria), Army of the Light (48639, criteria), Ruinhoof (49041, defeat battle pet), Foulclaw (49042, defeat battle pet), Baneglow (49043, defeat battle pet), Retch (49044, defeat battle pet), Deathscreech (49045, defeat battle pet), Gnasher (49046, defeat battle pet)
+  - **Kul Tiran**: Allegiance of Kul Tiras (53720, criteria), Made in Kul Tiras (54706, criteria), For the Alliance (55142, criteria), Stranger in a Strange Land (55146, criteria)
+  - **Leatherworking**: Stamped Stories (40191, criteria), The Audition (55216, criteria), Make Some Noise (55222, criteria), The Audition (55228, criteria), Make Some Noise (55234, criteria)
+  - **Legionfall Campaign**: Begin Construction (46245, criteria), Strike Them Down (46246, criteria), Defending Broken Isles (46247, criteria), Self-Fulfilling Prophecy (46248, criteria), Championing Our Cause (46249, criteria), Take Out the Head... (46250, criteria), Intolerable Infestation (46252, criteria), Assault on Broken Shore (46734, criteria), The Deceiver's Downfall (46805, criteria), Champions of Legionfall (47137, criteria)
+  - **Lightforged Draenei**: Forge of Aeons (49266, criteria), Stranger in a Strange Land (50313, criteria)
+  - **Loch Modan**: Resupplying the Excavation (273), Resupplying the Excavation (13639)
+  - **Mag'har Orc**: Tyranny of the Light (52955, criteria), Stranger in a Strange Land (53502, criteria)
+  - **Mage Campaign**: Growing Power (42175, criteria), Empyrean Society Report (42222, criteria), Following In His Footsteps (42424, criteria), Ancient Magic (42433, criteria), Rise, Champions (42663, criteria), Troops in the Field (42687, criteria), Tech It Up A Notch (42696, criteria), Into the Oculus (42734, criteria), When There's a Will, There's a Way (42940, criteria), The Might of the Tirisgarde (44689, criteria), Servant to No One (45630, criteria)
+  - **Mechagnome**: Stranger in a Strange Land (58147, criteria)
+  - **Mechagon**: Gnomefeaster (56393, defeat battle pet), Sputtertube (56394, defeat battle pet), Goldenbot XD (56395, defeat battle pet), Creakclank (56396, defeat battle pet), CK-9 Micro-Oppression Unit (56397, defeat battle pet), Unit 35 (56398, defeat battle pet), Unit 6 (56399, defeat battle pet), Unit 17 (56400, defeat battle pet), A Little Side Action (56557, criteria), A Little Side Action (56559, criteria), Call to Arms: Mechagon (56649, criteria), Call to Arms: Mechagon (56650, criteria)
+  - **Monk Campaign**: Impending Danger (32442, criteria), A Peaceful World (41086, criteria), Report from Tian Monastery (41905, criteria), Tracking the Tideskorn (41909, criteria), Freya's Spring (41910, criteria), Amaranthine Hops (41911, criteria), Rise, Champions (42187, criteria), Tech It Up A Notch (42191, criteria), Scrolls of Knowledge (42210, criteria), Further Training (43062, criteria), Panic at the Brewery (45404, criteria), Investigate the Broken Shore (46025, criteria)
+  - **Mount Hyjal**: Through the Dream (25325)
+  - **Nagrand**: Bigger Trap, Better Rewards (36274, criteria), Bigger Trap, Better Rewards (36346, criteria)
+  - **Nazjatar**: A Brief Respite (54975, criteria), Where the Road Leads (55175), The Waveblade Ankoan (56119, criteria), The Unshackled (56120, criteria), Call to Arms: Nazjatar (56148, criteria), Friends In Need (56234, criteria), Down Into Nazjatar (56235, criteria), Down But Not Out (56236, criteria), Prince Wiggletail (56381, defeat battle pet), Chomp (56382, defeat battle pet), Silence (56383, defeat battle pet), Shadowspike Lurker (56384, defeat battle pet), Pearlhusk Crawler (56385, defeat battle pet), Elderspawn of Nalaada (56386, defeat battle pet), Ravenous Scalespawn (56387, defeat battle pet), Mindshackle (56388, defeat battle pet), Kelpstone (56389, defeat battle pet), Voltgorger (56390, defeat battle pet), Frenzied Knifefang (56391, defeat battle pet), Giant Opaline Conch (56392, defeat battle pet), Call to Arms: Nazjatar (56648, criteria), Create Your Own Strength (57003, criteria), Create Your Own Strength (57004, criteria), Becoming a Friend (57005, criteria), A Worthy Ally (57006, criteria), Legacy of the Mad Mage (57086, criteria)
+  - **Nazmir**: Talanji's Expedition (50602, criteria), Marshdwellers (52754, pet battle (tamer)), Crawg in the Bog (52779, defeat battle pet), Pack Leader (52799, pet battle (tamer)), Accidental Dread (52803, pet battle (tamer))
+  - **Neltharion's Lair**: Neltharion's Lair: Into Neltharion's Lair (43554, criteria), Neltharion's Lair: Into Neltharion's Lair (44264, criteria), Neltharion's Lair: Into Neltharion's Lair (44265, criteria)
+  - **Netherlight Temple**: Investigate the Broken Shore (46029, criteria)
+  - **Netherstorm**: Triangulation Point One (10269), Triangulation Point Two (10275)
+  - **Nightborne**: Remember the Sunwell (49354, criteria), Stranger in a Strange Land (50303, criteria)
+  - **No zone**: Traitor Gluk (31816, pet battle (tamer)), Brutality in the Basin, Violence in the Valley (35571, criteria), Honorable Victor (35592, criteria), The Epic Eleven (35604, criteria), Test - Fireball (40502, criteria), 2v2 Weekly Quest (44891, criteria), 3v3 Weekly Quest (44908, criteria), RBG Weekly (44909, criteria), Defeat Nekthara (48237, pet battle (tamer)), Valley of Spirits (57039, criteria), Dwarven District (57153, criteria), Old Town (57216, criteria), Trade District (57271, criteria)
+  - **Northern Barrens**: To Track a Thief (869), The Forgotten Pools (870), Drag it Out of Them (13961), Investigate the Wreckage (14066)
+  - **Order Hall**: Goddess Watch Over You (44338, criteria), Ravencrest's Legacy (44479, criteria), Destiny Unfulfilled (44481, criteria), Destiny Unfulfilled (44496, criteria), Destiny Unfulfilled (44497, criteria)
+  - **Orgrimmar**: Protect the Home Front (44092, criteria)
+  - **Paladin Campaign**: The Blood Matriarch (42846, criteria), Wrath and Justice (42849, criteria), Tech It Up a Notch (42850, criteria), The Highlord's Command (42885, criteria), The Highlord's Command (42966, criteria), The Highlord's Command (42967, criteria), The Highlord's Command (42968, criteria), Defenders of the World (43699, criteria), Moonfang Family Relics (45145, criteria)
+  - **Priest Campaign**: Rise, Champions (43270, criteria), Spread the Word (43273, criteria), Troops in the Field (43276, criteria), Tech It Up A Notch (43277, criteria), Relieving the Front Lines (43371, criteria), Halls of Valor: The Light Within (43377, criteria), Infiltrating Our Enemies (43385, criteria), Fortifying the Temple (43399, criteria)
+  - **Prototype**: A Terrible Place (55036, criteria)
+  - **Proving Grounds**: Proving Grounds (37433, criteria), Proving Grounds (37434, criteria)
+  - **Redridge Mountains**: Tuning the Gnomecorder (26512)
+  - **Rogue Campaign**: Rise, Champions (42139, criteria), A More Wretched Hive of Scum and Villainy (42140, criteria), Throwing SI:7 Off the Trail (42684, criteria), The Big Bad Wolfe (43014, criteria), What Winstone Suggests (43015, criteria), Where In the World is Mathias? (43469, criteria), Pruning the Garden (43470, criteria), The World is Not Enough (43479, criteria), Spy vs. Spy (43829, criteria), Convincin' Old Yancey (43841, criteria), Investigate the Broken Shore (45992, criteria)
+  - **Ruins of Gilneas**: Break in Communications: Dreadwatch Outpost (27349)
+  - **Sanctum of Light**: Investigate the Broken Shore (45975, criteria)
+  - **Seasonal**: How Things "Really" Happened... (57298, criteria), Soldier of Time (57300, criteria)
+  - **Seething Shore**: The Seething Shore (50048, criteria), The Seething Shore (50054, criteria)
+  - **Shadowmoon Valley**: The Path of Conquest (10750), The Path of Conquest (10772), Keeping it Together (35176, criteria), Turning Timber into Profit (36192, criteria), Breaking into the Trap Game (36271, criteria), Warlord of Draenor (36876, criteria), Nemesis: Hunter - Hunted (36955, criteria), Shipbuilding (39054, criteria), Ship Shape (39055, criteria), Naval Commander (39056, criteria), Upgrading The Fleet (39067, criteria), Naval Domination (39068, criteria), Destroying the Competition (39404, criteria), I Sunk Your Battleship (39601, criteria), If At First You Fail, Try Again! (39655, criteria), A True Naval Commander (39665, criteria)
+  - **Shaman Campaign**: Tech It Up A Notch (41740, criteria), Troops in the Field (41741, criteria), Mission: Elemental Diplomacy (42184, criteria), Mission: Investigating Deepholm (42200, criteria), Return to the Firelands (42208, criteria), Rise, Champions (42383, criteria), Enemies of Air (42986, criteria), Worldmender (42988, criteria)
+  - **Silithus: The Wound**: Champions of Azeroth (50562, criteria)
+  - **Skyhold**: Investigate the Broken Shore (45987, criteria)
+  - **Southern Barrens**: Claim the Battle Scar (24618), Claim the Battlescar (25081)
+  - **Special**: To Outland! (49816, criteria), To Northrend! (49817, criteria), To Outland! (49862, criteria), To Northrend! (49863, criteria)
+  - **Stonetalon Mountains**: Field Test: Gnomecorder (25621), Ascending the Vale (25930)
+  - **Stormheim**: A Grapple a Day (38312, criteria), A Grapple a Day (38612, criteria), My Beasts's Bidding (40278, pet battle (tamer)), Beasts of Burden (41935, pet battle (tamer)), Jarrun's Ladder (41944, pet battle (tamer)), All Pets Go to Heaven (41948, pet battle (tamer)), Oh, Ominitron (41958, pet battle (tamer)), All Howl, No Bite (42067, defeat battle pet), The Valarjar (42234, criteria)
+  - **Stormsong Valley**: Storm's Wake (50601, criteria), This Little Piggy Has Sharp Tusks (52126, defeat battle pet), Automated Chaos (52165, pet battle (tamer)), Sea Creatures Are Weird (52316, pet battle (tamer)), Captured Evil (52325, pet battle (tamer)), Call to Arms: Stormsong Valley (52957, criteria), One of the Hive (56107, criteria), Leaving the Hive (56108, criteria), Defender of the Hive (56109, criteria), A Defender Emerges (56110, criteria), The Usurper (56111, criteria), A Royal Awakening (56112, criteria)
+  - **Stormwind City**: Rallying the Fleet (26975), Peasant Problems (27044), Protect the Home Front (40661, criteria)
+  - **Stratholme**: Angry Residents (56914, pet battle (tamer))
+  - **Suramar**: Flummoxed (40337, pet battle (tamer)), The Master of Pets (41895, pet battle (tamer)), Clear the Catacombs (41914, pet battle (tamer)), Mana Tap (41931, pet battle (tamer)), Chopped (41990, pet battle (tamer)), Threads of Fate (42015, pet battle (tamer)), The Nightfallen (42421, criteria), The Arcway: Opening the Arcway (42490, criteria), Mrgls of Endearment (42688, criteria), Giving It All We've Got (43562, criteria), Stabilizing Suramar (45316, criteria), Fighting on All Fronts (45317, criteria)
+  - **Swamp of Sorrows**: Legends of the Sunken Temple (27704)
+  - **Tailoring**: The Path to Suramar City (38962, criteria), Step Into Her Shoes (53858, criteria), Saving Nine (53868, criteria), Tearing at the Seams (55177, criteria), Tearing at the Seams (55188, criteria), Seam Stress (55214, criteria)
+  - **Talador**: The Battle for Shattrath (33731, criteria), The Battle for Shattrath (34099, criteria)
+  - **Tanaan Jungle**: Bring the Reinforcements (39313, criteria), Bring the Reinforcements (39315, criteria)
+  - **Temple of Sethraliss**: Temple of Sethraliss: Ecological Research (51377, criteria), Temple of Sethraliss: A Bazaar Menagerie (51378, criteria), Temple of Sethraliss: Navigating Currents (51379, criteria)
+  - **The Arcway**: The Arcway: Into the Arcway (43555, criteria), The Arcway: Clogged Drain (43637, criteria), The Arcway: Silver Serpent (43638, criteria), The Arcway: Arcanist Down (43639, criteria), The Arcway: Into the Arcway (44262, criteria), The Arcway: Into the Arcway (44263, criteria)
+  - **The Blood Furnace**: Heart of Rage (29536), Heart of Rage (29539)
+  - **The Deaths of Chromie**: The Day That Chromie Dies (47543, criteria), Rewind (47545, criteria), The Many Advantages of Being a Time Dragon (47550, criteria), Sky Ablaze With Cannonfire (47772, criteria), Sky Ablaze With Cannonfire (47773, criteria)
+  - **The Dreamgrove**: Investigate the Broken Shore (46027, criteria)
+  - **The Eternal Palace**: The Eternal Palace: Queen's Gambit (56356, criteria), The Eternal Palace: Queen's Gambit (56358, criteria)
+  - **The Exodar**: Nobundo's Last Stand (43705, criteria)
+  - **The Maelstrom**: Investigate the Broken Shore (45996, criteria)
+  - **The Nighthold**: The Nighthold: High Botanist Tel'arn (43910, criteria), The Nighthold: High Botanist Tel'arn (43913, criteria), The Nighthold: High Botanist Tel'arn (43916, criteria), The Nighthold: High Botanist Tel'arn (43919, criteria), The Nighthold: Lord of the Shadow Council (45417, criteria)
+  - **The Seat of the Triumvirate**: Seat of the Triumvirate: The Crest of Knowledge (47654, criteria)
+  - **Thousand Needles**: (no title) (45807, criteria)
+  - **Tiragarde Sound**: Proudmoore Admiralty (50599, criteria), Alliance War Effort (50605, criteria), Not So Bad Down Here (52430, pet battle (tamer)), Unbreakable (52455, defeat battle pet), That's a Big Carcass (52471, pet battle (tamer)), Strange Looking Dogs (52751, pet battle (tamer))
+  - **Tomb of Sargeras**: Tomb of Sargeras: The Tomb's Mistress (47114, criteria), Tomb of Sargeras: The Tomb's Mistress (47115, criteria), Tomb of Sargeras: The Tomb's Mistress (47116, criteria), Tomb of Sargeras: The Tomb's Mistress (47117, criteria), Tomb of Sargeras: Free The Tormented (47118, criteria), Tomb of Sargeras: Free The Tormented (47119, criteria), Tomb of Sargeras: Free The Tormented (47120, criteria), Tomb of Sargeras: Free The Tormented (47121, criteria), Tomb of Sargeras: The Fallen Avatar (47122, criteria), Tomb of Sargeras: The Fallen Avatar (47123, criteria), Tomb of Sargeras: The Fallen Avatar (47124, criteria), Tomb of Sargeras: The Fallen Avatar (47125, criteria), Tomb of Sargeras: The Deceiver (47126, criteria), Tomb of Sargeras: The Deceiver (47127, criteria), Tomb of Sargeras: The Deceiver (47128, criteria), Tomb of Sargeras: The Deceiver (47129, criteria)
+  - **Trial of Valor**: Trial of Valor: Odyn's Favor (44729, criteria), Trial of Valor: Odyn's Judgment (44868, criteria)
+  - **Trueshot Lodge**: Infused with Power (41047, criteria)
+  - **Twilight Highlands**: Scouting the Shore (27341), Scouting the Shore (27610)
+  - **Ulduar**: The Celestial Planetarium (13607), Heroic: The Celestial Planetarium (13816), Disturbance Detected: Ulduar (50316, criteria)
+  - **Uldum**: A Rallying Cry (58229, criteria), Lessons in Brigandry (58239, criteria), The Sun King's Chosen (58288, criteria), Guarded Secrets (58289, criteria), Retinus the Seeker (58742, defeat battle pet), Dune Buggy (58743, defeat battle pet), I Am The One Who Whispers (58744, defeat battle pet), Watch Where You Step (58745, defeat battle pet), Terrors from the Deep (58781, criteria), Things Left Behind (58782, criteria), Enter the Void (58801, criteria), Someone His Own Size (58859, criteria), Big Bad Beetle (58860, criteria), The Mantids' Mettle (58861, criteria), The Littlest Defender (58862, criteria), Call to Arms: Uldum (59016, criteria), Call to Arms: Uldum (59019, criteria)
+  - **Val'sharah**: Training with Durian (40279, pet battle (tamer)), Stand Up to Bullies (41855, defeat battle pet), Dealing with Satyrs (41860, pet battle (tamer)), Meet The Maw (41861, defeat battle pet), Only Pets Can Prevent Forest Fires (41862, pet battle (tamer)), The Dreamweavers (42170, criteria), Wildlife Conservationist (42190, defeat battle pet), Battle for Val'sharah (45856, criteria)
+  - **Vale of Eternal Blossoms**: Champions of the Mogu (57720, criteria), The Strongest Among Them (58423, criteria), Corrupted Curiosities (58470, criteria), Plunder the Plunderers (58487, criteria), Tiny Madness (58746, defeat battle pet), Brain Tickling (58747, defeat battle pet), Living Statues Are Tough (58748, defeat battle pet), Flight of the Vil'thik (58749, defeat battle pet), Champions of the Swarm (58754, criteria), Stashed Supplies (58755, criteria), Call to Arms: Vale of Eternal Blossoms (59017, criteria), Call to Arms: Vale of Eternal Blossoms (59018, criteria)
+  - **Vault of the Wardens**: Vault of the Wardens: Into the Vault of the Wardens (43556, criteria), Vault of the Wardens: Into the Vault of the Wardens (44260, criteria), Vault of the Wardens: Into the Vault of the Wardens (44261, criteria)
+  - **Violet Hold**: Assault on Violet Hold: Into the Violet Hold (43557, criteria), Assault on Violet Hold: Into the Violet Hold (44258, criteria), Assault on Violet Hold: Into the Violet Hold (44259, criteria)
+  - **Vision of Orgrimmar**: The Drag (57372, criteria)
+  - **Void Elf**: Telogrus Rift (48962, criteria), Stranger in a Strange Land (50305, criteria)
+  - **Vol'dun**: Voldunai (50603, criteria), Keeyo's Champions of Vol'dun (52850, pet battle (tamer)), Snakes on a Terrace (52856, pet battle (tamer)), What Do You Mean, Mind Controlling Plants? (52864, defeat battle pet), Desert Survivors (52878, pet battle (tamer)), Call to Arms: Vol'dun (52950, criteria), Call to Arms: Vol'dun (52953, criteria)
+  - **Vulpera**: Stranger in a Strange Land (58124, criteria)
+  - **Warfronts**: Warfront: The Battle for Darkshore (53955, criteria), Darkshore Recruits (53957, criteria), Druids of Gloomtide (53974, criteria), Iron in Hand (53976, criteria), Warfront: The Battle for Darkshore (53992, criteria), Wisp'd Into Shape (54436, criteria), An Explosive Situation (54654, criteria), Darkshore Recruits (54656, criteria), An Alchemist for Everything (54659, criteria), Heroic Warfront: The Battle for Darkshore (57959, criteria), Heroic Warfront: The Battle for Darkshore (57960, criteria)
+  - **Warlock Campaign**: Searching the Archives (42097, criteria), Tech It Up A Notch (42601, criteria), Troops in the Field (42602, criteria), Information at Any Cost (42603, criteria), Rise, Champions (42608, criteria), Unparalleled Power (44682, criteria)
+  - **Warrior Campaign**: On the Trail of the Great Worm (42107, criteria), Champions of Skyhold (42598, criteria), Troops in the Field (42610, criteria), Einar the Runecaster (42611, criteria), The Fate of Hodir (42974, criteria), Ulduar's Oath (43090, criteria), Capturing the Gateway (43577, criteria), Preparing For War (43585, criteria), Maw of Souls: Message to Helya (43586, criteria), Will of the Valarjar (44667, criteria)
+  - **Weekend Event**: A Burning Path Through Time (39020, criteria), A Frozen Path Through Time (39021, criteria), The Time to Strike (39033, criteria), Emissary of War (39034, criteria), A Call to Battle (39040, criteria), The Arena Calls (39041, criteria), A Shattered Path Through Time (40792, criteria), A Burning Path Through Time (44164, criteria), A Frozen Path Through Time (44166, criteria), A Shattered Path Through Time (44167, criteria), Emissary of War (44171, criteria), The Arena Calls (44172, criteria), A Call to Battle (44173, criteria), The World Awaits (44175, criteria), A Shrouded Path Through Time (45799, criteria), The World Awaits (53030, criteria), A Burning Path Through Time (53032, criteria), A Frozen Path Through Time (53033, criteria), A Shattered Path Through Time (53034, criteria), A Shrouded Path Through Time (53035, criteria), A Call to Battle (53036, criteria), Emissary of War (53037, criteria), The Arena Calls (53039, criteria), A Savage Path Through Time (54995, criteria)
+  - **Western Plaguelands**: After the Crusade (26930), Unusual Behavior... Even For Gnolls (27152)
+  - **Wintergrasp**: Victory in Wintergrasp (55508, criteria), Victory in Wintergrasp (55509, criteria)
+  - **World Quest**: Tortollan Seekers (50604, criteria)
+  - **Zandalari Troll**: For the Horde (55137, criteria), Stranger in a Strange Land (55138, criteria)
+  - **Zangarmarsh**: Observing the Sporelings (9701), Disturbance at Umbrafen Lake (9716), Drain Schematics (9731), The Boha'mu Ruins (9786)
+  - **Zul'Drak**: Trouble at the Altar of Sseratus (12506), I Sense a Disturbance (12665)
+  - **Zuldazar**: A Different Outcome (50331, criteria), Zandalari Empire (50598, criteria), Horde War Effort (50606, criteria), Critters are Friends, Not Food (52892, pet battle (tamer)), Add More to the Collection (52923, pet battle (tamer)), You've Never Seen Jammer Upset (52937, defeat battle pet), Small Beginnings (52938, pet battle (tamer))
+
+  </details>
+
+- **Pick up:** this only adds a new patch; the patches you already applied are unchanged.
+  `Player.h` changes, so most of the core rebuilds.
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-objective-flags.patch | git apply && echo "quest objective flags applied"
+  grep -c SetQuestSlotObjectiveFlag src/server/game/Entities/Player/Player.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The echo line prints and the grep prints 3. Then restart worldserver.
+
+## 2026-11-09 (World fixes: Orgrimmar balloon Pandaren)
+
+Merged to `main` with PR #47 on 2026-11-09.
+
+### World: five Pandaren fall out of the balloon outside Orgrimmar
+
+- **Found** (Four, 2026-11-09): outside Orgrimmar's front gate, by the Huojin Pandaren and the
+  dragon turtles, a group of Pandaren falls from the tethered hot air balloon to the ground.
+- **Cause:** Chao-Ju 2756, Jiming 5029, Winwa 5034, Winsum 16868 and Jising 16869 have one spawn
+  each (guids 300001459, 300001460, 300001469, 300001475, 300001476) at z 56.7, inside the
+  balloon's basket about 28 yards above the ground (z 28). The basket isn't solid for the server
+  and their templates are ground-only (`InhabitType` 3), so they drop to the ground on spawn.
+- **Changed:** `sql/fixes/world/2026_11_09_30_orgrimmar_balloon_pandaren.sql`: `creature_template`
+  `InhabitType` 3 -> 4 for entries 2756, 5029, 5034, 16868, 16869. `Creature::UpdateMovementFlags`
+  then turns gravity off for them, so they stand still in the basket. Their spawns are untouched.
+- **Status:** confirmed in game by Four on 2026-11-09 (they stay in the basket).
+- **Pick up:**
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+  ```
+
+  ```
+  git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_09_30_orgrimmar_balloon_pandaren.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+## 2026-11-09
+
+### World: older expansion profession skills need the expansion's level
+
+- **Found** (Four, 2026-11-09): after 2026_11_09_00 the Outland to Legion profession skills had no level
+  requirement (the dump's own rows were mixed: Cataclysm 0, 5 or 78), while Classic needs level 5 and
+  Kul Tiran level 110. Four wants each expansion's skill gated by that expansion's level.
+- **Changed:** `sql/fixes/world/2026_11_09_02_profession_tier_levels.sql` (`bfa_world`): `trainer_spell`
+  `ReqLevel` for every trainer row of the step spells, about 462 rows:
+
+  | Expansion | Level | Step spells (Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, Herbalism, Inscription, Jewelcrafting, Leatherworking, Mining, Skinning, Tailoring) |
+  |---|---|---|
+  | Outland | 0 -> 58 | 264214, 264437, 264635, 264461, 264480, 265822, 264497, 264535, 264580, 265840, 265858, 264619 |
+  | Northrend | 0 -> 68 | 264221, 264439, 264637, 264463, 264482, 265824, 264499, 264538, 264582, 265842, 265860, 264621 |
+  | Cataclysm | 0/5/78 -> 80 | 264244, 264441, 264639, 264466, 264484, 265826, 264501, 264541, 264584, 265844, 265862, 264623 |
+  | Pandaria | 0 -> 85 | 264246, 264443, 264641, 264468, 264486, 265828, 264503, 264543, 264586, 265846, 265864, 264625 |
+  | Draenor | 0 -> 90 | 264248, 264445, 264643, 264470, 264488, 265830, 264505, 264545, 264589, 265848, 265866, 264627 |
+  | Legion | 0 -> 98 | 264251, 264447, 264645, 264472, 264491, 265832, 264507, 264547, 264591, 265850, 265868, 264629 |
+
+  Classic (5) and Kul Tiran (110) unchanged; fishing unchanged. Re-running 2026_11_09_00 or 01 puts
+  their rows back to level 0, so run this file again after them. Ran twice in a test database.
+- **Status:** confirmed in game 2026-11-09 (each expansion's skill shows its level requirement).
+
+#### To pick up the level requirements
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-2e6el5
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_09_02_profession_tier_levels.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
+### World: profession trainers open their proper list (and which trainer teaches what)
+
+- **Found** (Four asked for a list of which trainers teach what, 2026-11-09): most Outland, Northrend
+  and Pandaria trainers, and many others, still did not offer the expansion skills after the trainer
+  fix below. The core picks a trainer's list by the gossip option clicked, `creature_trainer`
+  (`CreatureId`, `MenuId`, `OptionIndex`): a trainer with gossip menu 0 shows the generic "Train me!"
+  (menu 0, option 3), and one without the gossip flag opens its list directly (menu 0, option 0). When no
+  row matches, the core falls back to the old `npc_trainer` list (old rank spells, no expansion skills),
+  the same thing that broke fishing at Astaia (2026_10_10_01). The 2026_09_04 trainer sync left 266
+  profession trainers (210 of them spawned) with no row for the option they actually show; Seymour and
+  Gaston pointed at the Enchanting list. The Boralus trainers had no row at all, so the Alliance side had
+  no trainer for the Kul Tiran skills except Grix (blacksmithing only). Grix's list 133536 and Shuga
+  Blastcaps's list 874 taught only the Kul Tiran / Zandalari skill.
+- **Changed:** `sql/fixes/world/2026_11_09_01_profession_trainer_options.sql` (`bfa_world`, run after
+  2026_11_09_00):
+  - 266 `creature_trainer` rows, one per trainer for the option it shows, pointing at:
+    - the trainer's own list for that profession, when it has one;
+    - Boralus and Tiragarde trainers: the Kul Tiras lists, Alchemy 846, Cooking 858, Enchanting 831,
+      Engineering 873, Herbalism 851, Inscription 836, Jewelcrafting 821, Leatherworking 826, Mining
+      841, Skinning 868, Tailoring 863 (the Alliance twins of the Zuldazar lists 822 to 874);
+    - Cooka Mala and Milliner Hakkit (Zuldazar): Cooking 858, Tailoring 864;
+    - everyone else: the profession's main list, Alchemy 122, Blacksmithing 991, Cooking 136,
+      Enchanting 62, Engineering 993, Herbalism 424, Inscription 63, Jewelcrafting 119,
+      Leatherworking 990, Mining 992, Skinning 989, Tailoring 163.
+  - 14 `trainer_spell` rows: lists 133536 (Grix) and 874 (Shuga) also teach Classic (264435 / 264478,
+    level 5) and Outland to Legion (264437-264447 / 264480-264491, 10 copper, needs Blacksmithing 164 /
+    Engineering 202 at 1).
+  - Each profession's rows are deleted by their exact (`CreatureId`, `MenuId`, `OptionIndex`) first, so
+    it is safe to run more than once. Ran twice in a test database: 266 + 14 rows each time. Checked
+    that no trainer loses a skill it taught before.
+- **Not fixed:**
+  - 23 trainers have their own gossip menu with no "Train me" option at all, so they cannot train
+    (last table below).
+  - No trainer recipes exist for the Outland to Legion crafting skills (see the entry below).
+- **Status:** confirmed in game 2026-11-09: Rorelien (Honor Hold) lists Classic to Legion Herbalism,
+  Declan Senal (Boralus) lists those plus Kul Tiran Herbalism.
+
+#### Which trainer teaches what
+
+Every trainer below teaches its profession's Classic, Outland, Northrend, Cataclysm, Pandaria, Draenor
+and Legion skills (levels 5, 58, 68, 80, 85, 90, 98 after 2026_11_09_02). **(KT)** = also teaches the Kul Tiran / Zandalari skill. † = was opening the old
+fallback list and is fixed by 2026_11_09_01. Only spawned trainers are listed, by the zone of their
+spawn. Fishing trainers already taught every expansion and are not listed.
+
+<details>
+<summary><b>Alchemy</b>: 40 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashenvale | Kylanna † |
+| Ashran | Jaiden Trask †, Kristoph Cossey † |
+| Azuremyst Isle | Daedal |
+| Boralus Harbor | Elric Whalgrene **(KT)** † |
+| Borean Tundra | Arthur Henslowe †, Falorn Nightwhisper |
+| Dalaran (Broken Isles) | Deucus Valdera †, Linzy Blackbolt † |
+| Dalaran (Northrend) | Linzy Blackbolt |
+| Darnassus | Ainethil |
+| Dragonblight | Apothecary Bressa †, Apothecary Wormwick † |
+| Dread Wastes | Poisoncrafter Kil'zit † |
+| Durotar | Miao'zan |
+| Dustwallow Marsh | Alchemist Narett |
+| Elwynn Forest | Alchemist Mallory † |
+| Eversong Woods | Arcanist Sheynathren † |
+| Feralas | Kylanna Windwhisper |
+| Hellfire Peninsula | Alchemist Gribble †, Apothecary Antonivich |
+| Hillsbrad Foothills | Serge Hinott † |
+| Howling Fjord | Lanolis Dewdrop, Wilhelmina Renel |
+| Icecrown | Crystal Brightspark |
+| Ironforge | Tally Berryfizz |
+| Loch Modan | Ghak Healtouch |
+| Orgrimmar | Yelmak |
+| Shattrath City | Aelthin, Alchemist Kanhu † |
+| Silvermoon City | Camberon |
+| Stormwind City | Lilyssia Nightbreeze |
+| Swamp of Sorrows | Rogvar † |
+| Teldrassil | Cyndra Kindwhisper |
+| The Cape of Stranglethorn | Jaxin Chong |
+| The Exodar | Lucc † |
+| Thunder Bluff | Bena Winterhoof |
+| Tirisfal Glades | Carolai Anise |
+| Undercity | Doctor Herbert Halsey |
+| Zuldazar | Clever Kumali **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Blacksmithing</b>: 52 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Aimee Goldforge †, Mazdon Bizratchet † |
+| Azuremyst Isle | Blacksmith Calypso |
+| Boralus Harbor | Grix "Ironfists" Barlow **(KT)** |
+| Borean Tundra | Argo Strongstout, Crog Steelspine |
+| Dalaran (Broken Isles) | Alard Schmied †, Arcanomancer Vridiel † |
+| Dalaran (Northrend) | Alard Schmied, Imindril Spearsong, Orland Schaeffer |
+| Dragonblight | Borus Ironbender †, Josric Fame † |
+| Dun Morogh | Tognus Flintfire |
+| Durotar | Dwukk |
+| Duskwood | Clarise Gnarltree |
+| Elwynn Forest | Smith Argus |
+| Eversong Woods | Arathel Sunforge † |
+| Hellfire Peninsula | Dumphry, Humphry, Rohok † |
+| Highmountain | Barm Stonebreaker †, Muirn Ironhorn † |
+| Howling Fjord | Kristen Smythe †, Rosina Rivet |
+| Icecrown | Rekka the Hammer |
+| Ironforge | Bengus Deepforge, Grumnus Steelshaper †, Ironus Coldsteel † |
+| Northern Barrens | Traugh † |
+| Orgrimmar | Borgosh Corebender, Kelgruk Bloodaxe, Okothos Ironrager, Rogg, Saru Steelfury, Shayis Steelfury |
+| Shadowmoon Valley | Grutah † |
+| Shattrath City | Barien, Kradu Grimblade, Onodo, Zula Slagfury |
+| Silvermoon City | Bemarrin |
+| Stormwind City | Therum Deepforge |
+| Suramar | Felsmith Nal'ryssa † |
+| The Cape of Stranglethorn | Brikk Keencraft |
+| The Exodar | Miall † |
+| The Jade Forest | Len the Hammer † |
+| The Storm Peaks | Brandig |
+| Thunder Bluff | Karn Stonehoof |
+| Undercity | James Van Brunt † |
+| Vale of Eternal Blossoms | Zen Master Lao † |
+| Zuldazar | Forgemaster Zak'aal **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Cooking</b>: 54 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Elton Black †, Guy Fireeye † |
+| Azuremyst Isle | "Cookie" McWeaksauce |
+| Boralus Harbor | "Cap'n" Byron Mehlsack **(KT)** † |
+| Borean Tundra | Orn Tenderhoof †, Rollick MacKreel |
+| Dalaran (Broken Isles) | Awilo Lon'gomba †, Katherine Lee † |
+| Dalaran (Northrend) | Awilo Lon'gomba †, Katherine Lee |
+| Darnassus | Alegorn, Mary Allerton † |
+| Dun Morogh | Caitrin Ironkettle †, Cook Ghilm, Gremlock Pilsnor |
+| Durotar | Ondani Greatmill † |
+| Dustwallow Marsh | Craig Nollward |
+| Elwynn Forest | Ellen Moore †, Tomas |
+| Eversong Woods | Alice Rigsdale †, Quarelestra |
+| Ghostlands | Master Chef Mouldier † |
+| Gilneas | Fielding Chesterhill |
+| Hellfire Peninsula | Allison, Gaston † |
+| Howling Fjord | Brom Brewbaster, Thomas Kolichio † |
+| Icecrown | Bethany Cromwell |
+| Ironforge | Daryl Riknussun |
+| Mulgore | Pyall Silentstride |
+| Northern Barrens | Duhng † |
+| Northern Stranglethorn | Mudduk † |
+| Orgrimmar | Arugi, Feng Su, Zamja |
+| Redridge Mountains | Crystal Boughman |
+| Shadowmoon Valley | Celie Steelwing |
+| Silvermoon City | Sylann |
+| Stormwind City | Dalia Skyblossom, Stephen Ryback |
+| Teldrassil | Zarrin |
+| The Cape of Stranglethorn | Mrs. Gant |
+| The Exodar | Alnar Whitebough †, Mumman |
+| Thunder Bluff | Aska Mistrunner, Mahara Goldwheat † |
+| Tirisfal Glades | Roberta Carter †, The Chef |
+| Undercity | Eunice Burch |
+| Vol'dun | Hessir **(KT)** † |
+| Zangarmarsh | Naka |
+| Zuldazar | Cooka Mala **(KT)** †, Howcha **(KT)**, T'sarah the Royal Chef **(KT)** |
+
+</details>
+
+<details>
+<summary><b>Enchanting</b>: 33 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Bil Sparktonic †, Hane'ke † |
+| Boralus Harbor | Emily Fairweather **(KT)** † |
+| Borean Tundra | Alexis Marlowe, Eorain Dawnstrike |
+| Dalaran (Broken Isles) | Enchanter Nalthanis † |
+| Dalaran (Northrend) | Enchanter Nalthanis |
+| Darnassus | Taladan |
+| Dustwallow Marsh | Lissah Spellwick |
+| Elwynn Forest | Kitta Firewind |
+| Eversong Woods | Magistrix Eredania † |
+| Feralas | Xylinnia Starshine |
+| Hellfire Peninsula | Felannia †, Johan Barnes † |
+| Highmountain | Guron Twaintail † |
+| Howling Fjord | Elizabeth Jackson, Emil Autumn |
+| Icecrown | Fael Morningsong |
+| Ironforge | Gimble Thistlefuzz † |
+| Netherstorm | Asarnan † |
+| Orgrimmar | Godan |
+| Shattrath City | Enchantress Andiala, Enchantress Volali, High Enchanter Bardolan, Zurii |
+| Silvermoon City | Sedana |
+| Stormwind City | Lucan Cordell † |
+| The Exodar | Nahogg † |
+| The Jade Forest | Lai the Spellpaw † |
+| Thunder Bluff | Teg Dawnstrider |
+| Tirisfal Glades | Vance Undergloom |
+| Undercity | Lavinia Crowe |
+| Zuldazar | Enchantress Quinni **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Engineering</b>: 45 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Han Leaprocket †, Hilda Copperfuze † |
+| Azuremyst Isle | Artificer Daelo |
+| Boralus Harbor | Layla Evenkeel **(KT)** † |
+| Borean Tundra | Chief Engineer Leveny, Sock Brightbolt |
+| Dalaran (Broken Isles) | Didi the Wrench †, Timofey Oshenko † |
+| Dalaran (Northrend) | Didi the Wrench, Findle Whistlesteam, Timofey Oshenko |
+| Darkshore | Jenna Lemkenilli |
+| Darnassus | Tana Lentner |
+| Dun Morogh | Bronk Guzzlegear |
+| Durotar | Mukdrak |
+| Duskwood | Finbus Geargrind |
+| Dustwallow Marsh | Caz Twosprocket |
+| Hellfire Peninsula | Lebowski †, Zebig † |
+| Howling Fjord | Jamesina Watterly, Tisha Longbridge |
+| Icecrown | Binkie Brightgear |
+| Ironforge | Springspindle Fizzlegear |
+| Mulgore | Twizwick Sprocketgrind † |
+| Netherstorm | Xyrol † |
+| Northern Barrens | Tinkerwiz † |
+| Orgrimmar | "Jack" Pisarek Slamfix, Roxxik |
+| Shadowmoon Valley | Jonathan Garrett †, Niobe Whizzlespark |
+| Shattrath City | Engineer Sinbei, Technician Mihila |
+| Siege of Orgrimmar | Roxxik |
+| Silvermoon City | Danwe |
+| Stormwind City | Artificer Farud †, Lilliam Sparkspindle |
+| Tanaris | Buzzek Bracketswing |
+| The Cape of Stranglethorn | Oglethorpe Obnoticus † |
+| The Exodar | Ockil |
+| Thunder Bluff | Engineer Palehoof |
+| Undercity | Franklin Lloyd † |
+| Valley of the Four Winds | Sally Fizzlefury † |
+| Zangarmarsh | K. Lee Smallfry, Mack Diver † |
+| Zuldazar | Shuga Blastcaps **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Herbalism</b>: 48 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashenvale | Cylania Rootstalker † |
+| Ashran | Anthony Allain †, Jie Wildblossom † |
+| Azuremyst Isle | Heur † |
+| Bloodmyst Isle | Morae |
+| Boralus Harbor | Declan Senal **(KT)** † |
+| Borean Tundra | Kirea Moondancer, Tansy Wildmane † |
+| Dalaran (Broken Isles) | Dorothy Egan, Kuhuine Tenderstride † |
+| Dalaran (Northrend) | Dorothy Egan |
+| Darnassus | Firodren Mooncaller † |
+| Durotar | Mishiki |
+| Dustwallow Marsh | Brant Jasperbloom |
+| Elwynn Forest | Herbalist Pomeroy |
+| Eversong Woods | Botanist Tyniarrel † |
+| Feralas | Ruw |
+| Hellfire Peninsula | Rorelien †, Ruak Stronghorn † |
+| Highmountain | Sprig Hashhoof † |
+| Hillsbrad Foothills | Aranae Venomblood |
+| Howling Fjord | Fayin Whisperleaf, Marjory Kains |
+| Ironforge | Reyna Stonebranch |
+| Loch Modan | Kali Healtouch |
+| Moonglade | Malvor † |
+| Northern Stranglethorn | Angrun |
+| Orgrimmar | Grove Cultivator Kados, Jandi, Muraga |
+| Redridge Mountains | Alma Jainrose |
+| Shattrath City | Botanist Alaenra, Jijia † |
+| Silvermoon City | Botanist Nathera |
+| Stormwind City | Shylamiir †, Tannysa |
+| Teldrassil | Malorne Bladeleaf |
+| The Cape of Stranglethorn | Flora Silverwind |
+| The Exodar | Cemmorhan |
+| The Jade Forest | Grower Miao †, Orchard Keeper Li Mei † |
+| Thunder Bluff | Komin Winterhoof |
+| Tirisfal Glades | Faruza |
+| Undercity | Martha Alliestar |
+| Val'sharah | Wildcrafter Osme |
+| Valley of the Four Winds | Han Flowerbloom † |
+| Wetlands | Telurinon Moonshadow † |
+| Zuldazar | Jahden Fla **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Inscription</b>: 28 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Joro'man †, Scribe Chi-Yuan † |
+| Boralus Harbor | Zooey Inksprocket **(KT)** † |
+| Borean Tundra | Adelene Sunlance, Tink Brightbolt |
+| Dalaran (Broken Isles) | Professor Pallin † |
+| Dalaran (Northrend) | Professor Pallin |
+| Darnassus | Feyden Darkin |
+| Dustwallow Marsh | Theoden Manners |
+| Hellfire Peninsula | Michael Schwan, Neferatti |
+| Howling Fjord | Booker Kells, Mindri Dinkles |
+| Icecrown | Arthur Denny |
+| Ironforge | Elise Brightletter |
+| Orgrimmar | Jo'mah, Nerog |
+| Shattrath City | Recorder Lidio, Scribe Lanloer |
+| Silvermoon City | Zantasia |
+| Stormwind City | Catarina Stanford |
+| The Exodar | Thoth |
+| The Jade Forest | Scribe Rinji † |
+| Thunder Bluff | Poshken Hardbinder |
+| Undercity | Margaux Parchley |
+| Vale of Eternal Blossoms | Lorewalker Huynh † |
+| Zuldazar | Chronicler Grazzul **(KT)** †, Chronicler Kizani **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Jewelcrafting</b>: 28 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Alixander Swiftsteel †, Artificer Nissea † |
+| Boralus Harbor | Samuel D. Colton III **(KT)** † |
+| Borean Tundra | Alestos, Geba'li † |
+| Dalaran (Broken Isles) | Timothy Jones † |
+| Dalaran (Northrend) | Timothy Jones |
+| Darnassus | Aessa Silverdew |
+| Dustwallow Marsh | Ingo Woolybush |
+| Eversong Woods | Aleinia |
+| Hellfire Peninsula | Kalaen †, Tatiana † |
+| Howling Fjord | Carter Tiffens †, Ounhulo |
+| Icecrown | Oluros |
+| Ironforge | Hanner Gembold |
+| Netherstorm | Jazdalaad † |
+| Orgrimmar | Lugrah |
+| Shattrath City | Hamanar, Kirembri Silvermane, Nemiha |
+| Silvermoon City | Kalinda |
+| Stormwind City | Theresa Denman |
+| The Exodar | Farii |
+| The Jade Forest | Mai the Jade Shaper † |
+| Thunder Bluff | Nahari Cloudchaser |
+| Undercity | Neller Fayne † |
+| Zuldazar | Seshuli **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Leatherworking</b>: 44 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Arathi Highlands | Brumn Winterhoof † |
+| Ashenvale | Aayndia Floralwind |
+| Ashran | Burga Stronghide †, Jistun Sharpfeather † |
+| Azsuna | Celea † |
+| Azuremyst Isle | Moordo |
+| Blade's Edge Mountains | Grikka † |
+| Boralus Harbor | Cassandra Brennor **(KT)** † |
+| Borean Tundra | Awan Iceborn †, Rosemary Bovard |
+| Dalaran (Broken Isles) | Namha Moonwater † |
+| Dalaran (Northrend) | Andellion, Diane Cannings, Manfred Staller, Namha Moonwater |
+| Darnassus | Telonis |
+| Dustwallow Marsh | Eustace Tanwell |
+| Elwynn Forest | Adele Fielder |
+| Eversong Woods | Sathein † |
+| Hellfire Peninsula | Barim Spilthoof †, Brumman † |
+| Highmountain | Hrul Sharphoof † |
+| Howling Fjord | Bernadette Dexter, Gunter Hansen |
+| Icecrown | Kul'de |
+| Ironforge | Fimble Finespindle |
+| Kun-Lai Summit | Clean Pelt † |
+| Mulgore | Chaw Stronghide |
+| Orgrimmar | Karolek |
+| Shattrath City | Daenril, Darmari, Korim |
+| Silvermoon City | Lynalis |
+| Southern Barrens | Krulmoo Fullmoon † |
+| Stormwind City | Simon Tanner |
+| Stranglethorn Vale | Se'Jib † |
+| Suramar | Stalriss Dawnrunner † |
+| Teldrassil | Nadyia Maneweaver |
+| The Exodar | Akham † |
+| The Hinterlands | Drakk Stonehand † |
+| Thunder Bluff | Una |
+| Tirisfal Glades | Shelene Rhobart |
+| Undercity | Arthur Moore † |
+| Zuldazar | Xanjo **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Mining</b>: 37 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Murg Stonecrack † |
+| Azuremyst Isle | Dulvi |
+| Boralus Harbor | Myra Cabot **(KT)** † |
+| Borean Tundra | Brunna Ironaxe, Fendrig Redbeard |
+| Dalaran (Broken Isles) | Mama Diggs † |
+| Dalaran (Northrend) | Jedidiah Handers |
+| Darkshore | Periale |
+| Darnassus | Foreman Pernic |
+| Dun Morogh | Dank Drizzlecut, Yarr Hammerstone |
+| Durotar | Krunn |
+| Duskwood | Matt Johnson |
+| Hellfire Peninsula | Hurnak Grimmord †, Krugosh † |
+| Highmountain | Ronos Ironhorn † |
+| Howling Fjord | Grumbol Stoutpick, Jonathan Lewis † |
+| Ironforge | Geofram Bouldertoe |
+| Kun-Lai Summit | Master Brandom † |
+| Loch Modan | Brock Stoneseeker |
+| Orgrimmar | Gonto, Layla Stonebreaker, Makaru |
+| Shattrath City | Fono, Hanlir |
+| Silvermoon City | Belil |
+| Silverpine Forest | Johan Focht † |
+| Stormwind City | Gelman Stonehand |
+| Tanaris | Pikkle |
+| The Exodar | Muaat |
+| The Jade Forest | Rockseeker Guo †, Smeltmaster Ashpaw †, Stonebreaker Ruian † |
+| Thunder Bluff | Brek Stonehoof |
+| Undercity | Brom Killian † |
+| Zuldazar | Secott the Goldsmith **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Skinning</b>: 41 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashenvale | Jayla † |
+| Ashran | Kondal Huntsworn †, Rangari Laandon † |
+| Azsuna | Glielle † |
+| Azuremyst Isle | Gurf |
+| Borean Tundra | Tiponi Stormwhisper †, Trapper Jack |
+| Dalaran (Broken Isles) | Kondal Huntsworn |
+| Dalaran (Northrend) | Derik Marks |
+| Darnassus | Eladriel |
+| Desolace | Malux † |
+| Dustwallow Marsh | Humbert Tanwell |
+| Elwynn Forest | Helene Peltskinner † |
+| Eversong Woods | Mathreyn † |
+| Feralas | Kulleg Stonehorn † |
+| Hellfire Peninsula | Jelena Nightsky †, Moorutu † |
+| Howling Fjord | Frederic Burrhus, Roberta Jacks |
+| Ironforge | Balthus Stoneflayer |
+| Mulgore | Yonn Deepcut † |
+| Orgrimmar | Rento, Thuwd |
+| Redridge Mountains | Wilma Ranthal † |
+| Shattrath City | Dremm †, Irduil † |
+| Silvermoon City | Tyn |
+| Southern Barrens | Dranh † |
+| Stormheim | Agnes †, Seymour † |
+| Stormwind City | Maris Granger |
+| Suramar | Ske'rit † |
+| Teldrassil | Radnaal Maneweaver |
+| The Exodar | Remere |
+| The Jade Forest | Hao of the Stag's Horns †, Trapper Ri † |
+| Thunder Bluff | Mooranta † |
+| Tiragarde Sound | Camilla Darksky **(KT)** † |
+| Tirisfal Glades | Rand Rhobart |
+| Undercity | Killian Hagey |
+| Zuldazar | Rana the Cutta **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>Tailoring</b>: 38 trainers</summary>
+
+| Zone | Trainers |
+|---|---|
+| Ashran | Joshua Fuesting †, Saesha Silverblood † |
+| Azuremyst Isle | Erin Kelly |
+| Boralus Harbor | Daniel Brineweaver **(KT)** † |
+| Borean Tundra | Darin Goodstitch, Raenah † |
+| Dalaran (Broken Isles) | Ainderu Summerleaf, Tanithria † |
+| Dalaran (Northrend) | Charles Worth † |
+| Darkshore | Faeyrin Willowmoon † |
+| Darnassus | Me'lynn |
+| Dustwallow Marsh | Timothy Worthington |
+| Elwynn Forest | Eldrin |
+| Eversong Woods | Sempstress Ambershine † |
+| Hellfire Peninsula | Hama † |
+| Howling Fjord | Alexandra McQueen †, Benjamin Clegg |
+| Icecrown | Dustin Vail |
+| Ironforge | Jormund Stonebrow |
+| Northern Barrens | Kil'hala † |
+| Orgrimmar | Hiwahi Three-Feathers †, Leyweaver Aurielle, Magar |
+| Shattrath City | Miralisse, Weaver Aoa † |
+| Silvermoon City | Keelen Sheets |
+| Southern Barrens | Mahani † |
+| Stormwind City | Aevedos †, Georgio Bolero, Jalane Ayrole |
+| The Cape of Stranglethorn | Grarnik Goodstitch |
+| The Exodar | Refik |
+| Thunder Bluff | Tepa |
+| Tirisfal Glades | Bowen Brisboise |
+| Undercity | Josef Gregorian †, Josephine Lister † |
+| Zuldazar | Milliner Hakkit **(KT)** †, Pin'jin the Patient **(KT)** † |
+
+</details>
+
+<details>
+<summary><b>No "Train me" option</b>: 23 trainers (not changed)</summary>
+
+| Profession | Trainers |
+|---|---|
+| Alchemy | Lorokeem (Shattrath City) |
+| Blacksmithing | Guillaume Sorouy (Silverpine Forest), Jordan Smith (Stormwind City), Marie Holdston (Dustwallow Marsh), Opuno Ironhorn (Orgrimmar), Rolf Karner (Darnassus), Taryel Firestrike (Darkshore) |
+| Cooking | Jack Trapper (Shattrath City) |
+| Enchanting | Alanna Raveneye (Teldrassil), Annora (Uldaman), Hgarth (Stonetalon Mountains) |
+| Engineering | Deek Fizzlebizz (Loch Modan), Nixx Sprocketspring (Tanaris), Tinkmaster Overspark (Ironforge), Vazario Linkgrease (Northern Barrens) |
+| Inscription | Inkmaster Wei (The Jade Forest) |
+| Leatherworking | Brawn (Northern Stranglethorn), Hahrana Ironhide (Feralas), Narv Hidecrafter (Desolace) |
+| Mining | "Kobold" Kerik (Dustwallow Marsh) |
+| Skinning | Seymour (Shattrath City) |
+| Tailoring | Dalinna (Hellfire Peninsula), Daryl Stack (Hillsbrad Foothills) |
+
+</details>
+
+#### To pick up the trainer list fix
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-2e6el5
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_09_01_profession_trainer_options.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`. Run 2026_11_09_00 first if you have not yet.
+
+### World: trainers teach every expansion's profession skill
+
+- **Found** (Four asked where to learn Outland Herbalism, 2026-11-09): no `trainer_spell` row taught
+  the Outland, Northrend, Pandaria, Draenor or Legion skill of any profession. Classic trainer lists
+  taught Classic and, for some lists, Cataclysm (122, 991, 407, 993, 19778, 990, 163, 136, 995, 5566,
+  989, 91, 992). The herbalism trainers Rorelien, Ruak Stronghorn, Botanist Alaenra, Jijia, Morae, the
+  Northrend and both Dalaran trainers, Kali Healtouch, Aranae Venomblood, Angrun and Ruw pointed at
+  trainer list 133, which has no `trainer` row, so they taught nothing. Grix "Ironfists" Barlow
+  (133536) pointed at the missing list 994.
+- **Changed:** `sql/fixes/world/2026_11_09_00_profession_tier_trainers.sql` (`bfa_world`):
+  - 436 `trainer_spell` rows: every trainer list that teaches a profession's Classic skill also teaches
+    its Outland, Northrend, Cataclysm (where missing), Pandaria, Draenor and Legion skill spells
+    (Herbalism 265822/265824/265826/265828/265830/265832, Mining 265840-265850, Skinning
+    265858-265868, crafting 2642xx-2646xx). 10 copper, `ReqSkillLine` = the profession (182, 186, 393,
+    ...) at 1, no level requirement. Bandage list 877 is left out.
+  - `creature_trainer` list 133 -> 424 (herbalism), and Grix 994 -> 133536 (his own list).
+  - Kul Tiran stays with the Kul Tiras/Zandalar lists; fishing lists already teach every expansion.
+  - Ran twice in a test database: 436 rows each time, no existing row removed.
+- **Not fixed:** the database has no trainer recipes for the Outland to Legion crafting skills
+  (Outland Alchemy's 11 on list 987 aside). Those skills can be learned and raised with recipe items,
+  but trainers don't sell their recipes.
+- **Status:** confirmed in game 2026-11-09: Simon Tanner (Stormwind) lists Outland to Legion
+  Leatherworking.
+
+#### To pick up the trainer fix
+```
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_09_00_profession_tier_trainers.sql
+```
+Run it from `~/bfa/source` after `git -C ../tools-repo pull`, then restart `worldserver`.
+
+## 2026-11-08
+
+### Core: skinning uses each expansion's own skill
+
+- **Found** (Four, 2026-11-08): Cataclysm beasts (Hyjal, Vashj'ir, Deepholm, Uldum, Twilight Highlands,
+  levels 80-88 in `creature_template`) could never be skinned. `Spell::CheckCast` asked for 5 skill per
+  creature level (400-440) from the profession skill 393, which can't go above 300 (Classic Skinning's
+  max). `Spell::EffectSkinning` always raised Classic Skinning (2564), so Cataclysm Skinning (2561) and
+  the other expansion skills never moved. The same held for every beast above level 60.
+- **Changed:** new `tools/bfa/skinning-tiers.patch`:
+  - New `src/server/game/Spells/SkinningTiers.h`. `GetSkinningTier` picks the beast's expansion skill,
+    and `GetSkinningTierRequirement` sets the skill it needs.
+  - `Spell::CheckCast` (`SPELL_EFFECT_SKINNING`, `Spell.cpp`) checks that expansion skill. Classic
+    beasts keep the old numbers, but they now check Classic Skinning (2564) instead of 393.
+  - `Spell::EffectSkinning` (`SpellEffects.cpp`) raises that expansion skill, using the same requirement
+    for its skill-up chance.
+  - Beasts skinned with Herbalism, Mining or Engineering are unchanged. No SQL.
+  - Compiles with GCC 13 on the full patch chain.
+
+  What each expansion needs:
+
+  | Expansion | Skill (ID) | Beasts it covers | Skill needed by beast level |
+  |---|---|---|---|
+  | Classic | Classic Skinning (2564), max 300 | `HealthScalingExpansion` 0 and level 1-60 | unchanged: 1-10 any, 15: 50, 20: 100, 30: 150, 40: 200, 50: 250, 60: 300 (`(level-10)*10` below 100 skill, `level*5` from 100) |
+  | Outland | Outland Skinning (2563), max 75 | expansion 1, or level 61-70 | 58: 1, 60: 9, 62: 17, 64: 25, 66: 33, 68: 41, 70: 50 |
+  | Northrend | Northrend Skinning (2562), max 75 | expansion 2, or level 71-80 | 68: 1, 70: 9, 72: 17, 74: 25, 76: 33, 78: 41, 80: 50 |
+  | Cataclysm | Cataclysm Skinning (2561), max 75 | expansion 3, or level 81-85 | 80: 1, 81: 10, 82: 20, 83: 30, 84: 40, 85: 50 |
+  | Pandaria | Pandaria Skinning (2560), max 75 | expansion 4, or level 86-90 | 85: 1, 86: 10, 87: 20, 88: 30, 89: 40, 90: 50 |
+  | Draenor | Draenor Skinning (2559), max 100 | expansion 5, or level 91-100 | 90: 1, 92: 15, 94: 30, 96: 45, 98: 60, 100: 75 |
+  | Legion | Legion Skinning (2558), max 100 | expansion 6, or level 101-110 | 98: 1, 100: 13, 102: 25, 104: 38, 106: 50, 108: 62, 110: 75 |
+  | Kul Tiran | Kul Tiran Skinning (2557), max 150 | expansion 7, or level 111 and up | 110: 1, 112: 25, 114: 50, 116: 75, 118: 100, 120: 125 |
+
+  "Expansion N" is the creature's `creature_template.HealthScalingExpansion`. Many templates leave it at 0
+  whatever their level, so a 0 above level 60 picks the expansion by `minlevel` instead (the level ranges
+  in the third column). Outside those levels, a beast below its expansion's first level needs 1, and one above its
+  last level needs the same as the last level. For every expansion except Classic the requirement rises
+  evenly from 1 at the first level to the skill's max minus 25 at the last. The max is read from your
+  character, so the Draenor, Legion and Kul Tiran columns assume maxes of 100, 100 and 150; if your
+  character shows a different max, the top of the range is that max minus 25. Learning the
+  expansion's skill from a trainer is enough to start: with it at 1 you can skin that expansion's
+  lowest beasts.
+
+- **Status:** confirmed in game by Four on 2026-11-09: Outland beasts raise Outland Skinning, and
+  Fleeing Stag (47263, Hyjal, level 80) raises Cataclysm Skinning.
+
+### Core and world: herb and ore nodes use each expansion's own skill
+
+- **Found** (Four asked for every tradeskill to work like skinning, 2026-11-08). Four's `Lock.db2` shows
+  that almost every herb and ore node from Outland to Legion uses the plain Herbalism (lock type 2) or
+  Mining (3) lock with the old 1-600 skill: for example Lichbloom 425, Twilight Jasmine 525, Golden Lotus
+  550, Saronite 400 and Pyrite 525. The client checks that against the profession skill, which can't go
+  above 300, so none of those could be gathered, and gathering only raised Classic Herbalism/Mining
+  (`SkillByLockType` maps types 2 and 3 to 2556 and 2572). Each expansion has its own lock types (33-39
+  herbs, 41-47 mining) and gather spells 265821-265853, which its trainer spell teaches (265822 Outland
+  Herbalism teaches 265821, and so on). `Lock.db2` has Blizzard's lock for each: herbs 2856 (Outland)
+  to 2862 (Kul Tiran), ore 2864 to 2870, each with the expansion slot and a plain Herbalism/Mining slot
+  at skill 0. Only Kul Tiran nodes, Cinderbloom, Rich Elementium and Blackrock used them.
+- **Changed:**
+  - `sql/fixes/world/2026_11_08_00_gathering_tier_locks.sql` (`bfa_world`) points `Data0` (lock) of 93
+    `gameobject_template` herb and ore nodes at their expansion's Blizzard lock (2856-2861, 2864-2869).
+    Gathering nodes (type 50) that had old-scale trivial skill also get `Data4`/`Data5` = difficulty
+    and difficulty + 25 (colour and skill-up chance). Each line names the node, its old skill and its
+    new difficulty.
+    - A node's expansion is where most of its spawns are: map 530 Outland, minus the blood elf and
+      draenei zones; Outland and Northrend dungeon maps; 571 Northrend; Cataclysm zones and Deepholm;
+      870 Pandaria; 1116 Draenor; 1220 Legion.
+    - Every node needs only its expansion's skill learned. The difficulty scales the old skill over
+      the expansion's old range (Outland 300-375, Northrend 350-450, Cataclysm 425-525, Pandaria
+      500-600) to 1 up to the skill's max minus 25.
+    - Only locks with a single herb or mining slot change. Quest objects that also open by kneeling or
+      with an item keep their lock.
+  - New `tools/bfa/gathering-tier-locks.patch` (after `skinning-tiers.patch`):
+    - `Spell::CanOpenLock` (`Spell.cpp`) refuses a lock's plain Herbalism/Mining slot when the lock
+      also has an Outland to Kul Tiran slot, so Classic Herbalism/Mining alone can't gather expansion
+      nodes through Blizzard's skill-0 plain slot. It fails with `SPELL_FAILED_MIN_SKILL` and the
+      expansion skill, 1 (`Spell::CheckCast` passes them on), so the client says "Requires Northrend
+      Herbalism" and so on; the first build said "Invalid target" (Four, Goldclover, 2026-11-09). With
+      both spells known the client casts the expansion one.
+    - `AuraEffect::HandleAuraTrackResources` (`SpellAuraEffects.cpp`): Find Herbs (lock type 2) and
+      Find Minerals (3) also mark Herbalism 32-39 and Mining 40-47 in `TrackResourceMask`. The client
+      tracks an expansion node by its expansion lock type, and upstream never set those, so no
+      expansion node (Kul Tiran ones included) showed on the minimap.
+    - Compiles with GCC 13 on the full patch chain.
+  - `sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql` (`bfa_hotfixes`) caps Classic locks
+    1632 (Small and Large Obsidian Chunk) and 399 (Arcanite Lode) at 300, from 305 and 310
+    (`hotfix_data` 9301632 and 9300399, table hash 0xE9BECB23). It also removes the 38 locks
+    (IDs 5xxxx) and their `hotfix_data` that the first version of the fix added.
+  - The guide's section 3 has the full table per expansion.
+  - Both SQL files ran twice in a test database without errors.
+- **History:** the first version added new hotfix locks. With a skill number on them the client refused
+  the node ("Requires Herbalism 1" with Outland Herbalism 1); with skill 0 they opened, but never showed
+  on tracking, even with a plain slot added.
+- **Status:** confirmed in game by Four on 2026-11-09: Felweed raises Outland Herbalism, Fel Iron and
+  Khorium raise Outland Mining, Outland and Northrend herbs and ore show with Find Herbs/Minerals, and
+  Goldclover without Northrend Herbalism says "Your skill is not high enough. Requires Northrend
+  Herbalism (1)". Cataclysm to Legion nodes not tried individually (same locks and code).
+
+### Core: a lower expansion skill never lowers the profession skill
+
+- **Found** while checking crafting for Four's request. `Player::UpdateCraftSkill` (upstream) raises the
+  profession skill itself for Classic Inscription (2514) and Classic Engineering (2506) recipes. With
+  `SyncParentProfessionSkill` keeping the profession skill at the highest expansion skill, learning, say,
+  Cataclysm Inscription at 1 would have set Inscription back to 1. Every other crafting profession
+  already raises the recipe's own expansion skill (`SkillLineAbility.SkillupSkillLineID`).
+- **Changed:** `tools/bfa/profession-skill-sync.patch` (`Player.cpp`, `SyncParentProfessionSkill`): it
+  only ever raises the profession skill (returns when the highest expansion skill is below it).
+  Compiles with GCC 13 on the full patch chain.
+- **Status:** not yet tested in game.
+
+#### To pick up the skinning tiers, gathering locks and sync change
+`profession-skill-sync.patch` changed and `skinning-tiers.patch` and `gathering-tier-locks.patch` are new, so this swaps the old
+version of the sync patch for the new one. The other patches you applied are unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+git -C ../tools-repo show 05f80be:tools/bfa/profession-skill-sync.patch | git apply -R && echo "old sync patch removed"
+git apply ../tools-repo/tools/bfa/profession-skill-sync.patch && echo "new sync patch applied"
+git apply ../tools-repo/tools/bfa/skinning-tiers.patch && echo "skinning tiers applied"
+git apply ../tools-repo/tools/bfa/gathering-tier-locks.patch && echo "gathering locks applied"
+grep -c "bestValue < player->GetPureSkillValue" src/server/game/Entities/Player/Player.cpp
+grep -c GetSkinningTier src/server/game/Spells/Spell.cpp src/server/game/Spells/SpellEffects.cpp
+grep -c expansionSkill src/server/game/Spells/Spell.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+All four echo lines print. The greps print 1, then 2 for each file, then 4. Then the
+two SQL files, one at a time (each asks for the password):
+```
+mysql -u root -p bfa_hotfixes < ../tools-repo/sql/fixes/hotfixes/2026_11_08_00_gathering_tier_locks.sql
+```
+```
+mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_08_00_gathering_tier_locks.sql
+```
+Then restart `worldserver` and delete the client's `Cache` folder.
+
+## 2026-11-07 (World fixes: Darkmoon Island)
+
+Merged to `main` with PR #45 on 2026-11-07.
+
+### World: Darkmoon Rabbit never spawns, Moonfang has no fight
+
+- **Found** (Four, 2026-11-07): the Darkmoon Island rares Death Metal Knight, Darkmoon Rabbit and
+  Moonfang need reviewing.
+- **Cause:**
+  - Darkmoon Rabbit 58336 had no spawn in the BFA dump. Its core script (`npc_darkmoon_rabbit_ird`)
+    and loot (pet item 80008 at 11%) are fine.
+  - Moonfang 71992 is spawned, but has no SmartAI rows and no core script, so she only melees.
+    The Pandaria 5.4.8 core scripts her as `npc_darkmoon_moonfang`.
+  - Moonfang Dreadhowl 71982 has 2 spawns here and 5 in the Pandaria 5.4.8 DB.
+  - Darkmoon Rabbit and Moonfang had no level scaling (level 1, 31 health).
+  - Death Metal Knight 122899 has a template and loot but no spawn here, in the Pandaria DB or in
+    MaNGOS Three. He is a Legion rare in the Cauldron of Rock (area 8901), which is newer than
+    every reference DB we have.
+- **Changed:** `sql/fixes/world/2026_11_07_30_darkmoon_island_rares.sql`:
+  - Darkmoon Rabbit spawned at the Pandaria spot by the rabbit's cave (guid 974200001,
+    -4291.81 5860.5 3.38), respawn 115200 s (32 h), wander 5 yards.
+  - Moonfang SmartAI, rebuilt from the Pandaria script with the same timers:
+    - Fangs of the Moon 144700 on her target every 12.5 s.
+    - Moonfang Tears pool 144579 every 20 s.
+    - Leap for the Kill 144546 every 16 s.
+    - Call the Pack 144602, which summons Moonfang Packmates 72038, every 32 s.
+
+    Moonfang Curse 144590 is left out: it charms half the players in range, which solo is you.
+    Packmates attack the closest player when summoned.
+  - 3 Moonfang Dreadhowls added at the Pandaria spots (guids 974200002-974200004). All 5 wander
+    5 yards (guid 1400330 stood still).
+  - Death Metal Knight spawned at the spot Four gave in the Cauldron of Rock (guid 974200005,
+    -4181.96 6019.82 6.29), respawn 300 s. He has no SmartAI or core script yet, so he only melees.
+  - Darkmoon Rabbit and Moonfang were level 1 with 31 health (Four): neither had a
+    `creature_template_scaling` row, and their HealthModifier was 1.
+    - Both get a scaling row (levels 1-100, scales with the player), the same as Death Metal
+      Knight, Moonfang Dreadhowl and Moonfang Packmate.
+    - They get the Pandaria 5.4.8 health modifiers: Darkmoon Rabbit 400, Moonfang 400, Moonfang
+      Packmate 8.
+    - All three rares stay faction 7, neutral until attacked, as on retail (confirmed by Four).
+  - Darkmoon Rabbit's pet (item 80008) drop 11% -> 100%, as in the Pandaria 5.4.8 DB, where it is
+    his only drop.
+- **Follow-up (Four, after fighting them):** the Darkmoon Rabbit one-shot Four, and Death Metal
+  Knight had no weapon.
+  - The rabbit's core script cast Huge, Sharp Teeth 114078 as soon as he was pulled. It holds you,
+    deals 20% of your health every second and blocks all healing (114109), a group mechanic you
+    can't survive solo. He now uses SmartAI: on aggro he takes his rabbit form (114085, as in the
+    Pandaria 5.4.8 DB), drops it on evade, and fights in melee. `ScriptName` cleared, rank 3 (boss,
+    level ??) -> 1 (elite, shows his scaled level) as in the Pandaria 5.4.8 DB.
+  - Death Metal Knight wields Necromedes, the Death Resonator 151255, the two-hander from his own
+    loot (`creature_equip_template` 122899 id 1, spawn 974200005 `equipment_id` 1).
+  - Moonfang showed 456K health at level 38 with HealthModifier 400. Death Metal Knight at 300
+    was a good solo fight, so Darkmoon Rabbit and Moonfang now use 300 as well. Moonfang's rank
+    goes from 3 (boss) to 1 (elite), as in the Pandaria 5.4.8 DB.
+  - Moonfang (Four: "the fight was good"): Fangs of the Moon came every 12.5 s, way too often;
+    now every 25-30 s. She dropped nothing because her items only had independent rolls (about a
+    third of kills dropped nothing). Moonfang's Paw, Shimmering Moonstone, Moonfang Shroud and Moon
+    Moon are now one loot group (31/32/32/5%), so exactly one always drops.
+  - Death Metal Knight was rank 0 and had no elite frame like the other two: now rank 1 (elite),
+    health unchanged.
+- **Status:** everything above confirmed in game by Four on 2026-11-07: all three rares spawn and
+  scale, the rabbit and Moonfang fights are good, Moonfang always drops an item, and Death Metal
+  Knight is elite with his sword. Still to do some day: Death Metal Knight's full retail Cauldron
+  of Rock concert event (he is only the boss for now).
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_07_30_darkmoon_island_rares.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+## 2026-11-07 (pet battles)
+
+### Pet battles: display pets near vendors and tamers can be battled
+
+- **Found** (Four, screenshot): Lhara's display pets on Darkmoon Island (Darkmoon Cub, Turtle,
+  Zeppelin, Hatchling, Balloon) show the pet battle paw.
+- **Cause:** when a creature of type 14 (wild pet) spawns, `Map::AddBattlePet` calls
+  `WildBattlePetMgr::EnableWildBattle`, which makes it a wild battle pet if `battlepet_info` has a
+  row with that creature entry (`NpcID`). `battlepet_info` has a row for every species, including
+  pets you buy, win or get from drops, and tamer team pets. So every display pet spawned next to a
+  vendor or tamer became battleable: about 530 spawns of 375 entries in the world DB.
+- **Changed:** new `sql/fixes/world/2026_11_07_51_battle_pets_only_capturable_are_wild.sql`. Rows
+  whose species is not capturable (BattlePetSpecies flag 0x8 not set, 1,039 species, flags from the
+  10.0.2 BattlePetSpecies.db2 CSV) get `NpcID + 10000000`, so `EnableWildBattle` no longer finds them
+  by creature entry. The rows stay: the core reads them by species for breed and quality when you
+  learn a pet, so learned pets don't change. Tamer battles use `battlepet_npc_team_member`, not this
+  table. Capturable species (Crow, Glowfly, every wild critter pet) are not touched. Undo line in the
+  file header. No core change.
+- **Then found** (Four): without the battle pet flag those display pets could be attacked and killed.
+  The same file now also sets `unit_flags | 0x300` (immune to players and NPCs) on the templates of
+  the 299 spawned type 14 creatures of those species, as on retail.
+- **Status:** confirmed in game by Four on 2026-11-07.
+
+#### To pick it up
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_07_51_battle_pets_only_capturable_are_wild.sql | mysql -u root -p bfa_world
+```
+The last line prints `1041 non-capturable species no longer wild, 364 wild species left, 299 display
+pet templates unattackable`. Then
+restart `worldserver`.
+
+### Pet battles: no Crows to battle on Darkmoon Island; capturable Darkmoon Rabbit
+
+- **Found** (Four, with the island's pet list): Darkmoon Island has two wild pets to capture, Crow and
+  Darkmoon Glowfly. The Darkmoon Rabbit pet should only drop from the rare Darkmoon Rabbit.
+- **Cause:**
+  - Darkmoon Glowfly 67329 has 14 battle pet spawns. Nothing wrong there.
+  - The island had only 2 crows, and both were the plain critter 55741, so no Crow could be
+    battled. The battle pet is 67443. `battlepet_wild_zone_pool` names the critter 55741 as the
+    Crow's battle pet, so the wild spawn SQL (2026_11_01_50) skipped it. The Crow template 67443
+    was also 1-25 in `battlepet_info`.
+  - The rare Darkmoon Rabbit 58336 (drops the pet, item 80008, 11%) has no spawn. Instead a
+    companion copy 59358 (guid 10655373) stood in its cave as a capturable wild pet.
+- **Changed:** new `sql/fixes/world/2026_11_07_50_darkmoon_island_wild_pets.sql`:
+  - the 2 existing crows (10655393, 10655394) become battle Crows 67443 that wander 3 yards;
+  - 43 crows in 8 flocks from the alexkulya Pandaria 5.4.8 world DB (guids 974100001-974100043):
+    one battle Crow 67443 per flock (wanders 3 yards), the rest critter crows 55741. That is 10
+    battle Crows on the island;
+  - Crow template 67443 set to level 1-1 in `battlepet_info`, so the zone's range decides;
+  - the companion Darkmoon Rabbit 59358 spawn (10655373) is removed. The rare's own spawn is left
+    to the Darkmoon Island rares fix.
+  - Lhara's display pets (Darkmoon Cub, Turtle, Hatchling, Zeppelin, Monkey, Tonk) were stacked on
+    one spot in front of her booth. They move to their alexkulya positions: Cub, Turtle, Hatchling and
+    Zeppelin spread over the booth (Cub and Hatchling inside the 1st and 3rd cages, from Four's `.gps`), the Tonk by the Tonk Challenge, the Monkey near Carl Goodup's
+    balloon cart.
+  The file's header has the undo lines. No core change.
+- **Status:** confirmed in game by Four on 2026-11-07.
+
+#### To pick it up
+SQL only, then a restart.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_07_50_darkmoon_island_wild_pets.sql | mysql -u root -p bfa_world
+```
+The last line prints `10 battle Crows, 35 critter crows, 14 Glowflies on Darkmoon Island`. Then
+restart `worldserver`.
+
+## 2026-11-07 (Holidays: Darkmoon Faire carousel)
+
+Merged to main via PR #43 (2026-11-07).
+
+### Darkmoon Faire: carousel spins empty
+
+From Four, 2026-11-07, after two test builds ("let's just remove all the carousel mounts, and leave
+it as a spinning empty platform"). World SQL `2026_11_07_06_darkmoon_carousel_empty.sql`. Run the
+SQL, restart. No core change.
+
+- **Found:**
+  - The platform (gameobject 216666) is turned by the client, one clockwise turn every 12 seconds
+    (TransportRotation.db2). This core has no passengers for that kind of transport, so the six
+    rides stood still while the floor spun.
+  - A test script that moved the rides around with the platform worked, but nobody could get off.
+    The client refused Leave Vehicle ("You can't do that right now"), even though both seats
+    (3326, 12198, flags `0x4200800b`) allow leaving in Four's 8.3.7 VehicleSeat.db2. A server-side
+    exit (`.unaura 75648`, or clicking the ride) left the rider stuck half on.
+- **Changed:** the six Darkmoon Island ride spawns (guids 1400047-1400050, 1400056, 1400058) are
+  removed. If an earlier test build's SQL set `npc_darkmoon_carousel_ride` on the five templates,
+  this SQL clears it. The ride script is not in `darkmoon-race.patch`.
+- **Status:** confirmed in game (Four, 2026-11-07: platform empty).
+
+## 2026-11-07 (Holidays: Darkmoon Faire races)
+
+Merged to main via PR #42 (2026-11-07).
+
+### Darkmoon Faire: token vendors sell one pouch and one sack
+
+From Four, 2026-11-07 ("If there's only 2 sizes of token bags, why have 12 different bags?").
+World SQL `2026_11_07_05_darkmoon_token_vendors_one_pair.sql` (after `_04`). Run the SQL, restart.
+No rebuild.
+
+- **Found:** the 12 bags are Pouch o' Tokens (5 tokens) and Sack o' Tokens (20 tokens) at six price
+  tiers each (pouch 50 copper to 60 silver, sack 1s 60c to 1g 92s), all shown to everyone, so the
+  cheapest pair was always the best deal. The tiers were probably level bands; the data doesn't
+  say.
+- **Changed:** Four chose the max-level pair. Sazz, Zina and Trixi now sell only Pouch o' Tokens
+  78903 (60 silver) and Sack o' Tokens 78909 (1 gold 92 silver).
+- **Status:** confirmed in game (Four, 2026-11-07).
+
+### Darkmoon Faire: race arch and camp post names, token vendors
+
+From Four, 2026-11-07. World SQL `2026_11_07_04_darkmoon_race_names_token_vendors.sql`. Run the
+SQL, restart, delete the client Cache folder. No rebuild.
+
+- **Found:**
+  - "Arch, Start Race" (74333) and "Camp Post" (74388) at both race start lines showed their names.
+    They are scenery (no gossip, no quests).
+  - The Game Token vendors (Sazz Coincatcher 55264, Zina Sharpworth 55266, Trixi Sharpworth 55339)
+    sold 14 Pouches/Sacks o' Tokens. Pouch o' Tokens 78904 and Sack o' Tokens 78910 hold nothing,
+    and the Pandaria 5.4.8 DB doesn't sell those two. The other 12 hold 5 or 20 Darkmoon Game
+    Tokens.
+- **Changed:** both scenery entries are not selectable, which hides the name; 78904 and 78910 are
+  off the three vendors.
+- **Status:** confirmed in game (Four, 2026-11-07).
+
+### Darkmoon races: turn-in text
+
+From Four, 2026-11-07 (Let's Keep Racing! and More Big Racing! turned in with an empty page).
+World SQL `2026_11_07_03_darkmoon_race_turn_in_text.sql`. Run the SQL, restart, delete the client
+Cache folder. No rebuild.
+
+- **Found:** none of the five race quests had a turn-in text (`quest_offer_reward`).
+- **Changed:** texts from Wowhead's quest pages: "Good job, and nice time!" for The Real Race,
+  Let's Keep Racing!, More Big Racing! and The Real Big Race, and the practice-race text for
+  Welcome to the Darkmoon Races.
+- **Not changed:** Wowhead lists no reward for the two practice runs, so they still give nothing.
+  The other three give the Darkmoon Game Prize, a Prize Ticket and Darkmoon Faire reputation.
+- **Status:** confirmed in game (Four, 2026-11-07).
+
+### Darkmoon races: the practice runs are repeatable
+
+From Four, 2026-11-07 (after finishing the races, Malle Earnhard offered nothing). World SQL
+`2026_11_07_02_darkmoon_race_repeatables.sql`. Run the SQL, restart. No rebuild.
+
+- **Found:** Let's Keep Racing! (33756, Malle) and More Big Racing! (37868, Patti) are the
+  repeatable runs of the two courses (blue repeatable marker flag, no reward, no daily flag), but
+  `quest_template_addon.SpecialFlags` was 0, so the core let you do each only once. The Real Race
+  and The Real Big Race are dailies and come back at the daily reset.
+- **Changed:** SpecialFlags 1 (repeatable) on 33756 and 37868.
+- **Status:** confirmed in game (Four, 2026-11-07).
+
+### Darkmoon races: visible tripwires
+
+From Four, 2026-11-07 ("The Real Race felt a lot better", finished in 108 seconds; "you can't tell
+which way the trap is set because you can't see a wire"). Updated `tools/bfa/darkmoon-race.patch`
+and world SQL `2026_11_07_01_darkmoon_race_tripwire_wires.sql`. Rebuild, run the SQL, restart.
+
+- **Found:** any two tripwire stakes (75044) within 14 yards of each other zapped racers, with
+  nothing drawn between them.
+- **Changed:**
+  - New script `npc_darkmoon_race_tripwire_stake`: each stake wires itself to its nearest stake
+    within 14 yards if that stake picks it too. That makes 30 pairs out of the 95 stakes; the
+    other 35 are safe to pass.
+  - The wire is drawn as the channel beam of Lightning Tether (33628, visual only, never cast,
+    `SPELL_TRIPWIRE_BEAM`) from one stake to the other. Only racers see the stakes and beams.
+  - Only a wired pair zaps you (same 2 seconds without boosts as before).
+- **Status:** confirmed in game (Four, 2026-11-07: "The tripwires worked perfectly").
+
+### Darkmoon races: banners no longer sink under water
+
+From Four, 2026-11-07 (screenshots and the More Big Racing video: banners at sea level stand on
+the sea floor). World SQL `2026_11_07_00_darkmoon_race_course_float.sql`. Run the SQL, restart,
+delete the client Cache folder. No rebuild.
+
+- **Found:** the course creatures (checkpoint banners, tripwire stakes, powerup pads, Racing
+  Posts) are InhabitType 3 (ground and water), so a spawn above water sinks to the bottom.
+- **Changed:** InhabitType 4 (air) for those 12 entries, so the core turns their gravity off and
+  they stay at their spawn height: sea-level banners float at the surface.
+- **Status:** in Four's build for the confirmed race runs of 2026-11-07; the floating banners
+  weren't reported on separately.
+
+### Darkmoon races: pickups vanish, real post positions
+
+From Four's Let's Keep Racing video, 2026-11-07 ("Power pickups never pick up and disappear. Some
+race posts are under water or pointing at the wrong direction towards the next post"). Updated
+`tools/bfa/darkmoon-race.patch` (`DarkmoonIsland.cpp`). Rebuild, restart.
+
+- **Found:**
+  - The race worked (Blue at 8 tolls, Green 13, Red 17, finish), but powerup pads stayed where
+    they were after giving their effect.
+  - The posts' places came from wiki map coordinates with no height, so the post marker was put
+    at the water or ground level under them (the Blue Post stands on a rock in the sea). The
+    marker always faced east.
+  - The island has its own Racing Post spawns: Blue 74362, Green 74365 (two), Red 74368 (two),
+    Purple 74369. The Big Race used the Marker Pointer spawns instead, which aren't its posts:
+    the Purple pointer is 300 yards from the Purple Racing Post.
+  - All 51 checkpoint banners' arrows point along the course (Real Race: start, blue, green,
+    red, start; Big Race: start, purple, green, red, start). Banners at sea level stand in the
+    shallows on purpose (each banner gives 7 seconds of water walking), but they had sunk to the sea
+    floor (fixed in `2026_11_07_00` above). The More Big Racing video shows the old Big Race
+    posts: Purple at the start (reached at 0 tolls) and Red out in the sea.
+- **Changed:**
+  - A pad disappears when you take it and comes back after 20 seconds (`POWERUP_RESPAWN_S`).
+  - Real Race posts use the Blue/Green/Red Racing Post spawns with their heights. Big Race posts
+    use the Purple Racing Post and the second Green and Red Racing Posts.
+  - The post marker faces the next post (or the start banner after the last post).
+- **Not changed:** Let's Keep Racing! (33756) has no reward and no turn-in text in the 8.3.7
+  quest data, so it ends without one.
+- **Status:** confirmed in game (Four, 2026-11-07): The Real Race (108 seconds), The Real Big Race
+  and More Big Racing all finished.
+
+## 2026-11-06 (Holidays: Darkmoon Faire, second batch)
+
+Merged to main via PR #41 (2026-11-07).
+
+### Darkmoon Faire Deathmatch: looting the chest sends everyone out
+
+From Four, 2026-11-06 (Master Pit Fighter done, but nobody left the pit after the chest was
+looted). World SQL `2026_11_06_22_darkmoon_deathmatch_chest_exit.sql`. Run the SQL, restart.
+No rebuild.
+
+- **Found:** the Darkmoon Treasure Chest (209620) uses SmartGameObjectAI but had no script, so
+  looting it only gave the loot.
+- **Changed:** when the chest is looted (loot state 3), every player within 35 yd of it is
+  teleported to the Deathmatch exit by Korgol Crushskull (-4300.9, 6397.3, 16.5, the target
+  position of Exit Deathmatch 108923), facing away from the pit.
+- **Status:** confirmed in game (Four, 2026-11-07). The Darkmoon Treasure Chest itself
+  (`2026_11_06_17`) is confirmed too: Four looted Pit Fighter and finished Master Pit Fighter.
+
+### Darkmoon Faire concert: fireworks instead of Rain of Fire
+
+From Four, 2026-11-06 (the concert's fire never showed). World SQL
+`2026_11_06_21_darkmoon_concert_fireworks.sql`. Run the SQL, restart. No rebuild.
+
+- **Found:** the concert's FX Controller (23830) casts L70ETC Rain of Fire (42501) at 18.0, 87.9,
+  142.3, 247.3 and 260.5 s into the song. 42501 is a persistent area aura whose visual does not
+  play in the 8.3.7 client (`.cast self 42501` shows nothing; Lightning Cloud 42500 works). Four
+  tried eight other fire spells in game; none suited the show.
+- **Changed:** those five script rows (ids 3, 6, 9, 12, 15) now cast Darkmoon Firework (103740),
+  which Four picked in game.
+- **Status:** confirmed in game (Four, 2026-11-07).
+
+### Grisly Trophies confirmed
+
+Four, 2026-11-06: Grisly Trophies drop from kills while carrying the Adventurer's Guide (Test Your
+Strength, `2026_11_06_17` + gossip patch from PR #40). Confirmed in game.
+
+## 2026-11-04/05 (Holidays: calendar and schedules)
+
+Merged to main via PR #40 (2026-11-06).
+
+### Quest objects counted twice (Tan My Hide)
+
+From Four, 2026-11-06: Tan My Hide (29519) finished after 2 of its 4 Staked Skins. New patch
+`tools/bfa/goober-quest-credit.patch` (`src/server/game/Handlers/SpellHandler.cpp`, after
+`darkmoon-race.patch`). Rebuild, restart.
+
+- **Found:** using a "goober" object (type 10, like the Staked Skin) gives its quest credit in
+  `GameObject::Use`, and the client then reports the same use (`CMSG_GAME_OBJ_REPORT_USE`), where
+  HavenCore gives the credit again. Every goober quest objective counted twice. Upstream
+  TrinityCore gives no quest credit on the report.
+- **Changed:** the report no longer gives quest credit for goobers; other object types keep it.
+  The achievement update on the report is unchanged.
+- **Status:** untested in game.
+
+### Darkmoon Faire: profession quests need only the profession
+
+From Four, 2026-11-06 ("Stamp Thunderhorn is only a vendor here"). World SQL
+`2026_11_06_20_darkmoon_profession_quests_skill.sql`. Run the SQL, restart. No rebuild.
+
+- **Found:** all 14 Darkmoon profession quests (29506-29511, 29513-29520) have a skill condition
+  asking for 75 points in the profession's parent skill (Cataclysm rule), so players below 75
+  never see them offered.
+- **Changed:** the conditions ask for 1 point (the profession), as in Battle for Azeroth;
+  `quest_template_addon` already had RequiredSkillPoints 1.
+- **Status:** untested in game.
+
+### Darkmoon Faire: fished crates and clams open with contents
+
+From Four's Wowhead lists, 2026-11-06. World SQL `2026_11_06_19_darkmoon_fishing_containers.sql`.
+Run the SQL, restart. No rebuild.
+
+- **Found:** Sealed Darkmoon Crate (124670), Darkwater Clam (36781), Big-Mouth Clam (7973) and
+  Jaggal Clam (24476), all caught at Darkmoon Island, had no `item_loot_template` rows and opened
+  empty.
+- **Changed:** contents from Wowhead, each item rolling on its own. Crate: Darkmoon Firewater 97%,
+  16 faire foods and drinks 6-10% each, 15 Darkmoon Draughts/Tinctures and the Healing Tonic about
+  3% each, Don Carlos Tequila 0.7%, the two Divergence ones 0.2%. Darkwater Clam: Succulent Clam
+  Meat 89% (1-3), Northsea Pearl 10%, Siren's Tear 1%. Big-Mouth Clam: Zesty Clam Meat 100%, Black
+  Pearl 1%, Golden Pearl 1.7%, Iridescent Pearl 2.3%, Small Lustrous Pearl 1%. Jaggal Clam: Jaggal
+  Clam Meat 100% (1-3), Jaggal Pearl 8%, Shadow Pearl 5%.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Darkmoon Island fishing loot
+
+From Four's Wowhead list, 2026-11-06. World SQL `2026_11_06_18_darkmoon_island_fishing.sql` (run
+after `_17`). Run the SQL, restart. No rebuild.
+
+- **Found:** Darkmoon Island (zone 5861) had no fishing loot, so every cast used the core's default
+  table (Arctic Char 48%, Raw Bristle Whisker Catfish 21%, junk).
+- **Changed:** zone 5861 fishing loot built from Wowhead's Darkmoon Island list (Four's CSV): 51
+  catches in one group (one per cast), each at its share of Wowhead's catch counts; Darkmoon
+  Daggermaw (124669) takes the rest, about 54%. Raw Rainbow Fin Albacore 9.4%, Sealed Darkmoon
+  Crate 6.9%, Oily Blackmouth 3.7%, Bloated Thresher 2.5%, the Darkmoon Sealed Crates (78930, 88496)
+  2.4% and 1.8%, junk about 2% each, rare catches down to 0.005%. Catches Wowhead shows at 0% are
+  left out. Salty Sea Dog (73269, "Great Sea Herring" on Wowhead now) stays at 29% on top, only
+  for Spoilin' for Salty Sea Dogs.
+- **Not covered:** Sealed Darkmoon Crate (124670) and the Big-Mouth, Darkwater and Jaggal Clams
+  have no contents in our DB, so they open empty.
+- **Status:** untested in game.
+
+### Darkmoon Faire: four quests that could not be finished
+
+From Four's questions, 2026-11-06. World SQL `2026_11_06_17_darkmoon_quest_items.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`). Rebuild, run the SQL, restart.
+
+- **Test Your Strength (29433), found:** it needs 250 Grisly Trophies (71096) and nothing gave
+  them. On retail one comes from every kill of an enemy that gives experience or honor while you
+  carry the Darkmoon Adventurer's Guide (71634). **Changed:** `playerscript_darkmoon_grisly_trophy`
+  adds a trophy on each such kill (creature or player) while the quest is in progress and the
+  guide is in your bags. Only your own killing blows count; the core has no kill hook for pets.
+- **Spoilin' for Salty Sea Dogs (29513), found:** the Salty Sea Dog (73269) was in no fishing loot
+  and Darkmoon Island had no fishing loot at all (you got the default fish). **Changed:** fishing
+  loot for zone 5861: Salty Sea Dog, 30%, only while on the quest (Pandaria DB: 20.9%). Other
+  catches are the default fish as before.
+- **Tan My Hide (29519), found:** the Staked Skins (209276) were never placed. **Changed:** the 19
+  skins around the tents from the Pandaria DB, guids 974000003-974000021.
+- **Master Pit Fighter (29761), found:** Pit Fighter (74034) only comes from the Darkmoon Treasure
+  Chest (209620, 95%), which was never placed. **Changed:** one chest in the Deathmatch pit, back
+  2 hours after it is looted (Pandaria value), guid 974000022.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Firebird rings kept over the island
+
+From Four's retest, 2026-11-06. Updated `tools/bfa/darkmoon-faire-gossip.patch`
+(`DarkmoonIsland.cpp`). Rebuild, restart. No SQL.
+
+- **Confirmed:** Carl Goodup's cart spacing (hotfix seat 10236), Rinling's targets without names,
+  Firebird's height and quest.
+- **Firebird, found:** rings could go out over the ocean. **Changed:** rings stay inside the area
+  Four marked (X -4454 to -4144, Y 6151 to 6361), at a height of 104 to 115 (at least 10 over the
+  ground), always 50 yd from the player (Four's call), with the same clearance checks. The first
+  8 tries go ahead of the player, the next 8 toward the middle of the area; if all fail, the ring
+  goes near the middle.
+- **Status:** confirmed in game by Four, 2026-11-06 ("That was perfect").
+
+### Darkmoon Faire: Firebird rings further out, gallery names, Carl's cart spacing
+
+From Four's retest, 2026-11-06. World SQL `2026_11_06_16_darkmoon_gallery_unselectable.sql`,
+hotfix SQL `sql/fixes/hotfixes/2026_11_06_00_darkmoon_balloon_cart_seat.sql` (run against
+`bfa_hotfixes`), updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`). Rebuild,
+run the SQL, restart, delete the client Cache folder.
+
+- **Confirmed:** Firebird's Challenge quest works (rings keep coming); Carl's balloons sit on the
+  cart.
+- **Firebird, found:** rings came too close (20-30 yd) and some were inside the roller coaster.
+  **Changed:** rings go 35-50 yd ahead, at least 10 yd over the ground, and only where the line from
+  the player and the ring's 5 yd circle (both ways, and up/down) are clear of buildings and
+  objects; up to 8 tries, else 40 yd straight ahead and 15 yd over the ground.
+- **Shooting Gallery, found:** the name flags from `2026_11_06_15` did not hide the names either.
+  The client does not draw names on units that can't be selected (Carl's cart and balloon bunny
+  show none). **Changed:** 54231 unit_flags `|= 0x02000000` (not selectable); the Shoot script
+  picks its target itself, so hits still count.
+- **Carl Goodup, found:** the cart sits in seat VehicleSeat 10236, 0.7 yd in front of Carl, so his
+  name overlapped the balloons. **Changed:** hotfix row for seat 10236 with AttachmentOffsetX 1.0
+  (other fields are the client's values), hotfix_data id 9110236, table hash 0xD4A85CEB. Only
+  Carl's vehicle (1769) uses this seat.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Firebird rings keep coming, gallery names hidden, balloons raised
+
+From Four's retest, 2026-11-06. World SQL `2026_11_06_15_darkmoon_names_rings_balloons.sql`,
+updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`). Rebuild, run the SQL,
+restart, delete the client Cache folder.
+
+- **Confirmed:** Tonk Commander sends you back to where you started; Shooting Gallery is fast
+  enough for 25/25.
+- **Firebird's Challenge, found:** one ring came, it counted, then nothing. Wings of Flame
+  (170819) lasts 2.5 s and starts one 10 s flight (170820), which brings one ring. Each ring
+  caught casts Blazing Ring (170823); its script effect (effect 1) is what renews the flight, and
+  it had no script. **Changed:** `spell_darkmoon_firebird_blazing_ring` renews the flight (170820)
+  on each ring caught, which brings the next ring. Miss rings for 10 s and the flight ends.
+- **Shooting Gallery, found:** the empty name from `2026_11_06_14` did not hide the name.
+  **Changed:** the name is back and target 54231 has type_flags `0x40000000` (do not draw the
+  name) and `0x00100000` (no name plate).
+- **Carl Goodup, found:** the balloons on the cart itself sat at the cart's base. The cart's seat
+  (VehicleSeat 10237) is 1 yd up, which is where the Balloon Cart Bunny (55307) belongs.
+  **Changed:** the cart (55306) has a script, `npc_darkmoon_balloon_cart`, that seats the bunny
+  once the cart rides on Carl (up to 5 tries, 2 s apart); the bunny carries the balloons again
+  and the cart's aura is back to `96847`.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Tonk return point, faster Shooting Gallery, Carl's balloons
+
+From Four's retest, 2026-11-06. World SQL `2026_11_06_14_darkmoon_gallery_names_balloons.sql`,
+updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`, `DarkmoonTonk.cpp`).
+Rebuild, run the SQL, restart, delete the client Cache folder.
+
+- **Confirmed:** Shooting Gallery credit works (Quick Shot, 5 Darkmoon dailies, 5 different games,
+  Blastenheimer Bullseye unlocked); Carl pushes his cart; Tonk Commander "way better".
+- **Tonk Commander, found:** at the end of the game the player was put back in the tonk pen.
+  **Changed:** Finlay remembers where each player stood when they started (the "Ready to play!"
+  gossip) and the end of the game sends them back there; the old console spot is only a fallback.
+  The tonk now lasts 62 s (was 60 s) so the game ends before the tonk despawns under the player.
+- **Shooting Gallery, found:** a new marked target came every 5 s, so only 12 showed up in the
+  60 s game and 25 hits were impossible (Four's best: 12/25). **Changed:** a new round every 2 s
+  (targets last 2 s), so up to 30 marked targets per game. The target name (54231) is now empty, so
+  no name shows over the targets.
+- **Carl Goodup, found:** the balloons stayed where the cart was made. They are the Balloon Cart
+  Contents aura (103320) on the Balloon Cart Bunny (55307), which should ride on the cart as a
+  second accessory; that second step does not follow the cart. **Changed:** the aura is on the
+  cart itself (55306 auras `96847 103320`), the bunny accessory row and the cart's spellclick row
+  are removed.
+- **Status:** untested in game.
+
+### Darkmoon Faire: concert in sync, Carl's cart, one cannon target, Shooting Gallery aim
+
+From Four's retest, 2026-11-06. World SQL `2026_11_06_12_darkmoon_concert_sync.sql`,
+`2026_11_06_13_darkmoon_balloon_cart_spellclick.sql`, updated `tools/bfa/darkmoon-faire-gossip.patch`
+(`DarkmoonIsland.cpp`, `DarkmoonTonk.cpp`). Rebuild, run the SQL, restart.
+
+- **Confirmed:** Bergrisst's constant "Armor" sound is gone; the show plays and the band vanishes
+  at the end; Tonk enemies firing back works ("way better").
+- **Concert, found:** the song is driven by [DND] L70ETC FX Controller (23830): on spawn it plays
+  sound 11803 after 9.4 s, runs the lightning (42500), earthquake (42499) and rain of fire (42501)
+  effects, and despawns after 275 s; it comes back after its spawn time (120 s), which starts the
+  next song. The band's 5-minute loop from `2026_11_06_09` ran on its own clock, so they drifted
+  apart (band showing up mid-break, vanishing mid-song).
+- **Changed:** 1 s after each spawn the controller sends data 1 to the five band members within
+  30 yd; each member then runs its show as a timed action list (`<entry>01`, same steps and times
+  as its old rows, counted from the controller's spawn). The controller respawns 30 s after
+  despawning (was 120 s), so the break is about 50 s. Thunder-Skins' separate on-spawn drum list
+  is dropped. Same entries play in Shattrath and Blackrock Depths and follow their own controller.
+- **Fire, found:** the controller does cast L70ETC Rain of Fire (42501) five times per song (18,
+  88, 142, 247 and 260 s); same spell setup as the lightning except for the visual. Not changed.
+- **Carl Goodup, found:** still no cart: the core only loads a `vehicle_template_accessory` row
+  when the vehicle has an `npc_spellclick_spells` row, so both rows from `2026_11_06_10` were
+  skipped. **Changed:** Ride Vehicle (46598) spellclick rows for 55305 and 55306 (Pandaria DB);
+  players still can't click them (no spellclick npcflag).
+- **Tonk Commander, changed:** the cannon hits one target per shot: the Tonk Target, Enemy Tonk or
+  MiniZep within 30 yd and 60 degrees that is closest to straight ahead.
+- **Shooting Gallery, found:** the targets had health but nothing hit them: Shoot (101872) is a
+  cone with the same tiny radius problem as the tonk cannon. The middle target spawned at z 12.57,
+  under the counter. **Changed:** Shoot hits the gallery target closest to where you face (30 yd,
+  90 degrees); the middle spot is z 13.30 and the third spot's 12.24 variant is 13.24.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Tauren Chieftains, Carl Goodup's cart, Tonk enemies fire back
+
+From Four, 2026-11-06. World SQL `2026_11_06_09_darkmoon_tauren_chieftains.sql`,
+`2026_11_06_10_darkmoon_balloon_cart.sql`, `2026_11_06_11_darkmoon_tonk_cannonballs.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonTonk.cpp`). Rebuild, run the SQL, restart.
+
+- **Tauren Chieftains, found:** the band (Bergrisst 23619, Chief Thunder-Skins 23623, Mai'Kyl
+  23624, Samuro 23625, Sig Nicious 23626) plays a ~280 s show of one-shot timed SAI events. It ran
+  once after a restart; at 280.8 s they all cast Greater Invisibility (16380) and nothing brought
+  them back. Each member's first event casts 89344, labelled "Clear Target Auras" but in 8.3.7
+  89344 is "Armor" (an aura with a sound); Bergrisst's copy repeated every second, so it played
+  constantly and kept him visible.
+- **Changed:** every timed event repeats every 300 s (the show loops with a 20 s break), and the
+  89344 casts now remove Greater Invisibility instead, so each member comes back at their
+  entrance flare.
+- **Not known:** where the concert music comes from. No row in the DB plays a sound; it may be the
+  stage's area music in the client.
+- **Carl Goodup, found:** Carl (55305, vehicle 1769) should carry the Balloon Cart (55306, vehicle
+  1770), which carries the Balloon Cart Bunny (55307, the balloons). The dump had no vehicle
+  accessories for them (the Pandaria 5.4.8 DB does), so the cart stood alone and could be
+  clicked, and the balloons wandered by themselves.
+- **Changed:** `vehicle_template_accessory` 55305 -> 55306 -> 55307 (seat 0), the separate cart
+  and bunny spawns (guids 1400353, 1400354) removed, the cart not selectable, Carl wanders up to
+  5 yd (Pandaria DB value).
+- **Tonk Commander, changed (Four's choice):** every Enemy Tonk (54642) and MiniZep (54643) has a
+  25% chance every 3-4 s to fire Cannon Blast (102227) at the nearest player tonk within 40 yd.
+  The cannonball lands where the tonk was (it flies at 6 yd/s, so it can be dodged).
+  `spell_darkmoon_enemy_tonk_cannon_blast` stuns a tonk within 4 yd of the landing spot for 2 s
+  (Death Stun 102229) and takes 1 Tonk Target credit off its driver (quest 29434, only while
+  the quest is incomplete).
+- **Status:** Bergrisst's sound and the enemy cannonballs confirmed by Four, 2026-11-06; Carl's
+  cart and the concert loop needed `2026_11_06_12` / `13`.
+
+### Darkmoon Faire: retest fixes (Firebird, Ring Toss, Shooting Gallery, Tonk Commander)
+
+From Four's retest, 2026-11-06. World SQL `sql/fixes/world/2026_11_06_08_darkmoon_game_targets.sql`,
+updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`, `DarkmoonTonk.cpp`). Rebuild,
+run the SQL, restart.
+
+- **Update steps changed:** the earlier "undo the old patch version, apply the new one" loop could
+  undo an older version from a newer tree (the Maxima/Mola/Fozlebub parts are the same in every
+  version), which left Four's tree half-patched: French gossip again, no gossip on Jessica,
+  Finlay and Rinling. Darkmoon updates now reset `src/server/scripts/DarkmoonIsland` and apply
+  `darkmoon-faire-gossip.patch` then `darkmoon-race.patch` (the only two patches in that folder).
+- **Firebird's Challenge, found:** the first ring appeared but never counted, and no more came.
+  The ring and summon code required Wings of Flame (170819) on the player; the flight is the
+  170820 aura it keeps refreshing. **Changed:** either aura counts, and each ring also checks
+  every update whether its owner is within 6 yd (a fast flier can pass through between two
+  target-list updates).
+- **Ring Toss, found:** the ring bar stayed after the last ring or after turning in Target: Turtle
+  (29455). **Changed:** Jessica removes 102058 when you have had 0 rings for two checks (2 s, so
+  the last ring lands first; whisper "You're out of rings!") and when you turn in 29455.
+- **Shooting Gallery, found:** the targets (54231) spawned dead: level 1 with HealthModifier 0.01
+  is 0 health. Shoot (101872) had no `spell_script_names` row, so hits never gave credit. The
+  decoy entry 54225 does not exist in 8.3.7, so only the marked target was summoned. The gun
+  stayed after the 60 s game. **Changed:** HealthModifier 1; script name and a target condition
+  (creature 54231) for 101872; decoys are 54231 too and only the round's marked target (the one
+  that casts Marked! 102341) gives credit, once; at the end of the game Rinling removes 101871
+  from players within 30 yd ("Time's up!"), and turning in He Shoots, He Scores! (29438) removes it.
+- **Tonk Commander, found:** Tonk Targets (33081) spawned dead too (same HealthModifier 0.01), and
+  the Cannon (102292) only reached things touching the tonk. **Changed:** HealthModifier 1;
+  `spell_darkmoon_tonk_cannon` hits Tonk Targets, Enemy Tonks and MiniZeps up to 30 yd in a
+  60 degree cone in front of the tonk.
+- **Not changed yet:** Enemy Tonks and MiniZeps don't shoot back (their Cannon Blast 102227 drops a
+  cannonball whose Bombs Away 102211 is a dummy with no script) and show friendly (faction 1616).
+- **Status:** untested in game.
+
+### Darkmoon Faire: Horde Citizens and the Champions
+
+From Four, 2026-11-06 ("Horde Citizens should appear as horde races. Champion Faesrol, Champion
+Isimonde - lower their aggro range to if a player gets right up on them"). World SQL only; run it
+and restart. No rebuild.
+
+- **Found:** Horde Citizen (55348) used the Stormwind citizen models 1501/21621, the same as the
+  Alliance Citizen (55347). Their SAI casts Citizen Costume (71084), a transform with no creature
+  set, which the core does nothing with.
+- **Changed:** `sql/fixes/world/2026_11_06_06_darkmoon_horde_citizens.sql` gives 55348 eight
+  models with equal chance: orc 1370/31416 (Orgrimmar Citizen), troll 2588/2589 (Troll Citizen),
+  blood elf 18211/18212 (Silvermoon Citizen), Forsaken 34459/25893 (Undercity Citizen).
+- **Found:** Champion Faesrol (55732) and Champion Isimode (55733) by the Tonk Commander area are
+  level 80 with SmartAI but no rows, so they pulled with the normal aggro radius (up to 45 yd
+  against low-level players).
+- **Changed:** `sql/fixes/world/2026_11_06_07_darkmoon_champions_aggro.sql`: both go defensive on
+  spawn/reset and attack a hostile player that comes within 5 yd (SAI out-of-combat LOS, max 5,
+  1 s cooldown; condition: invoker is a player, so they don't start on each other). They still
+  fight back when attacked.
+- **Status:** Horde Citizens confirmed in game by Four, 2026-11-06; Champions untested.
+
+### Darkmoon Faire: Firebird's Challenge (Ziggie Sparks)
+
+From Four, 2026-11-06 ("Ziggie Sparks, Firebird challenge, no rings"). World SQL
+`sql/fixes/world/2026_11_06_05_darkmoon_firebird_rings.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`). Rebuild, run the SQL, restart.
+
+- **Found:** "Ready to fly!" casts Wings of Flame (170819), which re-casts 170820 every 2.5 s
+  (flight, flight speed) and with it Summon Rings (170817). 170817 is a script effect with no
+  script, so nothing was summoned. The ring spell (170815) creates areatrigger misc 3069, which had
+  no `spell_areatrigger` / `areatrigger_template` rows. The quest needs 15 Darkmoon Faire Ring
+  Credit (85559), given by Blazing Ring (170823).
+- **Changed:**
+  - `spell_darkmoon_firebird_summon_rings` (170817): while you have Wings of Flame, puts a ring
+    (170815) 20-30 yd ahead of you (up to about 35 degrees to either side, 6 yd below to 8 yd
+    above you, never closer than 6 yd to the ground).
+  - `at_darkmoon_firebird_ring` (areatrigger 3069, 5 yd sphere): flying through your own ring
+    casts Blazing Ring (170823, 1 credit) and removes the ring. Rings you miss fade after 15 s.
+  - SQL: `spell_script_names` row for 170817, `areatrigger_template` 3069 and `spell_areatrigger`
+    3069 -> 3069 (id 3069 was unused).
+- **Not known:** whether the client draws the ring from 170815's own visual; if you can fly
+  through invisible rings and get credit, the visual is the remaining gap.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Tonk Commander (Finlay Coolshot)
+
+From Four, 2026-11-06 ("Tonk doesn't attack or kill anything, player returns as the tonk on the
+battlefield at the end. Enemy tonks leave the arena."). World SQL
+`sql/fixes/world/2026_11_06_03_darkmoon_tonk_commander.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonTonk.cpp`). Rebuild, run the SQL, restart.
+
+- **Found:**
+  - The steam tonk's Cannon (102292) picks targets by entry in a cone and had no target
+    conditions, so it hit nothing.
+  - A Tonk Target (33081, the quest's credit, 30 needed) only despawned when shot; nothing gave
+    credit.
+  - Enemy Tonks (54642) and MiniZeps (54643) had SmartAI with no script, chased the player's tonk
+    out of the arena, and respawned after 2 minutes.
+  - At the end of the 60 s game nothing ended it: when the tonk (54588) timed out the player was
+    left on the battlefield with the Tonk! bar (102178).
+- **Changed:**
+  - Conditions on 102292 effect 0: creatures 33081, 54642, 54643.
+  - A shot Tonk Target, Enemy Tonk or MiniZep gives credit 33081 to the tonk's driver (SAI kill
+    credit to the invoker; for a vehicle that is its passenger). Targets despawn, enemy tonks and
+    MiniZeps die and respawn after 10 s (was 120). Enemy tonks and MiniZeps are passive.
+  - Finlay's end-of-game event removes 102178, takes the player out of the tonk, puts them back at
+    the consoles (-4127.5, 6327.0, 13.12) and despawns the tonks.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Ring Toss (Jessica Rogers)
+
+Four picked Ring Toss next (2026-11-06). World SQL `sql/fixes/world/2026_11_06_01_darkmoon_ring_toss.sql`,
+updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonIsland.cpp`, `spell_ring_toss`). Rebuild,
+run the SQL, restart.
+
+- **How the game works (retail):** Jessica gives you 10 rings (the bar shows them) and a one-button
+  bar. Aim the ring at Dubenko (54490), the turtle swimming in the pond next to her; 3 rings on his
+  shell complete Target: Turtle (29455).
+- **Found:** the ring's landing spell (181458) has no target conditions, so it hit every unit where
+  it landed, and `spell_ring_toss` gave the quest credit (54495) for any unit hit, the thrower
+  included. Dubenko's SAI (id 1, invoker cast 101807) gave a second credit for each real hit.
+- **Changed:** condition on 181458 effect 0: only creature 54490. The handler only credits (once)
+  when the hit unit is Dubenko, and still plays the ring-on-shell visuals (101697, 101737). Dubenko's
+  SAI credit row is deleted.
+- **Found (Four, 2026-11-06, with a screenshot):** the ring button failed with "Requires Standing
+  at the Ring Toss Booth"; the Shooting Gallery failed the same way ("Requires Standing at the Booth
+  Counter"). Both spells need a spell focus gameobject near the player, and neither was spawned.
+- **Changed:** world SQL `sql/fixes/world/2026_11_06_02_darkmoon_booth_spell_focus.sql` spawns
+  301114 "Standing at the Ring Toss Booth" (focus 1729, 20 yd) on Jessica (-4287.87, 6309.00,
+  13.20, guid 974000001) and 300129 "Standing at the Booth Counter" (focus 1471, 10 yd) at Rinling's
+  counter (-4078.42, 6354.07, 13.08, Pandaria 5.4.8 DB position, guid 974000002). Both are invisible.
+- **Status:** confirmed in game by Four, 2026-11-06 ("Ring toss played well").
+- **Found (Four, 2026-11-06):** the ring aura stays on you after you walk away from the booth, and
+  Dubenko never moves. His spawn (guid 1400112) had MovementType 2 (waypoints) with no path.
+- **Changed:**
+  - `DarkmoonIsland.cpp`: Jessica now has an AI that checks every second; a player more than 20 yd
+    from her loses the Ring Toss aura (102058) and gets the whisper "You left the Ring Toss booth.
+    Game over!". Rinling does the same for the Shooting Gallery aura (101871) past 12 yd ("You
+    left the Shooting Gallery. Game over!").
+  - World SQL `sql/fixes/world/2026_11_06_04_darkmoon_dubenko_wanders.sql`: Dubenko wanders up to
+    3 yd from his spot (MovementType 1, spawndist 3; template MovementType 0).
+- **Status:** leaving the booth and Dubenko's wandering confirmed in game by Four, 2026-11-06.
+
+### Darkmoon Faire: Humanoid Cannonball (Maxima Blastenheimer)
+
+From Four, 2026-11-05 ("It flings you out towards the ocean ... you finally splash down much further
+out. I don't know what this is"). Updated `tools/bfa/darkmoon-faire-gossip.patch`
+(`DarkmoonCanon.cpp`, target bunny script `npc_darkmoon_canon_target`). Rebuild, restart.
+
+- **How the game works (retail):** Maxima fires you from the cannon toward a target floating in the
+  water to the south-west (bunny 33068 at -4478, 6221). Magic Wings (102116) slows your fall, so you
+  glide well past the target unless you press the one button on your bar, Cancel Magic Wings
+  (102120), while you are over it. Landing within 3 yards = Bullseye (5 points, achievement
+  Blastenheimer Bullseye), 10 yards = Great Shot (3), 30 yards = Poor Shot (1). The quest (29436)
+  needs 5 points.
+- **Found:** the target bunny only checked players within 30 yards that had sunk below z 0. A long
+  shot (the normal result without the button) never ended: no result, and the Cannon Blast override
+  bar (102121) stayed. The bunny never put up its target rings (Darkmoon Cannon Target Area Aura
+  A/B/C, 62171/62174/62178), so there was nothing to aim at.
+- **Changed:** the bunny keeps the three target-area auras up (rechecked every 5 s) and stays
+  loaded. Every 0.2 s it checks every launched player on the island: once they are in the water, or
+  on land and no longer falling (after 2 s), they get their score and lose Cannon Blast and Magic
+  Wings. A landing more than 30 yards out ends the shot with a whisper ("You missed the target! Use
+  Cancel Magic Wings when you are over it.") and no points.
+- **Found (Four, 2026-11-06):** "Speaking to maxima and saying you're ready while mounted locks up
+  the event ... you remain inside the cannon".
+- **Changed:** Maxima now removes mounts (`SPELL_AURA_MOUNTED`) and shapeshift forms before putting
+  you in the cannon.
+- **Status:** the cannon game is confirmed in game by Four (2026-11-06, "otherwise, that worked").
+  The dismount fix is untested.
+
+### Darkmoon Faire: NPC audit (gossip, flags, quests, vendors)
+
+From Four, 2026-11-06 ("review every quest giver and merchant, make sure they're flags are
+correct, interactable, and have quests that lead to something. ensure their gossips lead
+somewhere, locales are enUS", "check items too for merchants/vendors"). Checked all 62 creatures on
+Darkmoon Island with a gossip, quest or vendor flag, and the Faire's event spawns elsewhere. World
+SQL `sql/fixes/world/2026_11_06_00_darkmoon_faire_npc_audit.sql`, updated
+`tools/bfa/darkmoon-faire-gossip.patch` (now also `DarkmoonIsland.cpp` and `DarkmoonTonk.cpp`).
+Rebuild, run the SQL, restart.
+
+- **Found:**
+  - Jessica Rogers (Ring Toss), Rinling (Shooting Gallery) and Finlay Coolshot (Tonk Challenge)
+    sent npc_text ids that don't exist (54485/54486, 23002/23003, 54605/54606, and 54603 for "no
+    token"), so their pages showed placeholder text.
+  - Gossip menus 8849 (Silas Darkmoon), 13012 (Jessica), 13018 (Mola) and the "how to play" menus
+    13013/13065/13066 had options but no text row.
+  - Maxima and Mola had no "How do I play?" option.
+  - Ziggie Sparks (Firebird's Challenge) had gossip menu 0, so her "Ready to fly!" menu and its
+    SAI never showed.
+  - Christoph VonFeasel (pet tamer, quest 36471) had no gossip flag, so "Let's do battle!" could
+    not show.
+  - Chronos offered "DEPRECATED: Putting the Carnies Back Together Again" (29512).
+  - The old Outland Faire (26 creatures, 120 gameobjects in Terokkar Forest) still spawned with the
+    Faire event.
+  - Vendors: every Faire vendor's list is a superset of the Pandaria 5.4.8 list (the heirloom
+    vendor uses the newer heirloom items). Prize vendors (tickets) have no gold-priced items. Whether
+    each item exists in this build's Item.db2 can only be seen in the worldserver's DB error log.
+  - Every quest giver's quests have an ender, and all texts are English. Quests whose objective has
+    no source yet: Test Your Strength 29433 (Grisly Trophy 71096 drops nowhere), Spoilin' for Salty
+    Sea Dogs 29513 (no fishing loot for 73269), Tan My Hide 29519 (Staked Skin 209276 not spawned),
+    Master Pit Fighter 29761 (74034 only from an unspawned object), Firebird's Challenge 36481
+    (untested).
+- **Changed:**
+  - The three game hosts use their real texts (18284/18286, 7397/18353, 18290/18352). "No token" is
+    now a whisper. "Alright." is now "I understand.", and the Shooting Gallery options match the
+    database ("How does the Shooting Gallery work?", "Let's shoot!").
+  - Maxima ("How do I use the cannon?", text 7790) and Mola ("How do I play Whack-a-Gnoll?", text
+    18350) get an instructions page.
+  - The missing gossip_menu rows are added (texts from the Pandaria DB).
+  - Ziggie uses menu 16970. Her instructions menu 16972 gets npc_text 24704 (a guess from the text
+    ids).
+  - Christoph gets the gossip flag. Chronos no longer offers 29512.
+  - The Terokkar spawns are removed; copies are kept in `zr_dmf_terokkar_creature` and
+    `zr_dmf_terokkar_gameobject`.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Whack-a-Gnoll barrels and score bar
+
+From Four, 2026-11-05 ("still not fast enough. Not accurately incrementing the count on the artwork
+either. Can get 26/30 - just not enough spawning"). Updated `tools/bfa/darkmoon-faire-gossip.patch`
+(`DarkmoonWhackGnoll.cpp`). Rebuild, restart.
+
+- **Found:** a barrel only took a new gnoll once its "ok to hit" aura (101996) ran out, so whacked
+  barrels stayed blocked and most spawn ticks found no free barrel. The score bar (alternate power)
+  was set once at the start and then only moved by the credit spell's energize, so it drifted from
+  the quest count.
+- **Changed:** a barrel is free as soon as no gnoll, doll or boss is alive in it (2 yd). Gnoll every
+  1 s, boss every 7 s (doll stays 5 s). The score bar is set to It's Hammer Time's count at the
+  start, after every whack, and once a second while you play.
+- **Found (second test, "you mention a boss, but i have yet to see one. 28/30", and a video):** the
+  summon spells left every unwhacked gnoll standing, so all 9 barrels filled and the 1 s gnoll
+  timer took each freed barrel before the bonus gnoll (54549) or the baby (54466) found one.
+  Whacked gnolls left a grey corpse in the barrel, and swinging at the corpse scored again.
+- **Changed:** gnolls, babies and bonus gnolls are summoned straight from the barrel and leave
+  after 4 s. A bonus gnoll or baby that finds no free barrel tries again after 0.5 s instead of
+  waiting for its next turn. Dead gnolls no longer count as targets, and a whacked gnoll is
+  removed after 0.5 s.
+- **Status:** confirmed in game by Four (2026-11-05, "That worked perfectly!").
+
+### Darkmoon Faire: Whack-a-Gnoll pace and reset
+
+From Four, 2026-11-05 ("You can only realistically get 15/30 at the current rate", "You can not
+succeed the first time, and the quest remains along with the count you had. This should fail").
+Updated `tools/bfa/darkmoon-faire-gossip.patch` (`DarkmoonWhackGnoll.cpp`). Rebuild, restart.
+
+- **Found:** the game spawns a gnoll every 3 s, a doll every 6 s and a boss gnoll every 10 s, so the
+  one-minute game holds about 20 gnolls and 6 bosses at best. Points carried over to the next
+  game, but the quest is "score 30 points in a minute".
+- **Changed:** gnoll every 1.5 s, doll every 5 s, boss every 9 s. When a game ends with It's Hammer
+  Time (29463) still incomplete, its count goes back to 0.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Game Prize hang, Let's Keep Racing
+
+From Four, 2026-11-05 ("Opening the Darkmoon Game Prize hangs, the box is greyed out", "Let's keep
+racing - nothing happens. Crossing the start line doesn't start the race"). World SQL
+`sql/fixes/world/2026_11_05_08_darkmoon_prize_ticket_as_quest_reward.sql`, updated
+`tools/bfa/darkmoon-race.patch`.
+
+- **Found:**
+  - The ticket row from `2026_11_05_07` (currency 515 as loot of item 93724) hangs the client: this
+    core can't hand a currency out of an item's loot window.
+  - Malle also gives Let's Keep Racing! (33756), a repeatable run of the Real Race course
+    (blue, green, red). The race script didn't know the quest.
+- **Changed:**
+  - SQL removes the currency loot row and gives 1 Darkmoon Prize Ticket (currency 515) as
+    `RewardCurrencyID1` on every quest that rewards the Game Prize (29434, 29436, 29438, 29455,
+    29463, 36481, 37819, 37910, 37911), as in the Pandaria 5.4.8 DB. The Game Prize keeps its
+    old rare contents and is still often empty.
+  - `darkmoon-race.patch`: Let's Keep Racing! uses Malle's start banner and the Real Race posts
+    (no achievements, those are for The Real Race).
+- **Status:** untested in game.
+
+### Darkmoon Faire: course names, empty Game Prize
+
+From Four, 2026-11-05 ("Malle's race worked, but I can still see the doodad's names", "the reward,
+Darkmoon Game Prize, has been empty twice"). World SQL
+`sql/fixes/world/2026_11_05_07_darkmoon_race_names_and_game_prize.sql`. Run the SQL, restart, delete
+the client's Cache folder.
+
+- **Found:**
+  - The course bunnies have visible models (checkpoint banners, tripwire stakes, pads) and no
+    name-hiding flags, so racers saw "Powerup Bunny Checkpoint" and the like over the course.
+  - Darkmoon Game Prize 93724 has 14 loot rows, all independent chances of 0.5% to 8.6% (about
+    29% in total), so it opened empty most of the time. The Darkmoon Prize Ticket that retail
+    always puts in it (currency 515; 1 per game daily in the Pandaria 5.4.8 DB) was missing.
+- **Changed:**
+  - 14 course entries (75718, 75044, 74153, 74157, 74678, 74800, 74872, 75063, 74536,
+    74260-74263, 74420): `type_flags` |= 0x40100000 (no name, no nameplate), `unit_flags` |=
+    0x02000000 (not selectable).
+  - `item_loot_template` (93724, -515, chance 100, count 1): one Darkmoon Prize Ticket in every
+    prize. A negative `Item` is a currency in this core's loot loader.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Dusty's strider ride at the arrival hill
+
+From Four, 2026-11-05 ("the mechastrider mount handler at the entrance isn't interactable", "Dusty
+Brandom doesn't interact"). World SQL `sql/fixes/world/2026_11_05_06_darkmoon_strider_ride.sql`.
+Run the SQL, restart.
+
+- **Found:** "Dusty" Brandom (68492, Tallstrider Handler) and two Darkmoon Striders (68491) stand
+  where you arrive on the island. On retail the striders give anyone a free ride down the Darkmoon
+  Path to the Faire. Here Dusty had `npcflag` 0 (no gossip) and an SAI line that talks with no
+  text; the striders had no spellclick. (Earlier notes in this PR wrongly tied Dusty to the races.)
+- **Changed** (values from the Pandaria 5.4.8 DB): Dusty `npcflag` 1, `gossip_menu_id` 15306 (menu
+  and npc_text 21955 already in the DB), `unit_flags` 768, SAI removed. Striders `npcflag`
+  16777216 (spellclick), `unit_flags` 33536, `npc_spellclick_spells` (68491, 134931, 3, 0):
+  clicking one mounts you on a Darkmoon Strider (spell 134931).
+- **Status:** untested in game.
+
+### Darkmoon Faire: the strider races
+
+From Four, 2026-11-05 ("let's start on the strider race"). Core patch `tools/bfa/darkmoon-race.patch`
+(after `darkmoon-faire-gossip.patch`), world SQL `sql/fixes/world/2026_11_05_05_darkmoon_race_course.sql`.
+Rebuild, run the SQL, restart.
+
+- **Found:**
+  - Malle Earnhard (74056: Welcome to the Darkmoon Races 37819, The Real Race 37910) and Patti
+    Earnhard (90473: More Big Racing! 37868, The Real Big Race 37911) give the race quests, but
+    nothing on the server runs a race. Retail does it with server-side spells and area triggers
+    that aren't in the client files, and this database has no rows for them.
+  - The client files do have the pieces: the objective credit entries (start 74536, posts
+    73984/73988/74030/74031, end 74004, passed 74299), the Racing Strider mount (179750), the
+    course bunnies' visual spells, Invis to Non-Racers (179303) / On a Trial (149669), and the
+    achievement spells (criteria "cast spell" 179420-179617, e.g. Darkmoon Racer Roadhog 9761).
+  - The Real Race posts aren't spawned. Their map coordinates come from the wiki's route guide
+    (blue 26.3,66.9; green 29.5,46.1; red 43.5,50.1). Fitting its 16 checkpoint coordinates to our
+    checkpoint banners matched all of them within 2 yards, which gives blue (-4152.4, 6779.6),
+    green (-3894.5, 6720.1), red (-3944.1, 6459.7). The Big Race posts are the Marker Pointer
+    spawns: purple 74263, green 74261, red 74262.
+- **Changed:**
+  - `darkmoon-race.patch` adds a player script to `DarkmoonIsland.cpp`. With a race quest in
+    your log, running through the start banner (Malle's for the Real Race, Patti's for the Big
+    Race) uses a Darkmoon Game Token, mounts you on the Racing Strider and starts the race. Touch
+    the posts in order (a marker shows the next one), then ride back through the banner.
+  - The bell tolls every 5 seconds. Your toll count is shown at each post and at the finish, and
+    decides the achievements: Real Race within 25/20/15/11 tolls, Big Race within 40/35/30/25/20,
+    plus Darkmoon Race Enthusiast for the first race. The toll length isn't in the client data;
+    5 seconds is a guess from the achievement limits and is easy to change (`RACE_TOLL_MS`).
+  - On the course: checkpoint banners give +100% speed for 3 seconds and 7 seconds of water
+    walking (once each per race), dash and loot pads +100% speed for 4 seconds, jump and rocket
+    pads throw you forward, blink pads move you 20 yards ahead, rotating pads pick one of
+    those. Running between two tripwire stakes (within 14 yards of each other) takes your mount
+    speed away for 2 seconds.
+  - The race is canceled (objectives reset, token not refunded) if you die, get off the strider,
+    leave the island, log out or take longer than 10 minutes.
+  - SQL: removes spawn group 450 from `2026_11_05_03`, so the course spawns again, and gives the
+    course bunnies (checkpoints, tripwire stakes, powerup pads) Invis to Non-Racers 179303 plus
+    their powerup visual. Only racers (and GMs) see them.
+  - The Racing Strider's buttons, from Four's OverrideSpellData.db2 (bar 569), are scripted as
+    `spell_darkmoon_racer_button`: **Jump To Banner** (179748) leaps to the nearest checkpoint
+    banner ahead of you within 100 yards and keeps you safe from tripwires for 4 seconds;
+    **Lasso Powerup** (316043) uses the nearest powerup pad within 25 yards at once; **Jump To
+    Racer** (179804) leaps to the nearest other racer ahead. Cooldowns are the client's.
+- **Not done:** the Rocketeer, Powermonger and Wanderluster racers (toys) aren't supported, only
+  the Racing Strider.
+- **Status:** untested in game.
+
+### Darkmoon Faire: Selina, jugglers, Maxima, citizens
+
+From Four, 2026-11-05. Core patch `tools/bfa/darkmoon-faire-gossip.patch` (after
+`holiday-schedule.patch`), world SQL `sql/fixes/world/2026_11_05_04_darkmoon_faire_npcs.sql`.
+Rebuild, run the SQL, restart.
+
+- **Found** (reported by Four):
+  - "Selina Dourman, has a quest, cannot interact": her C++ script `npc_selina_dourman` sends
+    npc_text 23004-23006, which don't exist, and her template's gossip menu 8776 has no
+    `gossip_menu` row. Her real menu 13075 (guide, purchases, prize tickets, cards, attractions)
+    is already in the database.
+  - "Fire jugglers at the entrance, not juggling": 8 jugglers in pairs (55220/55221 at the entrance,
+    55222/55223, 55225/55226, 55341/55342) cast Juggle Torches (196717) at their partner by
+    sniffed spawn guid (2099, 2104, 2142, 2145, 2187, 2189, 2212, 2219). Those guids don't exist
+    here, so the spell had no target.
+  - "Maxima Blastenheimer has French locale text" and "Unable to turn in game tokens": the
+    `npc_canon_maxima` script has French text ("Je souhaite devenir un homme canon !") and only
+    offers the launch while the daily Humanoid Cannonball (29436) is in progress. Mola
+    (Whack-a-Gnoll, 29463) and Teleportologist Fozlebub (cannon teleport, 30 silver) had the same
+    problem. Fozlebub also took the 30 silver without checking you had it.
+  - "Horde Children / Citizen are hostile/attackable": Alliance Citizen 55347 and Horde Citizen
+    55348 had `unit_flags` 512, so the other faction could attack them.
+- **Changed:**
+  - `darkmoon-faire-gossip.patch` (`DarkmoonCanon.cpp`, `DarkmoonWhackGnoll.cpp`): English
+    options "Launch me! (Darkmoon Game Token)", "Ready to play! (Darkmoon Game Token)" and
+    "Teleport me to the cannon." with a 30 silver confirm; English whispers when you have no
+    token; the options show for everyone (the quests still count). Fozlebub checks your money.
+  - Selina 10445: `ScriptName` '', `gossip_menu_id` 13075, `unit_flags` 768.
+  - Juggler SAI `target_param1` set to the partner's spawn on this server: 55220->1400016,
+    55221->1400017, 55222->1400081, 55223->1400086, 55225->1400313, 55226->1400349,
+    55341->1400114, 55342->1400294.
+  - Citizens 55347, 55348: `unit_flags` 768 (adds IMMUNE_TO_PC, as in the Pandaria 5.4.8 DB).
+- **Not changed:** the carousel (its mounts aren't seated on the moving carousel, which needs core
+  transport work) and the rollercoaster (none at the retail Faire as far as we know; asked Four).
+- **Status:** untested in game.
+
+### Darkmoon Faire: missing from the calendar, and on the wrong days
+
+From Four, 2026-11-04. Core patch `tools/bfa/holiday-schedule.patch` (after all other patches),
+world SQL `sql/fixes/world/2026_11_04_00_darkmoon_faire_first_sunday.sql`, hotfix SQL
+`sql/fixes/hotfixes/2026_11_04_00_darkmoon_faire_calendar.sql`.
+
+- **Found** (reported by Four: "I don't really see it on the calendar"):
+  - The server sends no holidays to the calendar. The client draws them from its own Holidays.db2.
+    In the 8.3.7 client (Four's file), the Darkmoon Faire, holiday 479, only has 18 dates, from
+    July 2019 to December 2020. So nothing showed in 2026. The hotfix database had no row 479.
+  - On the server, the Faire is game event 3. Upstream's `2026_08_16_01_fix_game_events.sql` gave it
+    a start of 2026-09-06 10:01, every 30 days (`occurence` 43200), 7 days long. Months aren't 30
+    days long, so the start day slid away from the retail first Sunday of the month by about 5 days
+    a year. The core's `game_event` only supports fixed periods.
+- **Changed:**
+  - `holiday-schedule.patch` changes `src/server/game/Events/GameEventMgr.cpp`, in
+    `CheckOneGameEvent`, `NextCheck`, `StopEvent` and `LoadFromDB`. A `game_event` row with
+    `occurence` 0 is now a monthly event: it starts on the first Sunday of every month, at the time
+    of day of its `start_time`, and runs for `length` minutes. Before, `occurence` 0 divided by zero.
+    No row used it.
+    - `.event start 3` runs the event for its length from now.
+    - `.event stop 3` stops the current month's run until it would have ended.
+    - At startup the log says "game event id (3) runs monthly from the first Sunday at 00:00".
+  - `game_event` 3: `start_time` 2026-09-06 10:01 -> 2026-11-01 00:00, `occurence` 43200 -> 0,
+    `length` 10080 (7 days, unchanged), `end_time` 2030-12-31 17:00 -> 2037-12-31 23:59.
+    Event 23 (Darkmoon Faire Building) has no spawns or scripts, so it is unchanged.
+  - Hotfix: `holidays` row 479 is the client's own row (name, description, textures, durations 48 h
+    + 168 h, calendar flags 0/3) with 26 new dates. Each date is the Friday 00:00 before a first
+    Sunday, from the Faire of 2026-11-01 to the Faire of 2028-12-03. `hotfix_data` row: Id 9000479,
+    table hash 1972272076 (Holidays.db2), record 479. The calendar shows each Faire from Sunday 00:00
+    for 7 days. Holidays.db2 holds at most 26 dates, so the calendar needs new dates again for 2029.
+    The server schedule doesn't.
+- **Status:** compiled (GameEventMgr.cpp), not tested in game yet.
+
+### Darkmoon Island: the strider race course visible to everyone
+
+From Four's visit, 2026-11-05 (screenshots of "Powerup Bunny Checkpoint" arches and "Powerup Bunny -
+Trap - Tripwire - NOT MECHANICAL" posts all over the paths, with GM mode off). SQL only:
+`sql/fixes/world/2026_11_05_03_darkmoon_race_course_hidden.sql`.
+
+- **Found:** the course of the island's strider race is spawned, 290 creatures. That's the
+  checkpoints, power-up crates, tripwires, marker arrows and start bunnies, with visible models
+  and no trigger flag. On retail only racers see them. The race itself has no scripts here.
+  "Dusty" Brandom (68492) has no gossip and npcflag 0.
+- **Changed:** every map 974 spawn of 74153, 74157, 74678, 74800, 74872, 75063, 75044, 75718,
+  74260-74263, 74420 and 74536 goes into new spawn group 450, "Darkmoon Island - strider race
+  course", with flag 0x04 (manual spawn). The core keeps those spawns despawned until a script
+  turns the group on. The rows are selected from the live `creature` table, so no guid list is
+  hard-coded.
+- **Next:** the race itself (Four, 2026-11-05: "yes after").
+- **Status:** not tested in game yet.
+
+### Darkmoon Island: Portal Back hung the client on the loading screen
+
+From Four's visit, 2026-11-05. SQL only: `sql/fixes/world/2026_11_05_02_darkmoon_portal_back.sql`.
+
+- **Found** (reported by Four: taking the portal back out left the client stuck on the loading screen):
+  - Portal Back (gameobject 216667, 2 spawns on Darkmoon Island) is a spellcaster gameobject. Its
+    own spell, 101260 To the Staging Area!, already sends Horde to Mulgore and Alliance to Elwynn
+    (`spell_darkmoon_staging_area_teleport`).
+  - It also had SmartAI that, on the same click, cast 101260 again and 103582 (Mulgore, map 1). So
+    an Alliance player got teleports to Elwynn and to Mulgore at the same time.
+- **Changed:** both `smart_scripts` rows of 216667 (source type 1, ids 0 and 1) are deleted, and
+  `gameobject_template` 216667 `AIName` 'SmartGameObjectAI' -> ''.
+- **Status:** not tested in game yet.
+
+### Darkmoon Faire: Fire Jugglers throwing torches at players and NPCs
+
+From Four's visit to the Elwynn Faire camp, 2026-11-05. SQL only:
+`sql/fixes/world/2026_11_05_01_darkmoon_fire_juggler_torches.sql`.
+
+- **Found** (reported by Four: the torches home in on the nearest NPC or player, some at Four,
+  others at the Greeter):
+  - Fire Jugglers carry aura 102905 (template addon of 55089, 55093, 55225 and 55397). Every 0.7
+    seconds it casts Juggle Torch, 102882. That's a dummy spell whose torch flies to a "nearby unit
+    of an entry" (target 38) within 20 yards. Which entry is meant to come from `conditions`, and
+    the dump has none for 102882. So the core took any nearby unit: players, the Greeter, the Fire
+    Eater.
+  - Read from the client's SpellEffect.db2.
+- **Changed:** 13 `conditions` rows (source type 13, group 1, entry 102882, condition 31 type 3).
+  The torch may now only target a Fire Juggler: 55089, 55093, 55220-55226, 55341, 55342, 55397,
+  55398. The jugglers stand in pairs about 18 yards apart, so the torches stay with the jugglers.
+- **Status:** not tested in game yet.
+
+### Holidays that move every year: missing from the calendar, and two never ran
+
+From Four, 2026-11-05 ("please do them all"). Same core patch (`holiday-schedule.patch`, which was
+first written for the Faire alone), world SQL `sql/fixes/world/2026_11_05_00_holiday_dates_schedule.sql`,
+hotfix SQL `sql/fixes/hotfixes/2026_11_05_00_holiday_calendar_dates.sql`.
+
+- **Found:**
+  - In the client's Holidays.db2, six holidays have dates only up to 2020 (Lunar Festival up to 2024),
+    so none of them shows on the 2026 calendar: Lunar Festival 327, Love is in the Air 423,
+    Noblegarden 181, Children's Week 201, Harvest Festival 321, Pilgrim's Bounty 404. Hallow's End,
+    Winter Veil, Midsummer, Brewfest, Pirates' Day, Day of the Dead and the 4th of July fireworks use
+    "any year" dates and were already fine.
+  - On the server, upstream's `2026_08_16_01_fix_game_events.sql` never updated game events 7
+    (Lunar Festival), 26 (Pilgrim's Bounty) or 72 (Fireworks Spectacular). They still ended in 2020,
+    so they never ran. The others repeat every 365 days (Noblegarden 364), so Easter-based
+    Noblegarden drifts by weeks.
+- **Changed:**
+  - `holiday-schedule.patch`: `occurence` 1 means "start on each date of the event's holiday in
+    Holidays.db2". It reads the dates from the server's own copy, hotfixes included, so the server
+    runs on the dates the calendar shows. An "any year" date repeats every year. Each run lasts
+    `length`. At startup the log says "game event id (N) runs on the dates of holiday H". An event
+    with `occurence` 1 and no holiday logs an error and never starts.
+  - Hotfix rows 327, 423, 181, 201, 321 and 404 are the client's own rows, with five dates each
+    (2026 to 2030, 10:00). 2030 is the last year a Holidays.db2 date can hold. `hotfix_data` ids
+    are 9000000 + holiday id. The rules:
+    - Lunar Festival: 2 days before the lunar new year (2026-02-15, 2027-02-04, 2028-01-24,
+      2029-02-11, 2030-02-01).
+    - Love is in the Air: the first Monday on or after 7 February.
+    - Noblegarden: Easter Monday (as in every client date from 2015 to 2020).
+    - Children's Week: the Monday between 28 April and 4 May.
+    - Harvest Festival: the second Tuesday of September.
+    - Pilgrim's Bounty: the Monday of Thanksgiving week (as in every client date from 2015 to 2020).
+    The Lunar Festival, Love is in the Air, Children's Week and Harvest Festival rules are close fits
+    to the client's 2015-2020 dates. Retail moved those around from year to year.
+  - `game_event` 7, 8, 9, 10, 11, 26 and 72: `occurence` -> 1, `start_time` -> 2026-01-01 00:00
+    (only used by `.event start`), `end_time` -> 2037-12-31 23:59. `length` is unchanged. Fireworks
+    (72, holiday 62, "any year" 4 July 10:00) now runs every year again.
+- **Not done:**
+  - Timewalking (holidays 559, 562, 587, 643). The server's events 100-103 are switched off
+    (they end in 2020 or start and end in 2030), and Timewalking dungeons need their own work.
+  - Brew of the Month (34-45) and the Kalu'ak Fishing Derby (63, 64) also ended in 2020.
+  - The fixed-date holidays still repeat every 365 days, so they slip one day per leap year
+    (first in 2028).
+- **Status:** compiled (GameEventMgr.cpp), not tested in game yet.
+
+## 2026-11-04 (pet battles)
+
+### Pet battles: some wild pets ignore their zone's level range
+
+- **Found** (asked by Four): Pet Tracker's map says Elwynn Forest pets are level 1-2. Are they all?
+- **Cause:** `WildBattlePetMgr::EnableWildBattle` rolls a wild pet's level between
+  max(`battlepet_info.minlevel`, zone min) and max(`battlepet_info.maxlevel`, zone max). The zone
+  range comes from the client's AreaTable. Almost every wild pet template is 1-1, so the zone
+  decides. 30 wild pet templates were 5-5 or 1-25 instead:
+  - 5-5: Fawn 61165 (every Elwynn and Teldrassil fawn was level 5, zone 1-2), Snow Cub 61689,
+    Infected Fawn 61827, Shimmershell Snail 62246.
+  - 1-25 (could roll from the zone minimum up to 25): Tiny Harvester 61160, Little Black Ram 61459,
+    Tiny Twister 61703, Blighthawk 61826, Ruby Sapling 62020, Ravager Hatchling 62051, Creepy Crawly
+    62116, Venomspitter Hatchling 62191, Silithid Hatchling 62258, Minfernal 62317, Diemetradon
+    Hatchling 62375, Nether Faerie Dragon 62395, Qiraji Guardling 62526, Flayer Youngling 62555,
+    Fjord Worg Pup 62669, Stunted Shardhorn 62816, Imperial Eagle Chick 62819, Wildhammer Gryphon
+    Hatchling 62900, Stowaway Rat 62921, Shore Crawler 63097, Gilnean Raven 63098, Harpy Youngling
+    68804, Arcane Eye 68819, Infinite Whelpling 68820, Anodized Robo Cub 68839, Cogblade Raptor 68841.
+- **Changed:** new `sql/fixes/world/2026_11_04_50_wild_battle_pet_zone_levels.sql` sets `minlevel`
+  and `maxlevel` to 1 for those 30 `battlepet_info` rows, so they follow their zone like every other
+  wild pet. The old values are listed in the file's header. Tamer team pets and companion entries
+  are not touched. No core change.
+- **Status:** run on Four's live DB and confirmed in game by Four on 2026-11-04.
+
+#### To pick it up
+SQL only, then a restart (levels are rolled when a pet spawns).
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_04_50_wild_battle_pet_zone_levels.sql | mysql -u root -p bfa_world
+```
+The last line prints `30 wild pet templates set to 1-1`. Then restart `worldserver`.
+
+## 2026-11-04 (World fixes)
+
+### World: Battlescar fliers fight each other in mid-air; Fort Triumph laborers slide and get blasted
+
+- **Found** (Four, after SQL 31): some wind riders and gryphons fight each other in mid-air without
+  riders on their backs. At Fort Triumph, a sleeping laborer slides around on the scaffolding and the
+  other laborers keep getting thrown around next to the effect bunny.
+- **Cause:**
+  - Desolation Wind Rider 37974 (faction 29) and Triumph War Gryphon 37978 (faction 894) are hostile
+    to each other, so they attack where their new flight routes cross. The riders die in those
+    fights, and the mount flies on empty until it respawns.
+  - The 12 Peasant Laborers 39129 and 3 Mizzy's Apprentices 39124 at Fort Triumph, and the 11
+    Desolation Guards 38070, wander 3 yards (MovementType 1). MaNGOS Three has all of them standing
+    still. The laborer script naps (actionlist 3912900: Sleep 6431 for 30 s), so a sleeping laborer
+    slides along the boards.
+  - The blasting is bunny 35845's Legion knockback 206750 (its id 3 timer row). The laborer script
+    only expects knockback 177984. See SQL 37.
+- **Changed:** `sql/fixes/world/2026_11_04_32_battlescar_fort_workers_and_air_fights.sql`:
+  - `unit_flags |= 0x200` (IMMUNE_TO_NPC) on 37971, 37974, 37977 and 37978, so the mounts and their
+    riders ignore other NPCs. Players can still fight them.
+  - MovementType 0, spawndist 0 on the 26 spawns listed in the file.
+- **Status:** confirmed in game by Four (2026-11-04): fliers keep their riders, no more sliding.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_04_32_battlescar_fort_workers_and_air_fights.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: Battlescar fliers hang still in the sky and the patrols stand still
+
+- **Found** while looking into the Battlescar with Four (see
+  `/mnt/project-files/world-fixes/battlescar.md` in the project for the whole picture).
+- **Cause:** our Battlescar spawns are the same spawns as the MaNGOS Three Cataclysm DB (same guids,
+  same positions), but our dump lost the waypoint paths of 27 of them, which were left at
+  MovementType 0. The wind riders' and gryphons' riders were spawned on their own in mid-air
+  (z 110-145) with random movement instead of riding their mounts.
+- **Changed:** `sql/fixes/world/2026_11_04_31_battlescar_fliers_and_patrols.sql`:
+  - New paths 485500001-485500027 (from MaNGOS Three `creature_movement`), with creature_addon
+    `path_id` and MovementType 2:
+    - 6 Desolation Wind Riders 37974 (269007, 269009, 269011, 269013, 269015, 269017) and
+      6 Triumph War Gryphons 37978 (269019, 270158, 270332, 270334, 270343, 270347): flight
+      routes of 33-54 points, run speed.
+    - 3 Desolation Raiders 37922 (269585, 270589, 270667), 2 Triumph Vanguards 37923 (269077,
+      270905), 5 Sapper Specialists 37925 (270711, 270780, 270827, 270850, 270851) and 5 Barrens
+      Operatives 37924 (269147, 269148, 269149, 270197, 270336): walking patrols of 4-8 points.
+  - `vehicle_template_accessory`: Desolation Sky Render 37971 rides seat 0 of the Wind Rider
+    37974, and Wildhammer Mercenary 37977 rides seat 0 of the War Gryphon 37978. The gryphon's
+    script already expects a rider ("Passenger Boarded").
+  - The 12 loose mid-air riders are deleted (37971: 269008, 269010, 269012, 269014, 269016,
+    269018; 37977: 269020, 270159, 270333, 270335, 270344, 270348). The stray Mercenary 200478
+    in the Eastern Kingdoms is left alone.
+- **Not fixed (no data):** the flag capture (events 23033/23034 do nothing, here and in MaNGOS
+  Three), the gryphon Hook Shot (no caster), and the sapper suicide runs into Fort Triumph (their
+  trigger spawns 92564-92569 and paths 3792500-3792505 are missing).
+- **Status:** patrols confirmed in game by Four (2026-11-04). Fliers flew with riders, but mid-air fights killed riders; fixed in SQL 32 (confirmed).
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_04_31_battlescar_fliers_and_patrols.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: Claim the Battlescar never completes ("Scout out the flag marker")
+
+- **Found** while looking into the Battlescar with Four (Southern Barrens, between Fort Triumph and
+  Desolation Hold).
+- **Cause:** Claim the Battlescar (Alliance 25081, objective 259939) and Claim the Battle Scar
+  (Horde 24618, objective 266351) have an area objective (type 10, ObjectID -1) next to "kill 10".
+  Nothing completes it: there is no `areatrigger_involvedrelation` row and no script. The core only
+  sets a type-10 objective from `Player::AreaExploredOrEventHappens`, so both quests stay
+  incomplete forever. (The 4.3.4 quest in the MaNGOS Three DB was kill-only; the scouting step came
+  later and was never wired up.)
+- **Changed:** `sql/fixes/world/2026_11_04_30_claim_the_battlescar_scout_flag.sql`: a per-spawn
+  script on the invisible bunny that stands on the flagpole (35845, guid 269123, -3244.4 -2002.5):
+  SMART_EVENT_OOC_LOS (non-hostile, 15 yards, 1 s cooldown) -> SMART_ACTION_CALL_AREAEXPLOREDOREVENTHAPPENS
+  for 25081 (id 0) and 24618 (id 1), target the player. A player without the quest gets nothing.
+  Because a per-spawn script replaces the entry script, this one bunny also stops running 35845's
+  Legion timer rows (the zap at the closest player).
+- **Status:** confirmed in game by Four (2026-11-04).
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_04_30_claim_the_battlescar_scout_flag.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+## 2026-11-03 (World fixes, second batch)
+
+### World: invisible effect bunny zaps nearby players and keeps them in combat
+
+- **Found** (reported by Four, Southern Barrens near the Sapper Specialists): a lightning-like
+  effect hits you and you stay in combat with "Dave's Industrial Light and Magic Bunny
+  (Small)(Sessile)" (35845, spawn 269123).
+- **Cause:** 35845 is a generic invisible effect bunny with 144 spawns (Broken Isles 33, Draenor 44,
+  Mount Hyjal 17, Southern Barrens 9 and more). Its entry script mixes rows from unrelated uses, and
+  three Legion rows run on a timer (event 60, in and out of combat) on every spawn: id 3 casts
+  206750 (damage + knockback around the bunny) every 3-8 s, id 5 sends data to Azuregos 104902 (a
+  Broken Isles NPC), id 8 casts 199886 on the closest player within 100 yards every 2-3 s.
+- **Changed:** `sql/fixes/world/2026_11_03_37_bunny_35845_legion_rows_map_only.sql`: SMART_EVENT
+  conditions (source 22, groups 4, 6 and 9, CONDITION_MAPID 22 on the bunny itself) so ids 3, 5 and
+  8 only run on map 1220 (Broken Isles). The data-triggered rows are untouched.
+- **Status:** back on (2026-11-04). The Battlescar investigation showed the same rows misfiring at
+  Fort Triumph: bunny 269877 zaps players and knocks the scaffolding laborers around with 206750.
+  Neither the Battlescar nor Fort Triumph scripts use these spells. Confirmed in game by Four
+  (2026-11-04): lightning and explosions gone.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_37_bunny_35845_legion_rows_map_only.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: Stonetalon oil pumps wander and the Krom'gar balloon sinks into the lake
+
+- **Found** (reported by Four, Mirkfallon Lake): the Oil Pumps walk around, and the Krom'gar Hot Air
+  Balloon sits half under water.
+- **Cause:** Oil Pump 41475 (11 spawns, the targets of Schemin' That Sabotage 25878) had
+  MovementType 1 with spawndist 3. The balloon 41418 (guid 272501, spawned at z 148.2) has
+  InhabitType 3 (ground + water), so it falls into the lake. The Pandaria DB has the pumps still
+  with InhabitType 7 and the balloon at InhabitType 4 (air). The pumps' size is their normal model
+  (scale 1 in both DBs).
+- **Changed:** `sql/fixes/world/2026_11_03_36_stonetalon_oil_pumps_balloon.sql`: 41475 spawns
+  MovementType 1 -> 0 and spawndist 3 -> 0, template InhabitType 3 -> 7; 41418 template InhabitType
+  3 -> 4.
+- **Not changed:** the big fire Four saw at 1497.8, 1006.2: no creature or gameobject is spawned
+  within 50 yards in the DB, so it is part of the client's map art (inferred).
+- **Status:** confirmed in game by Four on 2026-11-04.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_36_stonetalon_oil_pumps_balloon.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: Sapper Specialist never uses Sapper Charge
+
+- **Found** (reported by Four while testing the per-spawn script entry below): the Sapper Specialist
+  (37925, Southern Barrens) throws dynamite but never blows himself up at 10% HP.
+- **Cause:** Sapper Charge (82867) hits a spot at an enemy (implicit target 53,
+  TARGET_DEST_TARGET_ENEMY) and then kills the caster. The SmartAI rows cast it on target_type 1
+  (self), which is not an enemy, so every cast failed. The entry also mixed two script versions:
+  ids 0 and 1 existed twice, so the aggro link to id 1 could land on the wrong row.
+- **Changed:** `sql/fixes/world/2026_11_03_35_sapper_specialist_sapper_charge.sql`: old-version rows
+  deleted (id 0 'Cast Throw' timer, id 1 'Cast Sapper Charge at 10% HP'); id 16 'Cast Sapper Charge
+  at 10% HP' target_type 1 -> 2 (victim). Row 29 (the scripted run that blows up next to the Triumph
+  defenders) is unchanged. Spawns 270777, 270847 and 270852 get a fresh copy of the entry script
+  (from `2026_11_03_34`).
+- **Status:** confirmed in game by Four on 2026-11-04.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_35_sapper_specialist_sapper_charge.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: zone entry quests hidden unless you picked up a breadcrumb (67 quests)
+
+- **Found** (Four asked for a sweep after Rerouted!, 2026-11-03): the same lock as Officer Jankie's
+  Rerouted! (14384) exists in many zones.
+- **Cause:** the core turns `quest_template_addon.PrevQuestID` and every quest whose `NextQuestID`
+  points at a quest into hard requirements (`ObjectMgr::LoadQuests` -> `prevQuests`;
+  `Player::SatisfyQuestPreviousQuest` needs one of them rewarded). For 67 zone entry quests every
+  such requirement is a breadcrumb: a Hero's Call / Warchief's Command board quest, or a talk-only
+  quest (no objectives) that starts outside the zone. Arriving without one hid the first quest.
+  Upstream already fixed Westfall (26209) this way; Desolace (14384, 14184) is in
+  `2026_11_03_30`. Quests where one of the requirements is a real or in-zone step (28 found, for
+  example In Defense of Far Watch 871 after Conscript of the Horde 840) are left alone.
+- **Changed:** `sql/fixes/world/2026_11_03_33_zone_entry_quests_no_breadcrumb.sql`: on 65 quests
+  `PrevQuestID` -> 0 where it named one of its breadcrumbs, and `NextQuestID` -> 0 on 115
+  breadcrumbs that pointed at them. Each quest and its breadcrumbs are listed in the file. Examples:
+  The Forsaken 9329 (Ghostlands), Alien Predators 9634 (Bloodmyst), Hellscream's Vigil 11585 and
+  Enlistment Day 11672 (Borean Tundra), The Last Wave of Survivors 13518 (Darkshore), Signs of
+  Change 25210/25447 (Feralas), The Lost Pilot 26854 (Loch Modan), The Maelstrom 27203 (Deepholm),
+  The Road to Kun-Lai 31254/31255. The breadcrumbs stay available and still turn in at the same NPC.
+- **Status:** confirmed in game by Four on 2026-11-03 (The Lost Pilot, The Last Wave of Survivors,
+  The Stolen Keg, Northfold Manor and Signs of Change all offered without a breadcrumb).
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_33_zone_entry_quests_no_breadcrumb.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: 40 spawns with a cosmetic per-spawn script never ran their own script
+
+- **Found:** follow-up to the Fel Hands rows (`2026_10_31_05`). The same importer left a second kind
+  of one-row per-spawn script (comment 'OOC - CS') on 40 spawns, mostly in Stonetalon Mountains,
+  Southern Barrens, Silithus, Dustwallow Marsh and Orgrimmar.
+- **Cause:** each casts a cosmetic spell out of combat (dummy auras 39550, 54219, 111541, 146130,
+  180695, 183940, 185340, 217193, or dummy-effect 217160 aimed at a nearby bunny). These may be real
+  retail visuals, but a per-spawn script replaces the creature's own script, so these spawns never
+  cast in combat, fled or said their lines, and Tortolla (41504, guid 293563) in Mount Hyjal never
+  ran 'Teleport on Quest Add'.
+- **Changed:** `sql/fixes/world/2026_11_03_34_cosmetic_spawn_scripts_keep_entry_script.sql`: each
+  spawn's entry script is copied under its per-spawn script with `id` and `link` + 1000, next to the
+  cosmetic row (id 0), so both run. It copies from the live table when applied; re-running replaces
+  the copies. Spawns and entries are listed in the file (for example Lumbering Oaf 40906, Sapper
+  Specialist 37925, Razormane Pathfinder 37560, Orgrimmar Grunt 3296).
+- **Status:** confirmed in game by Four on 2026-11-03: the Sapper Specialist now throws dynamite.
+  Its Sapper Charge was broken in the entry script itself, see the next entry.
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+```
+
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_34_cosmetic_spawn_scripts_keep_entry_script.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+## 2026-11-03
+
+Merged to `main` with PR #37 on 2026-11-03.
+
+### World: Nijel's Point is packed with Defenders (some on fire) and extra Merchants
+
+- **Found** (reported by Four): Nijel's Point in Desolace is crowded with Nijel's Point Defenders,
+  several of them burning, and many copies of Nijel's Point Merchant.
+- **Cause:** Nijel's Point Defender (35506, 119 spawns) and Nijel's Point Merchant (35510, 10
+  spawns) are the targets of the Horde quest Rider on the Storm (14198: kill 40 Defenders and burn
+  15 Merchants while riding the firestorm). Like the Astranaar siege, they have no phase, so every
+  player sees the raid crowd in the town. 11 Defenders also keep the sniffed fire visual (aura
+  42726). The two entries were also listed as quest givers for 14198, which really starts at the
+  Ancient Vortex Runestone (gameobject 195445).
+- **Changed:** `sql/fixes/world/2026_11_03_32_nijels_point_raid_phase.sql`:
+  - All 35506 and 35510 spawns: `PhaseId` 0 -> 303 (a normal Phase.db2 phase used nowhere else).
+  - `phase_area` (608, 303) plus a condition (type 26, quest state 47, quest 14198, mask 10):
+    phase 303 shows only while Rider on the Storm is in progress or complete.
+  - `creature_addon.auras` '42726' -> '' on guids 309531, 309912, 310167, 310400, 310426, 310485,
+    310542, 310635, 310659, 310677 and 310741.
+  - `creature_queststarter` rows (35506, 14198) and (35510, 14198) deleted.
+  - The town's own guards (8151 x18, 51839 x8), its named NPCs and the vortex bunnies are untouched.
+- **Status:** confirmed in game by Four on 2026-11-03 (Alliance view: raid crowd gone).
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_32_nijels_point_raid_phase.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: Rerouted! (Desolace) gives no mount to ride
+
+- **Found** (reported by Four): after taking Rerouted! from Officer Jankie, there is no mount.
+- **Cause:** nothing is scripted. Jankie (36410), Jankie's Mount (36416/36419), Furien (35286) and
+  Furien's Mount (35287) have no SmartAI rows, spellclick or waypoint path in this DB (or the Pandaria
+  one), and none of the mounts is set up as a vehicle. The only retail trace is spell 68693, which
+  summons 36419 next to Jankie (`spell_target_position` 171.4, 1793.5, 86.2).
+- **Changed:** `sql/fixes/world/2026_11_03_31_desolace_entry_flights.sql`, a stand-in for the flight:
+  - Jankie 36410 SAI id 0: on accepting 14384, teleport the player to Corporal Melkins at Nijel's
+    Point (map 1, 129.0, 1235.5, 163.6).
+  - Furien 35286 SAI id 0 (Horde): on accepting My Time Has Passed (14184), teleport to Cerelia at
+    Furien's Post (map 1, -427.6, 2229.9, 89.5).
+- **Status:** Alliance side (Jankie teleport) confirmed in game by Four on 2026-11-03. Furien's side
+  not tested (Horde only).
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_31_desolace_entry_flights.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
+
+### World: no quest from Officer Jankie (or Furien) at the Desolace entrance
+
+- **Found** (reported by Four): Officer Jankie (36410) at Tethris Aran shows no quest marker.
+- **Cause:** her quest Rerouted! (14384), which flies you to Nijel's Point and starts Alliance
+  Desolace, could only be taken after a breadcrumb. It had `quest_template_addon.PrevQuestID` = 25938
+  (Help for Desolace), and the breadcrumbs Help for Desolace (25938) and Hero's Call: Desolace!
+  (28531) have `NextQuestID` = 14384, which the core also turns into a requirement on 14384
+  (`ObjectMgr::LoadQuests` adds them to its `prevQuests`). Arriving without a breadcrumb gave nothing.
+  The Horde side has the same lock: Furien's My Time Has Passed (14184) had `PrevQuestID` 28548 and
+  Warchief's Command: Desolace! (28548) has `NextQuestID` 14184.
+- **Changed:** `sql/fixes/world/2026_11_03_30_desolace_entry_quests_no_breadcrumb.sql`:
+  `PrevQuestID` 25938 -> 0 on 14384 and 28548 -> 0 on 14184; `NextQuestID` 14384 -> 0 on 25938 and
+  28531, 14184 -> 0 on 28548. The breadcrumbs still turn in at Jankie and Furien.
+- **Status:** confirmed in game by Four on 2026-11-03 (Rerouted! offered by Jankie without a
+  breadcrumb). Furien's side not tested (Horde only).
+- **Pick up:** SQL only, no rebuild:
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-tt7jn2
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_03_30_desolace_entry_quests_no_breadcrumb.sql | mysql -u root -p bfa_world
+```
+
+Then restart worldserver.
 
 ## 2026-11-03 (Holidays)
 

@@ -1,0 +1,825 @@
+diff --git a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
+index 73dcec1..e06fe01 100644
+--- a/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
++++ b/src/server/scripts/DarkmoonIsland/DarkmoonIsland.cpp
+@@ -1446,6 +1446,8 @@ public:
+     }
+ };
+ 
++void AddSC_darkmoon_race();
++
+ void AddSC_darkmoon_island()
+ {
+     new playerscript_darkmoon_carousel();
+@@ -1468,4 +1470,811 @@ void AddSC_darkmoon_island()
+     new spell_put_up_darkmoon_banner();
+     new spell_darkmoon_deathmatch();
+     new spell_shoot_gallery_shoot();
++    AddSC_darkmoon_race(); // zrbfacore
+ };
++
++/*
++ * zrbfacore: Darkmoon Island strider races.
++ *
++ * Retail runs the races on server-side spells and area triggers that are not
++ * in the client data, so this is a rebuild from what the client does have:
++ * the quests (Malle Earnhard 74056: 37819, 37910, 33756; Patti Earnhard 90473:
++ * 37868, 37911), their kill-credit objectives, the Racing Strider mount
++ * (179750), the course bunnies on Darkmoon Island and the achievement spells
++ * (criteria "cast spell" 179420-179617).
++ *
++ * Run through the start banner with the quest and a Darkmoon Game Token: the
++ * token is used, you get the Racing Strider and the course bunnies become
++ * visible to you (they carry Invis to Non-Racers 179303, you get On a Trial
++ * 149669). Touch the posts in order and come back through the banner. The
++ * bell tolls every RACE_TOLL_MS; your toll count decides the achievements.
++ * Checkpoint banners give a speed boost and water walking, dash, jump,
++ * rocket and blink pads do what they say, the electrified tripwires between
++ * stakes take your mount speed away for a moment. The Racing Strider's
++ * buttons (Jump To Banner, Lasso Powerup, Jump To Racer) are
++ * spell_darkmoon_racer_button.
++ */
++
++#include "ObjectMgr.h"
++#include "QuestDef.h"
++#include "Chat.h"
++#include "TemporarySummon.h"
++#include <unordered_map>
++#include <unordered_set>
++
++namespace DarkmoonRace
++{
++    enum Data : uint32
++    {
++        MAP_DARKMOON_ISLAND         = 974,
++
++        QUEST_WELCOME               = 37819,
++        QUEST_REAL_RACE             = 37910,
++        QUEST_KEEP_RACING           = 33756, // Let's Keep Racing! (Malle, repeatable Real Race course)
++        QUEST_MORE_BIG_RACING       = 37868,
++        QUEST_REAL_BIG_RACE         = 37911,
++
++        NPC_CREDIT_START            = 74536, // also the start banner bunny
++        NPC_CREDIT_BLUE             = 73984,
++        NPC_CREDIT_GREEN            = 73988,
++        NPC_CREDIT_RED              = 74030,
++        NPC_CREDIT_PURPLE           = 74031,
++        NPC_CREDIT_END              = 74004,
++        NPC_CREDIT_PASSED           = 74299,
++
++        NPC_CHECKPOINT              = 75718,
++        NPC_TRIPWIRE_STAKE          = 75044,
++        NPC_POWERUP_DASH            = 74153,
++        NPC_POWERUP_JUMP            = 74157,
++        NPC_POWERUP_ROCKET          = 74678,
++        NPC_POWERUP_BLINK           = 74800,
++        NPC_POWERUP_LOOT            = 74872,
++        NPC_POWERUP_ROTATING        = 75063,
++        NPC_DARKMOON_STRIDER        = 68491,
++
++        ITEM_DARKMOON_GAME_TOKEN    = 71083,
++
++        SPELL_RACING_STRIDER        = 179750,
++        SPELL_ON_A_TRIAL            = 149669, // sees invisibility type 23
++        SPELL_SOUND_BELL            = 149648,
++        SPELL_SPEED_BOOST           = 180927, // +100% speed, mounted too
++        SPELL_WATER_WALKING         = 546,
++        SPELL_ELECTRIFIED_TRIPWIRE  = 179807, // back to normal run speed
++
++        SPELL_STEP_VISUAL_BLUE      = 149390,
++        SPELL_STEP_VISUAL_RED       = 149423,
++        SPELL_STEP_VISUAL_GREEN     = 149429,
++        SPELL_STEP_VISUAL_PURPLE    = 149430,
++
++        DISPLAY_POST_POINTER        = 36415,
++
++        // Achievement spells (criteria type 29). Real Race, Racing Strider.
++        SPELL_ACH_RACE_ENTHUSIAST   = 179420, // 9755, first race
++        SPELL_ACH_REAL_25           = 179421, // 9756 Novice
++        SPELL_ACH_REAL_20           = 179422, // 9759 Jockey
++        SPELL_ACH_REAL_18           = 179423,
++        SPELL_ACH_REAL_15           = 179424, // 9760 Leadfoot
++        SPELL_ACH_REAL_14           = 179425,
++        SPELL_ACH_REAL_11           = 179426, // 9761 Roadhog
++        // The Real Big Race, Racing Strider (limits from the achievement texts)
++        SPELL_ACH_BIG_40            = 179596, // 9793 Big Race Enthusiast
++        SPELL_ACH_BIG_35            = 179593, // 9794 Novice
++        SPELL_ACH_BIG_30            = 179594, // 9795 Jockey
++        SPELL_ACH_BIG_25            = 179597, // 9797 Leadfoot
++        SPELL_ACH_BIG_20            = 179598, // 9799 Roadhog
++    };
++
++    uint32 const RACE_TOLL_MS           = 5 * IN_MILLISECONDS; // one toll of the bell
++    uint32 const RACE_TICK_MS           = 200;
++    uint32 const RACE_MAX_MS            = 10 * MINUTE * IN_MILLISECONDS;
++    float  const START_RADIUS           = 7.0f;
++    float  const POST_RADIUS            = 10.0f;
++    float  const CHECKPOINT_RADIUS      = 6.0f;
++    float  const POWERUP_RADIUS         = 3.5f;
++    uint32 const POWERUP_RESPAWN_S      = 20;
++    float  const TRIPWIRE_SPAN          = 14.0f; // a stake is wired to its nearest stake this close, if that stake picks it too
++    uint32 const SPELL_TRIPWIRE_BEAM    = 33628; // Lightning Tether: only its channel visual is shown, never cast
++    float  const TRIPWIRE_WIDTH         = 1.3f;
++
++    struct Post
++    {
++        uint32 Credit;
++        float X, Y, Z;  // Z 0 = use the ground
++        uint32 Visual;
++        char const* Name;
++    };
++
++    // The Real Race posts: the Blue/Green/Red Racing Post spawns (74362, 74365, 74368)
++    // on the northern course.
++    Post const RealRacePosts[] =
++    {
++        { NPC_CREDIT_BLUE,   -4151.65f, 6779.30f, 13.94f, SPELL_STEP_VISUAL_BLUE,  "Blue Post"  },
++        { NPC_CREDIT_GREEN,  -3894.34f, 6719.16f,  2.71f, SPELL_STEP_VISUAL_GREEN, "Green Post" },
++        { NPC_CREDIT_RED,    -3943.51f, 6459.53f, 20.84f, SPELL_STEP_VISUAL_RED,   "Red Post"   },
++    };
++
++    // The Big Race posts: the Purple/Green/Red Racing Post spawns (74369, 74365, 74368)
++    // on the southern and eastern course. The checkpoint banners' arrows follow this order.
++    Post const BigRacePosts[] =
++    {
++        { NPC_CREDIT_PURPLE, -4215.08f, 5960.93f, 108.38f, SPELL_STEP_VISUAL_PURPLE, "Purple Post" },
++        { NPC_CREDIT_GREEN,  -3572.89f, 6066.56f,   5.92f, SPELL_STEP_VISUAL_GREEN,  "Green Post"  },
++        { NPC_CREDIT_RED,    -3546.81f, 6325.67f, 120.75f, SPELL_STEP_VISUAL_RED,    "Red Post"    },
++    };
++
++    Position const RealRaceBanner = { -4417.79f, 6383.43f, 14.00f, 3.14f };
++    Position const BigRaceBanner  = { -4416.64f, 6256.33f, 13.98f, 4.72f };
++
++    struct TollAchievement { uint32 MaxTolls; uint32 Spell; };
++
++    TollAchievement const RealRaceAchievements[] =
++    {
++        { 25, SPELL_ACH_REAL_25 }, { 20, SPELL_ACH_REAL_20 }, { 18, SPELL_ACH_REAL_18 },
++        { 15, SPELL_ACH_REAL_15 }, { 14, SPELL_ACH_REAL_14 }, { 11, SPELL_ACH_REAL_11 },
++    };
++
++    TollAchievement const BigRaceAchievements[] =
++    {
++        { 40, SPELL_ACH_BIG_40 }, { 35, SPELL_ACH_BIG_35 }, { 30, SPELL_ACH_BIG_30 },
++        { 25, SPELL_ACH_BIG_25 }, { 20, SPELL_ACH_BIG_20 },
++    };
++
++    struct Course
++    {
++        uint32 QuestId;
++        Position const* Banner;
++        Post const* Posts;
++        uint8 PostCount;
++        TollAchievement const* Achievements;
++        uint8 AchievementCount;
++        bool Enthusiast;
++    };
++
++    Course const Courses[] =
++    {
++        { QUEST_WELCOME,         &RealRaceBanner, RealRacePosts, 1, nullptr, 0, true },
++        { QUEST_REAL_RACE,       &RealRaceBanner, RealRacePosts, 3, RealRaceAchievements, uint8(std::size(RealRaceAchievements)), true },
++        { QUEST_KEEP_RACING,     &RealRaceBanner, RealRacePosts, 3, nullptr, 0, false },
++        { QUEST_MORE_BIG_RACING, &BigRaceBanner,  BigRacePosts,  3, nullptr, 0, false },
++        { QUEST_REAL_BIG_RACE,   &BigRaceBanner,  BigRacePosts,  3, BigRaceAchievements, uint8(std::size(BigRaceAchievements)), false },
++    };
++
++    struct Racer
++    {
++        Course const* Track = nullptr;
++        uint8 Leg = 0;              // index of the next post; PostCount = back to the banner
++        uint32 Elapsed = 0;
++        uint32 Tolls = 0;
++        uint32 TollTimer = 0;
++        uint32 TickTimer = 0;
++        uint32 ZapImmune = 0;
++        ObjectGuid Marker;
++        std::unordered_set<ObjectGuid::LowType> Checkpoints;
++        std::unordered_map<ObjectGuid::LowType, uint32> PowerupCooldowns;
++    };
++
++    std::unordered_map<ObjectGuid, Racer> Racers;
++    std::unordered_map<ObjectGuid, uint32> TokenWarnings;
++    std::unordered_map<ObjectGuid, uint32> IdleTimers;
++    // Tripwire stake spawn id -> the stake it is wired to (both directions), filled by the stakes' AI.
++    std::unordered_map<ObjectGuid::LowType, ObjectGuid::LowType> TripwirePartners;
++
++    Creature* NearestStake(Creature* stake)
++    {
++        std::list<Creature*> stakes;
++        stake->GetCreatureListWithEntryInGrid(stakes, NPC_TRIPWIRE_STAKE, TRIPWIRE_SPAN);
++        Creature* nearest = nullptr;
++        for (Creature* other : stakes)
++            if (other != stake && (!nearest || stake->GetExactDist2d(other) < stake->GetExactDist2d(nearest)))
++                nearest = other;
++        return nearest;
++    }
++
++    float Dist2d(Position const& a, float x, float y)
++    {
++        return std::sqrt((a.GetPositionX() - x) * (a.GetPositionX() - x) + (a.GetPositionY() - y) * (a.GetPositionY() - y));
++    }
++
++    void Notify(Player* player, std::string const& text)
++    {
++        ChatHandler(player->GetSession()).SendSysMessage(text.c_str());
++    }
++
++    QuestObjective const* FindObjective(Quest const* quest, uint32 creditEntry)
++    {
++        for (QuestObjective const& objective : quest->GetObjectives())
++            if (objective.Type == QUEST_OBJECTIVE_MONSTER && uint32(objective.ObjectID) == creditEntry)
++                return &objective;
++        return nullptr;
++    }
++
++    // Course the player can start now: race quest in the log, start not credited yet.
++    Course const* GetStartableCourse(Player* player)
++    {
++        for (Course const& course : Courses)
++        {
++            if (player->GetQuestStatus(course.QuestId) != QUEST_STATUS_INCOMPLETE)
++                continue;
++
++            Quest const* quest = sObjectMgr->GetQuestTemplate(course.QuestId);
++            if (!quest)
++                continue;
++
++            QuestObjective const* start = FindObjective(quest, NPC_CREDIT_START);
++            if (start && player->IsQuestObjectiveComplete(*start))
++                continue;
++
++            return &course;
++        }
++        return nullptr;
++    }
++
++    void ResetObjectives(Player* player, uint32 questId)
++    {
++        Quest const* quest = sObjectMgr->GetQuestTemplate(questId);
++        if (!quest || player->GetQuestStatus(questId) != QUEST_STATUS_INCOMPLETE)
++            return;
++
++        for (QuestObjective const& objective : quest->GetObjectives())
++            player->SetQuestObjectiveData(objective, 0);
++
++        player->SendQuestUpdate(questId);
++    }
++
++    void DespawnMarker(Player* player, Racer& racer)
++    {
++        if (!racer.Marker.IsEmpty())
++            if (Creature* marker = ObjectAccessor::GetCreature(*player, racer.Marker))
++                marker->DespawnOrUnsummon();
++        racer.Marker.Clear();
++    }
++
++    void SpawnMarker(Player* player, Racer& racer)
++    {
++        DespawnMarker(player, racer);
++        if (racer.Leg >= racer.Track->PostCount)
++            return;
++
++        Post const& post = racer.Track->Posts[racer.Leg];
++        float z = post.Z;
++        if (z == 0.0f)
++            z = player->GetMap()->GetWaterOrGroundLevel(player->GetPhaseShift(), post.X, post.Y, 200.0f);
++
++        // The pointer faces the leg after this post (the next post, or the start banner).
++        float nextX, nextY;
++        if (racer.Leg + 1 < racer.Track->PostCount)
++        {
++            nextX = racer.Track->Posts[racer.Leg + 1].X;
++            nextY = racer.Track->Posts[racer.Leg + 1].Y;
++        }
++        else
++        {
++            nextX = racer.Track->Banner->GetPositionX();
++            nextY = racer.Track->Banner->GetPositionY();
++        }
++        float facing = Position::NormalizeOrientation(std::atan2(nextY - post.Y, nextX - post.X));
++
++        if (TempSummon* marker = player->SummonCreature(post.Credit, post.X, post.Y, z, facing, TEMPSUMMON_TIMED_DESPAWN, RACE_MAX_MS, true))
++        {
++            marker->SetDisplayId(DISPLAY_POST_POINTER);
++            marker->SetUnitFlags(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC));
++            marker->SetReactState(REACT_PASSIVE);
++            marker->CastSpell(marker, post.Visual, true);
++            racer.Marker = marker->GetGUID();
++        }
++    }
++
++    void RemoveRaceAuras(Player* player)
++    {
++        player->RemoveAurasDueToSpell(SPELL_RACING_STRIDER);
++        player->RemoveAurasDueToSpell(SPELL_ON_A_TRIAL);
++        player->RemoveAurasDueToSpell(SPELL_SPEED_BOOST);
++        player->RemoveAurasDueToSpell(SPELL_ELECTRIFIED_TRIPWIRE);
++        if (player->IsMounted() && !player->HasAuraType(SPELL_AURA_MOUNTED))
++            player->Dismount();
++    }
++
++    void EndRace(Player* player, bool canceled, char const* reason = nullptr)
++    {
++        auto itr = Racers.find(player->GetGUID());
++        if (itr == Racers.end())
++            return;
++
++        Racer& racer = itr->second;
++        DespawnMarker(player, racer);
++        RemoveRaceAuras(player);
++
++        if (canceled)
++        {
++            ResetObjectives(player, racer.Track->QuestId);
++            Notify(player, std::string("Race canceled") + (reason ? std::string(": ") + reason : std::string()) +
++                ". Run through the start banner again with a Darkmoon Game Token to retry.");
++        }
++
++        Racers.erase(itr);
++    }
++
++    void StartRace(Player* player, Course const* course)
++    {
++        if (!player->HasItemCount(ITEM_DARKMOON_GAME_TOKEN))
++        {
++            uint32& warned = TokenWarnings[player->GetGUID()];
++            if (!warned)
++            {
++                Notify(player, "You need a Darkmoon Game Token to start the race.");
++                warned = 10 * IN_MILLISECONDS;
++            }
++            return;
++        }
++
++        player->DestroyItemCount(ITEM_DARKMOON_GAME_TOKEN, 1, true);
++
++        player->RemoveAurasByType(SPELL_AURA_MOUNTED);
++        player->RemoveAurasByType(SPELL_AURA_MOD_SHAPESHIFT);
++        player->CastSpell(player, SPELL_RACING_STRIDER, true);
++        if (Aura* aura = player->GetAura(SPELL_RACING_STRIDER))
++        {
++            aura->SetMaxDuration(-1);
++            aura->SetDuration(-1);
++        }
++        if (!player->IsMounted())
++            if (CreatureTemplate const* strider = sObjectMgr->GetCreatureTemplate(NPC_DARKMOON_STRIDER))
++                player->Mount(ObjectMgr::ChooseDisplayId(strider)->CreatureDisplayID);
++
++        if (Aura* aura = player->AddAura(SPELL_ON_A_TRIAL, player))
++        {
++            aura->SetMaxDuration(-1);
++            aura->SetDuration(-1);
++        }
++
++        Racer& racer = Racers[player->GetGUID()];
++        racer = Racer();
++        racer.Track = course;
++        player->KilledMonsterCredit(NPC_CREDIT_START);
++        player->CastSpell(player, SPELL_SOUND_BELL, true);
++        SpawnMarker(player, racer);
++
++        Notify(player, std::string("The race is on! Head for the ") + course->Posts[0].Name +
++            ". The bell tolls every " + std::to_string(RACE_TOLL_MS / IN_MILLISECONDS) + " seconds.");
++    }
++
++    void FinishRace(Player* player, Racer& racer)
++    {
++        Course const* course = racer.Track;
++        uint32 tolls = racer.Tolls;
++
++        player->KilledMonsterCredit(NPC_CREDIT_END);
++        player->KilledMonsterCredit(NPC_CREDIT_PASSED);
++
++        if (course->Enthusiast)
++            player->CastSpell(player, SPELL_ACH_RACE_ENTHUSIAST, true);
++
++        for (uint8 i = 0; i < course->AchievementCount; ++i)
++            if (tolls <= course->Achievements[i].MaxTolls)
++                player->CastSpell(player, course->Achievements[i].Spell, true);
++
++        Notify(player, "Race complete in " + std::to_string(tolls) + " tolls (" +
++            std::to_string(racer.Elapsed / IN_MILLISECONDS) + " seconds). Turn in the quest at the race official.");
++
++        EndRace(player, false);
++    }
++
++    void BoostAura(Player* player, uint32 spellId, int32 durationMs)
++    {
++        if (Aura* aura = player->AddAura(spellId, player))
++        {
++            aura->SetMaxDuration(durationMs);
++            aura->SetDuration(durationMs);
++        }
++    }
++
++    float DistToSegment2d(Position const& p, Creature const* a, Creature const* b)
++    {
++        float ax = a->GetPositionX(), ay = a->GetPositionY();
++        float bx = b->GetPositionX(), by = b->GetPositionY();
++        float px = p.GetPositionX(), py = p.GetPositionY();
++        float dx = bx - ax, dy = by - ay;
++        float len = dx * dx + dy * dy;
++        float t = len > 0.0f ? ((px - ax) * dx + (py - ay) * dy) / len : 0.0f;
++        t = std::max(0.0f, std::min(1.0f, t));
++        float cx = ax + t * dx - px, cy = ay + t * dy - py;
++        return std::sqrt(cx * cx + cy * cy);
++    }
++
++    void ApplyPowerup(Player* player, Racer& racer, Creature* pad)
++    {
++        racer.PowerupCooldowns[pad->GetSpawnId()] = 5 * IN_MILLISECONDS;
++
++        uint32 effect = pad->GetEntry();
++        if (effect == NPC_POWERUP_ROTATING)
++            effect = RAND(NPC_POWERUP_BLINK, NPC_POWERUP_ROCKET, NPC_POWERUP_JUMP);
++
++        switch (effect)
++        {
++            case NPC_POWERUP_DASH:
++            case NPC_POWERUP_LOOT:
++                BoostAura(player, SPELL_SPEED_BOOST, 4 * IN_MILLISECONDS);
++                break;
++            case NPC_POWERUP_JUMP:
++                player->JumpTo(25.0f, 12.0f, true);
++                break;
++            case NPC_POWERUP_ROCKET:
++                player->JumpTo(40.0f, 20.0f, true);
++                break;
++            case NPC_POWERUP_BLINK:
++            {
++                Position dest = player->GetPosition();
++                player->MovePositionToFirstCollision(dest, 20.0f, 0.0f);
++                player->NearTeleportTo(dest.GetPositionX(), dest.GetPositionY(), dest.GetPositionZ(), player->GetOrientation());
++                break;
++            }
++            default:
++                break;
++        }
++        racer.ZapImmune = std::max<uint32>(racer.ZapImmune, 1500);
++    }
++
++    void HandleCourse(Player* player, Racer& racer, uint32 diff)
++    {
++        for (auto itr = racer.PowerupCooldowns.begin(); itr != racer.PowerupCooldowns.end();)
++        {
++            if (itr->second <= diff)
++                itr = racer.PowerupCooldowns.erase(itr);
++            else
++            {
++                itr->second -= diff;
++                ++itr;
++            }
++        }
++        racer.ZapImmune = racer.ZapImmune > diff ? racer.ZapImmune - diff : 0;
++
++        // Checkpoint banners: speed boost and 7 seconds of water walking, once each.
++        std::list<Creature*> found;
++        player->GetCreatureListWithEntryInGrid(found, NPC_CHECKPOINT, CHECKPOINT_RADIUS);
++        for (Creature* checkpoint : found)
++        {
++            if (!racer.Checkpoints.insert(checkpoint->GetSpawnId()).second)
++                continue;
++            BoostAura(player, SPELL_SPEED_BOOST, 3 * IN_MILLISECONDS);
++            BoostAura(player, SPELL_WATER_WALKING, 7 * IN_MILLISECONDS);
++        }
++
++        // Powerup pads.
++        static uint32 const powerups[] = { NPC_POWERUP_DASH, NPC_POWERUP_JUMP, NPC_POWERUP_ROCKET, NPC_POWERUP_BLINK, NPC_POWERUP_LOOT, NPC_POWERUP_ROTATING };
++        for (uint32 entry : powerups)
++        {
++            found.clear();
++            player->GetCreatureListWithEntryInGrid(found, entry, POWERUP_RADIUS);
++            for (Creature* pad : found)
++            {
++                if (racer.PowerupCooldowns.count(pad->GetSpawnId()) || !pad->IsAlive())
++                    continue;
++                ApplyPowerup(player, racer, pad);
++                // Picked up: the pad disappears and comes back after a while.
++                pad->DespawnOrUnsummon(1, Seconds(POWERUP_RESPAWN_S));
++            }
++        }
++
++        // Electrified tripwires between stakes.
++        if (!racer.ZapImmune && !player->HasAura(SPELL_ELECTRIFIED_TRIPWIRE))
++        {
++            std::vector<Creature*> stakes;
++            player->GetCreatureListWithEntryInGrid(stakes, NPC_TRIPWIRE_STAKE, TRIPWIRE_SPAN + 2.0f);
++            bool zapped = false;
++            for (size_t i = 0; i < stakes.size() && !zapped; ++i)
++            {
++                auto partner = TripwirePartners.find(stakes[i]->GetSpawnId());
++                if (partner == TripwirePartners.end())
++                    continue;
++                for (size_t j = i + 1; j < stakes.size() && !zapped; ++j)
++                {
++                    if (stakes[j]->GetSpawnId() != partner->second)
++                        continue;
++                    if (std::fabs(player->GetPositionZ() - (stakes[i]->GetPositionZ() + stakes[j]->GetPositionZ()) / 2.0f) > 4.0f)
++                        continue;
++                    if (DistToSegment2d(player->GetPosition(), stakes[i], stakes[j]) <= TRIPWIRE_WIDTH)
++                        zapped = true;
++                }
++            }
++
++            if (zapped)
++            {
++                player->RemoveAurasDueToSpell(SPELL_SPEED_BOOST);
++                BoostAura(player, SPELL_ELECTRIFIED_TRIPWIRE, 2 * IN_MILLISECONDS);
++                racer.ZapImmune = 3 * IN_MILLISECONDS;
++            }
++        }
++    }
++
++    class player_darkmoon_race : public PlayerScript
++    {
++    public:
++        player_darkmoon_race() : PlayerScript("player_darkmoon_race") { }
++
++        void OnLogin(Player* player, bool /*firstLogin*/) override
++        {
++            // A race doesn't survive a logout.
++            if (player->HasAura(SPELL_ON_A_TRIAL) || player->HasAura(SPELL_RACING_STRIDER))
++                RemoveRaceAuras(player);
++        }
++
++        void OnLogout(Player* player) override
++        {
++            auto itr = Racers.find(player->GetGUID());
++            if (itr != Racers.end())
++            {
++                ResetObjectives(player, itr->second.Track->QuestId);
++                DespawnMarker(player, itr->second);
++                RemoveRaceAuras(player);
++                Racers.erase(itr);
++            }
++            TokenWarnings.erase(player->GetGUID());
++            IdleTimers.erase(player->GetGUID());
++        }
++
++        void OnUpdate(Player* player, uint32 diff) override
++        {
++            auto itr = Racers.find(player->GetGUID());
++
++            if (player->GetMapId() != MAP_DARKMOON_ISLAND)
++            {
++                if (itr != Racers.end())
++                    EndRace(player, true, "you left Darkmoon Island");
++                return;
++            }
++
++            if (itr == Racers.end())
++            {
++                // Waiting at a start banner? Check a few times a second only.
++                uint32& idle = IdleTimers[player->GetGUID()];
++                if (idle > diff)
++                {
++                    idle -= diff;
++                    return;
++                }
++                idle = 250;
++
++                auto warn = TokenWarnings.find(player->GetGUID());
++                if (warn != TokenWarnings.end())
++                    warn->second = warn->second > 250 ? warn->second - 250 : 0;
++
++                if (!player->IsAlive() || player->IsInFlight())
++                    return;
++
++                if (Course const* course = GetStartableCourse(player))
++                    if (Dist2d(player->GetPosition(), course->Banner->GetPositionX(), course->Banner->GetPositionY()) <= START_RADIUS &&
++                        std::fabs(player->GetPositionZ() - course->Banner->GetPositionZ()) < 10.0f)
++                        StartRace(player, course);
++                return;
++            }
++
++            Racer& racer = itr->second;
++            racer.Elapsed += diff;
++            racer.TollTimer += diff;
++            if (racer.TollTimer >= RACE_TOLL_MS)
++            {
++                racer.TollTimer -= RACE_TOLL_MS;
++                ++racer.Tolls;
++                player->CastSpell(player, SPELL_SOUND_BELL, true);
++            }
++
++            racer.TickTimer += diff;
++            if (racer.TickTimer < RACE_TICK_MS)
++                return;
++            uint32 tick = racer.TickTimer;
++            racer.TickTimer = 0;
++
++            if (!player->IsAlive())
++            {
++                EndRace(player, true, "you died");
++                return;
++            }
++            if (player->GetQuestStatus(racer.Track->QuestId) != QUEST_STATUS_INCOMPLETE)
++            {
++                EndRace(player, false);
++                return;
++            }
++            if (!player->IsMounted())
++            {
++                EndRace(player, true, "you left your racer");
++                return;
++            }
++            if (racer.Elapsed >= RACE_MAX_MS)
++            {
++                EndRace(player, true, "out of time");
++                return;
++            }
++
++            if (racer.Leg < racer.Track->PostCount)
++            {
++                Post const& post = racer.Track->Posts[racer.Leg];
++                if (Dist2d(player->GetPosition(), post.X, post.Y) <= POST_RADIUS)
++                {
++                    player->KilledMonsterCredit(post.Credit);
++                    ++racer.Leg;
++                    std::string next = racer.Leg < racer.Track->PostCount ? std::string(racer.Track->Posts[racer.Leg].Name) : std::string("start banner");
++                    Notify(player, std::string(post.Name) + " reached at " + std::to_string(racer.Tolls) + " tolls. Next: the " + next + ".");
++                    SpawnMarker(player, racer);
++                }
++            }
++            else if (Dist2d(player->GetPosition(), racer.Track->Banner->GetPositionX(), racer.Track->Banner->GetPositionY()) <= START_RADIUS)
++            {
++                FinishRace(player, racer);
++                return;
++            }
++
++            HandleCourse(player, racer, tick);
++        }
++    };
++
++    // Racing Strider buttons (OverrideSpellData 569). The client spells are
++    // script effects aimed at server-side targets, so the targets are picked here.
++    enum RacerSpells : uint32
++    {
++        SPELL_JUMP_TO_BANNER    = 179748,
++        SPELL_LASSO_POWERUP     = 316043,
++        SPELL_JUMP_TO_RACER     = 179804,
++    };
++
++    float const JUMP_RANGE      = 100.0f;
++    float const LASSO_RANGE     = 25.0f;
++
++    void LeapTo(Player* player, WorldObject const* target)
++    {
++        float dist = player->GetExactDist2d(target);
++        player->GetMotionMaster()->MoveJump(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ() + 1.0f,
++            player->GetOrientation(), 45.0f, 8.0f + dist / 8.0f);
++    }
++
++    class spell_darkmoon_racer_button : public SpellScriptLoader
++    {
++    public:
++        spell_darkmoon_racer_button() : SpellScriptLoader("spell_darkmoon_racer_button") { }
++
++        class spell_darkmoon_racer_button_SpellScript : public SpellScript
++        {
++            PrepareSpellScript(spell_darkmoon_racer_button_SpellScript);
++
++            void ClearTargets(std::list<WorldObject*>& targets)
++            {
++                targets.clear();
++            }
++
++            void HandleCast()
++            {
++                Player* player = GetCaster()->ToPlayer();
++                if (!player)
++                    return;
++
++                auto itr = Racers.find(player->GetGUID());
++                if (itr == Racers.end())
++                    return;
++                Racer& racer = itr->second;
++
++                switch (GetSpellInfo()->Id)
++                {
++                    case SPELL_JUMP_TO_BANNER:
++                    {
++                        // Nearest checkpoint banner ahead of you, 4 seconds safe from tripwires.
++                        std::list<Creature*> banners;
++                        player->GetCreatureListWithEntryInGrid(banners, NPC_CHECKPOINT, JUMP_RANGE);
++                        Creature* best = nullptr;
++                        for (Creature* banner : banners)
++                            if (player->GetExactDist2d(banner) > 8.0f && player->HasInArc(float(M_PI) * 2.0f / 3.0f, banner) &&
++                                (!best || player->GetExactDist2d(banner) < player->GetExactDist2d(best)))
++                                best = banner;
++                        if (best)
++                        {
++                            LeapTo(player, best);
++                            racer.ZapImmune = 4 * IN_MILLISECONDS;
++                        }
++                        break;
++                    }
++                    case SPELL_JUMP_TO_RACER:
++                    {
++                        Player* best = nullptr;
++                        for (auto const& other : Racers)
++                        {
++                            if (other.first == player->GetGUID())
++                                continue;
++                            Player* racerPlayer = ObjectAccessor::GetPlayer(*player, other.first);
++                            if (racerPlayer && player->GetExactDist2d(racerPlayer) <= JUMP_RANGE && player->HasInArc(float(M_PI), racerPlayer) &&
++                                (!best || player->GetExactDist2d(racerPlayer) < player->GetExactDist2d(best)))
++                                best = racerPlayer;
++                        }
++                        if (best)
++                        {
++                            LeapTo(player, best);
++                            racer.ZapImmune = 4 * IN_MILLISECONDS;
++                        }
++                        break;
++                    }
++                    case SPELL_LASSO_POWERUP:
++                    {
++                        // Grab the nearest powerup pad in reach and use it at once.
++                        static uint32 const pads[] = { NPC_POWERUP_DASH, NPC_POWERUP_JUMP, NPC_POWERUP_ROCKET, NPC_POWERUP_BLINK, NPC_POWERUP_LOOT, NPC_POWERUP_ROTATING };
++                        Creature* best = nullptr;
++                        for (uint32 entry : pads)
++                        {
++                            std::list<Creature*> found;
++                            player->GetCreatureListWithEntryInGrid(found, entry, LASSO_RANGE);
++                            for (Creature* pad : found)
++                                if (!racer.PowerupCooldowns.count(pad->GetSpawnId()) &&
++                                    (!best || player->GetExactDist(pad) < player->GetExactDist(best)))
++                                    best = pad;
++                        }
++                        if (best)
++                            ApplyPowerup(player, racer, best);
++                        break;
++                    }
++                    default:
++                        break;
++                }
++            }
++
++            void Register() override
++            {
++                if (m_scriptSpellId == SPELL_LASSO_POWERUP)
++                    OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_darkmoon_racer_button_SpellScript::ClearTargets, EFFECT_0, TARGET_UNIT_CONE_ENTRY);
++                else
++                    OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_darkmoon_racer_button_SpellScript::ClearTargets, EFFECT_0, TARGET_UNIT_CONE_ENTRY_110);
++                OnCast += SpellCastFn(spell_darkmoon_racer_button_SpellScript::HandleCast);
++            }
++        };
++
++        SpellScript* GetSpellScript() const override
++        {
++            return new spell_darkmoon_racer_button_SpellScript();
++        }
++    };
++}
++
++namespace DarkmoonRace
++{
++    // Tripwire stake: wires itself to its nearest stake (when that stake picks it too) and shows
++    // the wire as a lightning beam. Only that pair zaps racers (HandleCourse).
++    struct npc_darkmoon_race_tripwire_stake : public ScriptedAI
++    {
++        npc_darkmoon_race_tripwire_stake(Creature* creature) : ScriptedAI(creature) { }
++
++        uint32 _wireTimer = 1 * IN_MILLISECONDS;
++
++        void Reset() override { }
++
++        void UpdateAI(uint32 diff) override
++        {
++            if (!_wireTimer)
++                return;
++            if (_wireTimer > diff)
++            {
++                _wireTimer -= diff;
++                return;
++            }
++            _wireTimer = 0;
++
++            Creature* partner = NearestStake(me);
++            if (!partner || NearestStake(partner) != me)
++                return;
++
++            TripwirePartners[me->GetSpawnId()] = partner->GetSpawnId();
++            TripwirePartners[partner->GetSpawnId()] = me->GetSpawnId();
++
++            // One beam per pair, from the stake with the lower spawn id.
++            if (me->GetSpawnId() > partner->GetSpawnId())
++                return;
++            if (SpellInfo const* beam = sSpellMgr->GetSpellInfo(SPELL_TRIPWIRE_BEAM))
++            {
++                me->SetChannelSpellId(beam->Id);
++                me->SetChannelSpellXSpellVisualId(beam->GetSpellXSpellVisualId(me));
++                me->AddChannelObject(partner->GetGUID());
++            }
++        }
++    };
++}
++
++void AddSC_darkmoon_race()
++{
++    new GenericCreatureScript<DarkmoonRace::npc_darkmoon_race_tripwire_stake>("npc_darkmoon_race_tripwire_stake");
++    new DarkmoonRace::player_darkmoon_race();
++    new DarkmoonRace::spell_darkmoon_racer_button();
++}

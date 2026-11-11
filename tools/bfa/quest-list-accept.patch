@@ -1,0 +1,90 @@
+diff --git a/src/server/game/Entities/Creature/GossipDef.cpp b/src/server/game/Entities/Creature/GossipDef.cpp
+index 4293578..f67fa12 100644
+--- a/src/server/game/Entities/Creature/GossipDef.cpp
++++ b/src/server/game/Entities/Creature/GossipDef.cpp
+@@ -208,6 +208,7 @@ void PlayerMenu::SendGossipMenu(uint32 titleTextId, ObjectGuid objectGUID)
+ {
+     _interactionData.Reset();
+     _interactionData.SourceGuid = objectGUID;
++    _questListGiver.Clear();
+ 
+     WorldPackets::NPC::GossipMessage packet;
+     packet.GossipGUID = objectGUID;
+@@ -271,6 +272,7 @@ void PlayerMenu::SendGossipMenu(uint32 titleTextId, ObjectGuid objectGUID)
+ void PlayerMenu::SendCloseGossip()
+ {
+     _interactionData.Reset();
++    _questListGiver.Clear();
+ 
+     WorldPackets::NPC::GossipComplete packet;
+     _session->SendPacket(packet.Write());
+@@ -391,6 +393,7 @@ void PlayerMenu::SendQuestGiverQuestListMessage(Object* questgiver)
+         }
+     }
+ 
++    _questListGiver = guid;
+     _session->SendPacket(questList.Write());
+     TC_LOG_DEBUG("network", "WORLD: Sent SMSG_QUEST_GIVER_QUEST_LIST_MESSAGE NPC=%s", guid.ToString().c_str());
+ }
+diff --git a/src/server/game/Entities/Creature/GossipDef.h b/src/server/game/Entities/Creature/GossipDef.h
+index 5cee84f..2a1452e 100644
+--- a/src/server/game/Entities/Creature/GossipDef.h
++++ b/src/server/game/Entities/Creature/GossipDef.h
+@@ -283,6 +283,10 @@ class TC_GAME_API PlayerMenu
+         QuestMenu& GetQuestMenu() { return _questMenu; }
+         InteractionData& GetInteractionData() { return _interactionData; }
+ 
++        // zrbfacore: quest giver whose quest list (greeting) the client is showing, see quest-list-accept.patch
++        ObjectGuid GetQuestListGiver() const { return _questListGiver; }
++        void ClearQuestListGiver() { _questListGiver.Clear(); }
++
+         bool Empty() const { return _gossipMenu.Empty() && _questMenu.Empty(); }
+ 
+         void ClearMenus();
+@@ -312,5 +316,6 @@ class TC_GAME_API PlayerMenu
+         QuestMenu  _questMenu;
+         WorldSession* _session;
+         InteractionData _interactionData;
++        ObjectGuid _questListGiver;
+ };
+ #endif
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index a0f5cdd..e27e354 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -15907,6 +15907,7 @@ void Player::PrepareQuestMenu(ObjectGuid guid)
+ void Player::SendPreparedQuest(WorldObject* source)
+ {
+     QuestMenu& questMenu = PlayerTalkClass->GetQuestMenu();
++    PlayerTalkClass->ClearQuestListGiver();
+     if (questMenu.Empty())
+         return;
+ 
+diff --git a/src/server/game/Handlers/QuestHandler.cpp b/src/server/game/Handlers/QuestHandler.cpp
+index 2796cd6..fb26ce6 100644
+--- a/src/server/game/Handlers/QuestHandler.cpp
++++ b/src/server/game/Handlers/QuestHandler.cpp
+@@ -200,6 +200,23 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPackets::Quest::QuestG
+                 }
+             }
+ 
++            // zrbfacore: a quest accepted from an NPC's quest list (greeting with two or more quests,
++            // e.g. Sharing the Land at Ahmo Thunderhorn or Tonga Runetotem) left the details page
++            // open: the client goes back to the quest list after Accept and ignores the plain close.
++            // Send the NPC's updated quest list instead, as retail does; close only when nothing is left.
++            if (object->GetTypeId() == TYPEID_UNIT || object->GetTypeId() == TYPEID_GAMEOBJECT)
++            {
++                if (_player->PlayerTalkClass->GetQuestListGiver() == object->GetGUID())
++                {
++                    _player->PrepareQuestMenu(object->GetGUID());
++                    if (!_player->PlayerTalkClass->GetQuestMenu().Empty())
++                    {
++                        _player->PlayerTalkClass->SendQuestGiverQuestListMessage(object);
++                        return;
++                    }
++                }
++            }
++
+             _player->PlayerTalkClass->SendCloseGossip();
+ 
+             return;

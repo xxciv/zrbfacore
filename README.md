@@ -19,6 +19,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   boss doors, Foe Reaper, Helix, Ripsnarl, Mine Bunny), plus a core fix so bosses reset after a wipe.
 - [`sql/fixes/world`](sql/fixes/world): world database fixes, run in file-name order; the guide's step 10
   table says what each one does.
+- [`sql/fixes/hotfixes`](sql/fixes/hotfixes): hotfix database fixes (data the server sends to the client in
+  place of its own db2 rows), run against `bfa_hotfixes` the same way.
 - [`tools/bfa/ragefire-fixes.patch`](tools/bfa/ragefire-fixes.patch): Ragefire Chasm fixes (rescuing
   the prisoners for No Man Left Behind / No Orc Left Behind).
 - [`tools/bfa/shadowfang-fixes.patch`](tools/bfa/shadowfang-fixes.patch): Shadowfang Keep fixes (only
@@ -34,6 +36,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   appearances as soon as items reach your bags, for every armor and weapon type (`Transmog.*` settings).
 - [`tools/bfa/transmog-apply.patch`](tools/bfa/transmog-apply.patch): Apply at the transmogrifier
   accepts every appearance you collected, and says in chat why when it refuses.
+- [`tools/bfa/transmog-reapply.patch`](tools/bfa/transmog-reapply.patch): changing the appearance of an
+  item that is already transmogrified works (before, it charged you and kept the old look).
 - [`tools/bfa/loot-fixes.patch`](tools/bfa/loot-fixes.patch): core fixes so items from shared
   loot tables (world drops, most greens) drop at all, every dungeon boss drops at least one item, and
   corpses can be skinned when they still hold a quest item you can't see.
@@ -83,6 +87,17 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   zrbfacore ("Based on HavenCore"), without the old BfaCore Discord link and email address.
 - [`tools/bfa/razorfen-downs.patch`](tools/bfa/razorfen-downs.patch): Razorfen Downs: Death Speaker
   Blackthorn's death completes his scenario step. Needs `sql/fixes/world/2026_10_31_01_razorfen_downs.sql`.
+- [`tools/bfa/holiday-schedule.patch`](tools/bfa/holiday-schedule.patch): game events with
+  `occurence` 0 run every month from the first Sunday (the Darkmoon Faire), with `occurence` 1 on
+  the dates of their holiday in Holidays.db2 (Easter, Thanksgiving and other moving holidays). Used by
+  `sql/fixes/world/2026_11_04_00_darkmoon_faire_first_sunday.sql` and `2026_11_05_00_holiday_dates_schedule.sql`.
+- [`tools/bfa/darkmoon-faire-gossip.patch`](tools/bfa/darkmoon-faire-gossip.patch): Darkmoon Faire
+  games in English (Maxima's cannon, Mola's Whack-a-Gnoll, Fozlebub's teleport were French) and open
+  to everyone with a Darkmoon Game Token, not only while their daily quest is in progress.
+- [`tools/bfa/darkmoon-race.patch`](tools/bfa/darkmoon-race.patch): the Darkmoon Island strider
+  races (Malle and Patti Earnhard's four race quests): Racing Strider, posts, tolls, checkpoint boosts,
+  powerup pads, electrified tripwires and the race achievements. Needs
+  `sql/fixes/world/2026_11_05_05_darkmoon_race_course.sql`.
 - [`tools/bfa/spell-teleport-combat.patch`](tools/bfa/spell-teleport-combat.patch): a spell that
   pulls a player somewhere else on the same map (Zevrim Thornhoof's Sacrifice) no longer drops them
   out of combat, so the boss no longer resets to full health.
@@ -98,6 +113,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`client/ZRProfessions`](client/ZRProfessions/README.md): a client addon that lets trainers teach up to 4
   primary professions (the 8.3.7 client UI stops at 2 even when the server allows more) and lists them all
   with `/profs`.
+- `client/BugTabs`, `client/FishingBuddy`, `client/Sorted`: third-party addons patched to run without
+  Lua errors on the 8.3.7 client (guide section 9, "Patched third-party addons").
 - [`tools/npc-designer`](tools/npc-designer/README.md): a desktop app for designing vendor NPCs (items,
   prices, model, faction) with a merchant window preview, exporting SQL for BFA, Pandaria 5.4.8 or WotLK 3.3.5.
 

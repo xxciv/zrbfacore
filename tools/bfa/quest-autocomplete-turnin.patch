@@ -1,0 +1,21 @@
+diff --git a/src/server/game/Handlers/QuestHandler.cpp b/src/server/game/Handlers/QuestHandler.cpp
+index fa331f9..2796cd6 100644
+--- a/src/server/game/Handlers/QuestHandler.cpp
++++ b/src/server/game/Handlers/QuestHandler.cpp
+@@ -336,6 +336,16 @@ void WorldSession::HandleQuestgiverChooseRewardOpcode(WorldPackets::Quest::Quest
+         if (!_player->CanInteractWithQuestGiver(object))
+             return;
+     }
++    // zrbfacore: an auto-complete quest handed in at an NPC that ends it (e.g. Rite of the Winds at
++    // Ahmo Thunderhorn) was booked as a self-turn-in, so the reply named no NPC and the client lost
++    // its conversation with him (it then asked for a quest giver with an empty GUID, and the next
++    // quest window could not be closed). Treat it as a normal turn-in with that NPC.
++    else if (!packet.QuestGiverGUID.IsEmpty() && packet.QuestGiverGUID != _player->GetGUID())
++    {
++        if (Object* questGiver = ObjectAccessor::GetObjectByTypeMask(*_player, packet.QuestGiverGUID, TYPEMASK_UNIT | TYPEMASK_GAMEOBJECT))
++            if (questGiver->hasInvolvedQuest(packet.QuestID) && _player->CanInteractWithQuestGiver(questGiver))
++                object = questGiver;
++    }
+ 
+     if ((!_player->CanSeeStartQuest(quest) &&  _player->GetQuestStatus(packet.QuestID) == QUEST_STATUS_NONE) ||
+         (_player->GetQuestStatus(packet.QuestID) != QUEST_STATUS_COMPLETE && !quest->IsAutoComplete()))
