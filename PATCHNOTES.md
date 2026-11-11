@@ -46,6 +46,19 @@ dungeon 34), and all their spells exist. Dire Maul has one scenario for all thre
   Hydroling gets a scaling row for difficulty 1.
 - **Status:** not tested in game yet.
 
+### Warpwood packs stacked on top of each other (thinned)
+- **Found** (reported by Four): Warpwood elites hit very hard solo, and in a few spots two or more
+  stand on the same spot. Classic Dire Maul has about the same number of them (BFA 16 Treants,
+  12 Guardians, 8 Tanglers; AzerothCore 14, 10, 8), so this is pack size, not a duplicate dump.
+- **Changed:** Four chose thinning over a damage change.
+  `sql/fixes/world/2026_11_11_00_dire_maul_east_thin_warpwood_packs.sql` removes ten spawns that
+  stand within 0.7-5 yards of a twin: Guardians 323183, 324036, 324037, 323198; Treants 323391,
+  323704, 323985, 323983, 323996; Tangler 323981 (and treant 323391's path 429000019). Every pack
+  keeps at least one of each kind. The removed rows are copied first into the backup tables
+  `zr_backup_dm_east_creature`, `zr_backup_dm_east_creature_addon` and
+  `zr_backup_dm_east_waypoint_data`; the file header has the two lines that restore them.
+- **Status:** not tested in game yet.
+
 ### Nothing in the east wing moved
 - **Found:** 449 spawns, 30 random wanderers, no paths.
 - **Changed:** 52 patrols (Pandaria paths for the same guids, else AzerothCore, ids 429000002+),
