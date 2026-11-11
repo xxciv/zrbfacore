@@ -59,7 +59,7 @@ Client addons only, in `client/`. No server change: nothing to rebuild, no SQL, 
   of snapshot slots, and a disabled button skips `OnEnter`/`OnLeave` by default, so the new code never
   ran. `Sorted_CreateItemButton` now calls `SetMotionScriptsWhileDisabled(true)` on each item button.
   Clicks stay blocked. `Sorted.toc`: version `1.2.4-zr3`.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-11.
 
 ## 2026-11-10 (Quest fixes: patch chain on newer upstream)
 
