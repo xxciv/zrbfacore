@@ -3,7 +3,7 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-11 (World fixes: Stormwind Harbor ship)
+## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
 
 ### World: 7th Legion warship crew spawned twice in Stormwind Harbor
 
@@ -24,7 +24,19 @@ to do to pick it up (rebuild, restart, run SQL).
     Vereesa 3000000 / Vindicator Boros 3000003. Those two sit on top of 401233 / 401231 but are in
     phase 7439, which nothing turns on, so players never see them.
 - **Status:** not tested in game yet.
-- **Pick up:**
+
+### World: two Shaman Trainers stacked in Bloodhoof Village
+
+- **Found** (Four, 2026-11-11): Bloodhoof Village has at least one stacked trainer.
+- **Cause:** Narm Skychaser 3066 (guid 260382) and Tarl Cloudsong 51637 (guid 302648), both
+  <Shaman Trainer>, are spawned at the same position, orientation and phase (-2298.96 -437.742
+  -5.355). MaNGOS Three has the same pair. Both have the same trainer gossip (menu 4103, npcflag 51)
+  and no quests. Gennia Runetotem, the druid trainer, stands alone about 17 yards away. No other
+  NPC in Bloodhoof Village is stacked.
+- **Changed:** `sql/fixes/world/2026_11_11_31_bloodhoof_shaman_trainers_stacked.sql` deletes Tarl
+  Cloudsong's spawn (guid 302648, entry 51637). Narm Skychaser stays.
+- **Status:** not tested in game yet.
+- **Pick up (both fixes of this date):**
 
   ```
   cd ~/bfa/source
@@ -33,6 +45,10 @@ to do to pick it up (rebuild, restart, run SQL).
 
   ```
   git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_11_30_stormwind_harbor_ship_double_spawns.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_11_31_bloodhoof_shaman_trainers_stacked.sql | mysql -u root -p bfa_world
   ```
 
   Then restart worldserver.
