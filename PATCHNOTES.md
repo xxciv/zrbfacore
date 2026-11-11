@@ -15,6 +15,20 @@ bosses are spawned with Normal scaling rows, `instance_encounters` 343-346 exist
 dungeon 34), and all their spells exist. Dire Maul has one scenario for all three wings (668, step
 1212 "Defeat the bosses of Dire Maul", 14 bosses), so it cannot finish from one wing.
 
+### Zevrim Thornhoof healed to full on every Sacrifice
+- **Found** (reported by Four): Sacrifice (22651) stuns the player, which is right, but Zevrim
+  went back to full health each time, so he could not be killed solo. Sacrifice's first effect
+  teleports the player onto his altar (`spell_target_position` -25.95, -448.24, -36.09).
+  `Spell::EffectTeleportUnits` (`SpellEffects.cpp`) passes no options when the target is not the
+  caster, and `Player::TeleportTo` calls `CombatStop()` on a same-map teleport without
+  `TELE_TO_NOT_LEAVE_COMBAT`. The player left combat, Zevrim had nobody left to fight, evaded
+  and reset.
+- **Changed:** new `tools/bfa/spell-teleport-combat.patch` (applied after `razorfen-downs.patch`):
+  a spell teleport of another player that stays on the same map adds `TELE_TO_NOT_LEAVE_COMBAT`.
+  Teleports to another map still leave combat. This covers every boss pull-to-me spell, not
+  just Zevrim's.
+- **Status:** not compiled or tested yet.
+
 ### Pusillin's chase stopped early and always showed the same text
 - **Found:** two versions of his script on top of each other. All five Gossip Hello rows had no
   phase mask, so every one fired and the last menu won. Rows "stop at waypoint 3/14/12/7" belong to

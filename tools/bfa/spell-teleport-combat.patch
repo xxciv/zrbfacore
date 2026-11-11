@@ -1,0 +1,18 @@
+diff --git a/src/server/game/Spells/SpellEffects.cpp b/src/server/game/Spells/SpellEffects.cpp
+index b231c30..8b52095 100644
+--- a/src/server/game/Spells/SpellEffects.cpp
++++ b/src/server/game/Spells/SpellEffects.cpp
+@@ -1033,7 +1033,12 @@ void Spell::EffectTeleportUnits(SpellEffIndex /*effIndex*/)
+         if (uint32 customLoadingScreenId = effectInfo->MiscValue)
+             player->SendDirectMessage(WorldPackets::Spells::CustomLoadScreen(m_spellInfo->Id, customLoadingScreenId).Write());
+ 
+-        player->TeleportTo(mapid, x, y, z, orientation, unitTarget == m_caster ? TELE_TO_SPELL | TELE_TO_NOT_LEAVE_COMBAT : 0);
++        // zrbfacore: a spell that pulls another player somewhere on the same map (Zevrim Thornhoof's
++        // Sacrifice) must not drop that player out of combat, or a solo player's boss resets to full health
++        uint32 teleportOptions = unitTarget == m_caster ? TELE_TO_SPELL | TELE_TO_NOT_LEAVE_COMBAT : 0;
++        if (unitTarget != m_caster && mapid == player->GetMapId())
++            teleportOptions |= TELE_TO_NOT_LEAVE_COMBAT;
++        player->TeleportTo(mapid, x, y, z, orientation, teleportOptions);
+     }
+     else if (mapid == unitTarget->GetMapId())
+         unitTarget->NearTeleportTo(x, y, z, orientation, unitTarget == m_caster);
