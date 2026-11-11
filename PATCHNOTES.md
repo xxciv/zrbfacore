@@ -27,7 +27,7 @@ dungeon 34), and all their spells exist. Dire Maul has one scenario for all thre
   a spell teleport of another player that stays on the same map adds `TELE_TO_NOT_LEAVE_COMBAT`.
   Teleports to another map still leave combat. This covers every boss pull-to-me spell, not
   just Zevrim's.
-- **Status:** not compiled or tested yet.
+- **Status:** confirmed in game by Four on 2026-11-11 (Zevrim killed; Sacrifice stuns without resetting him).
 
 ### Pusillin's chase stopped early and always showed the same text
 - **Found:** two versions of his script on top of each other. All five Gossip Hello rows had no
@@ -71,7 +71,7 @@ dungeon 34), and all their spells exist. Dire Maul has one scenario for all thre
   keeps at least one of each kind. The removed rows are copied first into the backup tables
   `zr_backup_dm_east_creature`, `zr_backup_dm_east_creature_addon` and
   `zr_backup_dm_east_waypoint_data`; the file header has the three lines that restore them.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-11.
 
 ### Death Lash pairs stacked on top of each other (thinned)
 - **Found:** 23 Death Lash (13285) in the east wing against 14 in classic, five pairs standing
@@ -80,7 +80,7 @@ dungeon 34), and all their spells exist. Dire Maul has one scenario for all thre
   `sql/fixes/world/2026_11_11_01_dire_maul_east_thin_death_lash.sql` removes one of each pair:
   323213, 324089, 324114, 324078, 324100 (23 -> 18). Rows are copied first into the same backup
   tables as the Warpwood thinning.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-11.
 
 ### Alzzin's wolf phase could not be survived solo
 - **Found** (reported by Four): in wolf form Alzzin attacked so fast that no healing kept up.
