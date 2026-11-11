@@ -4334,10 +4334,10 @@ index 187eca5..6df65e2 100644
 +}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp
 new file mode 100644
-index 0000000..f5389d9
+index 0000000..f3567bd
 --- /dev/null
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp
-@@ -0,0 +1,377 @@
+@@ -0,0 +1,380 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -4442,6 +4442,9 @@ index 0000000..f5389d9
 +
 +    void Reset() override
 +    {
++        // he floats above the floor; without the flying flags the client plays the swim animation
++        me->SetDisableGravity(true);
++        me->SetCanFly(true);
 +        me->SetReactState(REACT_PASSIVE);
 +        me->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
 +        if (!_atLilian && !me->HasAura(SPELL_BONE_ARMOR_VISUAL))

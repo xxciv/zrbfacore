@@ -119,6 +119,17 @@ Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
   thresholds, Lilian's 50% soul phase and final blow, and the soul's "death" all check it. When a
   hit would kill at a threshold, it now sets 1 health instead of `damage = health - 1`. If the soul
   ever dies anyway, its `JustDied` still raises Lilian.
+- **Status:** confirmed in game by Four on 2026-11-11 (phylactery phase works, Lilian's scenario step
+  done).
+
+### Scholomance: Gandling swam through the air
+
+- **Found** (Four, 2026-11-11): Darkmaster Gandling 58875 hovers in the corner of Lilian's room and
+  swims to the door at the end of her fight.
+- **Cause:** he is spawned above the floor with no flying movement flags, so the client plays the
+  swim animation when he moves.
+- **Changed:** `tools/bfa/scholomance.patch` (`scholomance.cpp`, `npc_gandling_at_rattlegore::Reset`):
+  `SetDisableGravity(true)` and `SetCanFly(true)`.
 - **Status:** not tested in game yet. Compiles.
 
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
