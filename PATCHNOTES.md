@@ -59,6 +59,15 @@ dungeon 34), and all their spells exist. Dire Maul has one scenario for all thre
   `zr_backup_dm_east_waypoint_data`; the file header has the three lines that restore them.
 - **Status:** not tested in game yet.
 
+### Death Lash pairs stacked on top of each other (thinned)
+- **Found:** 23 Death Lash (13285) in the east wing against 14 in classic, five pairs standing
+  within 0.8-2.3 yards of each other.
+- **Changed:** Four asked to thin them too.
+  `sql/fixes/world/2026_11_11_01_dire_maul_east_thin_death_lash.sql` removes one of each pair:
+  323213, 324089, 324114, 324078, 324100 (23 -> 18). Rows are copied first into the same backup
+  tables as the Warpwood thinning.
+- **Status:** not tested in game yet.
+
 ### Nothing in the east wing moved
 - **Found:** 449 spawns, 30 random wanderers, no paths.
 - **Changed:** 52 patrols (Pandaria paths for the same guids, else AzerothCore, ids 429000002+),
