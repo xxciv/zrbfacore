@@ -3,6 +3,48 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-11 (Addon fixes: BugTabs, FishingBuddy, Sorted)
+
+Client addons only, in `client/`. No server change: nothing to rebuild, no SQL, no restart.
+
+### BugTabs 1.5.0: CallbackHandler error in every addon that fires callbacks
+- **Found** (reported by Four): `BugTabs\Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua:19: attempt to
+  call upvalue 'securecallfunction' (a nil value)`, raised from FishingBuddy's HereBeDragons library.
+- **Cause:** addons share one CallbackHandler-1.0 through LibStub, and LibStub keeps the copy with the
+  highest minor version. BugTabs ships minor 8 (written for current clients), which dispatches callbacks
+  with `securecallfunction`. That function does not exist in the 8.3.7 client. BugTabs loads early
+  (alphabetical), so its copy also built the shared LibDataBroker-1.1 registry, and every addon's
+  callbacks went through it.
+- **Changed:** `client/BugTabs/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua`: when
+  `securecallfunction` is missing, it is replaced (locally) by `xpcall(method, errorhandler, ...)`, the
+  dispatch minor 7 used; callback errors still reach the error handler. `BugTabs.toc`: `## Interface:
+  80300` (was the retail/classic list starting 120107), version `1.5.0-zr1`. The rest of BugTabs already
+  checks for newer APIs before using them.
+- **Status:** confirmed in game by Four on 2026-11-11.
+
+### FishingBuddy 1.10.10: same CallbackHandler error
+- **Found:** the error above, fired from `FishingBuddy\Libs\HereBeDragons\HereBeDragons-2.0.lua:269`.
+  FishingBuddy's own copy (minor 7) is fine, but BugTabs' minor 8 replaced it.
+- **Changed:** `client/FishingBuddy/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua`: `MINOR` 7 -> 100,
+  code unchanged, so this 8.3.7-safe copy takes over from any newer copy loaded before it.
+  `FishingBuddy.toc`: version `1.10.10-zr1`.
+- **Status:** confirmed in game by Four on 2026-11-11.
+
+### Sorted 1.2.4: UpgradeIcon and GetItemCooldown errors
+- **Found** (reported by Four):
+  - `Interface\FrameXML\ContainerFrame.lua:1115: attempt to index field 'UpgradeIcon' (a nil value)`,
+    from `Sorted\ItemButton.lua:216`, when the item level column is turned on.
+  - `Sorted\ItemButton.lua:538: Usage: GetItemCooldown(itemID)`.
+- **Cause:**
+  - `ItemButton.lua` creates its own upgrade arrow with `if button.UpgradeIcon then`, so only buttons that
+    already had one got it. Bank (`BankItemButtonGenericTemplate`) and reagent bank buttons have none, so
+    Blizzard's `ContainerFrameItemButton_UpdateItemUpgradeIcon` indexed nil on them.
+  - Every slot polls `GetItemCooldown(self.itemID)` in `OnUpdate`, including empty slots, whose `itemID`
+    is nil; the 8.3.7 client rejects nil.
+- **Changed:** `client/Sorted/ItemButton.lua`: the check is now `if not button.UpgradeIcon then`; the
+  cooldown poll uses `0, 0, 0` (no cooldown) when `itemID` is nil. `Sorted.toc`: version `1.2.4-zr1`.
+- **Status:** confirmed in game by Four on 2026-11-11.
+
 ## 2026-11-10 (Quest fixes: patch chain on newer upstream)
 
 Merged to `main` with PR #55 on 2026-11-10.

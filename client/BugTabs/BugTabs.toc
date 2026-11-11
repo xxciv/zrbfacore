@@ -1,0 +1,57 @@
+## Interface: 80300
+## Interface-Mainline: 120107, 120105, 120100, 120007, 120005
+## Interface-Mists: 50504
+## Interface-Cata: 40402
+## Interface-Wrath: 38002, 38001
+## Interface-TBC: 20506, 20505
+## Interface-Vanilla: 11509, 11508
+
+## Title: BugTabs
+## Notes: Developer tool to sort Lua errors into dynamic tabs.
+## Notes-frFR: Outil développeur — trie les erreurs Lua en onglets dynamiques.
+## Notes-deDE: Entwicklerwerkzeug — sortiert Lua-Fehler in dynamische Tabs.
+## Notes-koKR: 개발자 도구 — Lua 오류를 동적 탭으로 정리합니다.
+## Notes-esES: Herramienta de desarrollo — clasifica los errores Lua en pestañas dinámicas.
+## Notes-itIT: Strumento per sviluppatori — organizza gli errori Lua in schede dinamiche.
+## Notes-ruRU: Инструмент разработчика — сортирует ошибки Lua по вкладкам.
+## Notes-zhCN: 开发工具 — 将 Lua 错误整理到动态选项卡中。
+## Notes-zhTW: 開發工具 — 將 Lua 錯誤整理到動態分頁中。
+## Author: LuthTeur
+## Version: 1.5.0-zr1
+## Category: Development Tools
+## Category-frFR: Outils de Développement
+## Category-deDE: Entwicklungstools
+## Category-koKR: 개발 도구
+## Category-esES: Herramientas de Desarrollo
+## Category-itIT: Strumenti di Sviluppo
+## Category-ruRU: Инструменты разработки
+## Category-zhCN: 开发工具
+## Category-zhTW: 開發工具
+## SavedVariables: BugTabsDB
+## IconTexture: Interface\Icons\INV_Misc_Head_Dragon_01
+## AddonCompartmentFunc: BugTabs_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: BugTabs_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: BugTabs_OnAddonCompartmentLeave
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+Locales\enUS.lua
+Locales\koKR.lua
+Locales\ruRU.lua
+Locales\frFR.lua
+Locales\deDE.lua
+Locales\esES.lua
+Locales\itIT.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+Theme.lua
+Components.lua
+Config.lua
+Core.lua
+VersionSync.lua
+StackFormat.lua
+UI.lua
+Events.lua
+Broker.lua
+Compartment.lua
