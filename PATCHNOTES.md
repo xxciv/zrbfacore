@@ -3,6 +3,64 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-11 (Addon fixes: BugTabs, FishingBuddy, Sorted)
+
+Client addons only, in `client/`. No server change: nothing to rebuild, no SQL, no restart.
+
+### BugTabs 1.5.0: CallbackHandler error in every addon that fires callbacks
+- **Found** (reported by Four): `BugTabs\Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua:19: attempt to
+  call upvalue 'securecallfunction' (a nil value)`, raised from FishingBuddy's HereBeDragons library.
+- **Cause:** addons share one CallbackHandler-1.0 through LibStub, and LibStub keeps the copy with the
+  highest minor version. BugTabs ships minor 8 (written for current clients), which dispatches callbacks
+  with `securecallfunction`. That function does not exist in the 8.3.7 client. BugTabs loads early
+  (alphabetical), so its copy also built the shared LibDataBroker-1.1 registry, and every addon's
+  callbacks went through it.
+- **Changed:** `client/BugTabs/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua`: when
+  `securecallfunction` is missing, it is replaced (locally) by `xpcall(method, errorhandler, ...)`, the
+  dispatch minor 7 used; callback errors still reach the error handler. `BugTabs.toc`: `## Interface:
+  80300` (was the retail/classic list starting 120107), version `1.5.0-zr1`. The rest of BugTabs already
+  checks for newer APIs before using them.
+- **Status:** confirmed in game by Four on 2026-11-11.
+
+### FishingBuddy 1.10.10: same CallbackHandler error
+- **Found:** the error above, fired from `FishingBuddy\Libs\HereBeDragons\HereBeDragons-2.0.lua:269`.
+  FishingBuddy's own copy (minor 7) is fine, but BugTabs' minor 8 replaced it.
+- **Changed:** `client/FishingBuddy/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua`: `MINOR` 7 -> 100,
+  code unchanged, so this 8.3.7-safe copy takes over from any newer copy loaded before it.
+  `FishingBuddy.toc`: version `1.10.10-zr1`.
+- **Status:** confirmed in game by Four on 2026-11-11.
+
+### Sorted 1.2.4: UpgradeIcon and GetItemCooldown errors
+- **Found** (reported by Four):
+  - `Interface\FrameXML\ContainerFrame.lua:1115: attempt to index field 'UpgradeIcon' (a nil value)`,
+    from `Sorted\ItemButton.lua:216`, when the item level column is turned on.
+  - `Sorted\ItemButton.lua:538: Usage: GetItemCooldown(itemID)`.
+- **Cause:**
+  - `ItemButton.lua` creates its own upgrade arrow with `if button.UpgradeIcon then`, so only buttons that
+    already had one got it. Bank (`BankItemButtonGenericTemplate`) and reagent bank buttons have none, so
+    Blizzard's `ContainerFrameItemButton_UpdateItemUpgradeIcon` indexed nil on them.
+  - Every slot polls `GetItemCooldown(self.itemID)` in `OnUpdate`, including empty slots, whose `itemID`
+    is nil; the 8.3.7 client rejects nil.
+- **Changed:** `client/Sorted/ItemButton.lua`: the check is now `if not button.UpgradeIcon then`; the
+  cooldown poll uses `0, 0, 0` (no cooldown) when `itemID` is nil. `Sorted.toc`: version `1.2.4-zr1`.
+- **Status:** confirmed in game by Four on 2026-11-11.
+
+### Sorted: tooltips for the closed bank and other characters' bags
+- **Found** (asked by Four): hovering an item in the Bank or Reagents list shows no tooltip unless the
+  bank is open at a banker. Stock Sorted behaves the same: its tooltip uses the live
+  `GameTooltip:SetInventoryItem` / `SetBagItem` calls, and the client has no live data for a closed bank
+  or another character's bags, which Sorted shows from a saved snapshot.
+- **Changed:** `client/Sorted/ItemButton.lua`: new `SortedItemButton_ShowSavedLinkTooltip`, called first in
+  `SortedItemButton_DelayedOnEnter`. For a bank/reagent slot while the bank is closed, or any slot while
+  another character is selected, it shows the tooltip from the slot's saved item link
+  (`GameTooltip:SetHyperlink`; caged battle pets via `BattlePetToolTip_Show`), with the usual compare
+  tooltips. Live slots are unchanged.
+- **Follow-up** (Four, 2026-11-11: zr2 still showed no tooltip): Sorted calls `Disable()` on the buttons
+  of snapshot slots, and a disabled button skips `OnEnter`/`OnLeave` by default, so the new code never
+  ran. `Sorted_CreateItemButton` now calls `SetMotionScriptsWhileDisabled(true)` on each item button.
+  Clicks stay blocked. `Sorted.toc`: version `1.2.4-zr3`.
+- **Status:** confirmed in game by Four on 2026-11-11.
+
 ## 2026-11-10 (Quest fixes: patch chain on newer upstream)
 
 Merged to `main` with PR #55 on 2026-11-10.

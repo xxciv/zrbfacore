@@ -707,6 +707,20 @@ To let characters learn up to 4 primary professions, set `MaxPrimaryTradeSkill =
 are known, whatever the server allows, and its Professions tab only shows 2. The addon re-enables
 **Train** and adds a `/profs` panel listing every primary profession (verified in game 2026-10-10).
 
+### Patched third-party addons
+
+`client/` also holds three third-party addons with fixes for the 8.3.7 client (all confirmed in game
+2026-11-11; PATCHNOTES.md has the details). Install them like any addon: close WoW, delete the old folder
+from `_retail_/Interface/AddOns`, and copy the folder from `client/` there.
+
+- `client/BugTabs` (1.5.0-zr1): error catcher. Its bundled CallbackHandler-1.0 called
+  `securecallfunction`, which 8.3.7 lacks; it now falls back to `xpcall`. TOC set to 80300.
+- `client/FishingBuddy` (1.10.10-zr1): its bundled CallbackHandler-1.0 is raised to minor 100 so its
+  8.3.7-safe copy wins over newer copies other addons ship.
+- `client/Sorted` (1.2.4-zr3): bag addon. Bank buttons get an upgrade icon (nil error with the item level
+  column on), empty slots skip `GetItemCooldown`, and items in the closed bank or another character's bags
+  show a tooltip from their saved link.
+
 ### Solo dungeons (DungeonScale)
 
 `dungeon-scale.patch` (step 3) installs its settings into `~/bfa/server/etc/worldserver.conf.dist`. Copy
