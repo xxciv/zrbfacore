@@ -79,6 +79,19 @@ Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
 - **Status:** not tested in game yet. Compiles; the SQL runs cleanly (twice) on a test copy of the
   database.
 
+### Scholomance: gates turned sideways
+
+- **Found** (Four, 2026-11-11, screenshot): the Iron Gate in front of Instructor Chillheart's room
+  stood sideways, along the corridor instead of across it.
+- **Cause:** every door on map 1007 has the rotation quaternion (0, 0, 1, -0.0000000437), a 180 degree
+  turn, whatever its orientation is (the Pandaria DB has the same values). The 8.3.7 client draws
+  gameobjects by the quaternion, so the gates with orientation pi/2 or 3pi/2 were 90 degrees off.
+- **Changed:** `sql/fixes/world/2026_11_11_04_scholomance_door_rotation.sql` sets
+  rotation2 = sin(orientation/2), rotation3 = cos(orientation/2) on the 12 map 1007 gameobjects with
+  that quaternion: 211259, 211258, 211257, 211256, 211261, 211262, 210781, 211260, 210789, 210784,
+  210785, 210786. 211259 becomes (0, 0, 0.7071, 0.7071).
+- **Status:** not tested in game yet.
+
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
 
 Merged to `main` with PR #57 on 2026-11-11.
