@@ -3,6 +3,82 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-11 (Scholomance)
+
+Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
+`spell-teleport-combat.patch`, build needed, `cmake build` first) and
+`sql/fixes/world/2026_11_11_03_scholomance_rework.sql`.
+
+### Scholomance: Mists of Pandaria boss scripts and story
+
+- **Found** (before Four's first run): the core still carried the classic Scholomance scripts
+  (Kirtonos, Ras Frostwhisper, Kormok and the rest, map 289). Map 289 can't be entered in 8.3.7, and
+  the Mists of Pandaria dungeon (map 1007) had no boss scripts at all: all five bosses ran SmartAI
+  with a few rows each. The story cast was missing: no Lilian Voss 59200 (only an unscripted copy,
+  58722, standing in the Rattlegore hall), no Darkmaster Gandling 58875 for the Rattlegore intro, no
+  Chillheart phylactery, ice wall, book targets or Soulflame braziers. Darkmaster Gandling 59080 was
+  friendly (faction 35) and unattackable (unit_flags 2147483752). The Bone Piles had no click.
+  Most NPCs only had a difficulty 0 level-scaling row, so in the dungeon they rolled a random level
+  between 41 and 92. There were no Dungeon Finder encounter rows for the five bosses, no exit at the
+  stairs (area trigger 7539) and no graveyard for zone 6066.
+- **Changed:** `tools/bfa/scholomance.patch` (in `src/server/scripts/EasternKingdoms/Scholomance/`)
+  removes the 13 classic boss files and ports the Pandaria 5.4.8 scripts:
+  - `instance_scholomance.cpp`, `scholomance.h`: boss states 0-4, the boss doors (Chillheart exit,
+    Jandice entrance and exit, Rattlegore exit, Lilian entrance, chest and exit, Gandling's two
+    doors). Killing Lilian sends scenario event 30834 (criteria 19262 "Lilian Voss defeated"). Doctor
+    Theolen Krastinov 59369 only shows on heroic, one run in ten.
+  - `boss_instructor_chillheart.cpp`: Ice Wrath, Frigid Grasp, Touch of the Grave, Wrack Soul
+    (heroic), the flying books over the 11 book targets. At 0 health she drops and her phylactery
+    58664 becomes attackable; breaking it kills her. The students channelling into the phylactery
+    die when she is pulled. The Iron Gate 211259 in front of her room opens with a click.
+  - `boss_jandice_barov.cpp`: Wondrous Rapidity; at 66% and 33% she vanishes among 14 illusions.
+    Hitting an illusion shatters it, hitting the real Jandice brings her back.
+  - `boss_rattlegore.cpp`: hidden until the Boneweavers 59193 are dead, then rises ("RATTLEGORE!").
+    Two of the six braziers burst into Soulflame for 15 seconds; Bone Spike hits a random player and a
+    Bone Pile click (Bone Armor 113996) soaks one spike.
+  - `boss_lilian_voss.cpp`: the Rattlegore hall intro with Gandling, her walk to her room, the
+    fight (Shadow Shiv, Death's Grasp, Dark Blaze), the soul phase at 50% (Lilian's Soul 58791 fixates
+    a player), and her end: she jumps at Gandling and dies.
+  - `boss_grandmaster_gandling.cpp`: Incinerate, Immolate, Rise, and Harsh Lesson (never on the tank,
+    so not when solo).
+  - `scholomance.cpp`: the Talking Skull 64562 that leads the way and comments on each boss, and
+    Gandling at Rattlegore 58875.
+  - Left out: Gravity Flux (no area trigger data in 8.3.7), the moving ice wall (cosmetic only), the
+    polyformic acid potion morph.
+- **Changed:** `sql/fixes/world/2026_11_11_03_scholomance_rework.sql`:
+  - Spawns (guids 1007000001-1007000034, Pandaria 5.4.8 world DB): Lilian Voss 59200, Gandling
+    58875, phylactery 58664, ice wall 68291, 11 Book Spawn Targets 58917, 6 Soulflame 59316 + 6
+    brazier stalkers 45979, Gandling's fire stalker 30298, 6 more Teleport Locations 59167. The old
+    Lilian Voss 58722 spawn is deleted. The trash stays as it was (retail sniff, fewer mobs than the
+    Pandaria DB). Two Risen Guards (510000181, 510000221) walk the Pandaria patrol paths 1007000901
+    and 1007000902.
+  - Gameobjects (guids 1007000001-1007000066): the Chillheart-to-Jandice gate 211258, Jandice's gate
+    211257, the missing Harsh Lesson door 210784, the instance portal 212899, alchemy bottles and lore
+    books. The Challenge Mode start door 211988 (closed, in the entrance hall) and Challenger's Orb
+    211674 now spawn on Mythic Keystone (8) only.
+  - Scripts: AIName/ScriptName for 58633, 58664, 68291, 59707, 66240, 59227, 59711, 59184, 59220,
+    59153, 59200, 58791, 59080, 59167, 58875, 64562 and their SmartAI rows deleted; gameobject 211259
+    gets `go_chillheart_iron_door`; spell scripts for 111631, 113775, 113999, 114009, 111642, 111570.
+    The classic map 289 script names are cleared (13 creatures, gameobject 175564, 4 spell scripts,
+    instance_template 289).
+  - Templates: Gandling 59080 faction 14, unit_flags 0; books 59707/66240/59227 faction 16 and Arcane
+    Bomb 59711 faction 14; stalkers 57860, 58917, 59316, 68291 not selectable with the trigger model;
+    Gandling 58875 InhabitType 5; Bone Pile 59304 npcflag 16777216 + spellclick 113996.
+    creature_template_addon auras from the Pandaria DB for 58875, 59080, 59099, 59193, 59304, 59316,
+    59359, 59368, 59503, 59613, 59980, 64562 (and hover for the books).
+  - Level scaling rows 1-100 for difficulties 0, 1 and 2 for every NPC spawned on map 1007 and the
+    summoned ones (INSERT IGNORE, existing rows kept).
+  - Conditions: Soul Rip beam 112081 targets Lilian 59200, Shadow Channel 122499 targets the
+    phylactery 58664.
+  - creature_text: Gandling 58875 (11 lines), Gandling 59080 (4), Rattlegore 59153 (2), Lilian 59200
+    (7), Talking Skull 64562 (12), all with their broadcast text ids.
+  - instance_encounters 1426-1430 (Gandling 1430 ends Dungeon Finder dungeon 2), classic 463 no
+    longer claims dungeon 2; lfg_dungeon_template row for dungeon 2 (same arrival as heroic 472).
+  - Area trigger 7539 (exit stairs) -> world_safe_locs 3672 (Facing set to 3.57792 radians);
+    graveyard 1878 (Scholo GY, Western Plaguelands) for zone 6066.
+- **Status:** not tested in game yet. Compiles; the SQL runs cleanly (twice) on a test copy of the
+  database.
+
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
 
 Merged to `main` with PR #57 on 2026-11-11.

@@ -132,6 +132,7 @@ git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
 git apply ../tools-repo/tools/bfa/quest-list-accept.patch
 git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
+git apply ../tools-repo/tools/bfa/scholomance.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -890,10 +891,11 @@ git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
 git apply ../tools-repo/tools/bfa/quest-list-accept.patch
 git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
+git apply ../tools-repo/tools/bfa/scholomance.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
-When an update adds a source file (`scarlet-halls.patch` adds `scarlet_halls.cpp`, `scarlet-monastery.patch` adds four), run `cmake build`
+When an update adds a source file (`scarlet-halls.patch` adds `scarlet_halls.cpp`, `scarlet-monastery.patch` adds four, `scholomance.patch` adds and removes several), run `cmake build`
 once before building: CMake only finds new files when it configures, and the link fails with an
 `undefined reference` otherwise. It keeps the settings you configured with.
 
