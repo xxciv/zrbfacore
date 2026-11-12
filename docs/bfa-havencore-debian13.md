@@ -130,6 +130,7 @@ git apply ../tools-repo/tools/bfa/quest-complete-window.patch
 git apply ../tools-repo/tools/bfa/quest-empty-progress.patch
 git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
 git apply ../tools-repo/tools/bfa/quest-list-accept.patch
+git apply ../tools-repo/tools/bfa/quest-gossip-accept.patch
 git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
 git apply ../tools-repo/tools/bfa/npc-spell-power-cost.patch
@@ -480,6 +481,11 @@ quest list (an NPC offering two or more quests, such as Ahmo Thunderhorn or Tong
 client goes back to that list after Accept and ignored the plain close the core sent, so the details
 page stayed open. The core now sends the NPC's updated quest list instead, as retail does, and only
 closes the window when the NPC has nothing left to show.
+
+`quest-gossip-accept.patch` does the same for NPCs whose quests sit in a gossip menu (an NPC that
+both talks and gives quests, such as the Shen'dralar Ancient in Dire Maul). After Accept the core
+sends that NPC's gossip menu again, the same menu you get by talking to it, instead of the plain
+close the client ignored.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -898,6 +904,7 @@ git apply ../tools-repo/tools/bfa/quest-complete-window.patch
 git apply ../tools-repo/tools/bfa/quest-empty-progress.patch
 git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
 git apply ../tools-repo/tools/bfa/quest-list-accept.patch
+git apply ../tools-repo/tools/bfa/quest-gossip-accept.patch
 git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
 git apply ../tools-repo/tools/bfa/npc-spell-power-cost.patch

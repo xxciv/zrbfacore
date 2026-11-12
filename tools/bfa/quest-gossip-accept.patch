@@ -1,0 +1,76 @@
+diff --git a/src/server/game/Entities/Creature/GossipDef.cpp b/src/server/game/Entities/Creature/GossipDef.cpp
+index f67fa12..e74f7b0 100644
+--- a/src/server/game/Entities/Creature/GossipDef.cpp
++++ b/src/server/game/Entities/Creature/GossipDef.cpp
+@@ -208,7 +208,14 @@ void PlayerMenu::SendGossipMenu(uint32 titleTextId, ObjectGuid objectGUID)
+ {
+     _interactionData.Reset();
+     _interactionData.SourceGuid = objectGUID;
++    // zrbfacore: a gossip menu that lists quests counts as a quest list too (quest-gossip-accept.patch)
+     _questListGiver.Clear();
++    _questListIsGossip = false;
++    if (!_questMenu.Empty())
++    {
++        _questListGiver = objectGUID;
++        _questListIsGossip = true;
++    }
+ 
+     WorldPackets::NPC::GossipMessage packet;
+     packet.GossipGUID = objectGUID;
+@@ -394,6 +401,7 @@ void PlayerMenu::SendQuestGiverQuestListMessage(Object* questgiver)
+     }
+ 
+     _questListGiver = guid;
++    _questListIsGossip = false;
+     _session->SendPacket(questList.Write());
+     TC_LOG_DEBUG("network", "WORLD: Sent SMSG_QUEST_GIVER_QUEST_LIST_MESSAGE NPC=%s", guid.ToString().c_str());
+ }
+diff --git a/src/server/game/Entities/Creature/GossipDef.h b/src/server/game/Entities/Creature/GossipDef.h
+index 2a1452e..257b722 100644
+--- a/src/server/game/Entities/Creature/GossipDef.h
++++ b/src/server/game/Entities/Creature/GossipDef.h
+@@ -286,6 +286,7 @@ class TC_GAME_API PlayerMenu
+         // zrbfacore: quest giver whose quest list (greeting) the client is showing, see quest-list-accept.patch
+         ObjectGuid GetQuestListGiver() const { return _questListGiver; }
+         void ClearQuestListGiver() { _questListGiver.Clear(); }
++        bool IsQuestListGossip() const { return _questListIsGossip; } // zrbfacore: quest-gossip-accept.patch
+ 
+         bool Empty() const { return _gossipMenu.Empty() && _questMenu.Empty(); }
+ 
+@@ -317,5 +318,6 @@ class TC_GAME_API PlayerMenu
+         WorldSession* _session;
+         InteractionData _interactionData;
+         ObjectGuid _questListGiver;
++        bool _questListIsGossip = false;
+ };
+ #endif
+diff --git a/src/server/game/Handlers/QuestHandler.cpp b/src/server/game/Handlers/QuestHandler.cpp
+index fb26ce6..b2899fb 100644
+--- a/src/server/game/Handlers/QuestHandler.cpp
++++ b/src/server/game/Handlers/QuestHandler.cpp
+@@ -206,7 +206,24 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPackets::Quest::QuestG
+             // Send the NPC's updated quest list instead, as retail does; close only when nothing is left.
+             if (object->GetTypeId() == TYPEID_UNIT || object->GetTypeId() == TYPEID_GAMEOBJECT)
+             {
+-                if (_player->PlayerTalkClass->GetQuestListGiver() == object->GetGUID())
++                if (_player->PlayerTalkClass->GetQuestListGiver() == object->GetGUID() && _player->PlayerTalkClass->IsQuestListGossip())
++                {
++                    // zrbfacore: the same for quests picked from a gossip menu (gossip NPC that is also a quest
++                    // giver, e.g. Shen'dralar Ancient 14358 in Dire Maul): send the gossip menu again, the way
++                    // talking to the NPC does; close only when it has nothing left.
++                    WorldObject* source = static_cast<WorldObject*>(object);
++                    Creature* creature = object->ToCreature();
++                    if (creature && sScriptMgr->OnGossipHello(_player, creature))
++                        return;
++
++                    _player->PrepareGossipMenu(source, Player::GetDefaultGossipMenuForSource(source), true);
++                    if (!_player->PlayerTalkClass->Empty())
++                    {
++                        _player->SendPreparedGossip(source);
++                        return;
++                    }
++                }
++                else if (_player->PlayerTalkClass->GetQuestListGiver() == object->GetGUID())
+                 {
+                     _player->PrepareQuestMenu(object->GetGUID());
+                     if (!_player->PlayerTalkClass->GetQuestMenu().Empty())
