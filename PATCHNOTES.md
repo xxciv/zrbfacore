@@ -3,6 +3,22 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: Vashj'ir ship ride end, second try)
+
+### World: riding the Vashj'ir ship to its stop did not complete "Call of Duty"
+
+- **Found** (Four, 2026-11-12): riding the ship on "Call of Duty", it stopped above Seafarer's Tomb,
+  paused, then sailed on to Durotar; Four was not dragged under to Erunak.
+- **Cause (likely, not confirmed):** the arrival event the script waits for is correct for 8.3.7 (25428
+  on TaxiPath 2204 node 4, read from the client's `TaxiPathNode.db2`). The ship's SmartAI only finds
+  players in its phase 170 and within 40 yards of its origin. The sea along the route up the Eastern
+  Kingdoms coast ("The Great Sea" under Stranglethorn, Westfall and the Wetlands) had no phase 170, and
+  the deck reaches 46 yards forward of the origin.
+- **Changed:** `sql/fixes/world/2026_11_12_43_vashjir_ship_ride_end.sql`: phase 170 on the quest in
+  The Great Sea areas 2339, 2364 and 2365; the ship's player search radius 40 -> 80 yards.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
 ## 2026-11-12 (World fixes: Orgrimmar berth scenery phase)
 
 ### World: the scenery ships at the Vashj'ir berth stayed visible on "Call of Duty"
