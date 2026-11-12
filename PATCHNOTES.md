@@ -132,6 +132,24 @@ Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
   `SetDisableGravity(true)` and `SetCanFly(true)`.
 - **Status:** not tested in game yet. Compiles.
 
+### Scholomance: Gandling died to one hit, and no Alexei
+
+- **Found** (Four, 2026-11-11): Darkmaster Gandling 59080 died to a single 7,076 Ambush; nothing
+  happened afterwards (no Spirit of Lord Alexei Barov).
+- **Cause:** Gandling's template was level 1-1, HealthScalingExpansion 0, rank 1, so his health came
+  from the level 1 classic table; the other bosses are level 43-92, HealthScalingExpansion 4, rank 3.
+  Alexei 64683 (quest ender for An End to the Suffering 31448 and The Four Tomes 31442) was only
+  summoned by the Talking Skull at its own position, a few seconds after the kill. If the skull was
+  far away or not loaded, he showed up somewhere else or not at all, and he never came back after a
+  server restart.
+- **Changed:** `sql/fixes/world/2026_11_11_06_scholomance_gandling_level.sql`: 59080 minlevel 43,
+  maxlevel 92, HealthScalingExpansion 4, rank 3; 58875 minlevel 43, maxlevel 92.
+  `tools/bfa/scholomance.patch` (`instance_scholomance.cpp`, `scholomance.h`, `scholomance.cpp`): the
+  instance summons Alexei at Gandling's spot (20.15, 57.74, 73.88) as soon as Gandling dies, and again
+  when a player enters an instance where Gandling is already dead (only one at a time). The skull just
+  leaves.
+- **Status:** not tested in game yet. Compiles; SQL checked on the test DB.
+
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
 
 Merged to `main` with PR #57 on 2026-11-11.

@@ -3985,10 +3985,10 @@ index 59bc53d..0000000
 -    new boss_vectus();
 -}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp b/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp
-index 187eca5..6df65e2 100644
+index 187eca5..b0808d9 100644
 --- a/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp
-@@ -1,158 +1,216 @@
+@@ -1,158 +1,239 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -4016,7 +4016,8 @@ index 187eca5..6df65e2 100644
 -#include "GameObjectAI.h"
  #include "InstanceScript.h"
  #include "Map.h"
--#include "Player.h"
+ #include "Player.h"
++#include "TemporarySummon.h"
  #include "scholomance.h"
 +#include <algorithm>
 +#include <limits>
@@ -4129,30 +4130,15 @@ index 187eca5..6df65e2 100644
 +            LoadObjectData(creatureData, nullptr);
          }
 -    }
--
+ 
 -    bool SetBossState(uint32 type, EncounterState state) override
 -    {
 -        if (!InstanceScript::SetBossState(type, state))
 -            return false;
- 
--        switch (type)
 +        void OnCreatureCreate(Creature* creature) override
-         {
--        case DATA_LORDALEXEIBAROV:
--        case DATA_DOCTORTHEOLENKRASTINOV:
--        case DATA_THERAVENIAN:
--        case DATA_LOREKEEPERPOLKELT:
--        case DATA_INSTRUCTORMALICIA:
--        case DATA_LADYILLUCIABAROV:
--            CheckToSpawnGandling();
--            break;
--        default:
--            break;
--        }
++        {
 +            InstanceScript::OnCreatureCreate(creature);
- 
--        return true;
--    }
++
 +            switch (creature->GetEntry())
 +            {
 +                case NPC_BONE_PILE:
@@ -4173,29 +4159,17 @@ index 187eca5..6df65e2 100644
 +            }
 +        }
  
--    ObjectGuid GetGuidData(uint32 type) const override
--    {
 -        switch (type)
 +        void OnGameObjectCreate(GameObject* go) override
          {
--        case GO_GATE_KIRTONOS:
--            return GateKirtonosGUID;
--        case GO_GATE_GANDLING:
--            return GateGandlingGUID;
--        case GO_GATE_MALICIA:
--            return GateMiliciaGUID;
--        case GO_GATE_THEOLEN:
--            return GateTheolenGUID;
--        case GO_GATE_POLKELT:
--            return GatePolkeltGUID;
--        case GO_GATE_RAVENIAN:
--            return GateRavenianGUID;
--        case GO_GATE_BAROV:
--            return GateBarovGUID;
--        case GO_GATE_ILLUCIA:
--            return GateIlluciaGUID;
--        case GO_BRAZIER_OF_THE_HERALD:
--            return BrazierOfTheHeraldGUID;
+-        case DATA_LORDALEXEIBAROV:
+-        case DATA_DOCTORTHEOLENKRASTINOV:
+-        case DATA_THERAVENIAN:
+-        case DATA_LOREKEEPERPOLKELT:
+-        case DATA_INSTRUCTORMALICIA:
+-        case DATA_LADYILLUCIABAROV:
+-            CheckToSpawnGandling();
+-            break;
 -        default:
 -            break;
 +            InstanceScript::OnGameObjectCreate(go);
@@ -4228,6 +4202,50 @@ index 187eca5..6df65e2 100644
 +            }
          }
  
+-        return true;
+-    }
++        void OnPlayerEnter(Player* player) override
++        {
++            InstanceScript::OnPlayerEnter(player);
+ 
+-    ObjectGuid GetGuidData(uint32 type) const override
+-    {
+-        switch (type)
++            // the instance was reloaded after Gandling died: bring back Alexei for the quest turn-ins
++            if (GetBossState(DATA_GRANDMASTER_GANDLING) == DONE)
++                SummonAlexei();
++        }
++
++        // Spirit of Lord Alexei Barov 64683 (ends An End to the Suffering and The Four Tomes)
++        void SummonAlexei()
+         {
+-        case GO_GATE_KIRTONOS:
+-            return GateKirtonosGUID;
+-        case GO_GATE_GANDLING:
+-            return GateGandlingGUID;
+-        case GO_GATE_MALICIA:
+-            return GateMiliciaGUID;
+-        case GO_GATE_THEOLEN:
+-            return GateTheolenGUID;
+-        case GO_GATE_POLKELT:
+-            return GatePolkeltGUID;
+-        case GO_GATE_RAVENIAN:
+-            return GateRavenianGUID;
+-        case GO_GATE_BAROV:
+-            return GateBarovGUID;
+-        case GO_GATE_ILLUCIA:
+-            return GateIlluciaGUID;
+-        case GO_BRAZIER_OF_THE_HERALD:
+-            return BrazierOfTheHeraldGUID;
+-        default:
+-            break;
++            if (!alexeiGUID.IsEmpty() && instance->GetCreature(alexeiGUID))
++                return;
++
++            if (TempSummon* alexei = instance->SummonCreature(NPC_ALEXEI_BAROV, AlexeiPos))
++                alexeiGUID = alexei->GetGUID();
+         }
+ 
 -        return ObjectGuid::Empty;
 -    }
 +        ObjectGuid GetGuidData(uint32 type) const override
@@ -4253,10 +4271,10 @@ index 187eca5..6df65e2 100644
 -            if (GetBossState(DATA_LOREKEEPERPOLKELT) != DONE)
 -                return false;
 -            if (GetBossState(DATA_INSTRUCTORMALICIA) != DONE)
--                return false;
--            if (GetBossState(DATA_LADYILLUCIABAROV) != DONE)
 +            if (!InstanceScript::SetBossState(type, state))
                  return false;
+-            if (GetBossState(DATA_LADYILLUCIABAROV) != DONE)
+-                return false;
 -            if (GetBossState(DATA_DARKMASTERGANDLING) == DONE)
 -                return false;
 -            break;
@@ -4300,6 +4318,7 @@ index 187eca5..6df65e2 100644
 +                        skull->AI()->Talk(TALK_SKULL_LILIAN_DEFEAT);
 +                    break;
 +                case DATA_GRANDMASTER_GANDLING:
++                    SummonAlexei();
 +                    if (skull)
 +                        skull->AI()->DoAction(ACTION_ALEXEI);
 +                    break;
@@ -4315,6 +4334,7 @@ index 187eca5..6df65e2 100644
 +
 +    private:
 +        ObjectGuid chillheartIntroDoorGUID;
++        ObjectGuid alexeiGUID;
 +    };
  
 -    void ReadSaveDataMore(std::istringstream& /*data*/) override
@@ -4334,10 +4354,10 @@ index 187eca5..6df65e2 100644
 +}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp
 new file mode 100644
-index 0000000..f3567bd
+index 0000000..a5e2d2d
 --- /dev/null
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp
-@@ -0,0 +1,380 @@
+@@ -0,0 +1,379 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -4694,8 +4714,7 @@ index 0000000..f3567bd
 +                        me->GetMotionMaster()->MovePoint(_wp, SkullPath[_wp], false);
 +                    break;
 +                case EVENT_ALEXEI:
-+                    // Lord Alexei Barov's spirit is freed with Gandling's death
-+                    me->SummonCreature(NPC_ALEXEI_BAROV, me->GetPosition(), TEMPSUMMON_MANUAL_DESPAWN);
++                    // Gandling is dead and Alexei's spirit is free (the instance summons him): the skull's work is done
 +                    me->DespawnOrUnsummon();
 +                    break;
 +                default:
@@ -4719,7 +4738,7 @@ index 0000000..f3567bd
 +    RegisterCreatureAI(npc_talking_skull);
 +}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
-index 4d46bc7..70149ec 100644
+index 4d46bc7..7c5b90c 100644
 --- a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
 @@ -1,6 +1,8 @@
@@ -4731,7 +4750,7 @@ index 4d46bc7..70149ec 100644
   * This program is free software; you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the
   * Free Software Foundation, either version 3 of the License, or
-@@ -18,48 +20,240 @@
+@@ -18,48 +20,241 @@
  #ifndef DEF_SCHOLOMANCE_H
  #define DEF_SCHOLOMANCE_H
  
@@ -4810,6 +4829,7 @@ index 4d46bc7..70149ec 100644
 +Position const GandlingLilianDoorPoint  = { 261.03f, 132.80f, 113.49f, 1.59f };
 +Position const LilianDeathPoint         = { 201.25f, 84.80f, 107.76f, 5.68f };
 +Position const GandlingLeavePoint       = { 176.94f, 73.73f, 108.23f, 3.15f };
++Position const AlexeiPos                = { 20.15f, 57.74f, 73.88f, 0.0f }; // where Gandling stood
 +
 +enum ScholomanceDataTypes
 +{
