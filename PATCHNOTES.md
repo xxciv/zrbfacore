@@ -3,6 +3,20 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: Vashj'ir quest phase hid normal spawns)
+
+### World: on "Call of Duty", Vashj'ir and the sea route looked empty
+
+- **Found** (Four, 2026-11-12): while on the quest, Four saw nothing in Vashj'ir.
+- **Cause:** the core keeps a player "unphased" (able to see normal spawns) only while it also has the
+  default phase 169. 2026_11_12_40 and 43 give phase 170 on the quest in The Great Sea (214, 2339,
+  2365) and Vashj'ir (5146), which had no phase 169, so those players lost sight of every normal spawn.
+  Durotar and Westfall already give 169 to everyone.
+- **Changed:** `sql/fixes/world/2026_11_12_44_vashjir_route_default_phase.sql`: phase 169 for everyone
+  in areas 214, 2339, 2365 and 5146 (same as Durotar's "always see unphased creatures").
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
 ## 2026-11-12 (World fixes: Vashj'ir ship ride end, second try)
 
 ### World: riding the Vashj'ir ship to its stop did not complete "Call of Duty"
