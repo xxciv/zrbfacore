@@ -177,6 +177,18 @@ Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
   map 1007, the skull's last stop at the top of the stairs.
 - **Changed:** `tools/bfa/scholomance.patch` (`scholomance.h`, `instance_scholomance.cpp`):
   `NPC_ALEXEI_BAROV` = 64660, summoned at (53.56, 59.90, 87.22), facing 2.87.
+- **Status:** confirmed in game by Four on 2026-11-11 (both quests turned in). The Gandling hover
+  fix (SQL 07) works too; he now floats standing up above Lilian's room (1.9 yards over the floor, as
+  in Pandaria).
+
+### Scholomance: Lilian died for no visible reason
+
+- **Found** (Four, 2026-11-11): at the end of her fight Lilian jumps at Gandling, there is a pause,
+  he teleports away and she just dies.
+- **Changed:** `tools/bfa/scholomance.patch`: on "What?!" Gandling channels the Soul Rip beam
+  (112081) into Lilian until he teleports (`scholomance.cpp`). After she lands, Lilian kneels and
+  says "Leave me...to die...alone...please..." (creature_text 59200 group 5, broadcast 58528, sound
+  29467), then dies 4 seconds later (`boss_lilian_voss.cpp`, new `EVENT_LAST_WORDS`).
 - **Status:** not tested in game yet. Compiles.
 
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)

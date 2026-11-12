@@ -2528,10 +2528,10 @@ index 6c50502..0000000
 -}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_lilian_voss.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_lilian_voss.cpp
 new file mode 100644
-index 0000000..961797e
+index 0000000..11fa299
 --- /dev/null
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/boss_lilian_voss.cpp
-@@ -0,0 +1,535 @@
+@@ -0,0 +1,543 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -2592,6 +2592,7 @@ index 0000000..961797e
 +    EVENT_INTRO_DONE,
 +    EVENT_DIE_NECROMANCER,
 +    EVENT_PURIFIED,
++    EVENT_LAST_WORDS,
 +
 +    // soul
 +    EVENT_FIXATE_ANGER          = 20,
@@ -2605,6 +2606,7 @@ index 0000000..961797e
 +    TALK_IT_BURNS               = 2,  // It burns...my soul...it burns!!!!
 +    TALK_END_IT                 = 3,  // END IT! NOW! Before he can...
 +    TALK_DIE_NECROMANCER        = 4,  // DIE, NECROMANCER!
++    TALK_LEAVE_ME               = 5,  // Leave me...to die...alone...please...
 +    TALK_SOUL_FADES_ANN         = 12, // Lilian's Soul fades into the spirit realm! It can no longer be harmed!
 +
 +    // Lilian's Soul
@@ -2719,8 +2721,9 @@ index 0000000..961797e
 +        if (type == EFFECT_MOTION_TYPE && pointId == EVENT_JUMP)
 +        {
 +            DoCastAOE(SPELL_SHADOW_SHIV, true);
++            // Gandling rips out what is left of her soul as he flees (scholomance.cpp, EVENT_LEAVE)
 +            if (_purified)
-+                _storyEvents.ScheduleEvent(EVENT_PURIFIED, 9000);
++                _storyEvents.ScheduleEvent(EVENT_LAST_WORDS, 6000);
 +            return;
 +        }
 +
@@ -2834,7 +2837,12 @@ index 0000000..961797e
 +                        gandling->AI()->DoAction(ACTION_REMOVE_LILIAN_SOUL);
 +                    }
 +                    else
-+                        _storyEvents.ScheduleEvent(EVENT_PURIFIED, 3000);
++                        _storyEvents.ScheduleEvent(EVENT_LAST_WORDS, 3000);
++                    break;
++                case EVENT_LAST_WORDS:
++                    Talk(TALK_LEAVE_ME);
++                    me->SetStandState(UNIT_STAND_STATE_KNEEL);
++                    _storyEvents.ScheduleEvent(EVENT_PURIFIED, 4000);
 +                    break;
 +                case EVENT_PURIFIED:
 +                    me->KillSelf();
@@ -4355,10 +4363,10 @@ index 187eca5..21eea02 100644
 +}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp
 new file mode 100644
-index 0000000..1c5022a
+index 0000000..4a6eced
 --- /dev/null
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp
-@@ -0,0 +1,384 @@
+@@ -0,0 +1,388 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -4492,7 +4500,11 @@ index 0000000..1c5022a
 +                Talk(TALK_GANDLING_SPIRIT);
 +                break;
 +            case ACTION_REMOVE_LILIAN_SOUL:
++                // she breaks free and leaps at him: he tears the rest of her soul out and flees
 +                Talk(TALK_GANDLING_WHAT);
++                if (_instance)
++                    if (Creature* lilian = _instance->GetCreature(DATA_LILIAN_VOSS))
++                        me->CastSpell(lilian, SPELL_COSMETIC_SOUL_RIP, false);
 +                _events.ScheduleEvent(EVENT_LEAVE, 4500);
 +                break;
 +            default:
