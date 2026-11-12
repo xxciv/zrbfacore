@@ -3,6 +3,32 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: patrols from TDB 7.3.5)
+
+### World: 733 open-world NPCs stood still where they should patrol
+
+- **Found** (Wayfarer, 2026-11-12, comparing with TDB 7.3.5 in `xxciv/zrbfa_wdbdumps`): 1,150 spawns
+  walk a waypoint path in TDB 7.3.5 but stand still or wander at random here (same NPC within 8
+  yards), the same problem as the Battlescar fliers.
+- **Cause:** the dump has no path for them (`MovementType` 0 or 1, no `creature_addon.path_id`).
+- **Changed:** `sql/fixes/world/2026_11_12_31_tdb735_patrols.sql` (the header lists every NPC):
+  - 733 spawns on the four continents get TDB's path: Outland 287, Northrend 278, Kalimdor 104,
+    Eastern Kingdoms 64. Biggest groups: Orgrimmar Grunt and Arcane Patroller (17 each), Azure
+    Drake and Talonbranch Wisp (12), Zabra'jin Guard, Necrolord and Gjalerhorn Scavenger (10).
+  - 11,662 `waypoint_data` points in new paths 735000001-735000733, with TDB's points, delays,
+    orientations and walk/run flags. TDB's waypoint actions are dropped (their scripts aren't here).
+  - `creature_addon.path_id` set (row added where the spawn had none) and `creature` set to
+    `MovementType` 2, `spawndist` 0, each checked by guid and entry.
+  - 8 followers join their leader as in TDB (`creature_formations`, groupAI 515 so they walk with
+    it): the five battleground envoys at their posts, a Gnomeregan Infantry and two Highbank
+    Guardsmen.
+  - Left alone: 347 dungeon spawns (dungeon thread's area), 28 NPCs with a core script, 11 whose
+    SmartAI moves them, 18 with no usable TDB path, spawns already in a formation or moving, and a
+    Broom whose path starts 97 yards from our spawn.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB with
+  all upstream `sql/updates/world` and our `sql/fixes/world` applied.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
 ## 2026-11-12 (World fixes: SmartAI for scriptless NPCs from TDB 7.3.5, NPC spell costs)
 
 Merged to `main` with PR #59 on 2026-11-12.
