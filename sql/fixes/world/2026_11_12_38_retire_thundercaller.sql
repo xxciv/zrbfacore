@@ -21,3 +21,7 @@ INSERT INTO `gameobject_template_addon` (`entry`,`faction`,`flags`,`mingold`,`ma
 DELETE FROM `creature_addon` WHERE `guid`=735200049;
 INSERT INTO `creature_addon` (`guid`,`path_id`,`mount`,`bytes1`,`bytes2`,`emote`,`aiAnimKit`,`movementAnimKit`,`meleeAnimKit`) VALUES
 (735200049,0,0,0,1,0,0,0,0);
+
+-- The portal template casts Teleport: Orgrimmar 3567 (the mage spell, 10 s cast). Use Portal Effect: Orgrimmar 17609
+-- instead, the instant force-cast every other Orgrimmar portal uses (-> Portal: Orgrimmar 121852, same landing spot).
+UPDATE `gameobject_template` SET `Data0`=17609 WHERE `entry`=293689;
