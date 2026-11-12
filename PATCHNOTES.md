@@ -3,6 +3,24 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: Vashj'ir ship ride end, fourth try)
+
+### World: the ride still ended without "Call of Duty" completing (rider list from Orgrimmar)
+
+- **Found** (Four, 2026-11-12): with 45 applied, the ship sailed into the kraken at Vashj'ir and back to
+  Durotar; Four was not dragged under.
+- **Cause:** the server's copy of this ship and the one on Four's screen are not in step even in
+  Orgrimmar (earlier the same day the ship sat at the docks on screen while its crew vanished), so at the
+  server's Orgrimmar departure Four was not near the server's ship either. Any trigger on the server's
+  ship misses the rider.
+- **Changed:** `sql/fixes/world/2026_11_12_47_vashjir_ship_stop_trigger.sql`: the ship's SmartAI is
+  removed. An invisible bunny 23837 (guid 735400002, phase 170 so only players on the quest see it)
+  waits at the Vashj'ir stop (TaxiPath 2204 node 4, -4632.93 3863.71); every second it stores the
+  players within 60 yards, teleports them next to Erunak Stonespeaker and gives credit 36901. The
+  player's position follows their own screen's ship, so it fires when the ship arrives on their screen.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
 ## 2026-11-12 (World fixes: Horde ship scene hidden with its ship)
 
 ### World: on "Call of Duty", the Argus intro NPCs stood on the water at the Orgrimmar berth
