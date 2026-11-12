@@ -3,6 +3,26 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: Vashj'ir ship ride end, third try)
+
+### World: the ride still ended without "Call of Duty" completing
+
+- **Found** (Four, 2026-11-12, with `.gps` along the way): the outbound map change works (Four was on
+  the Eastern Kingdoms map, phase 170, in Seafarer's Tomb at the stop), but the ship only stopped "for a
+  fraction of a second" for Four, then Four was moved back to Kalimdor.
+- **Cause:** the client runs behind the server's ship after each map change (it pauses 5-10 seconds
+  loading the new map while the server ship sails on). By the time Four's client reached the Vashj'ir
+  stop, the server's 45 second stop was nearly over. When the server's ship arrived there, Four's
+  position was still far back along the route, so the script's 80-yard search found nobody.
+- **Changed:** `sql/fixes/world/2026_11_12_45_vashjir_ship_riders_from_orgrimmar.sql` rewrites the
+  ship's SmartAI: it stores the players aboard (phase 170, within 80 yards) when the ship leaves
+  Orgrimmar (departure event 26515, node 12), where client and server are still in step, and at the
+  Vashj'ir stop (event 25428) teleports that stored list to Erunak, gives credit 36901 and clears the
+  list. Riders who stepped off in Orgrimmar stay on Kalimdor and are not found.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver. Board at Orgrimmar (or Azshara)
+  before the ship leaves Orgrimmar.
+
 ## 2026-11-12 (World fixes: Vashj'ir quest phase hid normal spawns)
 
 ### World: on "Call of Duty", Vashj'ir and the sea route looked empty
