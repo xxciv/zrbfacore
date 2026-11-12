@@ -132,6 +132,7 @@ git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
 git apply ../tools-repo/tools/bfa/quest-list-accept.patch
 git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
+git apply ../tools-repo/tools/bfa/npc-spell-power-cost.patch
 git apply ../tools-repo/tools/bfa/scholomance.patch
 git apply ../tools-repo/tools/bfa/instance-scenario-cleanup.patch
 ```
@@ -485,6 +486,12 @@ Strength). Fledgling Braves and Bristleback Invaders fight there forever because
 that player, the braves move on to other invaders, and NPC hits stop touching it. NPC hits also no
 longer heal: the old code set an invader back up to 80%, undoing the player's damage. It only touches
 `zone_mulgore.cpp`.
+
+`npc-spell-power-cost.patch` lets NPCs cast spells whose cost is a power they don't have. Creatures
+only get a power pool from their class (mana for paladin and mage), but many NPC spells list a focus,
+energy, rage, rune or mana cost, so the core failed those casts every time (Ghostclaw Lynx's Rake, for
+example). The cost is now skipped for an NPC that no player controls and that has no pool for that
+power. Players, pets and NPCs with mana are unchanged. It only touches `Spell.cpp`.
 
 ## 4. Configure and compile
 
@@ -892,6 +899,7 @@ git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
 git apply ../tools-repo/tools/bfa/quest-list-accept.patch
 git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
+git apply ../tools-repo/tools/bfa/npc-spell-power-cost.patch
 git apply ../tools-repo/tools/bfa/scholomance.patch
 git apply ../tools-repo/tools/bfa/instance-scenario-cleanup.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
@@ -975,8 +983,16 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_07_06_darkmoon_carousel_empty.sql` | Darkmoon Faire: carousel rides removed, the platform spins empty |
 | `2026_11_07_30_darkmoon_island_rares.sql` | Darkmoon Island rares: Darkmoon Rabbit spawned (its pet always drops, no solo-lethal bite), Moonfang gets her fight and always drops one of her items, Death Metal Knight spawned in the Cauldron of Rock with his sword; all three are elites that scale with your level (verified in game 2026-11-07) |
 | `2026_11_09_30_orgrimmar_balloon_pandaren.sql` | Orgrimmar: Chao-Ju, Jiming, Winwa, Winsum and Jising stay in the hot air balloon basket outside the front gate instead of falling to the ground (verified in game 2026-11-09) |
+| `2026_11_11_03_scholomance_rework.sql` | Scholomance (map 1007): story NPCs and objects from Pandaria 5.4.8, encounters, level scaling, stairs exit, graveyard (needs `scholomance.patch`) |
+| `2026_11_11_04_scholomance_door_rotation.sql` | Scholomance: gates no longer stand sideways (rotation from orientation, 12 doors) |
+| `2026_11_11_05_scholomance_object_names.sql` | Scholomance: English names for 13 objects that were in French |
+| `2026_11_11_06_scholomance_gandling_level.sql` | Scholomance: Darkmaster Gandling 59080 levels, expansion and rank (no more one-hit kill) |
+| `2026_11_11_07_scholomance_gandling_hover.sql` | Scholomance: Gandling 58875 hovers instead of swimming in the air |
+| `2026_11_12_00_scholomance_early_entrance_trigger.sql` | Scholomance: old entrance trigger 6339 removed, so you only enter at the portal down the stairs |
 | `2026_11_11_30_stormwind_harbor_ship_double_spawns.sql` | Stormwind Harbor: the 7th Legion warship crew (riflemen, marines, Arator, Grand Admiral Jes-Tereth) stands once instead of twice (verified in game 2026-11-11) |
 | `2026_11_11_31_bloodhoof_shaman_trainers_stacked.sql` | Bloodhoof Village: only Narm Skychaser stands at the shaman trainer spot (Tarl Cloudsong stacked on him is removed) (verified in game 2026-11-11) |
+| `2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` | 854 old-world NPCs that only meleed get their SmartAI scripts from TDB 7.3.5 (casts, gossip and quest events); Ghostclaw Lynx Rake verified in game 2026-11-12 |
+| `2026_11_12_31_tdb735_patrols.sql` | 733 open-world NPCs that stood still walk their TDB 7.3.5 patrol paths, 8 followers in formation (Orgrimmar Grunts verified in game 2026-11-12) |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills, `2026_11_09_02_profession_tier_levels.sql` gates them by expansion level).
 
