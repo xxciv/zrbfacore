@@ -4354,10 +4354,10 @@ index 187eca5..b0808d9 100644
 +}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp
 new file mode 100644
-index 0000000..a5e2d2d
+index 0000000..1c5022a
 --- /dev/null
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp
-@@ -0,0 +1,379 @@
+@@ -0,0 +1,384 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -4462,9 +4462,9 @@ index 0000000..a5e2d2d
 +
 +    void Reset() override
 +    {
-+        // he floats above the floor; without the flying flags the client plays the swim animation
++        // he floats in place (hover animation, set by his template addon); he never walks or flies:
++        // a humanoid moving through the air plays the swim animation
 +        me->SetDisableGravity(true);
-+        me->SetCanFly(true);
 +        me->SetReactState(REACT_PASSIVE);
 +        me->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
 +        if (!_atLilian && !me->HasAura(SPELL_BONE_ARMOR_VISUAL))
@@ -4569,8 +4569,12 @@ index 0000000..a5e2d2d
 +                    _events.ScheduleEvent(EVENT_GO_TO_DOOR, 6000);
 +                    break;
 +                case EVENT_GO_TO_DOOR:
++                    // he vanishes from Rattlegore's hall and reappears above Lilian's room
 +                    me->RemoveAurasDueToSpell(SPELL_SOUL_RIP_VISUAL);
-+                    me->GetMotionMaster()->MovePoint(0, GandlingLilianDoorPoint, false);
++                    me->RemoveAurasDueToSpell(SPELL_BONE_ARMOR_VISUAL);
++                    Talk(TALK_GANDLING_FATE);
++                    DoCast(me, SPELL_TELEPORT_VISUAL, true);
++                    _events.ScheduleEvent(EVENT_AT_LILIAN, 1500);
 +                    break;
 +                case EVENT_AT_LILIAN:
 +                    me->NearTeleportTo(GandlingTeleportPos);
@@ -4590,7 +4594,8 @@ index 0000000..a5e2d2d
 +                            skull->AI()->Talk(TALK_SKULL_GANDLING_LEAVE);
 +                    me->InterruptNonMeleeSpells(true);
 +                    me->RemoveAllAuras();
-+                    me->GetMotionMaster()->MovePoint(1, GandlingLeavePoint);
++                    DoCast(me, SPELL_TELEPORT_VISUAL, true);
++                    me->DespawnOrUnsummon(1000);
 +                    break;
 +                default:
 +                    break;
@@ -4738,7 +4743,7 @@ index 0000000..a5e2d2d
 +    RegisterCreatureAI(npc_talking_skull);
 +}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
-index 4d46bc7..7c5b90c 100644
+index 4d46bc7..839db1e 100644
 --- a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
 @@ -1,6 +1,8 @@
@@ -4750,7 +4755,7 @@ index 4d46bc7..7c5b90c 100644
   * This program is free software; you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the
   * Free Software Foundation, either version 3 of the License, or
-@@ -18,48 +20,241 @@
+@@ -18,48 +20,240 @@
  #ifndef DEF_SCHOLOMANCE_H
  #define DEF_SCHOLOMANCE_H
  
@@ -4828,7 +4833,6 @@ index 4d46bc7..7c5b90c 100644
 +Position const GandlingTeleportPos      = { 220.98f, 68.88f, 109.64f, 2.25f };
 +Position const GandlingLilianDoorPoint  = { 261.03f, 132.80f, 113.49f, 1.59f };
 +Position const LilianDeathPoint         = { 201.25f, 84.80f, 107.76f, 5.68f };
-+Position const GandlingLeavePoint       = { 176.94f, 73.73f, 108.23f, 3.15f };
 +Position const AlexeiPos                = { 20.15f, 57.74f, 73.88f, 0.0f }; // where Gandling stood
 +
 +enum ScholomanceDataTypes

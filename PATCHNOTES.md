@@ -130,7 +130,23 @@ Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
   swim animation when he moves.
 - **Changed:** `tools/bfa/scholomance.patch` (`scholomance.cpp`, `npc_gandling_at_rattlegore::Reset`):
   `SetDisableGravity(true)` and `SetCanFly(true)`.
-- **Status:** not tested in game yet. Compiles.
+- **Status:** did not help (Four, 2026-11-11: still swimming). Replaced by the entry below.
+
+### Scholomance: Gandling swam through the air (second try)
+
+- **Found** (Four, 2026-11-11): with the fix above, Gandling 58875 still floats and swims above
+  Lilian's room.
+- **Cause:** his creature_template_addon bytes1 50331648 (from the Pandaria DB, where the top byte
+  held the stand/hover flags) puts 3 in the top byte. This core reads that byte as the animation tier
+  and 3 is fly; his humanoid model has no fly animation, so the client plays the swim one, more so
+  while he moves through the air.
+- **Changed:** `sql/fixes/world/2026_11_11_07_scholomance_gandling_hover.sql`: 58875 addon bytes1
+  33554432 (tier 2, hover). `tools/bfa/scholomance.patch` (`scholomance.cpp`): only
+  `SetDisableGravity(true)` in Reset (no `SetCanFly`), and he no longer moves: he vanishes with the
+  teleport visual from Rattlegore's hall after "Come, Voss, your fate awaits you." and reappears above
+  Lilian's room, and when Lilian is beaten he vanishes the same way instead of flying to the door.
+  `GandlingLeavePoint` removed.
+- **Status:** not tested in game yet. Compiles; SQL checked on the test DB.
 
 ### Scholomance: Gandling died to one hit, and no Alexei
 
