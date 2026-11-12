@@ -84,9 +84,8 @@ to do to pick it up (rebuild, restart, run SQL).
     path nodes 11 and 13, + pi = 0.1914), standing still.
   - Restored the 5 pier Hellscream's Vanguard at their dump spots and guids, standing still
     (`MovementType` 0 instead of wandering).
-- **Status:** not tested in game. The positions are computed, not sniffed on the ship; Captain Samir
-  (46 yards forward, 12 up) is the least certain. The SQL runs cleanly, twice in a row, on a copy of
-  our world DB.
+- **Status:** confirmed in game by Four (2026-11-12): the crew stands on deck correctly and the 5 pier
+  guards are back on the pier.
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
 ## 2026-11-12 (World fixes: Thundercaller retired)
