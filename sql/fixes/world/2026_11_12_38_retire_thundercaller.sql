@@ -15,3 +15,9 @@ INSERT INTO `gameobject` (`guid`,`id`,`map`,`zoneId`,`areaId`,`spawnDifficulties
 DELETE FROM `gameobject_template_addon` WHERE `entry`=293689;
 INSERT INTO `gameobject_template_addon` (`entry`,`faction`,`flags`,`mingold`,`maxgold`,`WorldEffectID`,`AIAnimKitID`) VALUES
 (293689,1735,0,0,0,0,0);
+
+-- Watcher Umjin 25107 on The Purple Princess (guid 735200049 from 2026_11_12_33): his template addon has him
+-- asleep (stand state 3, also in TDB), and lying down he clips through the cabin wall. Standing per-spawn addon.
+DELETE FROM `creature_addon` WHERE `guid`=735200049;
+INSERT INTO `creature_addon` (`guid`,`path_id`,`mount`,`bytes1`,`bytes2`,`emote`,`aiAnimKit`,`movementAnimKit`,`meleeAnimKit`) VALUES
+(735200049,0,0,0,1,0,0,0,0);

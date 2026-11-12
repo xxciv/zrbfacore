@@ -17,6 +17,9 @@ to do to pick it up (rebuild, restart, run SQL).
   - Spawned Portal to Orgrimmar 293689 as guid 735400101 on the Tirisfal Glades zeppelin tower at the
     spot Four picked (2067.74 290.34 97.03, facing 4.585), with `gameobject_template_addon` faction
     1735 (Horde), like the Orgrimmar side's Portal to Undercity 293684.
+  - Watcher Umjin 25107 on The Purple Princess (guid 735200049) stands up: his template addon has him
+    asleep (bytes1 3, same in TDB) and lying down he clipped through the cabin. New per-spawn
+    `creature_addon` row with bytes1 0.
 - **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
