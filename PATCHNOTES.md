@@ -3,6 +3,21 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: Vashj'ir ship Eastern Kingdoms stop leftovers)
+
+### World: Turgore and Adarrah stayed on the water when the Vashj'ir ship sailed on
+
+- **Found** (Four, 2026-11-12): after the ship reached the Eastern Kingdoms, Turgore and Adarrah did not
+  move with it and drifted off through the hull.
+- **Cause:** at the ship's 10-second stop off the Eastern Kingdoms coast (TaxiPath 2204 node 1, -7006.78
+  2238.04) the dump has 19 world spawns sniffed on its deck, all wandering: Turgore 42982, Adarrah 43051
+  and 17 invisible event bunnies of the unscripted ride event. They are not passengers.
+- **Changed:** `sql/fixes/world/2026_11_12_48_vashjir_ship_eastern_stop_copies.sql` deletes those 19
+  spawns (205700-205715, 205717, 205718, 205720 on map 0) and their addon rows. Adarrah already rides
+  the ship (2026_11_12_39).
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
 ## 2026-11-12 (World fixes: Vashj'ir ship ride end, fourth try)
 
 ### World: the ride still ended without "Call of Duty" completing (rider list from Orgrimmar)
