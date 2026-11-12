@@ -3,6 +3,28 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: Vashj'ir ship crew)
+
+### World: the Horde ship to Vashj'ir sailed empty; 5 pier guards removed by mistake
+
+- **Found** (Four, 2026-11-12): the Ship to Vashj'ir (Horde, transport 203466, map 738) docks at
+  Orgrimmar with nobody on board. Checking the soldiers 2026_11_12_34 removed showed 5 of them stood on
+  the pier, not in the water.
+- **Cause:** TDB 7.3.5 has no crew for this transport. The 15 dock NPCs deleted in 34 were sniffed
+  while it sat at its Orgrimmar stop (TaxiPath 2204 node 12, 1440.22 -5035.89 7.0); 10 of them are its
+  deck crew, 5 Hellscream's Vanguard (205119-205123) stand on the pier beside the Dranosh'ar Fishermen.
+- **Changed:** `sql/fixes/world/2026_11_12_39_vashjir_ship_crew.sql`:
+  - 10 crew on map 738 at ship-relative positions, guids 735200301-735200310: Hellscream's Vanguard
+    43090 (5), Legionnaire Nazgrim 43100, Mack Fearsen 43022, Adarrah 43051, Budd 43023, Captain Samir
+    43030. Converted with the orientation the core gives the docked ship (Catmull-Rom tangent between
+    path nodes 11 and 13, + pi = 0.1914), standing still.
+  - Restored the 5 pier Hellscream's Vanguard at their dump spots and guids, standing still
+    (`MovementType` 0 instead of wandering).
+- **Status:** not tested in game. The positions are computed, not sniffed on the ship; Captain Samir
+  (46 yards forward, 12 up) is the least certain. The SQL runs cleanly, twice in a row, on a copy of
+  our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
 ## 2026-11-12 (World fixes: Thundercaller retired)
 
 ### World: The Thundercaller still flew Orgrimmar - Undercity, but BFA replaced it with portals
