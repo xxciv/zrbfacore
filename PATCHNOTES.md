@@ -34,7 +34,7 @@ to do to pick it up (rebuild, restart, run SQL).
   (401234, 401249-401259) move to phase 307 with the ship, so the same players see them as before and
   they hide with the ship on the quest. Vindicator Boros 3000007 (phase 8625, which no area gives) is a
   duplicate nobody sees and is left as is.
-- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Status:** confirmed in game by Four (2026-11-12): the Horde ship's NPCs are hidden with it.
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
 ## 2026-11-12 (World fixes: Vashj'ir ship ride end, third try)
@@ -68,7 +68,7 @@ to do to pick it up (rebuild, restart, run SQL).
   Durotar and Westfall already give 169 to everyone.
 - **Changed:** `sql/fixes/world/2026_11_12_44_vashjir_route_default_phase.sql`: phase 169 for everyone
   in areas 214, 2339, 2365 and 5146 (same as Durotar's "always see unphased creatures").
-- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Status:** confirmed in game by Four (2026-11-12): creatures show on the route and in Vashj'ir on the quest.
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
 ## 2026-11-12 (World fixes: Vashj'ir ship ride end, second try)
@@ -100,7 +100,7 @@ to do to pick it up (rebuild, restart, run SQL).
   Durotar for every player except those with 25924 in progress; the Horde ship (101352), Mantaray
   (101353), Gooblin Boat (184257), Lady Liadrin (401248) and the Hired Courier (20500904) move to phase
   307 (normal, not inverse).
-- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Status:** confirmed in game by Four (2026-11-12): the scenery ships are hidden on the quest.
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
 ## 2026-11-12 (World fixes: Call of Duty objective text)
@@ -114,7 +114,7 @@ to do to pick it up (rebuild, restart, run SQL).
   36915) has the same gap.
 - **Changed:** `sql/fixes/world/2026_11_12_41_call_of_duty_objective_text.sql`: objectives 266797
   (25924) and 266167 (14482) get the retail text "Ride the mercenary ship to Vashj'ir".
-- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Status:** confirmed in game by Four (2026-11-12): the tracker reads "0/1 Ride the mercenary ship to Vashj'ir".
 - **Pick up:** run the SQL on `bfa_world`, restart worldserver, and delete the client's Cache folder
   (the client caches quest text).
 
