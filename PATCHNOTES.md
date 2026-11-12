@@ -3,6 +3,29 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: missing rares from TDB 7.3.5)
+
+### World: 13 rare beasts in Silithus and Tirisfal Glades never spawned
+
+- **Found** (Wayfarer, 2026-11-12, comparing with TDB 7.3.5): of about 99,000 TDB spawns with no
+  match here, only about 520 on the four continents are NPCs we never spawn that aren't summons,
+  phased, critters, bunnies or a same-name NPC standing on the spot. Most of those are outdated
+  (pre-Cataclysm capital and event NPCs) or have stub templates, so only this clear group is fixed.
+- **Cause:** the dump has no spawn for these rares, and their templates came from an 8.3.7 sniff with
+  no faction or level (friendly faction 35, level 1).
+- **Changed:** `sql/fixes/world/2026_11_12_32_tdb735_missing_rares.sql`:
+  - Templates set hostile (`faction` 14) at TDB 7.3.5's levels: Silithus Karapax 50370 (56),
+    Acroniss 50737 (55), Qem 50742 (57), Qu'rik 50744 (58), Losaj 50745 (58), Ffexk the
+    Dunestalker 50897 (55), Toxx 51004 (56); Tirisfal Glades Fangor 50328 (5), Shadowstalker
+    50763 (6), Bonechewer 50803 (7), Nighthowl 50908 (9), Hibernus the Sleeper 50930 (7), Plague
+    51044 (8). Ten have a scaling row, which sets the level in game.
+  - One spawn each at TDB's spot and respawn time (Silithus 2 min, Tirisfal 15 min), guids
+    735100001-735100013.
+  - TDB's SmartAI (10 rows) for Fangor, Shadowstalker, Bonechewer, Nighthowl, Hibernus and Plague,
+    checked like the scripts batch. Acroniss, Qem and Toxx already had scripts here.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
 ## 2026-11-12 (World fixes: patrols from TDB 7.3.5)
 
 Merged to `main` with PR #60 on 2026-11-12.
