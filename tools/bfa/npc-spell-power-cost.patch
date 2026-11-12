@@ -1,0 +1,18 @@
+diff --git a/src/server/game/Spells/Spell.cpp b/src/server/game/Spells/Spell.cpp
+index 4009e52..93cc090 100644
+--- a/src/server/game/Spells/Spell.cpp
++++ b/src/server/game/Spells/Spell.cpp
+@@ -6486,6 +6486,13 @@ SpellCastResult Spell::CheckPower() const
+                 return SPELL_FAILED_CASTER_AURASTATE;
+             continue;
+         }
++
++        // NPCs only get a power pool from their class (mana for paladin and mage), but many NPC
++        // spells list a focus, energy, rage, rune or mana cost. Don't fail those casts on a power
++        // the creature doesn't have.
++        if (m_caster->IsCreature() && !m_caster->IsControlledByPlayer() && cost.Power < MAX_POWERS && !m_caster->GetMaxPower(cost.Power))
++            continue;
++
+         // Check valid power type
+         if (cost.Power >= MAX_POWERS)
+         {

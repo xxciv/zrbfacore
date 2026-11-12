@@ -132,6 +132,7 @@ git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
 git apply ../tools-repo/tools/bfa/quest-list-accept.patch
 git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
+git apply ../tools-repo/tools/bfa/npc-spell-power-cost.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -483,6 +484,12 @@ Strength). Fledgling Braves and Bristleback Invaders fight there forever because
 that player, the braves move on to other invaders, and NPC hits stop touching it. NPC hits also no
 longer heal: the old code set an invader back up to 80%, undoing the player's damage. It only touches
 `zone_mulgore.cpp`.
+
+`npc-spell-power-cost.patch` lets NPCs cast spells whose cost is a power they don't have. Creatures
+only get a power pool from their class (mana for paladin and mage), but many NPC spells list a focus,
+energy, rage, rune or mana cost, so the core failed those casts every time (Ghostclaw Lynx's Rake, for
+example). The cost is now skipped for an NPC that no player controls and that has no pool for that
+power. Players, pets and NPCs with mana are unchanged. It only touches `Spell.cpp`.
 
 ## 4. Configure and compile
 
@@ -890,6 +897,7 @@ git apply ../tools-repo/tools/bfa/quest-autocomplete-turnin.patch
 git apply ../tools-repo/tools/bfa/quest-list-accept.patch
 git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
+git apply ../tools-repo/tools/bfa/npc-spell-power-cost.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

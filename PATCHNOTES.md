@@ -3,7 +3,7 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-12 (World fixes: SmartAI for scriptless NPCs from TDB 7.3.5)
+## 2026-11-12 (World fixes: SmartAI for scriptless NPCs from TDB 7.3.5, NPC spell costs)
 
 ### World: 854 old-world NPCs had no script and only meleed
 
@@ -55,6 +55,22 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB with
   all upstream `sql/updates/world` and our `sql/fixes/world` applied.
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
+### Core: NPCs never cast spells that cost a power they don't have
+
+- **Found** (Four, 2026-11-12): the Ghostclaw Lynx never cast Rake 59881, even with `.cast back`.
+- **Cause:** `Creature::UpdateLevelDependantStats` only gives paladin- and mage-class NPCs a power
+  pool (mana). `Spell::CheckPower` still checks every cost, so an NPC spell that lists focus,
+  energy, rage, runes or runic power, or mana on a warrior- or rogue-class NPC, always failed with
+  "not enough power". Rake 59881 costs 20 focus. Our own scripts have about 570 cast rows like this
+  (energy 238, mana 227, runic power 46, runes 42 and a few others), plus casts in core boss scripts.
+- **Changed:** new `tools/bfa/npc-spell-power-cost.patch` (after `spell-teleport-combat.patch`):
+  `Spell::CheckPower` skips a cost when the caster is a creature that no player controls and its
+  max power of that type is 0. Players, pets, player-driven vehicles and NPCs that do have the
+  power are unchanged. Side effect: NPCs that never used those spells here now do, as on retail,
+  so some fights (including dungeons already tested) can be harder.
+- **Status:** not tested in game. `Spell.cpp` compiles with the full patch chain.
+- **Pick up:** apply the patch, rebuild, restart worldserver.
 
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
 
