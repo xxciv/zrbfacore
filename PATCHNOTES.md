@@ -3,6 +3,21 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: Call of Duty objective text)
+
+### World: "Call of Duty" tracked "0/1 Submerge Bunny slain"
+
+- **Found** (Four, 2026-11-12): the quest tracker for "Call of Duty" (25924) showed "0/1 Submerge Bunny
+  slain".
+- **Cause:** the quest's only objective (kill credit 36901, the invisible Submerge Bunny) has no
+  `Description`, so the client falls back to the creature name. The Alliance version 14482 (credit
+  36915) has the same gap.
+- **Changed:** `sql/fixes/world/2026_11_12_41_call_of_duty_objective_text.sql`: objectives 266797
+  (25924) and 266167 (14482) get the retail text "Ride the mercenary ship to Vashj'ir".
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, restart worldserver, and delete the client's Cache folder
+  (the client caches quest text).
+
 ## 2026-11-12 (World fixes: Vashj'ir ship only on its quest)
 
 ### World: the Vashj'ir ship clipped through the Orgrimmar scenery ships, and "Call of Duty" never completed
