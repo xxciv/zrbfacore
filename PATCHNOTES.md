@@ -196,6 +196,21 @@ Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
 - **Status:** confirmed in game by Four on 2026-11-12 (dying inside sends you to the Scholomance
   graveyard).
 
+### Scholomance: the entrance pulled you in before the door
+
+- **Found** (Four, 2026-11-12, video): walking in from Caer Darrow, the dungeon teleported Four
+  inside before reaching the entrance door; leaving by the stairs and heading for that door pulled
+  Four back in. The real portal, down the stairs, worked.
+- **Cause:** two areatriggers in Western Plaguelands teleport to Scholomance (`areatrigger_teleport`,
+  both to entrance point 3671). 2567 at (1282.05, -2548.73, 85.40) is the Mists of Pandaria
+  entrance down the stairs, and the only one in the Pandaria 5.4.8 database. 6339 at
+  (1270.56, -2570.14, 97.00), a 6 x 10 x 10 box named "This was old Scholo entrance", sits on the way
+  to the door, above the spot where the stairs exit drops you (1273.91, -2553.09, 91.84). Positions
+  from `AreaTrigger.db2`.
+- **Changed:** `sql/fixes/world/2026_11_12_00_scholomance_early_entrance_trigger.sql` deletes the
+  `areatrigger_teleport` row for 6339. Nothing else uses that trigger.
+- **Status:** not tested in game yet.
+
 ### Core: old scenario progress showed up in a new dungeon run
 
 - **Found** (Four, 2026-11-12): every new Scholomance run opened with Chillheart, Jandice, Rattlegore
