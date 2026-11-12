@@ -25,8 +25,7 @@ to do to pick it up (rebuild, restart, run SQL).
   `sql/fixes/world/2026_11_12_37_stormwind_portal_room_exit.sql` spawns an invisible ELM General
   Purpose Bunny 23837 (guid 735400001) on the spot Four picked in it (-9000.56 865.06 65.89), with per-guid SmartAI: any player within 1 yard is
   teleported to world_safe_locs 3630 "Stormwind - Mage Exit Target" (-9013.2 870.63 148.62).
-- **Status:** entrance (4733) confirmed in game by Four 2026-11-12. Exit (37) not tested. The SQL runs
-  cleanly, twice in a row, on a copy of our world DB.
+- **Status:** entrance (35) and exit (37) confirmed in game by Four 2026-11-12.
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
 ### World: The Relentless (Stormwind - Boralus ship) clipped through The Bravery at the pier
@@ -38,7 +37,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed:** `sql/fixes/world/2026_11_12_36_retire_stormwind_boralus_ship.sql` deletes transport
   294556 (The Relentless, map 2074) from `transports`. Travel goes through the Wizard's Sanctum Portal
   to Boralus 302854 and Boralus' Portal to Stormwind 293552.
-- **Status:** Four's call (2026-11-12): retire the ship once the Wizard's Sanctum works. Not tested.
+- **Status:** Four's call (2026-11-12): retire the ship, portals instead. Confirmed in game 2026-11-12 (ship gone, portals work).
 - **Pick up:** run the SQL on `bfa_world` after the Wizard's Sanctum fix works, then restart worldserver.
 
 ## 2026-11-12 (World fixes: Orgrimmar wind riders and docks)
