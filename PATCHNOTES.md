@@ -3,6 +3,22 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: Horde ship scene hidden with its ship)
+
+### World: on "Call of Duty", the Argus intro NPCs stood on the water at the Orgrimmar berth
+
+- **Found** (Four, 2026-11-12): with the scenery ships hidden (2026_11_12_42), a group of NPCs stood on
+  the water where the Horde ship had been.
+- **Cause:** the Horde ship 269836 (guid 101352) carries the Argus intro scene (Fleet Admiral Zar'gov,
+  Aethas Sunreaver, Vindicator Boros, Silgryn, Sunstrider Highguards, Kor'kron Headhunters) in phase
+  11695, which every player in Bladefist Bay gets regardless of quests; 42 only moved Lady Liadrin.
+- **Changed:** `sql/fixes/world/2026_11_12_46_orgrimmar_berth_ship_crew_phase.sql`: those 12 spawns
+  (401234, 401249-401259) move to phase 307 with the ship, so the same players see them as before and
+  they hide with the ship on the quest. Vindicator Boros 3000007 (phase 8625, which no area gives) is a
+  duplicate nobody sees and is left as is.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
 ## 2026-11-12 (World fixes: Vashj'ir ship ride end, third try)
 
 ### World: the ride still ended without "Call of Duty" completing
