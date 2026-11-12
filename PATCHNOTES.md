@@ -3,6 +3,22 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: Orgrimmar berth scenery phase)
+
+### World: the scenery ships at the Vashj'ir berth stayed visible on "Call of Duty"
+
+- **Found** (Four, 2026-11-12): with 2026_11_12_40 applied and "Call of Duty" active (phase 170 shown by
+  `.debug phase`), the Vashj'ir ship appeared but the scenery ships at its Orgrimmar berth stayed.
+- **Cause:** 40 hid them with an inverse phase 170. Durotar also gives every player phase 169 ("always
+  see unphased creatures"), which keeps the player flagged unphased, and an unphased player sees every
+  inverse-phased object.
+- **Changed:** `sql/fixes/world/2026_11_12_42_orgrimmar_berth_scenery_phase.sql`: unused phase 307 in
+  Durotar for every player except those with 25924 in progress; the Horde ship (101352), Mantaray
+  (101353), Gooblin Boat (184257), Lady Liadrin (401248) and the Hired Courier (20500904) move to phase
+  307 (normal, not inverse).
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
 ## 2026-11-12 (World fixes: Call of Duty objective text)
 
 ### World: "Call of Duty" tracked "0/1 Submerge Bunny slain"
