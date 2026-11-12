@@ -209,7 +209,7 @@ Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
   from `AreaTrigger.db2`.
 - **Changed:** `sql/fixes/world/2026_11_12_00_scholomance_early_entrance_trigger.sql` deletes the
   `areatrigger_teleport` row for 6339. Nothing else uses that trigger.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-12. With this, Four called Scholomance complete.
 
 ### Core: old scenario progress showed up in a new dungeon run
 
