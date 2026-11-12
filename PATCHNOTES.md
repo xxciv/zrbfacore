@@ -3,6 +3,39 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: Vashj'ir ship only on its quest)
+
+### World: the Vashj'ir ship clipped through the Orgrimmar scenery ships, and "Call of Duty" never completed
+
+- **Found** (Four, 2026-11-12): the Ship to Vashj'ir (Horde, transport 203466) docks across the two
+  scenery ships at the Orgrimmar docks and passes through them. Four chose to show it only to players on
+  its quest, as on retail, and to hide the scenery ships from those players.
+- **Cause:**
+  - Core: `Map::AddToMap<Transport>` sent a ship to every player on the map, ignoring its phase. This
+    ship changes maps (Kalimdor / Eastern Kingdoms) every loop, so it reappeared for everyone although
+    `transports` already puts it in phase 170. Login (`SendInitTransports`) did check the phase.
+  - DB: no `phase_area` row ever gave phase 170 around Orgrimmar, so the quest could not show it.
+  - Nothing scripted the end of the ride (no event script, SmartAI or core script for the path
+    events), so "Call of Duty" 25924 (credit 36901) could never complete.
+- **Changed:**
+  - `tools/bfa/transport-phase-visibility.patch` (new, `src/server/game/Maps/Map.cpp`):
+    `AddToMap<Transport>` only sends the ship to players in its phase; `SendUpdateTransportVisibility`
+    never hides the ship a player is standing on (a rider leaving the phase area, or finishing the quest
+    on board, would otherwise drop into the sea).
+  - `sql/fixes/world/2026_11_12_40_vashjir_ship_quest_phase.sql`:
+    - Phase 170 while 25924 is in progress (not yet complete) in Durotar (14), The Great Sea (214) and
+      Vashj'ir (5146).
+    - Ship crew 735200301-735200310 (from 39) set to phase 170, so they show with the ship.
+    - Inverse phase 170 on the scenery at the berth: Horde ship 269836 (guid 101352), Mantaray 269837
+      (101353), Gooblin Boat 203471 (184257), Lady Liadrin (401248, stands on the Horde ship) and the
+      Hired Courier (20500904, stands on the Gooblin Boat). Players without the quest see no change.
+    - SmartAI on the ship: on arrival at its stop above Vashj'ir (TaxiPath 2204 node 4, event 25428),
+      every player aboard in phase 170 is teleported next to Erunak Stonespeaker 41618 (-4608.77
+      3982.0 -70.4), who takes the quest and starts "Sea Legs", and gets credit 36901.
+- **Status:** not tested in game. The patch compiles (`Map.cpp`) on upstream 2c13546; the SQL runs
+  cleanly, twice in a row, on a copy of our world DB. With GM mode on you still see everything.
+- **Pick up:** apply the patch and rebuild, run the SQL on `bfa_world`, then restart worldserver.
+
 ## 2026-11-12 (World fixes: Vashj'ir ship crew)
 
 ### World: the Horde ship to Vashj'ir sailed empty; 5 pier guards removed by mistake
