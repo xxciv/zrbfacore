@@ -5,6 +5,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-12 (World fixes: SmartAI for scriptless NPCs from TDB 7.3.5, NPC spell costs)
 
+Merged to `main` with PR #59 on 2026-11-12.
+
 ### World: 854 old-world NPCs had no script and only meleed
 
 - **Found** (Wayfarer, 2026-11-12, comparing our world DB with the TrinityCore releases in
@@ -52,7 +54,8 @@ to do to pick it up (rebuild, restart, run SQL).
       29397), 21293 Borak, Son of Oronok (spell 37064), 21725 Kagrosh (spell 37245), 21727
       Flanis Swiftwing (spell 37244), 21877 Karsius the Ancient Watcher (spell 37782).
     - TDB has no rows for its action list: 44782 Rento.
-- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB with
+- **Status:** Ghostclaw Lynx Rake confirmed in game by Four on 2026-11-12. The other scripts get
+  checked as Four meets them. The SQL runs cleanly, twice in a row, on a copy of our world DB with
   all upstream `sql/updates/world` and our `sql/fixes/world` applied.
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
