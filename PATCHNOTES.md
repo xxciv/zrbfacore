@@ -19,7 +19,14 @@ to do to pick it up (rebuild, restart, run SQL).
   - Deleted doubled portal room spawns in the default phase: Maginor Dumas 331, Enchanted Broom 103033
     and Tushui Magister 147741 (guids 3400000000001970-1972), and Portal to Paw'don Village 323844
     (guid 3300000000298) standing inside Portal to Pandaria 315457 (same spell 130703).
-- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Follow-up** (Four, 2026-11-12: entrance works, the way back out doesn't): the exit portal in the
+  portal room (Doodad_8SW_Stormwind_MagePortal001 311875, guid 280200645) is only a decoration, sent
+  through a server-side area trigger on retail that our core can't teleport with.
+  `sql/fixes/world/2026_11_12_37_stormwind_portal_room_exit.sql` spawns an invisible ELM General
+  Purpose Bunny 23837 (guid 735400001) on it, with per-guid SmartAI: any player within 3 yards is
+  teleported to world_safe_locs 3630 "Stormwind - Mage Exit Target" (-9013.2 870.63 148.62).
+- **Status:** entrance (4733) confirmed in game by Four 2026-11-12. Exit (37) not tested. The SQL runs
+  cleanly, twice in a row, on a copy of our world DB.
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
 ### World: The Relentless (Stormwind - Boralus ship) clipped through The Bravery at the pier
