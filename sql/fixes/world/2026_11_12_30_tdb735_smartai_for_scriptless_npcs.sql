@@ -2,6 +2,9 @@
 -- Every event, action and target type exists in HavenCore; every spell, creature, gameobject and quest they name exists here.
 -- 22 standalone cast rows whose spell no longer exists in 8.3.7 were dropped; the rest of those NPCs' scripts are kept.
 -- One dangling link (46274 Gaffer Coilspring id 0 -> 1) is set to 0.
+-- NPCs only have mana when their class is paladin or mage, and the core makes them pay spell costs, so two casts are swapped
+-- for the cost-free copy of the same spell: Ghostclaw Lynx Rake 59881 (20 focus) -> 24332, Urdak Enveloping Winds 6728 (19 mana,
+-- warrior class) -> 15535.
 -- 32 NPCs from the same list were left out (a needed spell, gameobject or quest is missing in 8.3.7, or an action list is missing): see PATCHNOTES.
 -- No creature_text or waypoints rows are needed: every text group and WP_START path these scripts use already exists here.
 -- 123 SmartAI conditions (type 22) come along; Blood Knight Stillblade's list 1776800 keeps upstream's own ids 5-7.
@@ -709,7 +712,7 @@ INSERT INTO `smart_scripts` (`entryorguid`,`source_type`,`id`,`link`,`event_type
 (16222,0,14,0,59,0,100,0,5,0,0,0,0,'',5,23,0,0,0,0,100,1,0,0,0,0,0,0,0,'Silvermoon City Guardian - On Timed Event - Play Emote Flex'),
 (16222,0,15,0,61,0,100,512,0,0,0,0,0,'',67,6,5000,5000,0,0,100,1,0,0,0,0,0,0,0,'Silvermoon City Guardian - On Event Link - Create Timed Event 6'),
 (16222,0,16,0,59,0,100,512,6,0,0,0,0,'',66,0,0,0,0,0,100,1,0,0,0,0,0,0,0,'Silvermoon City Guardian - On Timed Event - Reset Orientation'),
-(16348,0,1,0,0,0,100,0,5000,10000,10000,150000,0,'',11,59881,0,0,0,0,0,2,0,0,0,0,0,0,0,'Ghostclaw Lynx - IC - Cast Rake'),
+(16348,0,1,0,0,0,100,0,5000,10000,10000,150000,0,'',11,24332,0,0,0,0,0,2,0,0,0,0,0,0,0,'Ghostclaw Lynx - IC - Cast Rake (24332, no focus cost)'),
 (16584,0,0,0,1,0,100,0,300000,300000,300000,300000,0,'',1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Watch Commander Krunk - Out of Combat - Say Line 0'),
 (16585,0,0,0,1,0,100,0,120000,120000,500000,500000,0,'',1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Cookie One-Eye - Out of Combat - Say Line 0'),
 (16585,0,1,0,1,0,100,0,125000,125000,505000,505000,0,'',1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Cookie One-Eye - Out of Combat - Say Line 1'),
@@ -868,7 +871,7 @@ INSERT INTO `smart_scripts` (`entryorguid`,`source_type`,`id`,`link`,`event_type
 (18528,0,1,0,62,0,100,512,8650,0,0,0,0,'',80,1852801,2,0,0,0,0,11,22861,80,0,0,0,0,0,'Xiri - On Gossip use - Start waypoint'),
 (18528,0,2,0,62,0,100,512,8650,0,0,0,0,'',80,1852802,2,0,0,0,0,11,22863,80,0,0,0,0,0,'Xiri - On Gossip use - Start waypoint'),
 (18541,0,13,14,2,0,100,513,0,15,0,0,0,'',22,3,0,0,0,0,0,1,0,0,0,0,0,0,0,'Urdak - Between 0-15% Health - Set Event Phase 3 (No Repeat)'),
-(18541,0,12,0,0,0,100,0,10000,14000,18000,25000,0,'',11,6728,1,0,0,0,0,6,0,0,0,0,0,0,0,'Urdak - In Combat - Cast \'Enveloping Winds\' (Phase 1) (No Repeat)'),
+(18541,0,12,0,0,0,100,0,10000,14000,18000,25000,0,'',11,15535,1,0,0,0,0,6,0,0,0,0,0,0,0,'Urdak - In Combat - Cast \'Enveloping Winds\' (15535, no mana cost) (Phase 1) (No Repeat)'),
 (18541,0,11,0,0,0,100,0,6000,10000,12000,16000,0,'',11,32907,1,0,0,0,0,2,0,0,0,0,0,0,0,'Urdak - In Combat - Cast \'Arakkoa Blast\' (Phase 1) (No Repeat)'),
 (18541,0,10,0,3,2,100,512,30,100,100,100,0,'',23,0,1,0,0,0,0,1,0,0,0,0,0,0,0,'Urdak - Between 30-100% Mana - Decrement Phase By 1 (Phase 1) (No Repeat)'),
 (18541,0,9,0,9,1,100,513,0,5,0,0,0,'',21,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Urdak - Within 0-5 Range - Enable Combat Movement (Phase 1) (No Repeat)'),

@@ -31,6 +31,10 @@ to do to pick it up (rebuild, restart, run SQL).
     whose spell is gone in 8.3.7 were dropped and the rest of those NPCs' scripts kept. One dangling
     link (Gaffer Coilspring 46274 id 0 -> 1) is set to 0. Every text group and waypoint path the
     scripts use already exists here, so no `creature_text` or `waypoints` rows are added.
+  - Two casts use the cost-free copy of the same spell. NPCs only have mana when their class is
+    paladin or mage, and the core makes them pay spell costs, so these never fired: Ghostclaw Lynx
+    16348 Rake 59881 (20 focus) -> 24332, Urdak 18541 Enveloping Winds 6728 (19 mana, warrior
+    class) -> 15535. Found by Four: the Lynx never raked, even with `.cast back 59881`.
   - Left out (32 NPCs):
     - every row casts a spell that no longer exists: 683 Young Panther, 736 Panther, 1679 Avarus
       Kharag, 2744 Shadowforge Commander, 3811 Giant Ashenvale Bear, 3939 Razormane Wolf, 3940
