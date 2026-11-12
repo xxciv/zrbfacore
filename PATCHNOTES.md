@@ -33,7 +33,8 @@ to do to pick it up (rebuild, restart, run SQL).
   waits at the Vashj'ir stop (TaxiPath 2204 node 4, -4632.93 3863.71); every second it stores the
   players within 60 yards, teleports them next to Erunak Stonespeaker and gives credit 36901. The
   player's position follows their own screen's ship, so it fires when the ship arrives on their screen.
-- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Status:** confirmed in game by Four (2026-11-12): riding the ship to the Vashj'ir stop lands the
+  rider next to Erunak with "Call of Duty" complete. (The ship SmartAI of 40, 43 and 45 is replaced by this.)
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
 ## 2026-11-12 (World fixes: Horde ship scene hidden with its ship)
