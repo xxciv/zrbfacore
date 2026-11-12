@@ -189,7 +189,7 @@ Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
   (112081) into Lilian until he teleports (`scholomance.cpp`). After she lands, Lilian kneels and
   says "Leave me...to die...alone...please..." (creature_text 59200 group 5, broadcast 58528, sound
   29467), then dies 4 seconds later (`boss_lilian_voss.cpp`, new `EVENT_LAST_WORDS`).
-- **Status:** not tested in game yet. Compiles.
+- **Status:** confirmed in game by Four on 2026-11-11.
 
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
 
