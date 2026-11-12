@@ -3,10 +3,371 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: Vashj'ir ship Eastern Kingdoms stop leftovers)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: Turgore and Adarrah stayed on the water when the Vashj'ir ship sailed on
+
+- **Found** (Four, 2026-11-12): after the ship reached the Eastern Kingdoms, Turgore and Adarrah did not
+  move with it and drifted off through the hull.
+- **Cause:** at the ship's 10-second stop off the Eastern Kingdoms coast (TaxiPath 2204 node 1, -7006.78
+  2238.04) the dump has 19 world spawns sniffed on its deck, all wandering: Turgore 42982, Adarrah 43051
+  and 17 invisible event bunnies of the unscripted ride event. They are not passengers.
+- **Changed:** `sql/fixes/world/2026_11_12_48_vashjir_ship_eastern_stop_copies.sql` deletes those 19
+  spawns (205700-205715, 205717, 205718, 205720 on map 0) and their addon rows. Adarrah already rides
+  the ship (2026_11_12_39).
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
+## 2026-11-12 (World fixes: Vashj'ir ship ride end, fourth try)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: the ride still ended without "Call of Duty" completing (rider list from Orgrimmar)
+
+- **Found** (Four, 2026-11-12): with 45 applied, the ship sailed into the kraken at Vashj'ir and back to
+  Durotar; Four was not dragged under.
+- **Cause:** the server's copy of this ship and the one on Four's screen are not in step even in
+  Orgrimmar (earlier the same day the ship sat at the docks on screen while its crew vanished), so at the
+  server's Orgrimmar departure Four was not near the server's ship either. Any trigger on the server's
+  ship misses the rider.
+- **Changed:** `sql/fixes/world/2026_11_12_47_vashjir_ship_stop_trigger.sql`: the ship's SmartAI is
+  removed. An invisible bunny 23837 (guid 735400002, phase 170 so only players on the quest see it)
+  waits at the Vashj'ir stop (TaxiPath 2204 node 4, -4632.93 3863.71); every second it stores the
+  players within 60 yards, teleports them next to Erunak Stonespeaker and gives credit 36901. The
+  player's position follows their own screen's ship, so it fires when the ship arrives on their screen.
+- **Status:** confirmed in game by Four (2026-11-12): riding the ship to the Vashj'ir stop lands the
+  rider next to Erunak with "Call of Duty" complete. (The ship SmartAI of 40, 43 and 45 is replaced by this.)
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
+## 2026-11-12 (World fixes: Horde ship scene hidden with its ship)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: on "Call of Duty", the Argus intro NPCs stood on the water at the Orgrimmar berth
+
+- **Found** (Four, 2026-11-12): with the scenery ships hidden (2026_11_12_42), a group of NPCs stood on
+  the water where the Horde ship had been.
+- **Cause:** the Horde ship 269836 (guid 101352) carries the Argus intro scene (Fleet Admiral Zar'gov,
+  Aethas Sunreaver, Vindicator Boros, Silgryn, Sunstrider Highguards, Kor'kron Headhunters) in phase
+  11695, which every player in Bladefist Bay gets regardless of quests; 42 only moved Lady Liadrin.
+- **Changed:** `sql/fixes/world/2026_11_12_46_orgrimmar_berth_ship_crew_phase.sql`: those 12 spawns
+  (401234, 401249-401259) move to phase 307 with the ship, so the same players see them as before and
+  they hide with the ship on the quest. Vindicator Boros 3000007 (phase 8625, which no area gives) is a
+  duplicate nobody sees and is left as is.
+- **Status:** confirmed in game by Four (2026-11-12): the Horde ship's NPCs are hidden with it.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
+## 2026-11-12 (World fixes: Vashj'ir ship ride end, third try)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: the ride still ended without "Call of Duty" completing
+
+- **Found** (Four, 2026-11-12, with `.gps` along the way): the outbound map change works (Four was on
+  the Eastern Kingdoms map, phase 170, in Seafarer's Tomb at the stop), but the ship only stopped "for a
+  fraction of a second" for Four, then Four was moved back to Kalimdor.
+- **Cause:** the client runs behind the server's ship after each map change (it pauses 5-10 seconds
+  loading the new map while the server ship sails on). By the time Four's client reached the Vashj'ir
+  stop, the server's 45 second stop was nearly over. When the server's ship arrived there, Four's
+  position was still far back along the route, so the script's 80-yard search found nobody.
+- **Changed:** `sql/fixes/world/2026_11_12_45_vashjir_ship_riders_from_orgrimmar.sql` rewrites the
+  ship's SmartAI: it stores the players aboard (phase 170, within 80 yards) when the ship leaves
+  Orgrimmar (departure event 26515, node 12), where client and server are still in step, and at the
+  Vashj'ir stop (event 25428) teleports that stored list to Erunak, gives credit 36901 and clears the
+  list. Riders who stepped off in Orgrimmar stay on Kalimdor and are not found.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver. Board at Orgrimmar (or Azshara)
+  before the ship leaves Orgrimmar.
+
+## 2026-11-12 (World fixes: Vashj'ir quest phase hid normal spawns)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: on "Call of Duty", Vashj'ir and the sea route looked empty
+
+- **Found** (Four, 2026-11-12): while on the quest, Four saw nothing in Vashj'ir.
+- **Cause:** the core keeps a player "unphased" (able to see normal spawns) only while it also has the
+  default phase 169. 2026_11_12_40 and 43 give phase 170 on the quest in The Great Sea (214, 2339,
+  2365) and Vashj'ir (5146), which had no phase 169, so those players lost sight of every normal spawn.
+  Durotar and Westfall already give 169 to everyone.
+- **Changed:** `sql/fixes/world/2026_11_12_44_vashjir_route_default_phase.sql`: phase 169 for everyone
+  in areas 214, 2339, 2365 and 5146 (same as Durotar's "always see unphased creatures").
+- **Status:** confirmed in game by Four (2026-11-12): creatures show on the route and in Vashj'ir on the quest.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
+## 2026-11-12 (World fixes: Vashj'ir ship ride end, second try)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: riding the Vashj'ir ship to its stop did not complete "Call of Duty"
+
+- **Found** (Four, 2026-11-12): riding the ship on "Call of Duty", it stopped above Seafarer's Tomb,
+  paused, then sailed on to Durotar; Four was not dragged under to Erunak.
+- **Cause (likely, not confirmed):** the arrival event the script waits for is correct for 8.3.7 (25428
+  on TaxiPath 2204 node 4, read from the client's `TaxiPathNode.db2`). The ship's SmartAI only finds
+  players in its phase 170 and within 40 yards of its origin. The sea along the route up the Eastern
+  Kingdoms coast ("The Great Sea" under Stranglethorn, Westfall and the Wetlands) had no phase 170, and
+  the deck reaches 46 yards forward of the origin.
+- **Changed:** `sql/fixes/world/2026_11_12_43_vashjir_ship_ride_end.sql`: phase 170 on the quest in
+  The Great Sea areas 2339, 2364 and 2365; the ship's player search radius 40 -> 80 yards.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
+## 2026-11-12 (World fixes: Orgrimmar berth scenery phase)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: the scenery ships at the Vashj'ir berth stayed visible on "Call of Duty"
+
+- **Found** (Four, 2026-11-12): with 2026_11_12_40 applied and "Call of Duty" active (phase 170 shown by
+  `.debug phase`), the Vashj'ir ship appeared but the scenery ships at its Orgrimmar berth stayed.
+- **Cause:** 40 hid them with an inverse phase 170. Durotar also gives every player phase 169 ("always
+  see unphased creatures"), which keeps the player flagged unphased, and an unphased player sees every
+  inverse-phased object.
+- **Changed:** `sql/fixes/world/2026_11_12_42_orgrimmar_berth_scenery_phase.sql`: unused phase 307 in
+  Durotar for every player except those with 25924 in progress; the Horde ship (101352), Mantaray
+  (101353), Gooblin Boat (184257), Lady Liadrin (401248) and the Hired Courier (20500904) move to phase
+  307 (normal, not inverse).
+- **Status:** confirmed in game by Four (2026-11-12): the scenery ships are hidden on the quest.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
+## 2026-11-12 (World fixes: Call of Duty objective text)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: "Call of Duty" tracked "0/1 Submerge Bunny slain"
+
+- **Found** (Four, 2026-11-12): the quest tracker for "Call of Duty" (25924) showed "0/1 Submerge Bunny
+  slain".
+- **Cause:** the quest's only objective (kill credit 36901, the invisible Submerge Bunny) has no
+  `Description`, so the client falls back to the creature name. The Alliance version 14482 (credit
+  36915) has the same gap.
+- **Changed:** `sql/fixes/world/2026_11_12_41_call_of_duty_objective_text.sql`: objectives 266797
+  (25924) and 266167 (14482) get the retail text "Ride the mercenary ship to Vashj'ir".
+- **Status:** confirmed in game by Four (2026-11-12): the tracker reads "0/1 Ride the mercenary ship to Vashj'ir".
+- **Pick up:** run the SQL on `bfa_world`, restart worldserver, and delete the client's Cache folder
+  (the client caches quest text).
+
+## 2026-11-12 (World fixes: Vashj'ir ship only on its quest)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: the Vashj'ir ship clipped through the Orgrimmar scenery ships, and "Call of Duty" never completed
+
+- **Found** (Four, 2026-11-12): the Ship to Vashj'ir (Horde, transport 203466) docks across the two
+  scenery ships at the Orgrimmar docks and passes through them. Four chose to show it only to players on
+  its quest, as on retail, and to hide the scenery ships from those players.
+- **Cause:**
+  - Core: `Map::AddToMap<Transport>` sent a ship to every player on the map, ignoring its phase. This
+    ship changes maps (Kalimdor / Eastern Kingdoms) every loop, so it reappeared for everyone although
+    `transports` already puts it in phase 170. Login (`SendInitTransports`) did check the phase.
+  - DB: no `phase_area` row ever gave phase 170 around Orgrimmar, so the quest could not show it.
+  - Nothing scripted the end of the ride (no event script, SmartAI or core script for the path
+    events), so "Call of Duty" 25924 (credit 36901) could never complete.
+- **Changed:**
+  - `tools/bfa/transport-phase-visibility.patch` (new, `src/server/game/Maps/Map.cpp`):
+    `AddToMap<Transport>` only sends the ship to players in its phase; `SendUpdateTransportVisibility`
+    never hides the ship a player is standing on (a rider leaving the phase area, or finishing the quest
+    on board, would otherwise drop into the sea).
+  - `sql/fixes/world/2026_11_12_40_vashjir_ship_quest_phase.sql`:
+    - Phase 170 while 25924 is in progress (not yet complete) in Durotar (14), The Great Sea (214) and
+      Vashj'ir (5146).
+    - Ship crew 735200301-735200310 (from 39) set to phase 170, so they show with the ship.
+    - Inverse phase 170 on the scenery at the berth: Horde ship 269836 (guid 101352), Mantaray 269837
+      (101353), Gooblin Boat 203471 (184257), Lady Liadrin (401248, stands on the Horde ship) and the
+      Hired Courier (20500904, stands on the Gooblin Boat). Players without the quest see no change.
+    - SmartAI on the ship: on arrival at its stop above Vashj'ir (TaxiPath 2204 node 4, event 25428),
+      every player aboard in phase 170 is teleported next to Erunak Stonespeaker 41618 (-4608.77
+      3982.0 -70.4), who takes the quest and starts "Sea Legs", and gets credit 36901.
+- **Status:** not tested in game. The patch compiles (`Map.cpp`) on upstream 2c13546; the SQL runs
+  cleanly, twice in a row, on a copy of our world DB. With GM mode on you still see everything.
+- **Pick up:** apply the patch and rebuild, run the SQL on `bfa_world`, then restart worldserver.
+
+## 2026-11-12 (World fixes: Vashj'ir ship crew)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: the Horde ship to Vashj'ir sailed empty; 5 pier guards removed by mistake
+
+- **Found** (Four, 2026-11-12): the Ship to Vashj'ir (Horde, transport 203466, map 738) docks at
+  Orgrimmar with nobody on board. Checking the soldiers 2026_11_12_34 removed showed 5 of them stood on
+  the pier, not in the water.
+- **Cause:** TDB 7.3.5 has no crew for this transport. The 15 dock NPCs deleted in 34 were sniffed
+  while it sat at its Orgrimmar stop (TaxiPath 2204 node 12, 1440.22 -5035.89 7.0); 10 of them are its
+  deck crew, 5 Hellscream's Vanguard (205119-205123) stand on the pier beside the Dranosh'ar Fishermen.
+- **Changed:** `sql/fixes/world/2026_11_12_39_vashjir_ship_crew.sql`:
+  - 10 crew on map 738 at ship-relative positions, guids 735200301-735200310: Hellscream's Vanguard
+    43090 (5), Legionnaire Nazgrim 43100, Mack Fearsen 43022, Adarrah 43051, Budd 43023, Captain Samir
+    43030. Converted with the orientation the core gives the docked ship (Catmull-Rom tangent between
+    path nodes 11 and 13, + pi = 0.1914), standing still.
+  - Restored the 5 pier Hellscream's Vanguard at their dump spots and guids, standing still
+    (`MovementType` 0 instead of wandering).
+- **Status:** confirmed in game by Four (2026-11-12): the crew stands on deck correctly and the 5 pier
+  guards are back on the pier.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
+## 2026-11-12 (World fixes: Thundercaller retired)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: The Thundercaller still flew Orgrimmar - Undercity, but BFA replaced it with portals
+
+- **Found** (Four, 2026-11-12): the zeppelin still runs and is crewed, while the Orgrimmar platform
+  already has a Portal to Undercity and the Tirisfal Glades map shows an Orgrimmar portal at the tower.
+- **Cause:** transport 164871 (map 591) is still in `transports`; the Tirisfal side Portal to Orgrimmar
+  293689 (Teleport: Orgrimmar 3567) exists as a template but was never spawned.
+- **Changed:** `sql/fixes/world/2026_11_12_38_retire_thundercaller.sql`:
+  - Deleted transport 164871 from `transports`, and its 21 crew from 2026_11_12_33 (guids
+    735200050-735200070, map 591).
+  - Spawned Portal to Orgrimmar 293689 as guid 735400101 on the Tirisfal Glades zeppelin tower at the
+    spot Four picked (2067.74 290.34 97.03, facing 4.585), with `gameobject_template_addon` faction
+    1735 (Horde), like the Orgrimmar side's Portal to Undercity 293684.
+  - Portal template 293689 `Data0` 3567 -> 0: it cast the mage spell Teleport: Orgrimmar (10 s cast,
+    landing in the city; found by Four in game). Per-spawn SmartAI (GO -735400101, on use) teleports
+    the player instantly to the Orgrimmar zeppelin tower beside the Portal to Undercity
+    (1841.12 -4391.99 135.23, spot picked by Four).
+  - Orgrimmar's Portal to Undercity 293684 (guid 210400316) landed inside Undercity (its spell 17611
+    -> 121862 at 1773.4 61.7 -46.3). Four's call: tower to tower. Template `Data0` 17611 -> 0 and
+    per-spawn SmartAI (GO -210400316, on use) teleports to the Tirisfal tower at the new portal.
+  - Watcher Umjin 25107 on The Purple Princess (guid 735200049) stands up: his template addon has him
+    asleep (bytes1 3, same in TDB) and lying down he clipped through the cabin. New per-spawn
+    `creature_addon` row with bytes1 0.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
+## 2026-11-12 (World fixes: Stormwind Wizard's Sanctum, Boralus ship)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: the Wizard's Sanctum portal did nothing, so the Stormwind portal room was unreachable
+
+- **Found** (Four, 2026-11-12): the portal at the top of the Mage Quarter tower goes nowhere, and the
+  Wizard's Sanctum can't be entered.
+- **Cause:** the client's area triggers 4733 (top of the tower, -9016 876 148.6) and 4734 (basement,
+  -9019 888 29.6) have no `areatrigger_teleport` rows. The portals inside all work (their spells have
+  destinations).
+- **Changed:** `sql/fixes/world/2026_11_12_35_stormwind_wizards_sanctum.sql`:
+  - `areatrigger_teleport` 4733 -> world_safe_locs 7264 "Stormwind - Portal Room - Wizard's Sanctum
+    Dest" (-9004.44 870.63 64.86, where the mage Teleport: Stormwind also lands), 4734 -> 3630
+    "Stormwind - Mage Exit Target" (-9013.2 870.63 148.62, beside the top portal).
+  - Deleted doubled portal room spawns in the default phase: Maginor Dumas 331, Enchanted Broom 103033
+    and Tushui Magister 147741 (guids 3400000000001970-1972), and Portal to Paw'don Village 323844
+    (guid 3300000000298) standing inside Portal to Pandaria 315457 (same spell 130703).
+- **Follow-up** (Four, 2026-11-12: entrance works, the way back out doesn't): the exit portal in the
+  portal room (Doodad_8SW_Stormwind_MagePortal001 311875, guid 280200645) is only a decoration, sent
+  through a server-side area trigger on retail that our core can't teleport with.
+  `sql/fixes/world/2026_11_12_37_stormwind_portal_room_exit.sql` spawns an invisible ELM General
+  Purpose Bunny 23837 (guid 735400001) on the spot Four picked in it (-9000.56 865.06 65.89), with per-guid SmartAI: any player within 1 yard is
+  teleported to world_safe_locs 3630 "Stormwind - Mage Exit Target" (-9013.2 870.63 148.62).
+- **Status:** entrance (35) and exit (37) confirmed in game by Four 2026-11-12.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
+### World: The Relentless (Stormwind - Boralus ship) clipped through The Bravery at the pier
+
+- **Found** (Four, 2026-11-12): the Boralus ship overlaps The Bravery in Stormwind Harbor and has no crew.
+- **Cause:** both ships stop at the exact same pier in the client's path data (TaxiPath 967 and 7222,
+  both at -8651 1346), and their loops have different lengths, so no fixed schedule keeps them apart.
+  No crew data exists for it (TDB 7.3.5 predates BFA).
+- **Changed:** `sql/fixes/world/2026_11_12_36_retire_stormwind_boralus_ship.sql` deletes transport
+  294556 (The Relentless, map 2074) from `transports`. Travel goes through the Wizard's Sanctum Portal
+  to Boralus 302854 and Boralus' Portal to Stormwind 293552.
+- **Status:** Four's call (2026-11-12): retire the ship, portals instead. Confirmed in game 2026-11-12 (ship gone, portals work).
+- **Pick up:** run the SQL on `bfa_world` after the Wizard's Sanctum fix works, then restart worldserver.
+
+## 2026-11-12 (World fixes: Orgrimmar wind riders and docks)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: Orgrimmar Wind Riders hung still in the air, Vashj'ir ship crew stood in the water at the docks
+
+- **Found** (Four, 2026-11-12): wind riders frozen in the air all around Orgrimmar (west zeppelin tower,
+  Valley of Honor, Durotar side), and soldiers standing in the water and on a paddle wheel at the
+  Orgrimmar docks.
+- **Cause:** the dump has 149 Orgrimmar Wind Rider 51346 spawns, all static: sniff snapshots of riders
+  that fly patrols on retail. Our patrol import skipped them because the template has a core script
+  (`guard_generic`). At the docks, 17 NPCs from the Cataclysm Horde ship to Vashj'ir were sniffed
+  while it was docked and stay behind in the water when it leaves. TDB 7.3.5 spawns none of them.
+- **Changed:** `sql/fixes/world/2026_11_12_34_orgrimmar_wind_riders_and_docks.sql`:
+  - Deleted the 149 static Orgrimmar Wind Riders (with their `creature_addon` and 2 formation rows).
+  - Added TDB 7.3.5's flying patrols, guids 735300001-735300043: 15 riders on waypoint paths
+    735300001-735300043 (1,261 points, same id as the leader's guid) and 28 wingmen in formation
+    with them (40 `creature_formations` rows). TDB's 16 riders that hover in one spot are left out.
+  - Deleted the docks crew: Hellscream's Vanguard 43090 (10), Legionnaire Nazgrim 43100, Totally
+    Generic Bunny (Phase 2) 43091 (2), Mack Fearsen 43022, Adarrah 43051, Budd 43023, Captain Samir
+    43030. No quest uses them. The Kor'kron Loyalist and Battleworg quest NPCs stay.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
+## 2026-11-12 (World fixes: transport crews from TDB 7.3.5)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: boats, zeppelins, turtles and the Icecrown gunships sailed with no crew
+
+- **Found** (Four, 2026-11-12): the transports between zones and landmasses run with nobody on deck.
+  Ships parked in harbors (Stormwind Harbor etc.) are normal spawns and were already fine.
+- **Cause:** a transport loads its crew from `creature` rows on its own map (the map in
+  `gameobject_template` `Data6`, positions relative to the ship). Our DB has no creature on any of
+  those maps. The dump instead has copies of some crews in world coordinates, sniffed while a ship
+  passed, so they hang in the air over Tirisfal, Stranglethorn, the Barrens and Icecrown or stand on
+  the water at the docks.
+- **Changed:** `sql/fixes/world/2026_11_12_33_tdb735_transport_crews.sql`:
+  - 291 crew from TDB 7.3.5, guids 735200001-735200291: The Lady Mehley 584 (11), Elune's Blessing
+    586 (6), The Bravery 588 (10), The Iron Eagle 589 (11), The Purple Princess 590 (11), The
+    Thundercaller 591 (21), The Maiden's Fancy 593 (8), Sister Mercy 594 (24), The Cloudkisser 610
+    (7), Northspear 612 (6), The Mighty Wind 613 (7), The Kraken 614 (6), Walker of Waves 620 (2),
+    Green Island 621 (1), Orgrim's Hammer 622 (71), The Skybreaker 623 (77), Orgrimmar - Thunder
+    Bluff zeppelin 647 (12). TDB's phase 169 is our default phase 0. The 9 Lady Mehley crew that
+    walk the deck in TDB stand still here (no deck paths), 11 `creature_addon` rows keep their
+    sitting/working poses.
+  - Left out: the Feathermoon Ferry 587 (its gameobject is not a moving transport any more) and the
+    Krazzworks Attack Zeppelin 765 (quest phase 361). Cataclysm and BFA transports (Vashj'ir ships,
+    Spear of Durotar, Deepholm gunship, Krazzworks - Dragonmaw zeppelins, Kul Tiran and Zandalari
+    ships) have no crew in TDB either, so they stay empty.
+  - Deleted the 124 world-coordinate copies of crew that TDB has only on transports (Sky-Captain
+    Cloudkicker, Sky-Captain "Dusty" Blastnut, the Northspear crew at Menethil and Valgarde, the
+    Purple Princess crew over Grom'gol, the Icecrown gunship cannons, controllers and Brother Keltan,
+    the Sister Mercy sea dogs, ...), with their 2 `creature_addon` rows, 1 formation row and 5
+    `spawn_group` rows.
+  - TDB's SmartAI (11 rows) for Captain "Stash" Torgoley 24833, First Mate Kowalski 24835 and Sailor
+    Henders 24838 on The Lady Mehley (their texts were already here). No other crew member has a
+    TDB script.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver. Crews appear on a ship when it
+  loads, so wait for the next departure or arrival.
+
+## 2026-11-12 (World fixes: missing rares from TDB 7.3.5)
+
+Merged to main via PR #61 (2026-11-12).
+
+### World: 13 rare beasts in Silithus and Tirisfal Glades never spawned
+
+- **Found** (Wayfarer, 2026-11-12, comparing with TDB 7.3.5): of about 99,000 TDB spawns with no
+  match here, only about 520 on the four continents are NPCs we never spawn that aren't summons,
+  phased, critters, bunnies or a same-name NPC standing on the spot. Most of those are outdated
+  (pre-Cataclysm capital and event NPCs) or have stub templates, so only this clear group is fixed.
+- **Cause:** the dump has no spawn for these rares, and their templates came from an 8.3.7 sniff with
+  no faction or level (friendly faction 35, level 1).
+- **Changed:** `sql/fixes/world/2026_11_12_32_tdb735_missing_rares.sql`:
+  - Templates set hostile (`faction` 14) at TDB 7.3.5's levels: Silithus Karapax 50370 (56),
+    Acroniss 50737 (55), Qem 50742 (57), Qu'rik 50744 (58), Losaj 50745 (58), Ffexk the
+    Dunestalker 50897 (55), Toxx 51004 (56); Tirisfal Glades Fangor 50328 (5), Shadowstalker
+    50763 (6), Bonechewer 50803 (7), Nighthowl 50908 (9), Hibernus the Sleeper 50930 (7), Plague
+    51044 (8). Ten have a scaling row, which sets the level in game.
+  - One spawn each at TDB's spot and respawn time (Silithus 2 min, Tirisfal 15 min), guids
+    735100001-735100013.
+  - TDB's SmartAI (10 rows) for Fangor, Shadowstalker, Bonechewer, Nighthowl, Hibernus and Plague,
+    checked like the scripts batch. Acroniss, Qem and Toxx already had scripts here.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
 ## 2026-11-12 (Dire Maul: Capital Gardens)
 
-Draft, not merged. New core patch `tools/bfa/dire-maul-west.patch` (after
-`instance-scenario-cleanup.patch`, build needed) and `sql/fixes/world/2026_11_12_01_dire_maul_west.sql`.
+Merged to `main` with PR #62 on 2026-11-12. New core patch `tools/bfa/dire-maul-west.patch`
+(after `transport-phase-visibility.patch`, build needed) and `sql/fixes/world/2026_11_12_01_dire_maul_west.sql`, `2026_11_12_02_dire_maul_kalendris_dominate.sql`.
+Called complete by Four on 2026-11-12.
 
 ### Dire Maul: shield generators did nothing, Immol'thar's force field was open
 

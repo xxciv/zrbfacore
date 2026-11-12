@@ -135,6 +135,7 @@ git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
 git apply ../tools-repo/tools/bfa/npc-spell-power-cost.patch
 git apply ../tools-repo/tools/bfa/scholomance.patch
 git apply ../tools-repo/tools/bfa/instance-scenario-cleanup.patch
+git apply ../tools-repo/tools/bfa/transport-phase-visibility.patch
 git apply ../tools-repo/tools/bfa/dire-maul-west.patch
 ```
 
@@ -903,6 +904,7 @@ git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
 git apply ../tools-repo/tools/bfa/npc-spell-power-cost.patch
 git apply ../tools-repo/tools/bfa/scholomance.patch
 git apply ../tools-repo/tools/bfa/instance-scenario-cleanup.patch
+git apply ../tools-repo/tools/bfa/transport-phase-visibility.patch
 git apply ../tools-repo/tools/bfa/dire-maul-west.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
@@ -997,6 +999,23 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_12_02_dire_maul_kalendris_dominate.sql` | Dire Maul, Capital Gardens: Magister Kalendris dominates only a second player, so he no longer resets when fought solo |
 | `2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` | 854 old-world NPCs that only meleed get their SmartAI scripts from TDB 7.3.5 (casts, gossip and quest events); Ghostclaw Lynx Rake verified in game 2026-11-12 |
 | `2026_11_12_31_tdb735_patrols.sql` | 733 open-world NPCs that stood still walk their TDB 7.3.5 patrol paths, 8 followers in formation (Orgrimmar Grunts verified in game 2026-11-12) |
+| `2026_11_12_32_tdb735_missing_rares.sql` | 13 rare beasts from TDB 7.3.5 spawned (7 in Silithus, 6 in Tirisfal Glades), hostile at their TDB levels |
+| `2026_11_12_33_tdb735_transport_crews.sql` | Boats, zeppelins, turtles and gunships sail with their TDB 7.3.5 crews instead of empty (verified in game 2026-11-12) |
+| `2026_11_12_34_orgrimmar_wind_riders_and_docks.sql` | Orgrimmar: 149 frozen Wind Riders replaced by 43 flying patrols; NPCs standing in the docks water removed (verified in game 2026-11-12) |
+| `2026_11_12_35_stormwind_wizards_sanctum.sql` | Stormwind Wizard's Sanctum: the tower portal takes you to the portal room and back (verified in game 2026-11-12) |
+| `2026_11_12_36_retire_stormwind_boralus_ship.sql` | Stormwind Harbor: The Relentless (Boralus ship) retired, it clipped through The Bravery at the shared pier (verified in game 2026-11-12) |
+| `2026_11_12_37_stormwind_portal_room_exit.sql` | Stormwind portal room: the exit portal sends you back out (verified in game 2026-11-12) |
+| `2026_11_12_38_retire_thundercaller.sql` | Orgrimmar - Undercity zeppelin retired; the Orgrimmar and Tirisfal tower portals take you between the two (verified in game 2026-11-12) |
+| `2026_11_12_39_vashjir_ship_crew.sql` | Ship to Vashj'ir (Horde): its crew rides the ship instead of standing in the Orgrimmar docks water; 5 pier guards restored (verified in game 2026-11-12) |
+| `2026_11_12_40_vashjir_ship_quest_phase.sql` | Ship to Vashj'ir (Horde) and its crew only show on "Call of Duty" (25924) (needs `transport-phase-visibility.patch`; its arrival script is replaced by `_47`) |
+| `2026_11_12_41_call_of_duty_objective_text.sql` | "Call of Duty": the tracker says "Ride the mercenary ship to Vashj'ir" instead of "Submerge Bunny slain" (verified in game 2026-11-12) |
+| `2026_11_12_42_orgrimmar_berth_scenery_phase.sql` | Orgrimmar docks: the scenery ships at the Vashj'ir berth hide while you are on "Call of Duty" (verified in game 2026-11-12) |
+| `2026_11_12_43_vashjir_ship_ride_end.sql` | Ship to Vashj'ir: phase 170 over the sea areas along the route (its script change is replaced by `_47`) |
+| `2026_11_12_44_vashjir_route_default_phase.sql` | Ship to Vashj'ir: normal spawns stay visible along the route and in Vashj'ir while on the quest (verified in game 2026-11-12) |
+| `2026_11_12_45_vashjir_ship_riders_from_orgrimmar.sql` | Ship to Vashj'ir: script that remembered riders at Orgrimmar (did not work; replaced by `_47`) |
+| `2026_11_12_46_orgrimmar_berth_ship_crew_phase.sql` | Orgrimmar docks: the Argus intro NPCs on the hidden Horde ship hide with it (verified in game 2026-11-12) |
+| `2026_11_12_47_vashjir_ship_stop_trigger.sql` | Ship to Vashj'ir: riders at the stop above Vashj'ir are pulled down to Erunak Stonespeaker and get "Call of Duty" credit (verified in game 2026-11-12) |
+| `2026_11_12_48_vashjir_ship_eastern_stop_copies.sql` | Ship to Vashj'ir: Turgore, Adarrah and 17 bunnies sniffed on its deck no longer float at its Eastern Kingdoms stop |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills, `2026_11_09_02_profession_tier_levels.sql` gates them by expansion level).
 
