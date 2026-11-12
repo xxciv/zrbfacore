@@ -3,6 +3,79 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: SmartAI for scriptless NPCs from TDB 7.3.5, NPC spell costs)
+
+Merged to `main` with PR #59 on 2026-11-12.
+
+### World: 854 old-world NPCs had no script and only meleed
+
+- **Found** (Wayfarer, 2026-11-12, comparing our world DB with the TrinityCore releases in
+  `xxciv/zrbfa_wdbdumps`): 886 NPCs are spawned here with no SmartAI rows and no core script, so they
+  stand and melee. TDB 7.3.5 has a SmartAI script for every one of them (Creeping Sludge 12222 is
+  left out here because upstream already scripts it).
+- **Cause:** the dump never had scripts for them. Most already say `AIName='SmartAI'`, but with no
+  rows behind it, so they act like a plain melee mob.
+- **Changed:** `sql/fixes/world/2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` (the file's
+  header lists all 854 NPCs by entry, name and spawn count):
+  - 2,429 `smart_scripts` rows (source 0) for the 854 entries, copied from TDB 7.3.5 with
+    `event_param5`=0 added. That is 4,046 spawns: Northrend 1,250, Outland 1,048, Kalimdor 734,
+    Eastern Kingdoms 327, dungeons and other maps 687. Biggest: Dragonmaw Peon Work Node 23308 (140),
+    Grizzly Bear 27131 (113), Rookery Whelp 10161 (95), Mindless Ghoul 27712 (79), Timberstrider
+    Fledgling 17372 (76), Flame Breath Trigger (Skadi) 28351 (75), Glinting Dirt 28362 (73), the
+    four battleground envoys 15105/15106/14990/30567 (61 each), Tortured Skeleton 18797 (59).
+  - 1,612 action list rows (source 9) in 289 lists. Blood Knight Stillblade's list 1776800 keeps
+    upstream's own ids 5-7 (`2026_08_09_00_death_knight_stillblade`); TDB's ids 0-4 fill the rest.
+  - 123 SmartAI conditions (type 22) that belong to these scripts.
+  - `AIName`='SmartAI' on Grizzly Bear 27131 and High Explorer Dellorah 33701, the two that had
+    another AI name.
+  - Every event, action and target type exists in HavenCore, and every spell (checked against
+    SpellName.db2), creature, gameobject and quest a row names exists here. 22 standalone cast rows
+    whose spell is gone in 8.3.7 were dropped and the rest of those NPCs' scripts kept. One dangling
+    link (Gaffer Coilspring 46274 id 0 -> 1) is set to 0. Every text group and waypoint path the
+    scripts use already exists here, so no `creature_text` or `waypoints` rows are added.
+  - Two casts use the cost-free copy of the same spell. NPCs only have mana when their class is
+    paladin or mage, and the core makes them pay spell costs, so these never fired: Ghostclaw Lynx
+    16348 Rake 59881 (20 focus) -> 24332, Urdak 18541 Enveloping Winds 6728 (19 mana, warrior
+    class) -> 15535. Found by Four: the Lynx never raked, even with `.cast back 59881`.
+  - Left out (32 NPCs):
+    - every row casts a spell that no longer exists: 683 Young Panther, 736 Panther, 1679 Avarus
+      Kharag, 2744 Shadowforge Commander, 3811 Giant Ashenvale Bear, 3939 Razormane Wolf, 3940
+      Taneel Darkwood, 4798 Fallenroot Shadowstalker, 6047 Aqua Guardian, 13219 Jorek Ironside,
+      17584 Torallius the Pack Handler.
+    - a gameobject it uses does not exist here: 1373 Jarven Thunderbrew (gameobject 35875), 4721
+      Zangen Stonehoof (gameobject 20556), 4880 "Stinky" Ignatz (gameobject 11757), 7007 Tiev
+      Mordune (gameobject 15175), 25849 Fezzix Geartwist (gameobject 60069), 25983 Dorain
+      Frosthoof (gameobject 113431), 28273 Arranged Crystal Formation Bunny (gameobject 4599).
+    - a quest it uses does not exist here: 4489 Braug Dimspirit (quest 6627), 7853 Scooty (quest
+      2843), 8879 Royal Historian Archesonus (quest 3702), 9021 Kharan Mighthammer (quest 4342),
+      23899 Tethyr (quest 11198), 23905 Major Mills (quest 11198).
+    - a linked or gossip step uses a spell that no longer exists: 16287 Ambassador Sunsorrow
+      (spell 37084), 19217 Ravandwyr (spell 35378), 19656 Invisible Location Trigger (spell
+      29397), 21293 Borak, Son of Oronok (spell 37064), 21725 Kagrosh (spell 37245), 21727
+      Flanis Swiftwing (spell 37244), 21877 Karsius the Ancient Watcher (spell 37782).
+    - TDB has no rows for its action list: 44782 Rento.
+- **Status:** Ghostclaw Lynx Rake confirmed in game by Four on 2026-11-12. The other scripts get
+  checked as Four meets them. The SQL runs cleanly, twice in a row, on a copy of our world DB with
+  all upstream `sql/updates/world` and our `sql/fixes/world` applied.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
+### Core: NPCs never cast spells that cost a power they don't have
+
+- **Found** (Four, 2026-11-12): the Ghostclaw Lynx never cast Rake 59881, even with `.cast back`.
+- **Cause:** `Creature::UpdateLevelDependantStats` only gives paladin- and mage-class NPCs a power
+  pool (mana). `Spell::CheckPower` still checks every cost, so an NPC spell that lists focus,
+  energy, rage, runes or runic power, or mana on a warrior- or rogue-class NPC, always failed with
+  "not enough power". Rake 59881 costs 20 focus. Our own scripts have about 570 cast rows like this
+  (energy 238, mana 227, runic power 46, runes 42 and a few others), plus casts in core boss scripts.
+- **Changed:** new `tools/bfa/npc-spell-power-cost.patch` (after `spell-teleport-combat.patch`):
+  `Spell::CheckPower` skips a cost when the caster is a creature that no player controls and its
+  max power of that type is 0. Players, pets, player-driven vehicles and NPCs that do have the
+  power are unchanged. Side effect: NPCs that never used those spells here now do, as on retail,
+  so some fights (including dungeons already tested) can be harder.
+- **Status:** confirmed in game by Four on 2026-11-12: `.cast back 59881` (20 focus) now lands on a
+  Ghostclaw Lynx, alongside its scripted Rake 24332.
+- **Pick up:** apply the patch, rebuild, restart worldserver.
+
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
 
 Merged to `main` with PR #57 on 2026-11-11.
