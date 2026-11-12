@@ -3,6 +3,28 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: Orgrimmar wind riders and docks)
+
+### World: Orgrimmar Wind Riders hung still in the air, Vashj'ir ship crew stood in the water at the docks
+
+- **Found** (Four, 2026-11-12): wind riders frozen in the air all around Orgrimmar (west zeppelin tower,
+  Valley of Honor, Durotar side), and soldiers standing in the water and on a paddle wheel at the
+  Orgrimmar docks.
+- **Cause:** the dump has 149 Orgrimmar Wind Rider 51346 spawns, all static: sniff snapshots of riders
+  that fly patrols on retail. Our patrol import skipped them because the template has a core script
+  (`guard_generic`). At the docks, 17 NPCs from the Cataclysm Horde ship to Vashj'ir were sniffed
+  while it was docked and stay behind in the water when it leaves. TDB 7.3.5 spawns none of them.
+- **Changed:** `sql/fixes/world/2026_11_12_34_orgrimmar_wind_riders_and_docks.sql`:
+  - Deleted the 149 static Orgrimmar Wind Riders (with their `creature_addon` and 2 formation rows).
+  - Added TDB 7.3.5's flying patrols, guids 735300001-735300043: 15 riders on waypoint paths
+    735300001-735300043 (1,261 points, same id as the leader's guid) and 28 wingmen in formation
+    with them (40 `creature_formations` rows). TDB's 16 riders that hover in one spot are left out.
+  - Deleted the docks crew: Hellscream's Vanguard 43090 (10), Legionnaire Nazgrim 43100, Totally
+    Generic Bunny (Phase 2) 43091 (2), Mack Fearsen 43022, Adarrah 43051, Budd 43023, Captain Samir
+    43030. No quest uses them. The Kor'kron Loyalist and Battleworg quest NPCs stay.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
 ## 2026-11-12 (World fixes: transport crews from TDB 7.3.5)
 
 ### World: boats, zeppelins, turtles and the Icecrown gunships sailed with no crew
