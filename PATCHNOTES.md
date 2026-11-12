@@ -5,6 +5,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-12 (World fixes: patrols from TDB 7.3.5)
 
+Merged to `main` with PR #60 on 2026-11-12.
+
 ### World: 733 open-world NPCs stood still where they should patrol
 
 - **Found** (Wayfarer, 2026-11-12, comparing with TDB 7.3.5 in `xxciv/zrbfa_wdbdumps`): 1,150 spawns
