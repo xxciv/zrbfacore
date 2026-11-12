@@ -21,6 +21,9 @@ to do to pick it up (rebuild, restart, run SQL).
     landing in the city; found by Four in game). Per-spawn SmartAI (GO -735400101, on use) teleports
     the player instantly to the Orgrimmar zeppelin tower beside the Portal to Undercity
     (1841.12 -4391.99 135.23, spot picked by Four).
+  - Orgrimmar's Portal to Undercity 293684 (guid 210400316) landed inside Undercity (its spell 17611
+    -> 121862 at 1773.4 61.7 -46.3). Four's call: tower to tower. Template `Data0` 17611 -> 0 and
+    per-spawn SmartAI (GO -210400316, on use) teleports to the Tirisfal tower at the new portal.
   - Watcher Umjin 25107 on The Purple Princess (guid 735200049) stands up: his template addon has him
     asleep (bytes1 3, same in TDB) and lying down he clipped through the cabin. New per-spawn
     `creature_addon` row with bytes1 0.
