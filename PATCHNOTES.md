@@ -3,6 +3,23 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: Thundercaller retired)
+
+### World: The Thundercaller still flew Orgrimmar - Undercity, but BFA replaced it with portals
+
+- **Found** (Four, 2026-11-12): the zeppelin still runs and is crewed, while the Orgrimmar platform
+  already has a Portal to Undercity and the Tirisfal Glades map shows an Orgrimmar portal at the tower.
+- **Cause:** transport 164871 (map 591) is still in `transports`; the Tirisfal side Portal to Orgrimmar
+  293689 (Teleport: Orgrimmar 3567) exists as a template but was never spawned.
+- **Changed:** `sql/fixes/world/2026_11_12_38_retire_thundercaller.sql`:
+  - Deleted transport 164871 from `transports`, and its 21 crew from 2026_11_12_33 (guids
+    735200050-735200070, map 591).
+  - Spawned Portal to Orgrimmar 293689 as guid 735400101 on the Tirisfal Glades zeppelin tower at the
+    spot Four picked (2067.74 290.34 97.03, facing 4.585), with `gameobject_template_addon` faction
+    1735 (Horde), like the Orgrimmar side's Portal to Undercity 293684.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
 ## 2026-11-12 (World fixes: Stormwind Wizard's Sanctum, Boralus ship)
 
 ### World: the Wizard's Sanctum portal did nothing, so the Stormwind portal room was unreachable
