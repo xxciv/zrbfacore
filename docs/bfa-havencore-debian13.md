@@ -133,6 +133,8 @@ git apply ../tools-repo/tools/bfa/quest-list-accept.patch
 git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
 git apply ../tools-repo/tools/bfa/npc-spell-power-cost.patch
+git apply ../tools-repo/tools/bfa/scholomance.patch
+git apply ../tools-repo/tools/bfa/instance-scenario-cleanup.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -898,10 +900,12 @@ git apply ../tools-repo/tools/bfa/quest-list-accept.patch
 git apply ../tools-repo/tools/bfa/transmog-reapply.patch
 git apply ../tools-repo/tools/bfa/spell-teleport-combat.patch
 git apply ../tools-repo/tools/bfa/npc-spell-power-cost.patch
+git apply ../tools-repo/tools/bfa/scholomance.patch
+git apply ../tools-repo/tools/bfa/instance-scenario-cleanup.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
-When an update adds a source file (`scarlet-halls.patch` adds `scarlet_halls.cpp`, `scarlet-monastery.patch` adds four), run `cmake build`
+When an update adds a source file (`scarlet-halls.patch` adds `scarlet_halls.cpp`, `scarlet-monastery.patch` adds four, `scholomance.patch` adds and removes several), run `cmake build`
 once before building: CMake only finds new files when it configures, and the link fails with an
 `undefined reference` otherwise. It keeps the settings you configured with.
 
@@ -979,6 +983,12 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_07_06_darkmoon_carousel_empty.sql` | Darkmoon Faire: carousel rides removed, the platform spins empty |
 | `2026_11_07_30_darkmoon_island_rares.sql` | Darkmoon Island rares: Darkmoon Rabbit spawned (its pet always drops, no solo-lethal bite), Moonfang gets her fight and always drops one of her items, Death Metal Knight spawned in the Cauldron of Rock with his sword; all three are elites that scale with your level (verified in game 2026-11-07) |
 | `2026_11_09_30_orgrimmar_balloon_pandaren.sql` | Orgrimmar: Chao-Ju, Jiming, Winwa, Winsum and Jising stay in the hot air balloon basket outside the front gate instead of falling to the ground (verified in game 2026-11-09) |
+| `2026_11_11_03_scholomance_rework.sql` | Scholomance (map 1007): story NPCs and objects from Pandaria 5.4.8, encounters, level scaling, stairs exit, graveyard (needs `scholomance.patch`) |
+| `2026_11_11_04_scholomance_door_rotation.sql` | Scholomance: gates no longer stand sideways (rotation from orientation, 12 doors) |
+| `2026_11_11_05_scholomance_object_names.sql` | Scholomance: English names for 13 objects that were in French |
+| `2026_11_11_06_scholomance_gandling_level.sql` | Scholomance: Darkmaster Gandling 59080 levels, expansion and rank (no more one-hit kill) |
+| `2026_11_11_07_scholomance_gandling_hover.sql` | Scholomance: Gandling 58875 hovers instead of swimming in the air |
+| `2026_11_12_00_scholomance_early_entrance_trigger.sql` | Scholomance: old entrance trigger 6339 removed, so you only enter at the portal down the stairs |
 | `2026_11_11_30_stormwind_harbor_ship_double_spawns.sql` | Stormwind Harbor: the 7th Legion warship crew (riflemen, marines, Arator, Grand Admiral Jes-Tereth) stands once instead of twice (verified in game 2026-11-11) |
 | `2026_11_11_31_bloodhoof_shaman_trainers_stacked.sql` | Bloodhoof Village: only Narm Skychaser stands at the shaman trainer spot (Tarl Cloudsong stacked on him is removed) (verified in game 2026-11-11) |
 | `2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` | 854 old-world NPCs that only meleed get their SmartAI scripts from TDB 7.3.5 (casts, gossip and quest events); Ghostclaw Lynx Rake verified in game 2026-11-12 |

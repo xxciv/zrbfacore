@@ -434,6 +434,234 @@ Merged to `main` with PR #59 on 2026-11-12.
   Ghostclaw Lynx, alongside its scripted Rake 24332.
 - **Pick up:** apply the patch, rebuild, restart worldserver.
 
+## 2026-11-11 (Scholomance)
+
+Merged to `main` with PR #58 on 2026-11-12. New core patch `tools/bfa/scholomance.patch` (applied after
+`spell-teleport-combat.patch`, build needed, `cmake build` first) and
+`sql/fixes/world/2026_11_11_03_scholomance_rework.sql`, plus SQL 04-07 and
+`2026_11_12_00`. Also `tools/bfa/instance-scenario-cleanup.patch` (after `scholomance.patch`).
+Called complete by Four on 2026-11-12.
+
+### Scholomance: Mists of Pandaria boss scripts and story
+
+- **Found** (before Four's first run): the core still carried the classic Scholomance scripts
+  (Kirtonos, Ras Frostwhisper, Kormok and the rest, map 289). Map 289 can't be entered in 8.3.7, and
+  the Mists of Pandaria dungeon (map 1007) had no boss scripts at all: all five bosses ran SmartAI
+  with a few rows each. The story cast was missing: no Lilian Voss 59200 (only an unscripted copy,
+  58722, standing in the Rattlegore hall), no Darkmaster Gandling 58875 for the Rattlegore intro, no
+  Chillheart phylactery, ice wall, book targets or Soulflame braziers. Darkmaster Gandling 59080 was
+  friendly (faction 35) and unattackable (unit_flags 2147483752). The Bone Piles had no click.
+  Most NPCs only had a difficulty 0 level-scaling row, so in the dungeon they rolled a random level
+  between 41 and 92. There were no Dungeon Finder encounter rows for the five bosses, no exit at the
+  stairs (area trigger 7539) and no graveyard for zone 6066.
+- **Changed:** `tools/bfa/scholomance.patch` (in `src/server/scripts/EasternKingdoms/Scholomance/`)
+  removes the 13 classic boss files and ports the Pandaria 5.4.8 scripts:
+  - `instance_scholomance.cpp`, `scholomance.h`: boss states 0-4, the boss doors (Chillheart exit,
+    Jandice entrance and exit, Rattlegore exit, Lilian entrance, chest and exit, Gandling's two
+    doors). Killing Lilian sends scenario event 30834 (criteria 19262 "Lilian Voss defeated"). Doctor
+    Theolen Krastinov 59369 only shows on heroic, one run in ten.
+  - `boss_instructor_chillheart.cpp`: Ice Wrath, Frigid Grasp, Touch of the Grave, Wrack Soul
+    (heroic), the flying books over the 11 book targets. At 0 health she drops and her phylactery
+    58664 becomes attackable; breaking it kills her. The students channelling into the phylactery
+    die when she is pulled. The Iron Gate 211259 in front of her room opens with a click.
+  - `boss_jandice_barov.cpp`: Wondrous Rapidity; at 66% and 33% she vanishes among 14 illusions.
+    Hitting an illusion shatters it, hitting the real Jandice brings her back.
+  - `boss_rattlegore.cpp`: hidden until the Boneweavers 59193 are dead, then rises ("RATTLEGORE!").
+    Two of the six braziers burst into Soulflame for 15 seconds; Bone Spike hits a random player and a
+    Bone Pile click (Bone Armor 113996) soaks one spike.
+  - `boss_lilian_voss.cpp`: the Rattlegore hall intro with Gandling, her walk to her room, the
+    fight (Shadow Shiv, Death's Grasp, Dark Blaze), the soul phase at 50% (Lilian's Soul 58791 fixates
+    a player), and her end: she jumps at Gandling and dies.
+  - `boss_grandmaster_gandling.cpp`: Incinerate, Immolate, Rise, and Harsh Lesson (never on the tank,
+    so not when solo).
+  - `scholomance.cpp`: the Talking Skull 64562 that leads the way and comments on each boss, and
+    Gandling at Rattlegore 58875.
+  - Left out: Gravity Flux (no area trigger data in 8.3.7), the moving ice wall (cosmetic only), the
+    polyformic acid potion morph.
+- **Changed:** `sql/fixes/world/2026_11_11_03_scholomance_rework.sql`:
+  - Spawns (guids 1007000001-1007000034, Pandaria 5.4.8 world DB): Lilian Voss 59200, Gandling
+    58875, phylactery 58664, ice wall 68291, 11 Book Spawn Targets 58917, 6 Soulflame 59316 + 6
+    brazier stalkers 45979, Gandling's fire stalker 30298, 6 more Teleport Locations 59167. The old
+    Lilian Voss 58722 spawn is deleted. The trash stays as it was (retail sniff, fewer mobs than the
+    Pandaria DB). Two Risen Guards (510000181, 510000221) walk the Pandaria patrol paths 1007000901
+    and 1007000902.
+  - Gameobjects (guids 1007000001-1007000066): the Chillheart-to-Jandice gate 211258, Jandice's gate
+    211257, the missing Harsh Lesson door 210784, the instance portal 212899, alchemy bottles and lore
+    books. The Challenge Mode start door 211988 (closed, in the entrance hall) and Challenger's Orb
+    211674 now spawn on Mythic Keystone (8) only.
+  - Scripts: AIName/ScriptName for 58633, 58664, 68291, 59707, 66240, 59227, 59711, 59184, 59220,
+    59153, 59200, 58791, 59080, 59167, 58875, 64562 and their SmartAI rows deleted; gameobject 211259
+    gets `go_chillheart_iron_door`; spell scripts for 111631, 113775, 113999, 114009, 111642, 111570.
+    The classic map 289 script names are cleared (13 creatures, gameobject 175564, 4 spell scripts,
+    instance_template 289).
+  - Templates: Gandling 59080 faction 14, unit_flags 0; books 59707/66240/59227 faction 16 and Arcane
+    Bomb 59711 faction 14; stalkers 57860, 58917, 59316, 68291 not selectable with the trigger model;
+    Gandling 58875 InhabitType 5; Bone Pile 59304 npcflag 16777216 + spellclick 113996.
+    creature_template_addon auras from the Pandaria DB for 58875, 59080, 59099, 59193, 59304, 59316,
+    59359, 59368, 59503, 59613, 59980, 64562 (and hover for the books).
+  - Level scaling rows 1-100 for difficulties 0, 1 and 2 for every NPC spawned on map 1007 and the
+    summoned ones (INSERT IGNORE, existing rows kept).
+  - Conditions: Soul Rip beam 112081 targets Lilian 59200, Shadow Channel 122499 targets the
+    phylactery 58664.
+  - creature_text: Gandling 58875 (11 lines), Gandling 59080 (4), Rattlegore 59153 (2), Lilian 59200
+    (7), Talking Skull 64562 (12), all with their broadcast text ids.
+  - instance_encounters 1426-1430 (Gandling 1430 ends Dungeon Finder dungeon 2), classic 463 no
+    longer claims dungeon 2; lfg_dungeon_template row for dungeon 2 (same arrival as heroic 472).
+  - Area trigger 7539 (exit stairs) -> world_safe_locs 3672 (Facing set to 3.57792 radians);
+    graveyard 1878 (Scholo GY, Western Plaguelands) for zone 6066.
+- **Status:** not tested in game yet. Compiles; the SQL runs cleanly (twice) on a test copy of the
+  database.
+
+### Scholomance: gates turned sideways
+
+- **Found** (Four, 2026-11-11, screenshot): the Iron Gate in front of Instructor Chillheart's room
+  stood sideways, along the corridor instead of across it.
+- **Cause:** every door on map 1007 has the rotation quaternion (0, 0, 1, -0.0000000437), a 180 degree
+  turn, whatever its orientation is (the Pandaria DB has the same values). The 8.3.7 client draws
+  gameobjects by the quaternion, so the gates with orientation pi/2 or 3pi/2 were 90 degrees off.
+- **Changed:** `sql/fixes/world/2026_11_11_04_scholomance_door_rotation.sql` sets
+  rotation2 = sin(orientation/2), rotation3 = cos(orientation/2) on the 12 map 1007 gameobjects with
+  that quaternion: 211259, 211258, 211257, 211256, 211261, 211262, 210781, 211260, 210789, 210784,
+  210785, 210786. 211259 becomes (0, 0, 0.7071, 0.7071).
+- **Status:** not tested in game yet.
+
+### Scholomance: French object names
+
+- **Found** (Four, 2026-11-11): the gate in front of Chillheart's room is called "Porte de fer".
+- **Cause:** 13 Scholomance gameobject templates have French names in this database, cut off at the
+  first accented letter.
+- **Changed:** `sql/fixes/world/2026_11_11_05_scholomance_object_names.sql` sets the English names
+  from the Pandaria 5.4.8 DB: Iron Gate (211256, 211257, 211259, 211260, 211261, 211262), Vault of
+  Souls 210781, Reinforced Wooden Door 210771, Grandmaster Architect Holmberg 214178, Alchemy Bottle
+  White/Green/Blue 211647/211648/211649, Polyformic Acid Potion 211669, Polyformic Acid Potion
+  Highlight 211670. Delete the client's Cache folder to see them.
+- **Status:** not tested in game yet.
+
+### Scholomance: Lilian's Soul died for good (scaled damage)
+
+- **Found** (Four, 2026-11-11): killing Lilian's Soul left it dead ("Dead 0 / 10,312"). Lilian stayed
+  on the floor, Gandling kept floating, and Four stayed in combat.
+- **Cause:** `Unit::DealDamage` calls the creature's `DamageTaken` first and only afterwards divides
+  the damage by the level-scaling health multiplier (`GetHealthMultiplierForTarget`). On a scaled
+  creature the health that comes off is much bigger than the damage `DamageTaken` sees, so the
+  scripts' "is this the killing blow" checks missed: the soul really died instead of turning
+  immortal, and Chillheart died once before her phylactery killed her (her scenario criteria showed
+  progress 2).
+- **Changed:** `tools/bfa/scholomance.patch`: new `RealDamage()` (`instance_scholomance.cpp`,
+  `scholomance.h`) returns damage / multiplier. Chillheart's fake death, Jandice's 66%/33%
+  thresholds, Lilian's 50% soul phase and final blow, and the soul's "death" all check it. When a
+  hit would kill at a threshold, it now sets 1 health instead of `damage = health - 1`. If the soul
+  ever dies anyway, its `JustDied` still raises Lilian.
+- **Status:** confirmed in game by Four on 2026-11-11 (phylactery phase works, Lilian's scenario step
+  done).
+
+### Scholomance: Gandling swam through the air
+
+- **Found** (Four, 2026-11-11): Darkmaster Gandling 58875 hovers in the corner of Lilian's room and
+  swims to the door at the end of her fight.
+- **Cause:** he is spawned above the floor with no flying movement flags, so the client plays the
+  swim animation when he moves.
+- **Changed:** `tools/bfa/scholomance.patch` (`scholomance.cpp`, `npc_gandling_at_rattlegore::Reset`):
+  `SetDisableGravity(true)` and `SetCanFly(true)`.
+- **Status:** did not help (Four, 2026-11-11: still swimming). Replaced by the entry below.
+
+### Scholomance: Gandling swam through the air (second try)
+
+- **Found** (Four, 2026-11-11): with the fix above, Gandling 58875 still floats and swims above
+  Lilian's room.
+- **Cause:** his creature_template_addon bytes1 50331648 (from the Pandaria DB, where the top byte
+  held the stand/hover flags) puts 3 in the top byte. This core reads that byte as the animation tier
+  and 3 is fly; his humanoid model has no fly animation, so the client plays the swim one, more so
+  while he moves through the air.
+- **Changed:** `sql/fixes/world/2026_11_11_07_scholomance_gandling_hover.sql`: 58875 addon bytes1
+  33554432 (tier 2, hover). `tools/bfa/scholomance.patch` (`scholomance.cpp`): only
+  `SetDisableGravity(true)` in Reset (no `SetCanFly`), and he no longer moves: he vanishes with the
+  teleport visual from Rattlegore's hall after "Come, Voss, your fate awaits you." and reappears above
+  Lilian's room, and when Lilian is beaten he vanishes the same way instead of flying to the door.
+  `GandlingLeavePoint` removed.
+- **Status:** not tested in game yet. Compiles; SQL checked on the test DB.
+
+### Scholomance: Gandling died to one hit, and no Alexei
+
+- **Found** (Four, 2026-11-11): Darkmaster Gandling 59080 died to a single 7,076 Ambush; nothing
+  happened afterwards (no Spirit of Lord Alexei Barov).
+- **Cause:** Gandling's template was level 1-1, HealthScalingExpansion 0, rank 1, so his health came
+  from the level 1 classic table; the other bosses are level 43-92, HealthScalingExpansion 4, rank 3.
+  Alexei 64683 (quest ender for An End to the Suffering 31448 and The Four Tomes 31442) was only
+  summoned by the Talking Skull at its own position, a few seconds after the kill. If the skull was
+  far away or not loaded, he showed up somewhere else or not at all, and he never came back after a
+  server restart.
+- **Changed:** `sql/fixes/world/2026_11_11_06_scholomance_gandling_level.sql`: 59080 minlevel 43,
+  maxlevel 92, HealthScalingExpansion 4, rank 3; 58875 minlevel 43, maxlevel 92.
+  `tools/bfa/scholomance.patch` (`instance_scholomance.cpp`, `scholomance.h`, `scholomance.cpp`): the
+  instance summons Alexei at Gandling's spot (20.15, 57.74, 73.88) as soon as Gandling dies, and again
+  when a player enters an instance where Gandling is already dead (only one at a time). The skull just
+  leaves.
+- **Status:** level fix confirmed (Gandling now fights). Alexei part replaced by the entry below.
+
+### Scholomance: Alexei could not be talked to
+
+- **Found** (Four, 2026-11-11): Alexei appeared where Gandling died but could not be clicked, and the
+  quest map showed the turn-in at the top of the stairs, where the Talking Skull stops.
+- **Cause:** there are two copies of each quest. The Talking Skull in the dungeon (64562) gives The Four
+  Tomes 31440 and An End to the Suffering 31447, which end at Spirit of Lord Alexei Barov **64660**.
+  The script summoned **64683**, which only ends 31442/31448 (from Talking Skull 64563, which is not
+  spawned), so it had nothing to say to Four. The quest POI for 31447 puts the turn-in at (51, 59) on
+  map 1007, the skull's last stop at the top of the stairs.
+- **Changed:** `tools/bfa/scholomance.patch` (`scholomance.h`, `instance_scholomance.cpp`):
+  `NPC_ALEXEI_BAROV` = 64660, summoned at (53.56, 59.90, 87.22), facing 2.87.
+- **Status:** confirmed in game by Four on 2026-11-11 (both quests turned in). The Gandling hover
+  fix (SQL 07) works too; he now floats standing up above Lilian's room (1.9 yards over the floor, as
+  in Pandaria).
+
+### Scholomance: Lilian died for no visible reason
+
+- **Found** (Four, 2026-11-11): at the end of her fight Lilian jumps at Gandling, there is a pause,
+  he teleports away and she just dies.
+- **Changed:** `tools/bfa/scholomance.patch`: on "What?!" Gandling channels the Soul Rip beam
+  (112081) into Lilian until he teleports (`scholomance.cpp`). After she lands, Lilian kneels and
+  says "Leave me...to die...alone...please..." (creature_text 59200 group 5, broadcast 58528, sound
+  29467), then dies 4 seconds later (`boss_lilian_voss.cpp`, new `EVENT_LAST_WORDS`).
+- **Status:** confirmed in game by Four on 2026-11-11.
+
+### Scholomance: graveyard
+
+- **Status:** confirmed in game by Four on 2026-11-12 (dying inside sends you to the Scholomance
+  graveyard).
+
+### Scholomance: the entrance pulled you in before the door
+
+- **Found** (Four, 2026-11-12, video): walking in from Caer Darrow, the dungeon teleported Four
+  inside before reaching the entrance door; leaving by the stairs and heading for that door pulled
+  Four back in. The real portal, down the stairs, worked.
+- **Cause:** two areatriggers in Western Plaguelands teleport to Scholomance (`areatrigger_teleport`,
+  both to entrance point 3671). 2567 at (1282.05, -2548.73, 85.40) is the Mists of Pandaria
+  entrance down the stairs, and the only one in the Pandaria 5.4.8 database. 6339 at
+  (1270.56, -2570.14, 97.00), a 6 x 10 x 10 box named "This was old Scholo entrance", sits on the way
+  to the door, above the spot where the stairs exit drops you (1273.91, -2553.09, 91.84). Positions
+  from `AreaTrigger.db2`.
+- **Changed:** `sql/fixes/world/2026_11_12_00_scholomance_early_entrance_trigger.sql` deletes the
+  `areatrigger_teleport` row for 6339. Nothing else uses that trigger.
+- **Status:** confirmed in game by Four on 2026-11-12. With this, Four called Scholomance complete.
+
+### Core: old scenario progress showed up in a new dungeon run
+
+- **Found** (Four, 2026-11-12): every new Scholomance run opened with Chillheart, Jandice, Rattlegore
+  and Gandling already at 1/1 in the scenario tracker (only Lilian at 0/1), after killing only
+  Chillheart. Earlier the Chillheart counter had climbed from 2 to 3 across runs.
+- **Cause:** the core saves boss kills (criteria types KILL_CREATURE and COMPLETE_DUNGEON_ENCOUNTER)
+  in `instance_scenario_progress` in the characters database, keyed by instance id. At startup,
+  `InstanceSaveManager::LoadInstances` deletes old rows from `instance` (expired or no longer bound to
+  anyone, which is every normal 5-man you left) and then hands their ids out again, lowest first. It
+  never deleted those instances' `instance_scenario_progress` rows, so the next dungeon that got the
+  same id loaded the old kills. Lilian is a scenario event, not a kill, so she was never saved.
+- **Changed:** new core patch `tools/bfa/instance-scenario-cleanup.patch` (after `scholomance.patch`)
+  in `src/server/game/Instances/InstanceSaveMgr.cpp`: `LoadInstances` now also runs
+  `DELETE FROM instance_scenario_progress WHERE id NOT IN (SELECT id FROM instance)` with the other
+  startup cleanups. It affects every dungeon with a scenario, not only Scholomance. The leftover rows
+  in your database go away at the first start with the patch.
+- **Status:** confirmed in game by Four on 2026-11-12 (fresh run opens with all five bosses at 0/1).
+
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
 
 Merged to `main` with PR #57 on 2026-11-11.

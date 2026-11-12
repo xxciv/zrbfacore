@@ -1,0 +1,5099 @@
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_darkmaster_gandling.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_darkmaster_gandling.cpp
+deleted file mode 100644
+index d3c6a81..0000000
+--- a/src/server/scripts/EasternKingdoms/Scholomance/boss_darkmaster_gandling.cpp
++++ /dev/null
+@@ -1,397 +0,0 @@
+-/*
+- * 2026 BFA-HavenCore
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License as published by the
+- * Free Software Foundation, either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along
+- * with this program. If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-/*
+-Name: Boss_Darkmaster_Gandling
+-%Complete: 90
+-Comment: Doors Not yet reopening.
+-Category: Scholomance
+-*/
+-
+-#include "ScriptMgr.h"
+-#include "GameObject.h"
+-#include "InstanceScript.h"
+-#include "MotionMaster.h"
+-#include "ObjectAccessor.h"
+-#include "ScriptedCreature.h"
+-#include "scholomance.h"
+-#include "SpellInfo.h"
+-#include "SpellScript.h"
+-#include "TemporarySummon.h"
+-
+-enum Says
+-{
+-   YELL_SUMMONED                = 0
+-};
+-
+-enum Spells
+-{
+-    SPELL_ARCANEMISSILES        = 15790,
+-    SPELL_SHADOWSHIELD          = 12040,
+-    SPELL_CURSE                 = 18702,
+-    SPELL_SHADOW_PORTAL         = 17950
+-};
+-
+-enum Events
+-{
+-    EVENT_ARCANEMISSILES        = 1,
+-    EVENT_SHADOWSHIELD          = 2,
+-    EVENT_CURSE                 = 3,
+-    EVENT_SHADOW_PORTAL         = 4
+-};
+-
+-class boss_darkmaster_gandling : public CreatureScript
+-{
+-    public: boss_darkmaster_gandling() : CreatureScript("boss_darkmaster_gandling") { }
+-
+-        struct boss_darkmaster_gandlingAI : public BossAI
+-        {
+-            boss_darkmaster_gandlingAI(Creature* creature) : BossAI(creature, DATA_DARKMASTERGANDLING) { }
+-
+-            void Reset() override
+-            {
+-                _Reset();
+-                if (GameObject* gate = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(GO_GATE_GANDLING)))
+-                    gate->SetGoState(GO_STATE_ACTIVE);
+-            }
+-
+-            void JustDied(Unit* /*killer*/) override
+-            {
+-                _JustDied();
+-                if (GameObject* gate = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(GO_GATE_GANDLING)))
+-                    gate->SetGoState(GO_STATE_ACTIVE);
+-            }
+-
+-            void JustEngagedWith(Unit* /*who*/) override
+-            {
+-                _JustEngagedWith();
+-                events.ScheduleEvent(EVENT_ARCANEMISSILES, 4500);
+-                events.ScheduleEvent(EVENT_SHADOWSHIELD, 12000);
+-                events.ScheduleEvent(EVENT_CURSE, 2000);
+-                events.ScheduleEvent(EVENT_SHADOW_PORTAL, 16000);
+-
+-                if (GameObject* gate = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(GO_GATE_GANDLING)))
+-                    gate->SetGoState(GO_STATE_READY);
+-            }
+-
+-            void IsSummonedBy(Unit* /*summoner*/) override
+-            {
+-                Talk(YELL_SUMMONED);
+-                me->GetMotionMaster()->MoveRandom(5);
+-            }
+-
+-            void UpdateAI(uint32 diff) override
+-            {
+-                if (!UpdateVictim())
+-                    return;
+-
+-                events.Update(diff);
+-
+-                if (me->HasUnitState(UNIT_STATE_CASTING))
+-                    return;
+-
+-                while (uint32 eventId = events.ExecuteEvent())
+-                {
+-                    switch (eventId)
+-                    {
+-                        case EVENT_ARCANEMISSILES:
+-                            DoCastVictim(SPELL_ARCANEMISSILES, true);
+-                            events.ScheduleEvent(EVENT_ARCANEMISSILES, 8000);
+-                            break;
+-                        case EVENT_SHADOWSHIELD:
+-                            DoCast(me, SPELL_SHADOWSHIELD);
+-                            events.ScheduleEvent(EVENT_SHADOWSHIELD, urand(14000, 28000));
+-                            break;
+-                        case EVENT_CURSE:
+-                            DoCastVictim(SPELL_CURSE, true);
+-                            events.ScheduleEvent(EVENT_CURSE, urand(15000, 27000));
+-                            break;
+-                        case EVENT_SHADOW_PORTAL:
+-                            if (HealthAbovePct(3))
+-                            {
+-                                DoCast(SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true), SPELL_SHADOW_PORTAL, true);
+-                                events.ScheduleEvent(EVENT_SHADOW_PORTAL, urand(17000, 27000));
+-                            }
+-                    }
+-
+-                    if (me->HasUnitState(UNIT_STATE_CASTING))
+-                        return;
+-                }
+-                DoMeleeAttackIfReady();
+-            }
+-        };
+-
+-        CreatureAI* GetAI(Creature* creature) const override
+-        {
+-            return GetScholomanceAI<boss_darkmaster_gandlingAI>(creature);
+-        }
+-};
+-
+-// Script for Shadow Portal spell 17950
+-enum Rooms
+-{
+-    ROOM_HALL_OF_SECRETS        = 0,
+-    ROOM_HALL_OF_THE_DAMNED     = 1,
+-    ROOM_THE_COVEN              = 2,
+-    ROOM_THE_SHADOW_VAULT       = 3,
+-    ROOM_BAROV_FAMILY_VAULT     = 4,
+-    ROOM_VAULT_OF_THE_RAVENIAN  = 5
+-};
+-
+-enum SPSpells
+-{
+-    SPELL_SHADOW_PORTAL_HALLOFSECRETS          = 17863,
+-    SPELL_SHADOW_PORTAL_HALLOFTHEDAMNED        = 17939,
+-    SPELL_SHADOW_PORTAL_THECOVEN               = 17943,
+-    SPELL_SHADOW_PORTAL_THESHADOWVAULT         = 17944,
+-    SPELL_SHADOW_PORTAL_BAROVFAMILYVAULT       = 17946,
+-    SPELL_SHADOW_PORTAL_VAULTOFTHERAVENIAN     = 17948
+-};
+-
+-class spell_shadow_portal : public SpellScriptLoader
+-{
+-    public:
+-        spell_shadow_portal() : SpellScriptLoader("spell_shadow_portal") { }
+-
+-        class spell_shadow_portal_SpellScript : public SpellScript
+-        {
+-            PrepareSpellScript(spell_shadow_portal_SpellScript);
+-
+-        public:
+-            spell_shadow_portal_SpellScript()
+-            {
+-                _instance = nullptr;
+-            }
+-
+-        private:
+-            bool Load() override
+-            {
+-                _instance = GetCaster()->GetInstanceScript();
+-                return _instance != nullptr;
+-            }
+-
+-            void HandleCast(SpellEffIndex /*effIndex*/)
+-            {
+-                Unit* caster = GetCaster();
+-                uint8 attempts = 0;
+-                uint32 spellId = 0;
+-
+-                while (!spellId)
+-                {
+-                    if (attempts++ >= 6) break;
+-
+-                    switch (urand(0, 5))
+-                    {
+-                        case ROOM_HALL_OF_SECRETS:
+-                            if (GameObject* go = ObjectAccessor::GetGameObject(*caster, _instance->GetGuidData(GO_GATE_RAVENIAN)))
+-                                if (go->GetGoState() == GO_STATE_ACTIVE)
+-                                    spellId = SPELL_SHADOW_PORTAL_HALLOFSECRETS;
+-                            break;
+-                        case ROOM_HALL_OF_THE_DAMNED:
+-                            if (GameObject* go = ObjectAccessor::GetGameObject(*caster, _instance->GetGuidData(GO_GATE_THEOLEN)))
+-                                if (go->GetGoState() == GO_STATE_ACTIVE)
+-                                    spellId = SPELL_SHADOW_PORTAL_HALLOFTHEDAMNED;
+-                            break;
+-                        case ROOM_THE_COVEN:
+-                            if (GameObject* go = ObjectAccessor::GetGameObject(*caster, _instance->GetGuidData(GO_GATE_MALICIA)))
+-                                if (go->GetGoState() == GO_STATE_ACTIVE)
+-                                    spellId = SPELL_SHADOW_PORTAL_THECOVEN;
+-                            break;
+-                        case ROOM_THE_SHADOW_VAULT:
+-                            if (GameObject* go = ObjectAccessor::GetGameObject(*caster, _instance->GetGuidData(GO_GATE_ILLUCIA)))
+-                                if (go->GetGoState() == GO_STATE_ACTIVE)
+-                                    spellId = SPELL_SHADOW_PORTAL_THESHADOWVAULT;
+-                            break;
+-                        case ROOM_BAROV_FAMILY_VAULT:
+-                            if (GameObject* go = ObjectAccessor::GetGameObject(*caster, _instance->GetGuidData(GO_GATE_BAROV)))
+-                                if (go->GetGoState() == GO_STATE_ACTIVE)
+-                                    spellId = SPELL_SHADOW_PORTAL_BAROVFAMILYVAULT;
+-                            break;
+-                        case ROOM_VAULT_OF_THE_RAVENIAN:
+-                            if (GameObject* go = ObjectAccessor::GetGameObject(*caster, _instance->GetGuidData(GO_GATE_POLKELT)))
+-                                if (go->GetGoState() == GO_STATE_ACTIVE)
+-                                    spellId = SPELL_SHADOW_PORTAL_VAULTOFTHERAVENIAN;
+-                            break;
+-                    }
+-
+-                    if (spellId)
+-                        GetHitUnit()->CastSpell(GetHitUnit(), spellId);
+-                }
+-            }
+-
+-            void Register() override
+-            {
+-                OnEffectHitTarget += SpellEffectFn(spell_shadow_portal_SpellScript::HandleCast, EFFECT_0, SPELL_EFFECT_DUMMY);
+-            }
+-
+-            InstanceScript* _instance;
+-        };
+-
+-        SpellScript* GetSpellScript() const override
+-        {
+-            return new spell_shadow_portal_SpellScript();
+-        }
+-};
+-
+-// Script for Shadow Portal spells 17863, 17939, 17943, 17944, 17946, 17948
+-Position const SummonPos[18] =
+-{
+-    // Hall of Secrects
+-
+-
+-
+-    // The Hall of the damned
+-    { 177.9624f, -68.23893f, 84.95197f, 3.228859f },
+-    { 183.7705f, -61.43489f, 84.92424f, 5.148721f },
+-    { 184.7035f, -77.74805f, 84.92424f, 4.660029f },
+-    // The Coven
+-    { 111.7203f, -1.105035f, 85.45985f, 3.961897f },
+-    { 118.0079f, 6.430664f, 85.31169f, 2.408554f },
+-    { 120.0276f, -7.496636f, 85.31169f, 2.984513f },
+-    // The Shadow Vault
+-    { 245.3716f, 0.628038f, 72.73877f, 0.01745329f },
+-    { 240.9920f, 3.405653f, 72.73877f, 6.143559f },
+-    { 240.9543f, -3.182943f, 72.73877f, 0.2268928f },
+-    // Barov Family Vault
+-    { 181.8245f, -42.58117f, 75.4812f, 4.660029f },
+-    { 177.7456f, -42.74745f, 75.4812f, 4.886922f },
+-    { 185.6157f, -42.91200f, 75.4812f, 4.45059f },
+-    // Vault of the Ravenian
+-
+-
+-
+-};
+-
+-enum Creatures
+-{
+-    NPC_RISEN_GUARDIAN                  = 11598
+-};
+-
+-enum ScriptEventId
+-{
+-    SPELL_EVENT_HALLOFSECRETS          = 5618,
+-    SPELL_EVENT_HALLOFTHEDAMNED        = 5619,
+-    SPELL_EVENT_THECOVEN               = 5620,
+-    SPELL_EVENT_THESHADOWVAULT         = 5621,
+-    SPELL_EVENT_BAROVFAMILYVAULT       = 5622,
+-    SPELL_EVENT_VAULTOFTHERAVENIAN     = 5623
+-};
+-
+-class spell_shadow_portal_rooms : public SpellScriptLoader
+-{
+-    public:
+-        spell_shadow_portal_rooms() : SpellScriptLoader("spell_shadow_portal_rooms") { }
+-
+-        class spell_shadow_portal_rooms_SpellScript : public SpellScript
+-        {
+-            PrepareSpellScript(spell_shadow_portal_rooms_SpellScript);
+-
+-        public:
+-            spell_shadow_portal_rooms_SpellScript()
+-            {
+-                _instance = nullptr;
+-            }
+-
+-        private:
+-            bool Load() override
+-            {
+-                _instance = GetCaster()->GetInstanceScript();
+-                return InstanceHasScript(GetCaster(), ScholomanceScriptName);
+-            }
+-
+-            void HandleSendEvent(SpellEffIndex effIndex)
+-            {
+-                // If only one player in threat list fail spell
+-
+-                Unit* caster = GetCaster();
+-
+-                int8 pos_to_summon = 0;
+-                int8 phase_to_set = 0;
+-                int32 gate_to_close = 0;
+-
+-                switch (GetSpellInfo()->GetEffect(effIndex)->MiscValue)
+-                {
+-                    case SPELL_EVENT_HALLOFSECRETS:
+-                        pos_to_summon = 0; // Not yet spawned
+-                        phase_to_set = 1;
+-                        gate_to_close = GO_GATE_RAVENIAN;
+-                        break;
+-                    case SPELL_EVENT_HALLOFTHEDAMNED:
+-                        pos_to_summon = 0;
+-                        phase_to_set = 2;
+-                        gate_to_close = GO_GATE_THEOLEN;
+-                        break;
+-                    case SPELL_EVENT_THECOVEN:
+-                        pos_to_summon = 3;
+-                        phase_to_set = 3;
+-                        gate_to_close = GO_GATE_MALICIA;
+-                        break;
+-                    case SPELL_EVENT_THESHADOWVAULT:
+-                        pos_to_summon = 6;
+-                        phase_to_set = 4;
+-                        gate_to_close = GO_GATE_ILLUCIA;
+-                        break;
+-                    case SPELL_EVENT_BAROVFAMILYVAULT:
+-                        pos_to_summon = 9;
+-                        phase_to_set = 5;
+-                        gate_to_close = GO_GATE_BAROV;
+-                        break;
+-                    case SPELL_EVENT_VAULTOFTHERAVENIAN:
+-                        pos_to_summon = 0; // Not yet spawned
+-                        phase_to_set = 6;
+-                        gate_to_close = GO_GATE_POLKELT;
+-                        break;
+-                    default:
+-                        break;
+-                }
+-
+-                if (gate_to_close)
+-                {
+-                    for (uint8 i = 0; i < 3; ++i)
+-                    {
+-                        if (Creature* Summoned = caster->SummonCreature(NPC_RISEN_GUARDIAN, SummonPos[pos_to_summon++], TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 120000))
+-                        {
+-                            Summoned->GetMotionMaster()->MoveRandom(5);
+-                            Summoned->AI()->SetData(0, phase_to_set);
+-                        }
+-                    }
+-
+-                    if (GameObject* gate = ObjectAccessor::GetGameObject(*caster, _instance->GetGuidData(gate_to_close)))
+-                        gate->SetGoState(GO_STATE_READY);
+-                }
+-            }
+-
+-            void Register() override
+-            {
+-                OnEffectHit += SpellEffectFn(spell_shadow_portal_rooms_SpellScript::HandleSendEvent, EFFECT_1, SPELL_EFFECT_SEND_EVENT);
+-            }
+-
+-            InstanceScript* _instance;
+-        };
+-
+-        SpellScript* GetSpellScript() const override
+-        {
+-            return new spell_shadow_portal_rooms_SpellScript();
+-        }
+-};
+-
+-void AddSC_boss_darkmaster_gandling()
+-{
+-    new boss_darkmaster_gandling();
+-    new spell_shadow_portal();
+-    new spell_shadow_portal_rooms();
+-}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_death_knight_darkreaver.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_death_knight_darkreaver.cpp
+deleted file mode 100644
+index 9af264a..0000000
+--- a/src/server/scripts/EasternKingdoms/Scholomance/boss_death_knight_darkreaver.cpp
++++ /dev/null
+@@ -1,63 +0,0 @@
+-/*
+- * 2026 BFA-HavenCore
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License as published by the
+- * Free Software Foundation, either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along
+- * with this program. If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-/* ScriptData
+-SDName: Boss_Death_knight_darkreaver
+-SD%Complete: 100
+-SDComment:
+-SDCategory: Scholomance
+-EndScriptData */
+-
+-#include "ScriptMgr.h"
+-#include "scholomance.h"
+-#include "ScriptedCreature.h"
+-
+-class boss_death_knight_darkreaver : public CreatureScript
+-{
+-public:
+-    boss_death_knight_darkreaver() : CreatureScript("boss_death_knight_darkreaver") { }
+-
+-    CreatureAI* GetAI(Creature* creature) const override
+-    {
+-        return GetScholomanceAI<boss_death_knight_darkreaverAI>(creature);
+-    }
+-
+-    struct boss_death_knight_darkreaverAI : public ScriptedAI
+-    {
+-        boss_death_knight_darkreaverAI(Creature* creature) : ScriptedAI(creature) { }
+-
+-        void Reset() override
+-        {
+-        }
+-
+-        void DamageTaken(Unit* /*done_by*/, uint32 &damage) override
+-        {
+-            if (me->GetHealth() <= damage)
+-                DoCast(me, 23261, true);   //Summon Darkreaver's Fallen Charger
+-        }
+-
+-        void JustEngagedWith(Unit* /*who*/) override
+-        {
+-        }
+-    };
+-
+-};
+-
+-void AddSC_boss_death_knight_darkreaver()
+-{
+-    new boss_death_knight_darkreaver();
+-}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_doctor_theolen_krastinov.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_doctor_theolen_krastinov.cpp
+deleted file mode 100644
+index 9ce6aaa..0000000
+--- a/src/server/scripts/EasternKingdoms/Scholomance/boss_doctor_theolen_krastinov.cpp
++++ /dev/null
+@@ -1,113 +0,0 @@
+-/*
+- * 2026 BFA-HavenCore
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License as published by the
+- * Free Software Foundation, either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along
+- * with this program. If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-/*
+-Name: Boss_Doctor_Theolen_Krastinov
+-%Complete: 100
+-Comment:
+-Category: Scholomance
+-*/
+-
+-#include "ScriptMgr.h"
+-#include "ScriptedCreature.h"
+-#include "scholomance.h"
+-
+-enum Say
+-{
+-    EMOTE_FRENZY_KILL           = 0,
+-};
+-
+-enum Spells
+-{
+-    SPELL_REND                  = 16509,
+-    SPELL_BACKHAND              = 18103,
+-    SPELL_FRENZY                = 8269
+-};
+-
+-enum Events
+-{
+-    EVENT_REND                  = 1,
+-    EVENT_BACKHAND              = 2,
+-    EVENT_FRENZY                = 3
+-};
+-
+-class boss_doctor_theolen_krastinov : public CreatureScript
+-{
+-    public: boss_doctor_theolen_krastinov() : CreatureScript("boss_doctor_theolen_krastinov") { }
+-
+-        struct boss_theolenkrastinovAI : public BossAI
+-        {
+-            boss_theolenkrastinovAI(Creature* creature) : BossAI(creature, DATA_DOCTORTHEOLENKRASTINOV) { }
+-
+-            void JustEngagedWith(Unit* /*who*/) override
+-            {
+-                _JustEngagedWith();
+-                events.ScheduleEvent(EVENT_REND, 8000);
+-                events.ScheduleEvent(EVENT_BACKHAND, 9000);
+-                events.ScheduleEvent(EVENT_FRENZY, 1000);
+-            }
+-
+-            void UpdateAI(uint32 diff) override
+-            {
+-                if (!UpdateVictim())
+-                    return;
+-
+-                events.Update(diff);
+-
+-                if (me->HasUnitState(UNIT_STATE_CASTING))
+-                    return;
+-
+-                while (uint32 eventId = events.ExecuteEvent())
+-                {
+-                    switch (eventId)
+-                    {
+-                        case EVENT_REND:
+-                            DoCastVictim(SPELL_REND, true);
+-                            events.ScheduleEvent(EVENT_REND, 10000);
+-                            break;
+-                        case EVENT_BACKHAND:
+-                            DoCastVictim(SPELL_BACKHAND, true);
+-                            events.ScheduleEvent(EVENT_BACKHAND, 10000);
+-                            break;
+-                        case EVENT_FRENZY:
+-                            DoCast(me, SPELL_FRENZY, true);
+-                            Talk(EMOTE_FRENZY_KILL);
+-                            events.ScheduleEvent(EVENT_FRENZY, 120000);
+-                            break;
+-                        default:
+-                            break;
+-                    }
+-
+-                    if (me->HasUnitState(UNIT_STATE_CASTING))
+-                        return;
+-                }
+-
+-                DoMeleeAttackIfReady();
+-            }
+-        };
+-
+-        CreatureAI* GetAI(Creature* creature) const override
+-        {
+-            return GetScholomanceAI<boss_theolenkrastinovAI>(creature);
+-        }
+-
+-};
+-
+-void AddSC_boss_theolenkrastinov()
+-{
+-    new boss_doctor_theolen_krastinov();
+-}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_grandmaster_gandling.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_grandmaster_gandling.cpp
+new file mode 100644
+index 0000000..ed5b6f5
+--- /dev/null
++++ b/src/server/scripts/EasternKingdoms/Scholomance/boss_grandmaster_gandling.cpp
+@@ -0,0 +1,234 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Darkmaster Gandling, Scholomance. Ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "ScriptMgr.h"
++#include "ScriptedCreature.h"
++#include "Containers.h"
++#include "GameObject.h"
++#include "InstanceScript.h"
++#include "Player.h"
++#include "scholomance.h"
++
++enum GandlingSpells
++{
++    SPELL_HARSH_LESSON          = 113395,
++    SPELL_IMMOLATE              = 113141,
++    SPELL_INCINERATE            = 113136,
++    SPELL_RISE                  = 113143,
++
++    SPELL_GANDLING_FIRE_AURA    = 114904, // on the stalker above him
++    SPELL_COSMETIC_CAST         = 21389,
++};
++
++enum GandlingEvents
++{
++    EVENT_IMMOLATE              = 1,
++    EVENT_RISE,
++    EVENT_HARSH_LESSON,
++    EVENT_INCINERATE,
++
++    EVENT_CHECK_ROOM            = 10,
++};
++
++enum GandlingTexts
++{
++    TALK_AGGRO                  = 0, // School is in session!
++    TALK_SLAY                   = 1, // Dunce.
++    TALK_DEATH                  = 2, // Class... dismissed.
++    TALK_HARSH_LESSON           = 3, // %s assigns $n a [Harsh Lesson]!
++};
++
++// Darkmaster Gandling 59080
++struct boss_grandmaster_gandling : public BossAI
++{
++    boss_grandmaster_gandling(Creature* creature) : BossAI(creature, DATA_GRANDMASTER_GANDLING) { }
++
++    void InitializeAI() override
++    {
++        SetCombatMovement(false);
++        BossAI::InitializeAI();
++    }
++
++    void Reset() override
++    {
++        _Reset();
++        me->setRegeneratingHealth(true);
++        me->SetReactState(REACT_AGGRESSIVE);
++        if (!me->HasAura(SPELL_COSMETIC_CAST))
++            DoCast(me, SPELL_COSMETIC_CAST, true);
++    }
++
++    void JustEngagedWith(Unit* /*who*/) override
++    {
++        _JustEngagedWith();
++        Talk(TALK_AGGRO);
++        me->RemoveAurasDueToSpell(SPELL_COSMETIC_CAST);
++
++        events.ScheduleEvent(EVENT_INCINERATE, 500);
++        events.ScheduleEvent(EVENT_IMMOLATE, urand(5000, 10000));
++        events.ScheduleEvent(EVENT_HARSH_LESSON, urand(25000, 40000));
++        events.ScheduleEvent(EVENT_RISE, 45000);
++
++        if (Creature* fireStalker = me->FindNearestCreature(NPC_GANDLING_FIRE_STALKER, 50.0f))
++            fireStalker->RemoveAurasDueToSpell(SPELL_GANDLING_FIRE_AURA);
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        _JustDied();
++        Talk(TALK_DEATH);
++    }
++
++    void KilledUnit(Unit* victim) override
++    {
++        if (victim->GetTypeId() == TYPEID_PLAYER)
++            Talk(TALK_SLAY);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        if (!UpdateVictim())
++            return;
++
++        events.Update(diff);
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        while (uint32 eventId = events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_INCINERATE:
++                    DoCastVictim(SPELL_INCINERATE);
++                    events.ScheduleEvent(EVENT_INCINERATE, urand(2500, 3000));
++                    break;
++                case EVENT_IMMOLATE:
++                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 50.0f, true))
++                        DoCast(target, SPELL_IMMOLATE);
++                    events.ScheduleEvent(EVENT_IMMOLATE, urand(5000, 10000));
++                    break;
++                case EVENT_RISE:
++                    DoCast(me, SPELL_RISE);
++                    events.ScheduleEvent(EVENT_RISE, 70000);
++                    break;
++                case EVENT_HARSH_LESSON:
++                    HarshLesson();
++                    events.ScheduleEvent(EVENT_HARSH_LESSON, 60000);
++                    break;
++                default:
++                    break;
++            }
++
++            if (me->HasUnitState(UNIT_STATE_CASTING))
++                return;
++        }
++    }
++
++private:
++    // a player other than the tank is sent to one of the side classrooms full of test subjects;
++    // the classroom opens again once they are all dead. Never happens solo.
++    void HarshLesson()
++    {
++        std::list<Creature*> rooms;
++        me->GetCreatureListWithEntryInGrid(rooms, NPC_GANDLING_ROOM_STALKER, 200.0f);
++        if (rooms.empty())
++            return;
++
++        Unit* victim = me->GetVictim();
++        Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, [victim](Unit* unit)
++        {
++            return unit->GetTypeId() == TYPEID_PLAYER && unit != victim;
++        });
++        if (!target)
++            return;
++
++        Creature* room = Trinity::Containers::SelectRandomContainerElement(rooms);
++        DoCast(target, SPELL_HARSH_LESSON, true);
++        Talk(TALK_HARSH_LESSON, target);
++        target->ToPlayer()->TeleportTo(room->GetMapId(), room->GetPositionX(), room->GetPositionY(), room->GetPositionZ(), room->GetOrientation(), TELE_TO_NOT_LEAVE_COMBAT | TELE_TO_NOT_UNSUMMON_PET);
++    }
++};
++
++// Teleport Location 59167: one per Harsh Lesson classroom; opens its door once the expired
++// test subjects in the room are dead
++struct npc_gandling_room_stalker : public ScriptedAI
++{
++    npc_gandling_room_stalker(Creature* creature) : ScriptedAI(creature) { }
++
++    void Reset() override
++    {
++        me->SetReactState(REACT_PASSIVE);
++        _events.ScheduleEvent(EVENT_CHECK_ROOM, 1000);
++    }
++
++    void AttackStart(Unit* /*who*/) override { }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++        if (_events.ExecuteEvent() != EVENT_CHECK_ROOM)
++            return;
++
++        if (HasAliveSubjectInRoom())
++        {
++            _events.ScheduleEvent(EVENT_CHECK_ROOM, 1000);
++            return;
++        }
++
++        if (GameObject* door = FindRoomDoor())
++            door->UseDoorOrButton();
++        me->DespawnOrUnsummon();
++    }
++
++private:
++    bool HasAliveSubjectInRoom()
++    {
++        std::list<Creature*> subjects;
++        me->GetCreatureListWithEntryInGrid(subjects, NPC_EXPIRED_TEST_SUBJECT, 45.0f);
++        for (Creature* subject : subjects)
++            if (subject->IsAlive() && std::abs(subject->GetPositionZ() - me->GetPositionZ()) < 5.0f)
++                return true;
++        return false;
++    }
++
++    GameObject* FindRoomDoor()
++    {
++        static uint32 const doors[] =
++        {
++            GO_HARSH_LESSON_EAST_LOW, GO_HARSH_LESSON_NORTH_LOW, GO_HARSH_LESSON_WEST_LOW,
++            GO_HARSH_LESSON_EAST_HIGH, GO_HARSH_LESSON_NORTH_HIGH, GO_HARSH_LESSON_WEST_HIGH
++        };
++
++        GameObject* closest = nullptr;
++        for (uint32 entry : doors)
++            if (GameObject* door = me->FindNearestGameObject(entry, 40.0f))
++                if (!closest || me->GetDistance(door) < me->GetDistance(closest))
++                    closest = door;
++        return closest;
++    }
++
++    EventMap _events;
++};
++
++void AddSC_boss_grandmaster_gandling()
++{
++    RegisterCreatureAI(boss_grandmaster_gandling);
++    RegisterCreatureAI(npc_gandling_room_stalker);
++}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_illucia_barov.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_illucia_barov.cpp
+deleted file mode 100644
+index c77b10b..0000000
+--- a/src/server/scripts/EasternKingdoms/Scholomance/boss_illucia_barov.cpp
++++ /dev/null
+@@ -1,114 +0,0 @@
+-/*
+- * 2026 BFA-HavenCore
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License as published by the
+- * Free Software Foundation, either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along
+- * with this program. If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-/*
+-Name: Boss_Illucia_Barov
+-%Complete: 100
+-Comment:
+-Category: Scholomance
+-*/
+-
+-#include "ScriptMgr.h"
+-#include "ScriptedCreature.h"
+-#include "scholomance.h"
+-
+-enum Spells
+-{
+-    SPELL_CURSEOFAGONY          = 18671,
+-    SPELL_DOMINATE              = 7645, // UNUSED YET added for documentation
+-    SPELL_FEAR                  = 12542,
+-    SPELL_SHADOWSHOCK           = 17234,
+-    SPELL_SILENCE               = 12528
+-};
+-
+-enum Events
+-{
+-    EVENT_CURSEOFAGONY          = 1,
+-    EVENT_SHADOWSHOCK           = 2,
+-    EVENT_SILENCE               = 3,
+-    EVENT_FEAR                  = 4
+-};
+-
+-class boss_illucia_barov : public CreatureScript
+-{
+-    public: boss_illucia_barov() : CreatureScript("boss_illucia_barov") { }
+-
+-        struct boss_illuciabarovAI : public BossAI
+-        {
+-            boss_illuciabarovAI(Creature* creature) : BossAI(creature, DATA_LADYILLUCIABAROV) { }
+-
+-            void JustEngagedWith(Unit* /*who*/) override
+-            {
+-                _JustEngagedWith();
+-                events.ScheduleEvent(EVENT_CURSEOFAGONY, 18000);
+-                events.ScheduleEvent(EVENT_SHADOWSHOCK, 9000);
+-                events.ScheduleEvent(EVENT_SILENCE, 5000);
+-                events.ScheduleEvent(EVENT_FEAR, 30000);
+-            }
+-
+-            void UpdateAI(uint32 diff) override
+-            {
+-                if (!UpdateVictim())
+-                    return;
+-
+-                events.Update(diff);
+-
+-                if (me->HasUnitState(UNIT_STATE_CASTING))
+-                    return;
+-
+-                while (uint32 eventId = events.ExecuteEvent())
+-                {
+-                    switch (eventId)
+-                    {
+-                        case EVENT_CURSEOFAGONY:
+-                            DoCastVictim(SPELL_CURSEOFAGONY, true);
+-                            events.ScheduleEvent(EVENT_CURSEOFAGONY, 30000);
+-                            break;
+-                        case EVENT_SHADOWSHOCK:
+-                            DoCast(SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true), SPELL_SHADOWSHOCK, true);
+-                            events.ScheduleEvent(EVENT_SHADOWSHOCK, 12000);
+-                            break;
+-                        case EVENT_SILENCE:
+-                            DoCastVictim(SPELL_SILENCE, true);
+-                            events.ScheduleEvent(EVENT_SILENCE, 14000);
+-                            break;
+-                        case EVENT_FEAR:
+-                            DoCastVictim(SPELL_FEAR, true);
+-                            events.ScheduleEvent(EVENT_FEAR, 30000);
+-                            break;
+-                        default:
+-                            break;
+-                    }
+-
+-                    if (me->HasUnitState(UNIT_STATE_CASTING))
+-                        return;
+-                }
+-
+-                DoMeleeAttackIfReady();
+-            }
+-        };
+-
+-        CreatureAI* GetAI(Creature* creature) const override
+-        {
+-            return GetScholomanceAI<boss_illuciabarovAI>(creature);
+-        }
+-};
+-
+-void AddSC_boss_illuciabarov()
+-{
+-    new boss_illucia_barov();
+-}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_instructor_chillheart.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_instructor_chillheart.cpp
+new file mode 100644
+index 0000000..37f7e72
+--- /dev/null
++++ b/src/server/scripts/EasternKingdoms/Scholomance/boss_instructor_chillheart.cpp
+@@ -0,0 +1,547 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Instructor Chillheart, Scholomance. Ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "ScriptMgr.h"
++#include "ScriptedCreature.h"
++#include "Containers.h"
++#include "InstanceScript.h"
++#include "MotionMaster.h"
++#include "ObjectAccessor.h"
++#include "Player.h"
++#include "Random.h"
++#include "SpellAuraEffects.h"
++#include "SpellScript.h"
++#include "TemporarySummon.h"
++#include "scholomance.h"
++
++enum ChillheartSpells
++{
++    SPELL_WRACK_SOUL            = 111631, // heroic: jumps from player to player
++    SPELL_ICE_WRATH             = 111610,
++    SPELL_TOUCH_OF_THE_GRAVE    = 111606,
++    SPELL_FRIGID_GRASP          = 111239, // on the Frostgrasp stalker
++    SPELL_FROST_GRASP           = 109295, // heroic only
++
++    SPELL_ARCANE_BOMB           = 113859,
++    SPELL_BURN                  = 111574,
++    SPELL_SHADOW_BOLT           = 113809,
++    SPELL_PHYLACTERY_FILLED     = 111256,
++};
++
++enum ChillheartEvents
++{
++    EVENT_WRACK_SOUL            = 1,
++    EVENT_ICE_WRATH,
++    EVENT_TOUCH_OF_THE_GRAVE,
++    EVENT_FRIGID_GRASP,
++    EVENT_MOVE_WALL,
++
++    EVENT_ARCANE_BOMB,
++    EVENT_SHADOW_BOLT,
++    EVENT_COSMETIC,
++};
++
++enum ChillheartTexts
++{
++    // voice only in this database, see ChillheartSounds
++    VOICE_INTRO                 = 0,
++    VOICE_AGGRO,
++    VOICE_WRACK_SOUL,
++    VOICE_FAKE_DEATH,
++    VOICE_DEATH,
++};
++
++uint32 const ChillheartSounds[] = { 29460, 29455, 29457, 29458, 29456 };
++
++uint8 const BOOKS_PER_TARGET = 1;
++
++// Instructor Chillheart 58633
++struct boss_instructor_chillheart : public BossAI
++{
++    boss_instructor_chillheart(Creature* creature) : BossAI(creature, DATA_INSTRUCTOR_CHILLHEART), _fakeDeath(false), _introDone(false) { }
++
++    void Reset() override
++    {
++        _Reset();
++        _fakeDeath = false;
++        me->setRegeneratingHealth(true);
++        me->SetReactState(REACT_AGGRESSIVE);
++        me->SetStandState(UNIT_STAND_STATE_STAND);
++        me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE));
++        RemoveBooks();
++
++        if (Creature* wall = me->FindNearestCreature(NPC_ICE_WALL_STALKER, 100.0f))
++            wall->AI()->DoAction(ACTION_DESTROY_WALL);
++
++        if (Creature* phylactery = me->FindNearestCreature(NPC_PHYLACTERY, 100.0f))
++            phylactery->AI()->EnterEvadeMode();
++
++        _events.ScheduleEvent(EVENT_COSMETIC, 2000);
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        _JustDied();
++        PlayVoiceLine(me, ChillheartSounds[VOICE_DEATH]);
++        RemoveBooks();
++
++        if (Creature* wall = me->FindNearestCreature(NPC_ICE_WALL_STALKER, 100.0f))
++            wall->AI()->DoAction(ACTION_DESTROY_WALL);
++    }
++
++    void EnterEvadeMode(EvadeReason why) override
++    {
++        BossAI::EnterEvadeMode(why);
++        summons.DespawnAll();
++        RemoveBooks();
++    }
++
++    void JustEngagedWith(Unit* /*who*/) override
++    {
++        _JustEngagedWith();
++        PlayVoiceLine(me, ChillheartSounds[VOICE_AGGRO]);
++        me->InterruptNonMeleeSpells(false);
++
++        events.ScheduleEvent(EVENT_ICE_WRATH, urand(6500, 8000));
++        events.ScheduleEvent(EVENT_FRIGID_GRASP, urand(10000, 15000));
++        events.ScheduleEvent(EVENT_TOUCH_OF_THE_GRAVE, 1000);
++        if (IsHeroic())
++            events.ScheduleEvent(EVENT_WRACK_SOUL, 2500);
++
++        // the students channelling into the phylactery are sacrificed
++        std::list<Creature*> students;
++        me->GetCreatureListWithEntryInGrid(students, NPC_SCHOLOMANCE_NEOPHYTE, 150.0f);
++        me->GetCreatureListWithEntryInGrid(students, NPC_SCHOLOMANCE_ACOLYTE, 150.0f);
++        for (Creature* student : students)
++            if (student->IsAlive() && !student->IsInCombat())
++                student->KillSelf();
++
++        if (Creature* wall = me->FindNearestCreature(NPC_ICE_WALL_STALKER, 100.0f))
++            wall->AI()->DoAction(ACTION_ACTIVATE);
++    }
++
++    void JustSummoned(Creature* summon) override
++    {
++        BossAI::JustSummoned(summon);
++
++        if (summon->GetEntry() == NPC_FROSTGRASP_STALKER)
++        {
++            summon->SetReactState(REACT_PASSIVE);
++            summon->CastSpell(summon, SPELL_FRIGID_GRASP, false);
++            if (IsHeroic())
++                summon->CastSpell(summon, SPELL_FROST_GRASP, true);
++            summon->DespawnOrUnsummon(7000);
++        }
++    }
++
++    void DoAction(int32 action) override
++    {
++        switch (action)
++        {
++            case ACTION_INTRO:
++                if (!_introDone)
++                {
++                    _introDone = true;
++                    PlayVoiceLine(me, ChillheartSounds[VOICE_INTRO]);
++                }
++                break;
++            case ACTION_CHILLHEART_DEATH:
++                if (_fakeDeath && me->IsAlive())
++                    me->KillSelf();
++                break;
++            default:
++                break;
++        }
++    }
++
++    void DamageTaken(Unit* attacker, uint32& damage) override
++    {
++        if (_fakeDeath)
++        {
++            damage = 0;
++            return;
++        }
++
++        if (RealDamage(me, attacker, damage) < me->GetHealth())
++            return;
++
++        // he does not die: his soul flees into the phylactery, which has to be destroyed
++        damage = 0;
++        _fakeDeath = true;
++        PlayVoiceLine(me, ChillheartSounds[VOICE_FAKE_DEATH]);
++        events.Reset();
++        me->InterruptNonMeleeSpells(true);
++        me->SetReactState(REACT_PASSIVE);
++        me->AttackStop();
++        me->SetHealth(1);
++        me->SetStandState(UNIT_STAND_STATE_DEAD);
++        me->AddUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE));
++
++        if (Creature* wall = me->FindNearestCreature(NPC_ICE_WALL_STALKER, 100.0f))
++            wall->AI()->DoAction(ACTION_DESTROY_WALL);
++
++        if (Creature* phylactery = me->FindNearestCreature(NPC_PHYLACTERY, 100.0f))
++            phylactery->AI()->DoAction(ACTION_ACTIVATE);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++        if (_events.ExecuteEvent() == EVENT_COSMETIC && !me->IsInCombat())
++        {
++            if (!me->HasUnitState(UNIT_STATE_CASTING))
++                if (Creature* phylactery = me->FindNearestCreature(NPC_PHYLACTERY, 100.0f))
++                    me->CastSpell(phylactery, SPELL_COSMETIC_SHADOW_CHANNEL, false);
++            _events.ScheduleEvent(EVENT_COSMETIC, 5000);
++        }
++
++        if (!UpdateVictim())
++            return;
++
++        events.Update(diff);
++
++        if (me->HasUnitState(UNIT_STATE_CASTING) || _fakeDeath)
++            return;
++
++        while (uint32 eventId = events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_WRACK_SOUL:
++                    PlayVoiceLine(me, ChillheartSounds[VOICE_WRACK_SOUL]);
++                    if (Unit* target = SelectTarget(SELECT_TARGET_MAXDISTANCE, 0, 60.0f, true))
++                        DoCast(target, SPELL_WRACK_SOUL);
++                    break;
++                case EVENT_FRIGID_GRASP:
++                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 60.0f, true))
++                        me->SummonCreature(NPC_FROSTGRASP_STALKER, target->GetPosition(), TEMPSUMMON_TIMED_DESPAWN, 8000);
++                    events.ScheduleEvent(EVENT_FRIGID_GRASP, urand(10000, 15000));
++                    break;
++                case EVENT_TOUCH_OF_THE_GRAVE:
++                    DoCast(me, SPELL_TOUCH_OF_THE_GRAVE);
++                    events.ScheduleEvent(EVENT_TOUCH_OF_THE_GRAVE, urand(18000, 19000));
++                    break;
++                case EVENT_ICE_WRATH:
++                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 70.0f, true))
++                        me->AddAura(SPELL_ICE_WRATH, target);
++                    events.ScheduleEvent(EVENT_ICE_WRATH, urand(11000, 16000));
++                    break;
++                default:
++                    break;
++            }
++
++            if (me->HasUnitState(UNIT_STATE_CASTING))
++                return;
++        }
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    void RemoveBooks()
++    {
++        std::list<Creature*> books;
++        me->GetCreatureListWithEntryInGrid(books, NPC_ANARCHIST_ARCANIST, 150.0f);
++        me->GetCreatureListWithEntryInGrid(books, NPC_ANTONIDAS_GUIDE, 150.0f);
++        me->GetCreatureListWithEntryInGrid(books, NPC_WANDERS_BOOK, 150.0f);
++        me->GetCreatureListWithEntryInGrid(books, NPC_ARCANE_BOMB_CHASE, 150.0f);
++        me->GetCreatureListWithEntryInGrid(books, NPC_ARCANE_BOMB, 150.0f);
++        for (Creature* book : books)
++            book->DespawnOrUnsummon();
++    }
++
++    EventMap _events;
++    bool _fakeDeath;
++    bool _introDone;
++};
++
++// Instructor Chillheart's Phylactery 58664: becomes attackable when Chillheart "dies" and
++// raises the flying books; destroying it finishes Chillheart for good
++struct npc_instructor_chillhearts_phylactery : public ScriptedAI
++{
++    npc_instructor_chillhearts_phylactery(Creature* creature) : ScriptedAI(creature), _active(false) { }
++
++    void Reset() override
++    {
++        _active = false;
++        me->SetReactState(REACT_PASSIVE);
++        me->AddUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE));
++        me->RemoveAurasDueToSpell(SPELL_PHYLACTERY_FILLED);
++        _events.ScheduleEvent(EVENT_COSMETIC, 2000);
++    }
++
++    void AttackStart(Unit* /*who*/) override { }
++
++    void DoAction(int32 action) override
++    {
++        if (action != ACTION_ACTIVATE || _active)
++            return;
++
++        _active = true;
++        me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE));
++        DoCast(me, SPELL_FILL_PHYLACTERY, true);
++        DoCast(me, SPELL_PHYLACTERY_FILLED, true);
++        DoZoneInCombat();
++        SummonBooks();
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        if (Creature* chillheart = me->FindNearestCreature(NPC_INSTRUCTOR_CHILLHEART, 100.0f))
++            chillheart->AI()->DoAction(ACTION_CHILLHEART_DEATH);
++    }
++
++    void EnterEvadeMode(EvadeReason why) override
++    {
++        if (!_active)
++            return;
++
++        ScriptedAI::EnterEvadeMode(why);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++
++        if (_events.ExecuteEvent() == EVENT_COSMETIC && !_active)
++        {
++            // students channel into the phylactery until Chillheart is pulled
++            std::list<Creature*> students;
++            me->GetCreatureListWithEntryInGrid(students, NPC_SCHOLOMANCE_ACOLYTE, 16.0f);
++            me->GetCreatureListWithEntryInGrid(students, NPC_SCHOLOMANCE_NEOPHYTE, 16.0f);
++            for (Creature* student : students)
++                if (student->IsAlive() && !student->IsInCombat() && !student->HasUnitState(UNIT_STATE_CASTING))
++                    student->CastSpell(me, SPELL_COSMETIC_SHADOW_CHANNEL, false);
++            _events.ScheduleEvent(EVENT_COSMETIC, 5000);
++        }
++    }
++
++private:
++    // stands in for Summon Books 111669: one book over each Book Spawn Target, the three kinds in turn
++    void SummonBooks()
++    {
++        static uint32 const bookEntries[3] = { NPC_ANARCHIST_ARCANIST, NPC_ANTONIDAS_GUIDE, NPC_WANDERS_BOOK };
++
++        std::list<Creature*> targets;
++        me->GetCreatureListWithEntryInGrid(targets, NPC_BOOK_SPAWN_TARGET, 100.0f);
++
++        uint8 kind = 0;
++        for (Creature* target : targets)
++        {
++            for (uint8 i = 0; i < BOOKS_PER_TARGET; ++i)
++            {
++                Position pos(target->GetPositionX() + frand(-3.0f, 3.0f), target->GetPositionY() + frand(-2.0f, 2.0f), me->GetPositionZ() + 7.0f, 0.0f);
++                me->SummonCreature(bookEntries[kind % 3], pos, TEMPSUMMON_MANUAL_DESPAWN);
++                ++kind;
++            }
++        }
++    }
++
++    EventMap _events;
++    bool _active;
++};
++
++// Ice Wall 68291: a frozen wall closes the room while Chillheart fights
++struct npc_ice_wall_stalker : public ScriptedAI
++{
++    npc_ice_wall_stalker(Creature* creature) : ScriptedAI(creature), _summons(me) { }
++
++    void Reset() override
++    {
++        me->SetReactState(REACT_PASSIVE);
++    }
++
++    void AttackStart(Unit* /*who*/) override { }
++
++    void JustSummoned(Creature* summon) override
++    {
++        _summons.Summon(summon);
++        summon->SetReactState(REACT_PASSIVE);
++        summon->CastSpell(summon, SPELL_ICE_WALL_DUMMY_2, false);
++    }
++
++    void DoAction(int32 action) override
++    {
++        switch (action)
++        {
++            case ACTION_ACTIVATE:
++                _summons.DespawnAll();
++                DoCast(me, SPELL_ICE_WALL_DUMMY_1);
++                for (uint8 i = 1; i <= 7; ++i) // the wall is ~70 yards wide
++                {
++                    me->SummonCreature(NPC_ICE_WALL_MOVE, me->GetPositionX() + 5.0f * i, me->GetPositionY(), me->GetPositionZ(), me->GetOrientation(), TEMPSUMMON_MANUAL_DESPAWN);
++                    me->SummonCreature(NPC_ICE_WALL_MOVE, me->GetPositionX() - 5.0f * i, me->GetPositionY(), me->GetPositionZ(), me->GetOrientation(), TEMPSUMMON_MANUAL_DESPAWN);
++                }
++                break;
++            case ACTION_DESTROY_WALL:
++                _summons.DespawnAll();
++                me->RemoveAurasDueToSpell(SPELL_ICE_WALL_DUMMY_1);
++                me->InterruptNonMeleeSpells(true);
++                break;
++            default:
++                break;
++        }
++    }
++
++    void UpdateAI(uint32 /*diff*/) override { }
++
++private:
++    SummonList _summons;
++};
++
++// Magical tomes 59707, 66240, 59227 and the Arcane Bomb Chase 59711
++struct npc_magical_tomes : public ScriptedAI
++{
++    npc_magical_tomes(Creature* creature) : ScriptedAI(creature) { }
++
++    void IsSummonedBy(Unit* /*summoner*/) override
++    {
++        me->SetReactState(REACT_PASSIVE);
++        me->SetCanFly(true);
++        me->SetDisableGravity(true);
++        me->AddUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE));
++        DoZoneInCombat();
++
++        switch (me->GetEntry())
++        {
++            case NPC_ANARCHIST_ARCANIST:
++                _events.ScheduleEvent(EVENT_ARCANE_BOMB, urand(1000, 3000));
++                me->GetMotionMaster()->MoveRandom(18.0f);
++                break;
++            case NPC_ANTONIDAS_GUIDE:
++                DoCast(me, SPELL_BURN, true);
++                me->GetMotionMaster()->MoveRandom(18.0f);
++                break;
++            case NPC_WANDERS_BOOK:
++                _events.ScheduleEvent(EVENT_SHADOW_BOLT, urand(1000, 3000));
++                me->GetMotionMaster()->MoveRandom(18.0f);
++                break;
++            case NPC_ARCANE_BOMB_CHASE:
++                // a slow orb that drops to the floor and explodes there
++                me->SetSpeedRate(MOVE_RUN, 0.4f);
++                me->SetSpeedRate(MOVE_WALK, 0.4f);
++                me->SetSpeedRate(MOVE_FLIGHT, 0.4f);
++                DoCast(me, SPELL_ARCANE_BOMB_COSMETIC_SPHERE, true);
++                if (Creature* mark = me->SummonCreature(NPC_ARCANE_BOMB, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() - 7.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN, 20000))
++                {
++                    mark->SetReactState(REACT_PASSIVE);
++                    mark->CastSpell(mark, SPELL_ARCANE_BOMB_COSMETIC, false);
++                    _mark = mark->GetGUID();
++                }
++                me->GetMotionMaster()->MovePoint(0, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() - 7.0f, false);
++                break;
++            default:
++                break;
++        }
++    }
++
++    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
++    {
++        damage = 0;
++    }
++
++    void AttackStart(Unit* /*who*/) override { }
++
++    void MovementInform(uint32 type, uint32 pointId) override
++    {
++        if (type != POINT_MOTION_TYPE || pointId != 0 || me->GetEntry() != NPC_ARCANE_BOMB_CHASE)
++            return;
++
++        DoCast(me, SPELL_ARCANE_BOMB, true);
++        if (Creature* mark = ObjectAccessor::GetCreature(*me, _mark))
++            mark->DespawnOrUnsummon();
++        me->DespawnOrUnsummon(500);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++
++        while (uint32 eventId = _events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_ARCANE_BOMB:
++                    me->SummonCreature(NPC_ARCANE_BOMB_CHASE, me->GetPosition(), TEMPSUMMON_TIMED_DESPAWN, 30000);
++                    _events.ScheduleEvent(EVENT_ARCANE_BOMB, urand(4000, 6000));
++                    break;
++                case EVENT_SHADOW_BOLT:
++                    if (Player* target = SelectRandomPlayer(80.0f))
++                        me->CastSpell(target, SPELL_SHADOW_BOLT, false);
++                    _events.ScheduleEvent(EVENT_SHADOW_BOLT, urand(3000, 5000));
++                    break;
++                default:
++                    break;
++            }
++        }
++    }
++
++private:
++    Player* SelectRandomPlayer(float range)
++    {
++        std::list<Player*> players;
++        me->GetPlayerListInGrid(players, range);
++        players.remove_if([](Player* player) { return !player->IsAlive() || player->IsGameMaster(); });
++        if (players.empty())
++            return nullptr;
++
++        return Trinity::Containers::SelectRandomContainerElement(players);
++    }
++
++    EventMap _events;
++    ObjectGuid _mark;
++};
++
++// Wrack Soul 111631: when it fades it jumps to another player
++class spell_chillheart_wrack_soul : public AuraScript
++{
++    PrepareAuraScript(spell_chillheart_wrack_soul);
++
++    void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
++    {
++        if (GetTargetApplication()->GetRemoveMode() != AURA_REMOVE_BY_EXPIRE)
++            return;
++
++        Unit* caster = GetCaster();
++        if (!caster || !caster->IsAlive() || !caster->IsInCombat())
++            return;
++
++        std::list<Player*> players;
++        GetTarget()->GetPlayerListInGrid(players, 40.0f);
++        players.remove_if([this](Player* player) { return player == GetTarget() || !player->IsAlive() || player->IsGameMaster(); });
++        if (players.empty())
++            return;
++
++        caster->CastSpell(Trinity::Containers::SelectRandomContainerElement(players), SPELL_WRACK_SOUL, true);
++    }
++
++    void Register() override
++    {
++        OnEffectRemove += AuraEffectRemoveFn(spell_chillheart_wrack_soul::OnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL);
++    }
++};
++
++void AddSC_boss_instructor_chillheart()
++{
++    RegisterCreatureAI(boss_instructor_chillheart);
++    RegisterCreatureAI(npc_instructor_chillhearts_phylactery);
++    RegisterCreatureAI(npc_ice_wall_stalker);
++    RegisterCreatureAI(npc_magical_tomes);
++    RegisterAuraScript(spell_chillheart_wrack_soul);
++}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_instructor_malicia.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_instructor_malicia.cpp
+deleted file mode 100644
+index 3b20f7f..0000000
+--- a/src/server/scripts/EasternKingdoms/Scholomance/boss_instructor_malicia.cpp
++++ /dev/null
+@@ -1,158 +0,0 @@
+-/*
+- * 2026 BFA-HavenCore
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License as published by the
+- * Free Software Foundation, either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along
+- * with this program. If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-/* ScriptData
+-SDName: Boss_instructormalicia
+-SD%Complete: 100
+-SDComment:
+-SDCategory: Scholomance
+-EndScriptData */
+-
+-#include "ScriptMgr.h"
+-#include "ScriptedCreature.h"
+-#include "scholomance.h"
+-
+-enum Spells
+-{
+-    SPELL_CALLOFGRAVES          = 17831,
+-    SPELL_CORRUPTION            = 11672,
+-    SPELL_FLASHHEAL             = 10917,
+-    SPELL_RENEW                 = 10929,
+-    SPELL_HEALINGTOUCH          = 9889
+-};
+-
+-enum Events
+-{
+-    EVENT_CALLOFGRAVES          = 1,
+-    EVENT_CORRUPTION            = 2,
+-    EVENT_FLASHHEAL             = 3,
+-    EVENT_RENEW                 = 4,
+-    EVENT_HEALINGTOUCH          = 5
+-};
+-
+-class boss_instructor_malicia : public CreatureScript
+-{
+-    public: boss_instructor_malicia() : CreatureScript("boss_instructor_malicia") { }
+-
+-        struct boss_instructormaliciaAI : public BossAI
+-        {
+-            boss_instructormaliciaAI(Creature* creature) : BossAI(creature, DATA_INSTRUCTORMALICIA)
+-            {
+-                Initialize();
+-            }
+-
+-            void Initialize()
+-            {
+-                FlashCounter = 0;
+-                TouchCounter = 0;
+-            }
+-
+-            uint32 FlashCounter;
+-            uint32 TouchCounter;
+-
+-            void Reset() override
+-            {
+-                _Reset();
+-                Initialize();
+-            }
+-
+-            void JustEngagedWith(Unit* /*who*/) override
+-            {
+-                _JustEngagedWith();
+-                events.ScheduleEvent(EVENT_CALLOFGRAVES, 4000);
+-                events.ScheduleEvent(EVENT_CORRUPTION, 8000);
+-                events.ScheduleEvent(EVENT_RENEW, 32000);
+-                events.ScheduleEvent(EVENT_FLASHHEAL, 38000);
+-                events.ScheduleEvent(EVENT_HEALINGTOUCH, 45000);
+-            }
+-
+-            void UpdateAI(uint32 diff) override
+-            {
+-                if (!UpdateVictim())
+-                    return;
+-
+-                events.Update(diff);
+-
+-                if (me->HasUnitState(UNIT_STATE_CASTING))
+-                    return;
+-
+-                while (uint32 eventId = events.ExecuteEvent())
+-                {
+-                    switch (eventId)
+-                    {
+-                        case EVENT_CALLOFGRAVES:
+-                            DoCastVictim(SPELL_CALLOFGRAVES, true);
+-                            events.ScheduleEvent(EVENT_CALLOFGRAVES, 65000);
+-                            break;
+-                        case EVENT_CORRUPTION:
+-                            DoCast(SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true), SPELL_CORRUPTION, true);
+-                            events.ScheduleEvent(EVENT_CORRUPTION, 24000);
+-                            break;
+-                        case EVENT_RENEW:
+-                            DoCast(me, SPELL_RENEW);
+-                            events.ScheduleEvent(EVENT_RENEW, 10000);
+-                            break;
+-                        case EVENT_FLASHHEAL:
+-                            //5 Flashheals will be cast
+-                            DoCast(me, SPELL_FLASHHEAL);
+-                            if (FlashCounter < 2)
+-                            {
+-                                events.ScheduleEvent(EVENT_FLASHHEAL, 5000);
+-                                ++FlashCounter;
+-                            }
+-                            else
+-                            {
+-                                FlashCounter=0;
+-                                events.ScheduleEvent(EVENT_FLASHHEAL, 30000);
+-                            }
+-                            break;
+-                        case EVENT_HEALINGTOUCH:
+-                            //3 Healing Touch will be cast
+-                            DoCast(me, SPELL_HEALINGTOUCH);
+-                            if (TouchCounter < 2)
+-                            {
+-                                events.ScheduleEvent(EVENT_HEALINGTOUCH, 5500);
+-                                ++TouchCounter;
+-                            }
+-                            else
+-                            {
+-                                TouchCounter=0;
+-                                events.ScheduleEvent(EVENT_HEALINGTOUCH, 30000);
+-                            }
+-                            break;
+-                        default:
+-                            break;
+-                    }
+-
+-                    if (me->HasUnitState(UNIT_STATE_CASTING))
+-                        return;
+-                }
+-
+-                DoMeleeAttackIfReady();
+-            }
+-        };
+-
+-        CreatureAI* GetAI(Creature* creature) const override
+-        {
+-            return GetScholomanceAI<boss_instructormaliciaAI>(creature);
+-        }
+-};
+-
+-void AddSC_boss_instructormalicia()
+-{
+-    new boss_instructor_malicia();
+-}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_jandice_barov.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_jandice_barov.cpp
+index 3e17026..56c6d3c 100644
+--- a/src/server/scripts/EasternKingdoms/Scholomance/boss_jandice_barov.cpp
++++ b/src/server/scripts/EasternKingdoms/Scholomance/boss_jandice_barov.cpp
+@@ -1,6 +1,8 @@
+ /*
+  * 2026 BFA-HavenCore
+  *
++ * Jandice Barov, Scholomance. Ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
+  * This program is free software; you can redistribute it and/or modify it
+  * under the terms of the GNU General Public License as published by the
+  * Free Software Foundation, either version 3 of the License, or
+@@ -16,112 +18,246 @@
+  */
+ 
+ #include "ScriptMgr.h"
+-#include "scholomance.h"
+ #include "ScriptedCreature.h"
++#include "InstanceScript.h"
++#include "MotionMaster.h"
++#include "SpellScript.h"
++#include "TemporarySummon.h"
++#include "scholomance.h"
+ 
+-enum Spells
++enum JandiceSpells
+ {
+-    SPELL_CURSE_OF_BLOOD        = 24673,
+-    SPELL_ILLUSION              = 17773
++    SPELL_WONDROUS_RAPIDITY     = 114062,
++    SPELL_WHIRL_OF_ILLUSION     = 114048,
++    SPELL_FLASH_BANG            = 113866,
+ };
+ 
+-enum Events
++enum JandiceEvents
+ {
+-    EVENT_CURSE_OF_BLOOD = 1,
++    EVENT_WONDROUS_RAPIDITY     = 1,
+     EVENT_ILLUSION,
+-    EVENT_CLEAVE,
+-    EVENT_SET_VISIBILITY
+ };
+ 
+-class boss_jandice_barov : public CreatureScript
++enum JandiceVoice
+ {
+-public:
+-    boss_jandice_barov() : CreatureScript("boss_jandice_barov") { }
++    VOICE_AGGRO                 = 0,
++    VOICE_DEATH,
++    VOICE_RAPIDITY,
++    VOICE_ILLUSION,
++};
++
++uint32 const JandiceSounds[] = { 30287, 30288, 30292, 30293 };
+ 
+-    struct boss_jandicebarovAI : public ScriptedAI
++// Jandice Barov 59184. At 66% and 33% she vanishes into a room full of illusions; striking
++// the real Jandice brings her back, striking an illusion shatters it.
++struct boss_jandice_barov : public BossAI
++{
++    boss_jandice_barov(Creature* creature) : BossAI(creature, DATA_JANDICE_BAROV), _illusionPhase(false), _nextIllusionPct(66) { }
++
++    void Reset() override
+     {
+-        boss_jandicebarovAI(Creature* creature) : ScriptedAI(creature), Summons(me) { }
++        _Reset();
++        _illusionPhase = false;
++        _nextIllusionPct = 66;
++        me->setRegeneratingHealth(true);
++        me->SetReactState(REACT_AGGRESSIVE);
++        me->SetVisible(true);
++        me->RemoveAurasDueToSpell(SPELL_WHIRL_OF_ILLUSION);
++        RemoveIllusions();
++    }
+ 
+-        void Reset() override
+-        {
+-            events.Reset();
+-            Summons.DespawnAll();
+-        }
++    void JustEngagedWith(Unit* /*who*/) override
++    {
++        _JustEngagedWith();
++        PlayVoiceLine(me, JandiceSounds[VOICE_AGGRO]);
++        ScheduleTasks();
+ 
+-        void JustSummoned(Creature* summoned) override
+-        {
+-            // Illusions should attack a random target.
+-            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
+-                summoned->AI()->AttackStart(target);
++        if (instance)
++            if (Creature* skull = instance->GetCreature(DATA_TALKING_SKULL))
++                skull->AI()->Talk(TALK_SKULL_JANDICE_COMBAT);
++    }
+ 
+-            summoned->ApplySpellImmune(0, IMMUNITY_DAMAGE, SPELL_SCHOOL_MASK_MAGIC, true); // Not sure if this is correct.
+-            Summons.Summon(summoned);
+-        }
++    void ScheduleTasks() override
++    {
++        events.ScheduleEvent(EVENT_WONDROUS_RAPIDITY, 2500);
++    }
+ 
+-        void JustEngagedWith(Unit* /*who*/) override
++    void JustDied(Unit* /*killer*/) override
++    {
++        _JustDied();
++        PlayVoiceLine(me, JandiceSounds[VOICE_DEATH]);
++        RemoveIllusions();
++    }
++
++    void EnterEvadeMode(EvadeReason why) override
++    {
++        me->SetVisible(true);
++        RemoveIllusions();
++        BossAI::EnterEvadeMode(why);
++    }
++
++    void JustSummoned(Creature* summon) override
++    {
++        BossAI::JustSummoned(summon);
++
++        if (summon->GetEntry() == NPC_JANDICE_ILLUSION)
+         {
+-            events.ScheduleEvent(EVENT_CURSE_OF_BLOOD, 15000);
+-            events.ScheduleEvent(EVENT_ILLUSION, 30000);
++            summon->SetReactState(REACT_PASSIVE);
++            summon->AddAura(SPELL_WHIRL_OF_ILLUSION, summon);
++            DoZoneInCombat(summon);
++            summon->AttackStop();
++            summon->StopMoving();
+         }
++    }
+ 
+-        void JustDied(Unit* /*killer*/) override
++    void DamageTaken(Unit* attacker, uint32& damage) override
++    {
++        if (_illusionPhase)
+         {
+-            Summons.DespawnAll();
++            // found her: back to the fight
++            damage = 0;
++            if (me->IsVisible() && me->HasAura(SPELL_WHIRL_OF_ILLUSION))
++                EndIllusionPhase();
++            return;
+         }
+ 
+-        void UpdateAI(uint32 diff) override
++        uint32 realDamage = RealDamage(me, attacker, damage);
++        if (!_nextIllusionPct || me->HealthBelowPctDamaged(_nextIllusionPct, realDamage) == false)
++            return;
++
++        if (realDamage >= me->GetHealth())
+         {
+-            if (!UpdateVictim())
+-                return;
++            damage = 0;
++            me->SetHealth(1);
++        }
+ 
+-            events.Update(diff);
++        _illusionPhase = true;
++        _nextIllusionPct = _nextIllusionPct > 33 ? 33 : 0;
++        events.Reset();
++        PlayVoiceLine(me, JandiceSounds[VOICE_ILLUSION]);
++        me->InterruptNonMeleeSpells(true);
++        DoCast(me, SPELL_FLASH_BANG, true);
++        me->AttackStop();
++        me->SetReactState(REACT_PASSIVE);
++        me->SetVisible(false);
++        events.ScheduleEvent(EVENT_ILLUSION, 2000);
++    }
+ 
+-            if (me->HasUnitState(UNIT_STATE_CASTING))
+-                return;
++    void UpdateAI(uint32 diff) override
++    {
++        if (!UpdateVictim())
++            return;
++
++        events.Update(diff);
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
+ 
+-            while (uint32 eventId = events.ExecuteEvent())
++        while (uint32 eventId = events.ExecuteEvent())
++        {
++            switch (eventId)
+             {
+-                switch (eventId)
++                case EVENT_WONDROUS_RAPIDITY:
++                    PlayVoiceLine(me, JandiceSounds[VOICE_RAPIDITY]);
++                    DoCastVictim(SPELL_WONDROUS_RAPIDITY);
++                    events.ScheduleEvent(EVENT_WONDROUS_RAPIDITY, urand(18000, 22000));
++                    break;
++                case EVENT_ILLUSION:
+                 {
+-                    case EVENT_CURSE_OF_BLOOD:
+-                        DoCastVictim(SPELL_CURSE_OF_BLOOD);
+-                        events.ScheduleEvent(EVENT_CURSE_OF_BLOOD, 30000);
+-                        break;
+-                    case EVENT_ILLUSION:
+-                        DoCast(SPELL_ILLUSION);
+-                        me->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+-                        me->SetDisplayId(11686);  // Invisible Model
+-                        ModifyThreatByPercent(me->GetVictim(), -99);
+-                        events.ScheduleEvent(EVENT_SET_VISIBILITY, 3000);
+-                        events.ScheduleEvent(EVENT_ILLUSION, 25000);
+-                        break;
+-                    case EVENT_SET_VISIBILITY:
+-                        me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+-                        me->SetDisplayId(11073);     //Jandice Model
+-                        break;
+-                    default:
+-                        break;
+-                }
++                    uint8 real = urand(0, MAX_ILLUSIONS - 1);
++                    for (uint8 i = 0; i < MAX_ILLUSIONS; ++i)
++                        if (i != real)
++                            me->SummonCreature(NPC_JANDICE_ILLUSION, IllusionsPoints[i], TEMPSUMMON_MANUAL_DESPAWN);
+ 
+-                if (me->HasUnitState(UNIT_STATE_CASTING))
+-                    return;
++                    me->NearTeleportTo(IllusionsPoints[real]);
++                    me->SetVisible(true);
++                    me->AddAura(SPELL_WHIRL_OF_ILLUSION, me);
++                    break;
++                }
++                default:
++                    break;
+             }
+ 
+-            DoMeleeAttackIfReady();
++            if (me->HasUnitState(UNIT_STATE_CASTING))
++                return;
+         }
+ 
+-    private:
+-        EventMap events;
+-        SummonList Summons;
+-    };
++        if (!_illusionPhase)
++            DoMeleeAttackIfReady();
++    }
++
++private:
++    void EndIllusionPhase()
++    {
++        _illusionPhase = false;
++        me->RemoveAurasDueToSpell(SPELL_WHIRL_OF_ILLUSION);
++        RemoveIllusions();
++        me->SetReactState(REACT_AGGRESSIVE);
++        if (Unit* target = SelectTarget(SELECT_TARGET_MAXTHREAT))
++            AttackStart(target);
++        ScheduleTasks();
++    }
++
++    void RemoveIllusions()
++    {
++        summons.DespawnEntry(NPC_JANDICE_ILLUSION);
++    }
++
++    bool _illusionPhase;
++    uint8 _nextIllusionPct;
++};
++
++// Jandice Illusion 59220: shatters on the first hit
++struct npc_jandice_illusion : public ScriptedAI
++{
++    npc_jandice_illusion(Creature* creature) : ScriptedAI(creature), _shattered(false) { }
++
++    void Reset() override
++    {
++        me->SetReactState(REACT_PASSIVE);
++    }
++
++    void AttackStart(Unit* /*who*/) override { }
++
++    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
++    {
++        damage = 0;
++        if (_shattered)
++            return;
++
++        _shattered = true;
++        if (IsHeroic())
++            DoCastAOE(SPELL_FLASH_BANG, true);
++        me->RemoveAllAuras();
++        me->DespawnOrUnsummon(500);
++    }
++
++    void UpdateAI(uint32 /*diff*/) override { }
++
++private:
++    bool _shattered;
++};
++
++// Whirl of Illusion 113775: only the real Jandice's whirl hurts
++class spell_jandice_whirl_of_illusion : public SpellScript
++{
++    PrepareSpellScript(spell_jandice_whirl_of_illusion);
++
++    void HandleHit(SpellEffIndex /*effIndex*/)
++    {
++        if (GetCaster()->GetEntry() != NPC_JANDICE_BAROV)
++            SetHitDamage(0);
++    }
+ 
+-    CreatureAI* GetAI(Creature* creature) const override
++    void Register() override
+     {
+-        return GetScholomanceAI<boss_jandicebarovAI>(creature);
++        OnEffectHitTarget += SpellEffectFn(spell_jandice_whirl_of_illusion::HandleHit, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
+     }
+ };
+ 
+-void AddSC_boss_jandicebarov()
++void AddSC_boss_jandice_barov()
+ {
+-    new boss_jandice_barov();
++    RegisterCreatureAI(boss_jandice_barov);
++    RegisterCreatureAI(npc_jandice_illusion);
++    RegisterSpellScript(spell_jandice_whirl_of_illusion);
+ }
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_kirtonos_the_herald.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_kirtonos_the_herald.cpp
+deleted file mode 100644
+index d1ce81e..0000000
+--- a/src/server/scripts/EasternKingdoms/Scholomance/boss_kirtonos_the_herald.cpp
++++ /dev/null
+@@ -1,299 +0,0 @@
+-/*
+- * 2026 BFA-HavenCore
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License as published by the
+- * Free Software Foundation, either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along
+- * with this program. If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-#include "ScriptMgr.h"
+-#include "GameObject.h"
+-#include "InstanceScript.h"
+-#include "MotionMaster.h"
+-#include "MoveSplineInit.h"
+-#include "ObjectAccessor.h"
+-#include "Player.h"
+-#include "scholomance.h"
+-#include "ScriptedCreature.h"
+-
+-enum Says
+-{
+-   EMOTE_SUMMONED                     = 0
+-};
+-
+-enum Spells
+-{
+-    SPELL_SWOOP                       = 18144,
+-    SPELL_WING_FLAP                   = 12882,
+-    SPELL_PIERCE_ARMOR                = 6016,
+-    SPELL_DISARM                      = 8379,
+-    SPELL_KIRTONOS_TRANSFORM          = 16467,
+-    SPELL_SHADOW_BOLT                 = 17228,
+-    SPELL_CURSE_OF_TONGUES            = 12889,
+-    SPELL_DOMINATE_MIND               = 14515
+-};
+-
+-enum Events
+-{
+-    INTRO_1                           = 1,
+-    INTRO_2                           = 2,
+-    INTRO_3                           = 3,
+-    INTRO_4                           = 4,
+-    INTRO_5                           = 5,
+-    INTRO_6                           = 6,
+-    EVENT_SWOOP                       = 7,
+-    EVENT_WING_FLAP                   = 8,
+-    EVENT_PIERCE_ARMOR                = 9,
+-    EVENT_DISARM                      = 10,
+-    EVENT_SHADOW_BOLT                 = 11,
+-    EVENT_CURSE_OF_TONGUES            = 12,
+-    EVENT_DOMINATE_MIND               = 13,
+-    EVENT_KIRTONOS_TRANSFORM          = 14
+-};
+-
+-enum Misc
+-{
+-    WEAPON_KIRTONOS_STAFF             = 11365,
+-    POINT_KIRTONOS_LAND               = 13,
+-    KIRTONOS_PATH                     = 105061
+-};
+-
+-Position const PosMove[2] =
+-{
+-    { 299.4884f, 92.76137f, 105.6335f, 0.0f },
+-    { 314.8673f, 90.30210f, 101.6459f, 0.0f }
+-};
+-
+-class boss_kirtonos_the_herald : public CreatureScript
+-{
+-    public: boss_kirtonos_the_herald() : CreatureScript("boss_kirtonos_the_herald") { }
+-
+-        struct boss_kirtonos_the_heraldAI : public BossAI
+-        {
+-            boss_kirtonos_the_heraldAI(Creature* creature) : BossAI(creature, DATA_KIRTONOS) { }
+-
+-            void Reset() override
+-            {
+-                _Reset();
+-            }
+-
+-            void JustEngagedWith(Unit* /*who*/) override
+-            {
+-                events.ScheduleEvent(EVENT_SWOOP, urand(8000, 8000));
+-                events.ScheduleEvent(EVENT_WING_FLAP, urand(15000, 15000));
+-                events.ScheduleEvent(EVENT_PIERCE_ARMOR, urand(18000, 18000));
+-                events.ScheduleEvent(EVENT_DISARM, urand(22000, 22000));
+-                events.ScheduleEvent(EVENT_SHADOW_BOLT, urand(42000, 42000));
+-                events.ScheduleEvent(EVENT_CURSE_OF_TONGUES, urand(53000, 53000));
+-                events.ScheduleEvent(EVENT_DOMINATE_MIND, urand(34000, 48000));
+-                events.ScheduleEvent(EVENT_KIRTONOS_TRANSFORM, urand(20000, 20000));
+-                _JustEngagedWith();
+-            }
+-
+-            void JustDied(Unit* /*killer*/) override
+-            {
+-                if (GameObject* gate = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(GO_GATE_KIRTONOS)))
+-                    gate->SetGoState(GO_STATE_ACTIVE);
+-                if (GameObject* brazier = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(GO_BRAZIER_OF_THE_HERALD)))
+-                {
+-                    brazier->ResetDoorOrButton();
+-                    brazier->SetGoState(GO_STATE_READY);
+-                }
+-                _JustDied();
+-            }
+-
+-            void EnterEvadeMode(EvadeReason /*why*/) override
+-            {
+-                if (GameObject* gate = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(GO_GATE_KIRTONOS)))
+-                    gate->SetGoState(GO_STATE_ACTIVE);
+-                if (GameObject* brazier = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(GO_BRAZIER_OF_THE_HERALD)))
+-                {
+-                    brazier->ResetDoorOrButton();
+-                    brazier->SetGoState(GO_STATE_READY);
+-                }
+-                me->DespawnOrUnsummon(5000);
+-            }
+-
+-            void IsSummonedBy(Unit* /*summoner*/) override
+-            {
+-                events.ScheduleEvent(INTRO_1, 500);
+-                me->SetDisableGravity(true);
+-                me->SetReactState(REACT_PASSIVE);
+-                me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE|UNIT_FLAG_NOT_SELECTABLE));
+-                Talk(EMOTE_SUMMONED);
+-            }
+-
+-            void JustSummoned(Creature* summon) override
+-            {
+-                BossAI::JustSummoned(summon);
+-            }
+-
+-            void MovementInform(uint32 type, uint32 id) override
+-            {
+-                if (type == WAYPOINT_MOTION_TYPE && id == POINT_KIRTONOS_LAND)
+-                {
+-                    events.ScheduleEvent(INTRO_2, 1500);
+-                }
+-            }
+-
+-            void UpdateAI(uint32 diff) override
+-            {
+-                events.Update(diff);
+-
+-                if (!UpdateVictim())
+-                {
+-                    while (uint32 eventId = events.ExecuteEvent())
+-                    {
+-                        switch (eventId)
+-                        {
+-                            case INTRO_1:
+-                                me->GetMotionMaster()->MovePath(KIRTONOS_PATH, false);
+-                                break;
+-                            case INTRO_2:
+-                                me->GetMotionMaster()->MovePoint(0, PosMove[0]);
+-                                events.ScheduleEvent(INTRO_3, 1000);
+-                                break;
+-                            case INTRO_3:
+-                                if (GameObject* gate = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(GO_GATE_KIRTONOS)))
+-                                    gate->SetGoState(GO_STATE_READY);
+-                                me->SetFacingTo(0.01745329f);
+-                                events.ScheduleEvent(INTRO_4, 3000);
+-                                break;
+-                            case INTRO_4:
+-                                if (GameObject* brazier = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(GO_BRAZIER_OF_THE_HERALD)))
+-                                    brazier->SetGoState(GO_STATE_READY);
+-                                me->SetWalk(true);
+-                                me->SetDisableGravity(false);
+-                                DoCast(me, SPELL_KIRTONOS_TRANSFORM);
+-                                me->SetCanFly(false);
+-                                events.ScheduleEvent(INTRO_5, 1000);
+-                                break;
+-                            case INTRO_5:
+-                                me->HandleEmoteCommand(EMOTE_ONESHOT_ROAR);
+-                                me->SetVirtualItem(0, uint32(WEAPON_KIRTONOS_STAFF));
+-                                me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE|UNIT_FLAG_NOT_SELECTABLE));
+-                                me->SetReactState(REACT_AGGRESSIVE);
+-                                events.ScheduleEvent(INTRO_6, 5000);
+-                                break;
+-                            case INTRO_6:
+-                                me->GetMotionMaster()->MovePoint(0, PosMove[1]);
+-                                break;
+-                            default:
+-                                break;
+-                        }
+-                    }
+-
+-                    return;
+-                }
+-
+-                if (me->HasUnitState(UNIT_STATE_CASTING))
+-                    return;
+-
+-                while (uint32 eventId = events.ExecuteEvent())
+-                {
+-                    switch (eventId)
+-                    {
+-                        case EVENT_SWOOP:
+-                            DoCast(me, SPELL_SWOOP);
+-                            events.ScheduleEvent(EVENT_SWOOP, 15000);
+-                            break;
+-                        case EVENT_WING_FLAP:
+-                            DoCast(me, SPELL_WING_FLAP);
+-                            events.ScheduleEvent(EVENT_WING_FLAP, 13000);
+-                            break;
+-                        case EVENT_PIERCE_ARMOR:
+-                            DoCastVictim(SPELL_PIERCE_ARMOR, true);
+-                            events.ScheduleEvent(EVENT_PIERCE_ARMOR, 12000);
+-                            break;
+-                        case EVENT_DISARM:
+-                            DoCastVictim(SPELL_DISARM, true);
+-                            events.ScheduleEvent(EVENT_DISARM, 11000);
+-                            break;
+-                        case EVENT_SHADOW_BOLT:
+-                            DoCastVictim(SPELL_SHADOW_BOLT, true);
+-                            events.ScheduleEvent(EVENT_SHADOW_BOLT, 42000);
+-                            break;
+-                        case EVENT_CURSE_OF_TONGUES:
+-                            DoCastVictim(SPELL_CURSE_OF_TONGUES, true);
+-                            events.ScheduleEvent(EVENT_CURSE_OF_TONGUES, 35000);
+-                            break;
+-                        case EVENT_DOMINATE_MIND:
+-                            DoCastVictim(SPELL_DOMINATE_MIND, true);
+-                            events.ScheduleEvent(EVENT_DOMINATE_MIND, urand(44000, 48000));
+-                            break;
+-                        case EVENT_KIRTONOS_TRANSFORM:
+-                            if (me->HasAura(SPELL_KIRTONOS_TRANSFORM))
+-                            {
+-                                me->RemoveAura(SPELL_KIRTONOS_TRANSFORM);
+-                                me->SetVirtualItem(0, uint32(0));
+-                                me->SetCanFly(false);
+-                            }
+-                            else
+-                            {
+-                                DoCast(me, SPELL_KIRTONOS_TRANSFORM);
+-                                me->SetVirtualItem(0, uint32(WEAPON_KIRTONOS_STAFF));
+-                                me->SetCanFly(true);
+-                            }
+-                            events.ScheduleEvent(EVENT_KIRTONOS_TRANSFORM, urand(16000, 18000));
+-                            break;
+-                        default:
+-                            break;
+-                    }
+-
+-                    if (me->HasUnitState(UNIT_STATE_CASTING))
+-                        return;
+-                }
+-
+-                DoMeleeAttackIfReady();
+-            }
+-        };
+-
+-        CreatureAI* GetAI(Creature* creature) const override
+-        {
+-            return GetScholomanceAI<boss_kirtonos_the_heraldAI>(creature);
+-        }
+-};
+-
+-/*######
+-## go_brazier_of_the_herald
+-######*/
+-
+-enum Brazier_Of_The_Herald
+-{
+-    NPC_KIRTONOS  = 10506,
+-    SOUND_SCREECH = 557
+-};
+-
+-Position const PosSummon[1] =
+-{
+-    { 315.028f, 70.53845f, 102.1496f, 0.3859715f }
+-};
+-
+-class go_brazier_of_the_herald : public GameObjectScript
+-{
+-    public:
+-        go_brazier_of_the_herald() : GameObjectScript("go_brazier_of_the_herald") { }
+-
+-        bool OnGossipHello(Player* player, GameObject* go) override
+-        {
+-            go->UseDoorOrButton();
+-            go->PlayDirectSound(SOUND_SCREECH, 0);
+-            player->SummonCreature(NPC_KIRTONOS, PosSummon[0], TEMPSUMMON_DEAD_DESPAWN, 900000);
+-            return true;
+-        }
+-};
+-
+-void AddSC_boss_kirtonos_the_herald()
+-{
+-    new boss_kirtonos_the_herald();
+-    new go_brazier_of_the_herald();
+-}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_kormok.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_kormok.cpp
+deleted file mode 100644
+index 6c50502..0000000
+--- a/src/server/scripts/EasternKingdoms/Scholomance/boss_kormok.cpp
++++ /dev/null
+@@ -1,220 +0,0 @@
+-/*
+- * 2026 BFA-HavenCore
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License as published by the
+- * Free Software Foundation, either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along
+- * with this program. If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-#include "ScriptMgr.h"
+-#include "scholomance.h"
+-#include "ScriptedCreature.h"
+-#include "SpellScript.h"
+-
+-enum Spells
+-{
+-    SPELL_SHADOWBOLT_VOLLEY             = 20741,
+-    SPELL_BONE_SHIELD                   = 27688,
+-
+-    SPELL_SUMMON_BONE_MAGES             = 27695,
+-
+-    SPELL_SUMMON_BONE_MAGE_FRONT_LEFT   = 27696,
+-    SPELL_SUMMON_BONE_MAGE_FRONT_RIGHT  = 27697,
+-    SPELL_SUMMON_BONE_MAGE_BACK_RIGHT   = 27698,
+-    SPELL_SUMMON_BONE_MAGE_BACK_LEFT    = 27699,
+-
+-    SPELL_SUMMON_BONE_MINIONS           = 27687
+-};
+-
+-enum Events
+-{
+-    EVENT_SHADOWBOLT_VOLLEY = 1,
+-    EVENT_BONE_SHIELD,
+-    EVENT_SUMMON_MINIONS
+-};
+-
+-class boss_kormok : public CreatureScript
+-{
+-public:
+-    boss_kormok() : CreatureScript("boss_kormok") { }
+-
+-    struct boss_kormokAI : public ScriptedAI
+-    {
+-        boss_kormokAI(Creature* creature) : ScriptedAI(creature)
+-        {
+-            Initialize();
+-        }
+-
+-        void Initialize()
+-        {
+-            Mages = false;
+-        }
+-
+-        void Reset() override
+-        {
+-            Initialize();
+-            events.Reset();
+-        }
+-
+-        void JustEngagedWith(Unit* /*who*/) override
+-        {
+-            events.ScheduleEvent(EVENT_SHADOWBOLT_VOLLEY, 10000);
+-            events.ScheduleEvent(EVENT_BONE_SHIELD, 2000);
+-            events.ScheduleEvent(EVENT_SUMMON_MINIONS, 15000);
+-        }
+-
+-        void JustSummoned(Creature* summoned) override
+-        {
+-            summoned->AI()->AttackStart(me->GetVictim());
+-        }
+-
+-        void DamageTaken(Unit* /*attacker*/, uint32& damage) override
+-        {
+-            if (me->HealthBelowPctDamaged(25, damage) && !Mages)
+-            {
+-                DoCast(SPELL_SUMMON_BONE_MAGES);
+-                Mages = true;
+-            }
+-        }
+-
+-        void UpdateAI(uint32 diff) override
+-        {
+-            if (!UpdateVictim())
+-                return;
+-
+-            events.Update(diff);
+-
+-            if (me->HasUnitState(UNIT_STATE_CASTING))
+-                return;
+-
+-            while (uint32 eventId = events.ExecuteEvent())
+-            {
+-                switch (eventId)
+-                {
+-                    case EVENT_SHADOWBOLT_VOLLEY:
+-                        DoCastVictim(SPELL_SHADOWBOLT_VOLLEY);
+-                        events.ScheduleEvent(EVENT_SHADOWBOLT_VOLLEY, 15000);
+-                        break;
+-                    case EVENT_BONE_SHIELD:
+-                        DoCastVictim(SPELL_BONE_SHIELD);
+-                        events.ScheduleEvent(EVENT_BONE_SHIELD, 45000);
+-                        break;
+-                    case EVENT_SUMMON_MINIONS:
+-                        DoCast(SPELL_SUMMON_BONE_MINIONS);
+-                        events.ScheduleEvent(EVENT_SUMMON_MINIONS, 12000);
+-                        break;
+-                    default:
+-                        break;
+-                }
+-
+-                if (me->HasUnitState(UNIT_STATE_CASTING))
+-                    return;
+-            }
+-
+-            DoMeleeAttackIfReady();
+-        }
+-
+-        private:
+-            EventMap events;
+-            bool Mages;
+-    };
+-
+-    CreatureAI* GetAI(Creature* creature) const override
+-    {
+-        return GetScholomanceAI<boss_kormokAI>(creature);
+-    }
+-};
+-
+-uint32 const SummonMageSpells[4] =
+-{
+-    SPELL_SUMMON_BONE_MAGE_FRONT_LEFT,
+-    SPELL_SUMMON_BONE_MAGE_FRONT_RIGHT,
+-    SPELL_SUMMON_BONE_MAGE_BACK_RIGHT,
+-    SPELL_SUMMON_BONE_MAGE_BACK_LEFT,
+-};
+-
+-// 27695 - Summon Bone Mages
+-class spell_kormok_summon_bone_mages : SpellScriptLoader
+-{
+-    public:
+-        spell_kormok_summon_bone_mages() : SpellScriptLoader("spell_kormok_summon_bone_mages") { }
+-
+-        class spell_kormok_summon_bone_magesSpellScript : public SpellScript
+-        {
+-            PrepareSpellScript(spell_kormok_summon_bone_magesSpellScript);
+-
+-            bool Validate(SpellInfo const* /*spell*/) override
+-            {
+-                return ValidateSpellInfo(SummonMageSpells);
+-            }
+-
+-            void HandleScript(SpellEffIndex effIndex)
+-            {
+-                PreventHitDefaultEffect(effIndex);
+-                for (uint32 i = 0; i < 2; ++i)
+-                    GetCaster()->CastSpell(GetCaster(), SummonMageSpells[urand(0, 3)], true);
+-            }
+-
+-            void Register() override
+-            {
+-                OnEffectHitTarget += SpellEffectFn(spell_kormok_summon_bone_magesSpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+-            }
+-        };
+-
+-        SpellScript* GetSpellScript() const override
+-        {
+-            return new spell_kormok_summon_bone_magesSpellScript();
+-        }
+-};
+-
+-// 27687 - Summon Bone Minions
+-class spell_kormok_summon_bone_minions : SpellScriptLoader
+-{
+-    public:
+-       spell_kormok_summon_bone_minions() : SpellScriptLoader("spell_kormok_summon_bone_minions") { }
+-
+-    class spell_kormok_summon_bone_minionsSpellScript : public SpellScript
+-    {
+-        PrepareSpellScript(spell_kormok_summon_bone_minionsSpellScript);
+-
+-        bool Validate(SpellInfo const* /*spell*/) override
+-        {
+-            return ValidateSpellInfo({ SPELL_SUMMON_BONE_MINIONS });
+-        }
+-
+-        void HandleScript(SpellEffIndex effIndex)
+-        {
+-            PreventHitDefaultEffect(effIndex);
+-
+-            // Possible spells to handle this not found.
+-            for (uint32 i = 0; i < 4; ++i)
+-                GetCaster()->SummonCreature(NPC_BONE_MINION, GetCaster()->GetPositionX() + float(irand(-7, 7)), GetCaster()->GetPositionY() + float(irand(-7, 7)), GetCaster()->GetPositionZ(), 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 120000);
+-        }
+-
+-        void Register() override
+-        {
+-            OnEffectHitTarget += SpellEffectFn(spell_kormok_summon_bone_minionsSpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+-        }
+-    };
+-
+-    SpellScript* GetSpellScript() const override
+-    {
+-        return new spell_kormok_summon_bone_minionsSpellScript();
+-    }
+-};
+-
+-void AddSC_boss_kormok()
+-{
+-    new boss_kormok();
+-    new spell_kormok_summon_bone_mages();
+-    new spell_kormok_summon_bone_minions();
+-}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_lilian_voss.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_lilian_voss.cpp
+new file mode 100644
+index 0000000..11fa299
+--- /dev/null
++++ b/src/server/scripts/EasternKingdoms/Scholomance/boss_lilian_voss.cpp
+@@ -0,0 +1,543 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Lilian Voss, Scholomance. Ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "ScriptMgr.h"
++#include "ScriptedCreature.h"
++#include "InstanceScript.h"
++#include "MotionMaster.h"
++#include "ObjectAccessor.h"
++#include "Player.h"
++#include "SpellScript.h"
++#include "TemporarySummon.h"
++#include "scholomance.h"
++
++enum LilianSpells
++{
++    SPELL_SHADOW_SHIV           = 111775,
++    SPELL_DEATHS_GRASP          = 111570,
++    SPELL_DEATHS_GRASP_EFFECT   = 111573,
++    SPELL_DARK_BLAZE_DUMMY      = 111587,
++
++    // her soul
++    SPELL_UNLEASHED_ANGUISH     = 111649,
++    SPELL_FIXATE_ANGER          = 115350,
++};
++
++enum LilianEvents
++{
++    // fight
++    EVENT_SHADOW_SHIV           = 1,
++    EVENT_DEATHS_GRASP,
++    EVENT_DARK_BLAZE,
++    EVENT_SOUL_DISMISS,
++    EVENT_SUMMON_SOUL,
++
++    // story
++    EVENT_TALK_1                = 10,
++    EVENT_TALK_2,
++    EVENT_TALK_3,
++    EVENT_TALK_4,
++    EVENT_TALK_5,
++    EVENT_SPECIAL,
++    EVENT_INTRO_DONE,
++    EVENT_DIE_NECROMANCER,
++    EVENT_PURIFIED,
++    EVENT_LAST_WORDS,
++
++    // soul
++    EVENT_FIXATE_ANGER          = 20,
++    EVENT_RESURRECT,
++};
++
++enum LilianTexts
++{
++    TALK_WONT_LET_YOU           = 0,  // I...won't let you...
++    TALK_CANT_FIGHT_HIM         = 1,  // I can't...fight him...
++    TALK_IT_BURNS               = 2,  // It burns...my soul...it burns!!!!
++    TALK_END_IT                 = 3,  // END IT! NOW! Before he can...
++    TALK_DIE_NECROMANCER        = 4,  // DIE, NECROMANCER!
++    TALK_LEAVE_ME               = 5,  // Leave me...to die...alone...please...
++    TALK_SOUL_FADES_ANN         = 12, // Lilian's Soul fades into the spirit realm! It can no longer be harmed!
++
++    // Lilian's Soul
++    TALK_SOUL_FIXATE            = 0,
++};
++
++// her lines while Gandling taunts her at Rattlegore: voice only in this database
++uint32 const LilianIntroSounds[] = { 29469, 29470, 29471, 29472, 29475 };
++uint32 const LILIAN_SOUND_SHADOWSTEP = 29473;
++
++uint32 const FACTION_HOSTILE    = 14;
++uint32 const FACTION_FRIENDLY   = 35;
++
++// Lilian Voss 59200. She starts in Rattlegore's hall under Gandling's control, is sent to her
++// own room, fights the group there, loses her body at 50%, fights on beside her soul and finally
++// turns on Gandling.
++struct boss_lilian_voss : public BossAI
++{
++    boss_lilian_voss(Creature* creature) : BossAI(creature, DATA_LILIAN_VOSS), _ready(false), _soulPhase(false), _purified(false) { }
++
++    void InitializeAI() override
++    {
++        SetCombatMovement(false);
++        BossAI::InitializeAI();
++
++        // instance reloaded after Gandling's speech: she already waits in her room
++        if (instance && instance->GetBossState(DATA_JANDICE_BAROV) == DONE)
++            MoveToHerRoom();
++    }
++
++    void Reset() override
++    {
++        _Reset();
++        _soulPhase = false;
++        _purified = false;
++        me->setRegeneratingHealth(true);
++        me->SetStandState(UNIT_STAND_STATE_STAND);
++        me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE));
++
++        if (_ready)
++        {
++            me->SetFaction(FACTION_HOSTILE);
++            me->SetReactState(REACT_AGGRESSIVE);
++        }
++        else
++        {
++            me->SetFaction(FACTION_FRIENDLY);
++            me->SetReactState(REACT_PASSIVE);
++        }
++    }
++
++    void JustEngagedWith(Unit* /*who*/) override
++    {
++        if (!_ready)
++            return;
++
++        _JustEngagedWith();
++        Talk(TALK_CANT_FIGHT_HIM);
++        me->RemoveAurasDueToSpell(SPELL_COSMETIC_SOUL_RIP);
++        me->RemoveAurasDueToSpell(SPELL_LILIAN_KNEEL);
++        ScheduleTasks();
++    }
++
++    void ScheduleTasks() override
++    {
++        events.ScheduleEvent(EVENT_SHADOW_SHIV, urand(3500, 5000));
++        events.ScheduleEvent(EVENT_DEATHS_GRASP, 10000);
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        _JustDied();
++        RemoveSoul();
++    }
++
++    void EnterEvadeMode(EvadeReason why) override
++    {
++        if (!_ready || _purified)
++            return;
++
++        RemoveSoul();
++        BossAI::EnterEvadeMode(why);
++    }
++
++    void DoAction(int32 action) override
++    {
++        switch (action)
++        {
++            case ACTION_INTRO:
++                _storyEvents.ScheduleEvent(EVENT_TALK_1, 3000);
++                break;
++            case ACTION_DIFF_INTRO:
++                Talk(TALK_WONT_LET_YOU);
++                _storyEvents.ScheduleEvent(EVENT_INTRO_DONE, 6000);
++                break;
++            case ACTION_LILIAN_RESURRECTED:
++                me->RemoveAllAuras();
++                me->SetStandState(UNIT_STAND_STATE_STAND);
++                me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE));
++                me->SetReactState(REACT_AGGRESSIVE);
++                ScheduleTasks();
++                if (Player* player = me->SelectNearestPlayer(100.0f))
++                    AttackStart(player);
++                break;
++            default:
++                break;
++        }
++    }
++
++    void MovementInform(uint32 type, uint32 pointId) override
++    {
++        if (type == EFFECT_MOTION_TYPE && pointId == EVENT_JUMP)
++        {
++            DoCastAOE(SPELL_SHADOW_SHIV, true);
++            // Gandling rips out what is left of her soul as he flees (scholomance.cpp, EVENT_LEAVE)
++            if (_purified)
++                _storyEvents.ScheduleEvent(EVENT_LAST_WORDS, 6000);
++            return;
++        }
++
++        if (type == POINT_MOTION_TYPE && pointId == 0)
++        {
++            // at Rattlegore's door she steps into the shadows
++            PlayVoiceLine(me, LILIAN_SOUND_SHADOWSTEP);
++            DoCast(me, SPELL_SHADOW_STEP_VISUAL, true);
++            _storyEvents.ScheduleEvent(EVENT_SPECIAL, 1500);
++        }
++    }
++
++    void DamageTaken(Unit* attacker, uint32& damage) override
++    {
++        if (_purified || !_ready)
++        {
++            damage = 0;
++            return;
++        }
++
++        uint32 realDamage = RealDamage(me, attacker, damage);
++
++        if (!_soulPhase && me->HealthBelowPctDamaged(50, realDamage))
++        {
++            // Gandling tears her soul out of her body
++            _soulPhase = true;
++            if (realDamage >= me->GetHealth())
++            {
++                damage = 0;
++                me->SetHealth(1);
++            }
++            events.Reset();
++            me->InterruptNonMeleeSpells(true);
++            me->AttackStop();
++            me->SetReactState(REACT_PASSIVE);
++            DoCast(me, SPELL_LILIAN_VOSS_DEAD, true);
++            me->GetMotionMaster()->MovePoint(1, LilianDeathPoint);
++            Talk(TALK_IT_BURNS);
++
++            if (Creature* gandling = instance->GetCreature(DATA_GRANDMASTER_GANDLING_INTRO))
++                gandling->AI()->DoAction(ACTION_DIFF_INTRO);
++
++            events.ScheduleEvent(EVENT_SOUL_DISMISS, 9000);
++            return;
++        }
++
++        if (_soulPhase && realDamage >= me->GetHealth())
++        {
++            // beaten, she breaks free and turns on Gandling
++            damage = 0;
++            _purified = true;
++            events.Reset();
++            me->InterruptNonMeleeSpells(true);
++            me->RemoveAllAuras();
++            me->AttackStop();
++            me->SetFaction(FACTION_FRIENDLY);
++            me->SetReactState(REACT_PASSIVE);
++            me->setRegeneratingHealth(false);
++            RemoveSoul();
++            Talk(TALK_DIE_NECROMANCER);
++            _storyEvents.ScheduleEvent(EVENT_DIE_NECROMANCER, 2500);
++        }
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _storyEvents.Update(diff);
++
++        while (uint32 eventId = _storyEvents.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_TALK_1:
++                    PlayVoiceLine(me, LilianIntroSounds[0]);
++                    _storyEvents.ScheduleEvent(EVENT_TALK_2, 10000);
++                    break;
++                case EVENT_TALK_2:
++                    PlayVoiceLine(me, LilianIntroSounds[1]);
++                    _storyEvents.ScheduleEvent(EVENT_TALK_3, 10000);
++                    break;
++                case EVENT_TALK_3:
++                    PlayVoiceLine(me, LilianIntroSounds[2]);
++                    _storyEvents.ScheduleEvent(EVENT_TALK_4, 10000);
++                    break;
++                case EVENT_TALK_4:
++                    PlayVoiceLine(me, LilianIntroSounds[3]);
++                    _storyEvents.ScheduleEvent(EVENT_TALK_5, 18000);
++                    break;
++                case EVENT_TALK_5:
++                    PlayVoiceLine(me, LilianIntroSounds[4]);
++                    me->CombatStop(true);
++                    me->SetReactState(REACT_PASSIVE);
++                    me->SetWalk(false);
++                    me->GetMotionMaster()->MovePoint(0, GandlingLilianDoorPoint);
++                    break;
++                case EVENT_SPECIAL:
++                    if (Creature* rattlegore = instance->GetCreature(DATA_RATTLEGORE))
++                        rattlegore->AI()->DoAction(ACTION_INTRO);
++                    MoveToHerRoom();
++                    break;
++                case EVENT_INTRO_DONE:
++                    me->SetFaction(FACTION_HOSTILE);
++                    me->SetReactState(REACT_AGGRESSIVE);
++                    if (Player* player = me->SelectNearestPlayer(60.0f))
++                        AttackStart(player);
++                    break;
++                case EVENT_DIE_NECROMANCER:
++                    if (Creature* gandling = instance->GetCreature(DATA_GRANDMASTER_GANDLING_INTRO))
++                    {
++                        me->GetMotionMaster()->MoveJump(gandling->GetPositionX(), gandling->GetPositionY(), 107.76f, me->GetOrientation(), 20.0f, 30.0f, EVENT_JUMP);
++                        gandling->AI()->DoAction(ACTION_REMOVE_LILIAN_SOUL);
++                    }
++                    else
++                        _storyEvents.ScheduleEvent(EVENT_LAST_WORDS, 3000);
++                    break;
++                case EVENT_LAST_WORDS:
++                    Talk(TALK_LEAVE_ME);
++                    me->SetStandState(UNIT_STAND_STATE_KNEEL);
++                    _storyEvents.ScheduleEvent(EVENT_PURIFIED, 4000);
++                    break;
++                case EVENT_PURIFIED:
++                    me->KillSelf();
++                    return;
++                default:
++                    break;
++            }
++        }
++
++        if (!UpdateVictim())
++            return;
++
++        events.Update(diff);
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        while (uint32 eventId = events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_SHADOW_SHIV:
++                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 50.0f, true))
++                        me->GetMotionMaster()->MoveJump(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), me->GetOrientation(), 10.0f, 10.0f, EVENT_JUMP);
++                    events.ScheduleEvent(EVENT_SHADOW_SHIV, urand(16700, 20000));
++                    break;
++                case EVENT_DEATHS_GRASP:
++                    DoCast(me, SPELL_DEATHS_GRASP);
++                    events.ScheduleEvent(EVENT_DARK_BLAZE, 3500);
++                    events.ScheduleEvent(EVENT_DEATHS_GRASP, 40000);
++                    break;
++                case EVENT_DARK_BLAZE:
++                    // the floor where she pulled everyone in catches dark fire
++                    if (Creature* blaze = me->SummonCreature(NPC_DARK_BLAZE, me->GetPosition(), TEMPSUMMON_TIMED_DESPAWN, 30000))
++                    {
++                        blaze->SetFaction(FACTION_HOSTILE);
++                        blaze->SetReactState(REACT_PASSIVE);
++                        blaze->AddAura(SPELL_DARK_BLAZE_DUMMY, blaze);
++                    }
++                    break;
++                case EVENT_SOUL_DISMISS:
++                    Talk(TALK_END_IT);
++                    Talk(TALK_SOUL_FADES_ANN);
++                    me->AddUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE));
++                    me->SetStandState(UNIT_STAND_STATE_DEAD);
++                    events.ScheduleEvent(EVENT_SUMMON_SOUL, 4000);
++                    break;
++                case EVENT_SUMMON_SOUL:
++                    me->SummonCreature(NPC_LILIAN_SOUL, me->GetPosition(), TEMPSUMMON_MANUAL_DESPAWN);
++                    break;
++                default:
++                    break;
++            }
++
++            if (me->HasUnitState(UNIT_STATE_CASTING))
++                return;
++        }
++
++        if (!_soulPhase || me->GetReactState() == REACT_AGGRESSIVE)
++            DoMeleeAttackIfReady();
++    }
++
++private:
++    void MoveToHerRoom()
++    {
++        _ready = true;
++        me->NearTeleportTo(LilianTeleportPos);
++        me->SetHomePosition(LilianTeleportPos);
++        DoCast(me, SPELL_LILIAN_KNEEL, true);
++        me->SetReactState(REACT_PASSIVE);
++
++        if (Creature* gandling = instance->GetCreature(DATA_GRANDMASTER_GANDLING_INTRO))
++            gandling->CastSpell(me, SPELL_COSMETIC_SOUL_RIP, false);
++    }
++
++    void RemoveSoul()
++    {
++        summons.DespawnEntry(NPC_LILIAN_SOUL);
++    }
++
++    EventMap _storyEvents;
++    bool _ready;
++    bool _soulPhase;
++    bool _purified;
++};
++
++// Lilian's Soul 58791: fixates on players; once "killed" it cannot be harmed any more and
++// raises Lilian's body to fight beside it
++struct npc_lilian_soul : public ScriptedAI
++{
++    npc_lilian_soul(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript()), _immortal(false) { }
++
++    void IsSummonedBy(Unit* /*summoner*/) override
++    {
++        DoZoneInCombat();
++        DoCast(me, SPELL_UNLEASHED_ANGUISH, true);
++        _events.ScheduleEvent(EVENT_FIXATE_ANGER, urand(4000, 5000));
++        if (Player* player = me->SelectNearestPlayer(100.0f))
++            AttackStart(player);
++    }
++
++    void DoAction(int32 action) override
++    {
++        if (action == ACTION_REMOVE_LILIAN_SOUL)
++            me->DespawnOrUnsummon();
++    }
++
++    void DamageTaken(Unit* attacker, uint32& damage) override
++    {
++        if (_immortal)
++        {
++            damage = 0;
++            return;
++        }
++
++        if (RealDamage(me, attacker, damage) < me->GetHealth())
++            return;
++
++        damage = 0;
++        _immortal = true;
++        _events.Reset();
++        me->RemoveAllAuras();
++        me->AttackStop();
++        me->SetReactState(REACT_PASSIVE);
++        me->AddUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE));
++        me->GetMotionMaster()->MoveRandom(4.0f);
++        _events.ScheduleEvent(EVENT_RESURRECT, 5000);
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        // should not happen (the soul turns immortal instead), but never leave Lilian lying there
++        if (!_immortal && _instance)
++            if (Creature* lilian = _instance->GetCreature(DATA_LILIAN_VOSS))
++                lilian->AI()->DoAction(ACTION_LILIAN_RESURRECTED);
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++
++        while (uint32 eventId = _events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_FIXATE_ANGER:
++                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 50.0f, true))
++                    {
++                        me->GetThreatManager().AddThreat(target, 10000.0f);
++                        me->AddAura(SPELL_FIXATE_ANGER, target);
++                        Talk(TALK_SOUL_FIXATE, target);
++                    }
++                    _events.ScheduleEvent(EVENT_FIXATE_ANGER, 10000);
++                    break;
++                case EVENT_RESURRECT:
++                    me->SetFullHealth();
++                    me->GetMotionMaster()->Clear();
++                    me->SetReactState(REACT_AGGRESSIVE);
++                    if (_instance)
++                        if (Creature* lilian = _instance->GetCreature(DATA_LILIAN_VOSS))
++                            lilian->AI()->DoAction(ACTION_LILIAN_RESURRECTED);
++                    DoCast(me, SPELL_UNLEASHED_ANGUISH, true);
++                    if (Player* player = me->SelectNearestPlayer(100.0f))
++                    {
++                        AttackStart(player);
++                        me->GetMotionMaster()->MoveChase(player);
++                    }
++                    _events.ScheduleEvent(EVENT_FIXATE_ANGER, urand(4000, 5000));
++                    break;
++                default:
++                    break;
++            }
++        }
++
++        if (!UpdateVictim())
++            return;
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    InstanceScript* _instance;
++    EventMap _events;
++    bool _immortal;
++};
++
++// Blazing Soul 111642: only burns players
++class spell_lilian_blazing_soul : public SpellScript
++{
++    PrepareSpellScript(spell_lilian_blazing_soul);
++
++    void FilterTargets(std::list<WorldObject*>& targets)
++    {
++        targets.remove_if([](WorldObject* target) { return target->GetTypeId() != TYPEID_PLAYER; });
++    }
++
++    void Register() override
++    {
++        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_lilian_blazing_soul::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
++    }
++};
++
++// Death's Grasp 111570: everyone hit is pulled to Lilian
++class spell_lilian_deaths_grasp : public SpellScript
++{
++    PrepareSpellScript(spell_lilian_deaths_grasp);
++
++    bool Validate(SpellInfo const* /*spellInfo*/) override
++    {
++        return ValidateSpellInfo({ SPELL_DEATHS_GRASP_EFFECT });
++    }
++
++    void HandleScript(SpellEffIndex effIndex)
++    {
++        PreventHitDefaultEffect(effIndex);
++        if (Unit* target = GetHitUnit())
++            target->CastSpell(GetCaster(), SPELL_DEATHS_GRASP_EFFECT, true);
++    }
++
++    void Register() override
++    {
++        OnEffectHitTarget += SpellEffectFn(spell_lilian_deaths_grasp::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
++    }
++};
++
++void AddSC_boss_lilian_voss()
++{
++    RegisterCreatureAI(boss_lilian_voss);
++    RegisterCreatureAI(npc_lilian_soul);
++    RegisterSpellScript(spell_lilian_blazing_soul);
++    RegisterSpellScript(spell_lilian_deaths_grasp);
++}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_lord_alexei_barov.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_lord_alexei_barov.cpp
+deleted file mode 100644
+index f7de4ed..0000000
+--- a/src/server/scripts/EasternKingdoms/Scholomance/boss_lord_alexei_barov.cpp
++++ /dev/null
+@@ -1,108 +0,0 @@
+-/*
+- * 2026 BFA-HavenCore
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License as published by the
+- * Free Software Foundation, either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along
+- * with this program. If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-/* ScriptData
+-SDName: Boss_Lord_Alexei_Barov
+-SD%Complete: 100
+-SDComment: aura applied/defined in database
+-SDCategory: Scholomance
+-EndScriptData */
+-
+-#include "ScriptMgr.h"
+-#include "ScriptedCreature.h"
+-#include "scholomance.h"
+-
+-enum Spells
+-{
+-    SPELL_IMMOLATE                  = 20294,
+-    SPELL_VEILOFSHADOW              = 17820,
+-    SPELL_UNHOLY_AURA               = 17467
+-};
+-
+-enum Events
+-{
+-    EVENT_IMMOLATE                  = 1,
+-    EVENT_VEILOFSHADOW              = 2
+-};
+-
+-class boss_lord_alexei_barov : public CreatureScript
+-{
+-    public: boss_lord_alexei_barov() : CreatureScript("boss_lord_alexei_barov") { }
+-
+-        struct boss_lordalexeibarovAI : public BossAI
+-        {
+-            boss_lordalexeibarovAI(Creature* creature) : BossAI(creature, DATA_LORDALEXEIBAROV) { }
+-
+-            void Reset() override
+-            {
+-                _Reset();
+-
+-                if (!me->HasAura(SPELL_UNHOLY_AURA))
+-                    DoCast(me, SPELL_UNHOLY_AURA);
+-            }
+-
+-            void JustEngagedWith(Unit* /*who*/) override
+-            {
+-                _JustEngagedWith();
+-                events.ScheduleEvent(EVENT_IMMOLATE, 7000);
+-                events.ScheduleEvent(EVENT_VEILOFSHADOW, 15000);
+-            }
+-
+-            void UpdateAI(uint32 diff) override
+-            {
+-                if (!UpdateVictim())
+-                    return;
+-
+-                events.Update(diff);
+-
+-                if (me->HasUnitState(UNIT_STATE_CASTING))
+-                    return;
+-
+-                while (uint32 eventId = events.ExecuteEvent())
+-                {
+-                    switch (eventId)
+-                    {
+-                        case EVENT_IMMOLATE:
+-                            DoCast(SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true), SPELL_IMMOLATE, true);
+-                            events.ScheduleEvent(EVENT_IMMOLATE, 12000);
+-                            break;
+-                        case EVENT_VEILOFSHADOW:
+-                            DoCastVictim(SPELL_VEILOFSHADOW, true);
+-                            events.ScheduleEvent(EVENT_VEILOFSHADOW, 20000);
+-                            break;
+-                        default:
+-                            break;
+-                    }
+-
+-                    if (me->HasUnitState(UNIT_STATE_CASTING))
+-                        return;
+-                }
+-
+-                DoMeleeAttackIfReady();
+-            }
+-        };
+-
+-        CreatureAI* GetAI(Creature* creature) const override
+-        {
+-            return GetScholomanceAI<boss_lordalexeibarovAI>(creature);
+-        }
+-};
+-
+-void AddSC_boss_lordalexeibarov()
+-{
+-    new boss_lord_alexei_barov();
+-}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_lorekeeper_polkelt.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_lorekeeper_polkelt.cpp
+deleted file mode 100644
+index 8ad35cd..0000000
+--- a/src/server/scripts/EasternKingdoms/Scholomance/boss_lorekeeper_polkelt.cpp
++++ /dev/null
+@@ -1,113 +0,0 @@
+-/*
+- * 2026 BFA-HavenCore
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License as published by the
+- * Free Software Foundation, either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along
+- * with this program. If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-/*
+-Name: Boss_Lorekeeper_Polkelt
+-%Complete: 100
+-Comment:
+-Category: Scholomance
+-*/
+-
+-#include "ScriptMgr.h"
+-#include "ScriptedCreature.h"
+-#include "scholomance.h"
+-
+-enum Spells
+-{
+-    SPELL_VOLATILEINFECTION     = 24928,
+-    SPELL_DARKPLAGUE            = 18270,
+-    SPELL_CORROSIVEACID         = 23313,
+-    SPELL_NOXIOUSCATALYST       = 18151
+-};
+-
+-enum Events
+-{
+-    EVENT_VOLATILEINFECTION     = 1,
+-    EVENT_DARKPLAGUE            = 2,
+-    EVENT_CORROSIVEACID         = 3,
+-    EVENT_NOXIOUSCATALYST       = 4
+-};
+-
+-class boss_lorekeeper_polkelt : public CreatureScript
+-{
+-    public: boss_lorekeeper_polkelt() : CreatureScript("boss_lorekeeper_polkelt") { }
+-
+-        struct boss_lorekeeperpolkeltAI : public BossAI
+-        {
+-            boss_lorekeeperpolkeltAI(Creature* creature) : BossAI(creature, DATA_LOREKEEPERPOLKELT) { }
+-
+-            void JustEngagedWith(Unit* /*who*/) override
+-            {
+-                _JustEngagedWith();
+-                events.ScheduleEvent(EVENT_VOLATILEINFECTION, 38000);
+-                events.ScheduleEvent(EVENT_DARKPLAGUE, 8000);
+-                events.ScheduleEvent(EVENT_CORROSIVEACID, 45000);
+-                events.ScheduleEvent(EVENT_NOXIOUSCATALYST, 35000);
+-            }
+-
+-            void UpdateAI(uint32 diff) override
+-            {
+-                if (!UpdateVictim())
+-                    return;
+-
+-                events.Update(diff);
+-
+-                if (me->HasUnitState(UNIT_STATE_CASTING))
+-                    return;
+-
+-                while (uint32 eventId = events.ExecuteEvent())
+-                {
+-                    switch (eventId)
+-                    {
+-                        case EVENT_VOLATILEINFECTION:
+-                            DoCastVictim(SPELL_VOLATILEINFECTION, true);
+-                            events.ScheduleEvent(EVENT_VOLATILEINFECTION, 32000);
+-                            break;
+-                        case EVENT_DARKPLAGUE:
+-                            DoCastVictim(SPELL_DARKPLAGUE, true);
+-                            events.ScheduleEvent(EVENT_DARKPLAGUE, 8000);
+-                            break;
+-                        case EVENT_CORROSIVEACID:
+-                            DoCastVictim(SPELL_CORROSIVEACID, true);
+-                            events.ScheduleEvent(EVENT_CORROSIVEACID, 25000);
+-                            break;
+-                        case EVENT_NOXIOUSCATALYST:
+-                            DoCastVictim(SPELL_NOXIOUSCATALYST, true);
+-                            events.ScheduleEvent(EVENT_NOXIOUSCATALYST, 38000);
+-                            break;
+-                        default:
+-                            break;
+-                    }
+-
+-                    if (me->HasUnitState(UNIT_STATE_CASTING))
+-                        return;
+-                }
+-
+-                DoMeleeAttackIfReady();
+-            }
+-        };
+-
+-        CreatureAI* GetAI(Creature* creature) const override
+-        {
+-            return GetScholomanceAI<boss_lorekeeperpolkeltAI>(creature);
+-        }
+-};
+-
+-void AddSC_boss_lorekeeperpolkelt()
+-{
+-    new boss_lorekeeper_polkelt();
+-}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_ras_frostwhisper.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_ras_frostwhisper.cpp
+deleted file mode 100644
+index ab270a4..0000000
+--- a/src/server/scripts/EasternKingdoms/Scholomance/boss_ras_frostwhisper.cpp
++++ /dev/null
+@@ -1,129 +0,0 @@
+-/*
+- * 2026 BFA-HavenCore
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License as published by the
+- * Free Software Foundation, either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along
+- * with this program. If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-#include "ScriptMgr.h"
+-#include "scholomance.h"
+-#include "ScriptedCreature.h"
+-
+-enum Spells
+-{
+-    SPELL_FROSTBOLT         = 21369,
+-    SPELL_ICE_ARMOR         = 18100, // This is actually a buff he gives himself
+-    SPELL_FREEZE            = 18763,
+-    SPELL_FEAR              = 26070,
+-    SPELL_CHILL_NOVA        = 18099,
+-    SPELL_FROSTVOLLEY       = 8398
+-};
+-
+-enum Events
+-{
+-    EVENT_FROSTBOLT = 1,
+-    EVENT_ICE_ARMOR,
+-    EVENT_FREEZE,
+-    EVENT_FEAR,
+-    EVENT_CHILL_NOVA,
+-    EVENT_FROSTVOLLEY
+-};
+-
+-class boss_boss_ras_frostwhisper : public CreatureScript
+-{
+-public:
+-    boss_boss_ras_frostwhisper() : CreatureScript("boss_boss_ras_frostwhisper") { }
+-
+-    struct boss_rasfrostAI : public ScriptedAI
+-    {
+-        boss_rasfrostAI(Creature* creature) : ScriptedAI(creature) { }
+-
+-        void Reset() override
+-        {
+-            events.Reset();
+-            DoCast(me, SPELL_ICE_ARMOR);
+-        }
+-
+-        void JustEngagedWith(Unit* /*who*/) override
+-        {
+-            events.ScheduleEvent(EVENT_ICE_ARMOR, 2000);
+-            events.ScheduleEvent(EVENT_FROSTBOLT, 8000);
+-            events.ScheduleEvent(EVENT_CHILL_NOVA, 12000);
+-            events.ScheduleEvent(EVENT_FREEZE, 18000);
+-            events.ScheduleEvent(EVENT_FEAR, 45000);
+-        }
+-
+-        void UpdateAI(uint32 diff) override
+-        {
+-            if (!UpdateVictim())
+-                return;
+-
+-            events.Update(diff);
+-
+-            if (me->HasUnitState(UNIT_STATE_CASTING))
+-                return;
+-
+-            while (uint32 eventId = events.ExecuteEvent())
+-            {
+-                switch (eventId)
+-                {
+-                    case EVENT_ICE_ARMOR:
+-                        DoCast(me, SPELL_ICE_ARMOR);
+-                        events.ScheduleEvent(EVENT_ICE_ARMOR, 180000);
+-                        break;
+-                    case EVENT_FROSTBOLT:
+-                        if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 40.0f, true))
+-                            DoCast(target, SPELL_FROSTBOLT);
+-                        events.ScheduleEvent(EVENT_FROSTBOLT, 8000);
+-                        break;
+-                    case EVENT_FREEZE:
+-                        DoCastVictim(SPELL_FREEZE);
+-                        events.ScheduleEvent(EVENT_FREEZE, 24000);
+-                        break;
+-                    case EVENT_FEAR:
+-                        DoCastVictim(SPELL_FEAR);
+-                        events.ScheduleEvent(EVENT_FEAR, 30000);
+-                        break;
+-                    case EVENT_CHILL_NOVA:
+-                        DoCastVictim(SPELL_CHILL_NOVA);
+-                        events.ScheduleEvent(EVENT_CHILL_NOVA, 14000);
+-                        break;
+-                    case EVENT_FROSTVOLLEY:
+-                        DoCastVictim(SPELL_FROSTVOLLEY);
+-                        events.ScheduleEvent(EVENT_FROSTVOLLEY, 15000);
+-                        break;
+-                    default:
+-                        break;
+-                }
+-
+-                if (me->HasUnitState(UNIT_STATE_CASTING))
+-                    return;
+-            }
+-
+-            DoMeleeAttackIfReady();
+-        }
+-
+-        private:
+-            EventMap events;
+-    };
+-
+-    CreatureAI* GetAI(Creature* creature) const override
+-    {
+-        return GetScholomanceAI<boss_rasfrostAI>(creature);
+-    }
+-};
+-
+-void AddSC_boss_rasfrost()
+-{
+-    new boss_boss_ras_frostwhisper();
+-}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_rattlegore.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_rattlegore.cpp
+new file mode 100644
+index 0000000..f106f56
+--- /dev/null
++++ b/src/server/scripts/EasternKingdoms/Scholomance/boss_rattlegore.cpp
+@@ -0,0 +1,295 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Rattlegore, Scholomance. Ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "ScriptMgr.h"
++#include "ScriptedCreature.h"
++#include "Containers.h"
++#include "InstanceScript.h"
++#include "Map.h"
++#include "ObjectAccessor.h"
++#include "Player.h"
++#include "SpellAuras.h"
++#include "SpellScript.h"
++#include "scholomance.h"
++
++enum RattlegoreSpells
++{
++    SPELL_RUSTING               = 113763,
++    SPELL_BONE_SPIKE            = 113999,
++    SPELL_SOULFLAME             = 114007,
++    SPELL_SOULFLAME_DAMAGE      = 114009,
++};
++
++enum RattlegoreEvents
++{
++    EVENT_SOULFLAME             = 1,
++    EVENT_BONE_SPIKE,
++    EVENT_REMOVE_SOULFLAME,
++
++    EVENT_CHECK_BONEWEAVER      = 10,
++    EVENT_REVEAL,
++};
++
++enum RattlegoreTexts
++{
++    TALK_SUMMONED               = 0, // RATTLEGORE!
++    TALK_BONE_PILE_ANN          = 1, // Click on a Bone Pile to protect yourself from Bone Spike!
++};
++
++uint32 const DISPLAY_INVISIBLE  = 11686;
++
++// Rattlegore 59153: rises from the bones once the Boneweavers are dead
++struct boss_rattlegore : public BossAI
++{
++    boss_rattlegore(Creature* creature) : BossAI(creature, DATA_RATTLEGORE), _revealed(false), _waiting(false) { }
++
++    void InitializeAI() override
++    {
++        BossAI::InitializeAI();
++
++        if (!_revealed)
++        {
++            me->SetDisplayId(DISPLAY_INVISIBLE);
++            me->SetReactState(REACT_PASSIVE);
++            me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
++
++            // instance reloaded after Gandling's speech: wait for the Boneweavers straight away
++            if (instance && instance->GetBossState(DATA_JANDICE_BAROV) == DONE)
++                DoAction(ACTION_INTRO);
++        }
++    }
++
++    void Reset() override
++    {
++        _Reset();
++        me->setRegeneratingHealth(true);
++        if (_revealed)
++            me->SetReactState(REACT_AGGRESSIVE);
++
++        if (instance)
++            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BONE_ARMOR);
++
++        RemoveSoulflame();
++        ShowBonePiles(false);
++    }
++
++    void JustEngagedWith(Unit* /*who*/) override
++    {
++        _JustEngagedWith();
++        ShowBonePiles(true);
++        Talk(TALK_BONE_PILE_ANN);
++        DoCast(me, SPELL_RUSTING, true);
++        events.ScheduleEvent(EVENT_SOULFLAME, urand(3500, 6000));
++        events.ScheduleEvent(EVENT_BONE_SPIKE, 10000);
++    }
++
++    void JustDied(Unit* /*killer*/) override
++    {
++        _JustDied();
++        if (instance)
++            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BONE_ARMOR);
++        ShowBonePiles(false);
++        RemoveSoulflame();
++    }
++
++    void EnterEvadeMode(EvadeReason why) override
++    {
++        if (!_revealed)
++            return;
++
++        RemoveSoulflame();
++        BossAI::EnterEvadeMode(why);
++    }
++
++    void DoAction(int32 action) override
++    {
++        if (action == ACTION_INTRO && !_revealed && !_waiting)
++        {
++            _waiting = true;
++            _introEvents.ScheduleEvent(EVENT_CHECK_BONEWEAVER, 1000);
++        }
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _introEvents.Update(diff);
++
++        while (uint32 eventId = _introEvents.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_CHECK_BONEWEAVER:
++                    if (me->FindNearestCreature(NPC_BONEWEAVER, 60.0f, true))
++                    {
++                        _introEvents.ScheduleEvent(EVENT_CHECK_BONEWEAVER, 500);
++                        break;
++                    }
++                    DoCast(me, SPELL_BONE_WHIRLWIND, true);
++                    DoCast(me, SPELL_BONE_STORM_COSMETIC, true);
++                    _introEvents.ScheduleEvent(EVENT_REVEAL, 5000);
++                    break;
++                case EVENT_REVEAL:
++                    _revealed = true;
++                    me->RemoveAllAuras();
++                    me->SetDisplayId(me->GetNativeDisplayId());
++                    me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
++                    me->SetReactState(REACT_AGGRESSIVE);
++                    Talk(TALK_SUMMONED);
++                    break;
++                default:
++                    break;
++            }
++        }
++
++        if (!_revealed || !UpdateVictim())
++            return;
++
++        events.Update(diff);
++
++        if (me->HasUnitState(UNIT_STATE_CASTING))
++            return;
++
++        while (uint32 eventId = events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_SOULFLAME:
++                    IgniteSoulflames();
++                    events.ScheduleEvent(EVENT_REMOVE_SOULFLAME, 15000);
++                    events.ScheduleEvent(EVENT_SOULFLAME, urand(18000, 22000));
++                    break;
++                case EVENT_REMOVE_SOULFLAME:
++                    RemoveSoulflame();
++                    break;
++                case EVENT_BONE_SPIKE:
++                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 60.0f, true))
++                        DoCast(target, SPELL_BONE_SPIKE);
++                    events.ScheduleEvent(EVENT_BONE_SPIKE, 15000);
++                    break;
++                default:
++                    break;
++            }
++
++            if (me->HasUnitState(UNIT_STATE_CASTING))
++                return;
++        }
++
++        DoMeleeAttackIfReady();
++    }
++
++private:
++    void ShowBonePiles(bool show)
++    {
++        std::list<Creature*> bonePiles;
++        me->GetCreatureListWithEntryInGrid(bonePiles, NPC_BONE_PILE, 200.0f);
++        for (Creature* bonePile : bonePiles)
++            bonePile->SetVisible(show);
++    }
++
++    // two of the six braziers burst into soulflame for 15 seconds
++    void IgniteSoulflames()
++    {
++        RemoveSoulflame();
++
++        std::list<Creature*> braziers;
++        me->GetCreatureListWithEntryInGrid(braziers, NPC_SOULFLAME_ACTIVATED_STALKER, 150.0f);
++        if (braziers.empty())
++            return;
++
++        Trinity::Containers::RandomResize(braziers, 2);
++        for (Creature* brazier : braziers)
++        {
++            // the stalker template is shared and friendly; the flames have to hurt players
++            brazier->SetFaction(14);
++            brazier->SetReactState(REACT_PASSIVE);
++            brazier->AddAura(SPELL_SOULFLAME, brazier);
++            _soulflames.push_back(brazier->GetGUID());
++        }
++    }
++
++    void RemoveSoulflame()
++    {
++        for (ObjectGuid const& guid : _soulflames)
++            if (Creature* brazier = ObjectAccessor::GetCreature(*me, guid))
++            {
++                brazier->RemoveAurasDueToSpell(SPELL_SOULFLAME);
++                brazier->RestoreFaction();
++            }
++
++        _soulflames.clear();
++    }
++
++    EventMap _introEvents;
++    GuidVector _soulflames;
++    bool _revealed;
++    bool _waiting;
++};
++
++// Bone Spike 113999: a Bone Armor (from clicking a Bone Pile) absorbs one spike
++class spell_rattlegore_bone_spike : public SpellScript
++{
++    PrepareSpellScript(spell_rattlegore_bone_spike);
++
++    void HandleDamage(SpellEffIndex /*effIndex*/)
++    {
++        Unit* target = GetHitUnit();
++        if (target && target->HasAura(SPELL_BONE_ARMOR))
++        {
++            SetHitDamage(0);
++            target->RemoveAurasDueToSpell(SPELL_BONE_ARMOR);
++        }
++    }
++
++    void Register() override
++    {
++        OnEffectHitTarget += SpellEffectFn(spell_rattlegore_bone_spike::HandleDamage, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
++    }
++};
++
++// Soulflame 114009: burns players standing in the brazier's flames
++class spell_rattlegore_soulflame : public SpellScript
++{
++    PrepareSpellScript(spell_rattlegore_soulflame);
++
++    void SelectTargets(std::list<WorldObject*>& targets)
++    {
++        targets.clear();
++
++        Unit* caster = GetCaster();
++        float const maxDist = 2.7f + caster->GetObjectScale();
++
++        Map::PlayerList const& players = caster->GetMap()->GetPlayers();
++        for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++            if (Player* player = itr->GetSource())
++                if (player->IsAlive() && !player->IsGameMaster() && player->GetExactDist2d(caster) <= maxDist)
++                    targets.push_back(player);
++    }
++
++    void Register() override
++    {
++        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_rattlegore_soulflame::SelectTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
++    }
++};
++
++void AddSC_boss_rattlegore()
++{
++    RegisterCreatureAI(boss_rattlegore);
++    RegisterSpellScript(spell_rattlegore_bone_spike);
++    RegisterSpellScript(spell_rattlegore_soulflame);
++}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_the_ravenian.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_the_ravenian.cpp
+deleted file mode 100644
+index 6f1b272..0000000
+--- a/src/server/scripts/EasternKingdoms/Scholomance/boss_the_ravenian.cpp
++++ /dev/null
+@@ -1,113 +0,0 @@
+-/*
+- * 2026 BFA-HavenCore
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License as published by the
+- * Free Software Foundation, either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along
+- * with this program. If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-/*
+-Name: Boss_the_ravenian
+-%Complete: 100
+-Comment:
+-Category: Scholomance
+-*/
+-
+-#include "ScriptMgr.h"
+-#include "ScriptedCreature.h"
+-#include "scholomance.h"
+-
+-enum Spells
+-{
+-    SPELL_TRAMPLE                   = 15550,
+-    SPELL_CLEAVE                    = 20691,
+-    SPELL_SUNDERINCLEAVE            = 25174,
+-    SPELL_KNOCKAWAY                 = 10101
+-};
+-
+-enum Events
+-{
+-    EVENT_TRAMPLE                   = 1,
+-    EVENT_CLEAVE                    = 2,
+-    EVENT_SUNDERINCLEAVE            = 3,
+-    EVENT_KNOCKAWAY                 = 4
+-};
+-
+-class boss_the_ravenian : public CreatureScript
+-{
+-    public: boss_the_ravenian() : CreatureScript("boss_the_ravenian") { }
+-
+-        struct boss_theravenianAI : public BossAI
+-        {
+-            boss_theravenianAI(Creature* creature) : BossAI(creature, DATA_THERAVENIAN) { }
+-
+-            void JustEngagedWith(Unit* /*who*/) override
+-            {
+-                _JustEngagedWith();
+-                events.ScheduleEvent(EVENT_TRAMPLE, 24000);
+-                events.ScheduleEvent(EVENT_CLEAVE, 15000);
+-                events.ScheduleEvent(EVENT_SUNDERINCLEAVE, 40000);
+-                events.ScheduleEvent(EVENT_KNOCKAWAY, 32000);
+-            }
+-
+-            void UpdateAI(uint32 diff) override
+-            {
+-                if (!UpdateVictim())
+-                    return;
+-
+-                events.Update(diff);
+-
+-                if (me->HasUnitState(UNIT_STATE_CASTING))
+-                    return;
+-
+-                while (uint32 eventId = events.ExecuteEvent())
+-                {
+-                    switch (eventId)
+-                    {
+-                        case EVENT_TRAMPLE:
+-                            DoCastVictim(SPELL_TRAMPLE, true);
+-                            events.ScheduleEvent(EVENT_TRAMPLE, 10000);
+-                            break;
+-                        case EVENT_CLEAVE:
+-                            DoCastVictim(SPELL_CLEAVE, true);
+-                            events.ScheduleEvent(EVENT_CLEAVE, 7000);
+-                            break;
+-                        case EVENT_SUNDERINCLEAVE:
+-                            DoCastVictim(SPELL_SUNDERINCLEAVE, true);
+-                            events.ScheduleEvent(EVENT_SUNDERINCLEAVE, 20000);
+-                            break;
+-                        case EVENT_KNOCKAWAY:
+-                            DoCastVictim(SPELL_KNOCKAWAY, true);
+-                            events.ScheduleEvent(EVENT_KNOCKAWAY, 12000);
+-                            break;
+-                        default:
+-                            break;
+-                    }
+-
+-                    if (me->HasUnitState(UNIT_STATE_CASTING))
+-                        return;
+-                }
+-
+-                DoMeleeAttackIfReady();
+-            }
+-        };
+-
+-        CreatureAI* GetAI(Creature* creature) const override
+-        {
+-            return GetScholomanceAI<boss_theravenianAI>(creature);
+-        }
+-};
+-
+-void AddSC_boss_theravenian()
+-{
+-    new boss_the_ravenian();
+-}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/boss_vectus.cpp b/src/server/scripts/EasternKingdoms/Scholomance/boss_vectus.cpp
+deleted file mode 100644
+index 59bc53d..0000000
+--- a/src/server/scripts/EasternKingdoms/Scholomance/boss_vectus.cpp
++++ /dev/null
+@@ -1,123 +0,0 @@
+-/*
+- * 2026 BFA-HavenCore
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License as published by the
+- * Free Software Foundation, either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along
+- * with this program. If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-#include "ScriptMgr.h"
+-#include "scholomance.h"
+-#include "ScriptedCreature.h"
+-
+-enum Emotes
+-{
+-    EMOTE_FRENZY                 = 0
+-};
+-
+-enum Spells
+-{
+-    SPELL_FLAMESTRIKE            = 18399,
+-    SPELL_BLAST_WAVE             = 16046,
+-    SPELL_FIRE_SHIELD            = 19626,
+-    SPELL_FRENZY                 = 8269  // 28371
+-};
+-
+-enum Events
+-{
+-    EVENT_FIRE_SHIELD = 1,
+-    EVENT_BLAST_WAVE,
+-    EVENT_FRENZY
+-};
+-
+-class boss_vectus : public CreatureScript
+-{
+-public:
+-    boss_vectus() : CreatureScript("boss_vectus") { }
+-
+-    struct boss_vectusAI : public ScriptedAI
+-    {
+-        boss_vectusAI(Creature* creature) : ScriptedAI(creature) { }
+-
+-        void Reset() override
+-        {
+-            events.Reset();
+-        }
+-
+-        void JustEngagedWith(Unit* /*who*/) override
+-        {
+-            events.ScheduleEvent(EVENT_FIRE_SHIELD, 2000);
+-            events.ScheduleEvent(EVENT_BLAST_WAVE, 14000);
+-        }
+-
+-        void DamageTaken(Unit* /*attacker*/, uint32& damage) override
+-        {
+-            if (me->HealthBelowPctDamaged(25, damage))
+-            {
+-                DoCast(me, SPELL_FRENZY);
+-                Talk(EMOTE_FRENZY);
+-                events.ScheduleEvent(EVENT_FRENZY, 24000);
+-            }
+-        }
+-
+-        void UpdateAI(uint32 diff) override
+-        {
+-            if (!UpdateVictim())
+-                return;
+-
+-            events.Update(diff);
+-
+-            if (me->HasUnitState(UNIT_STATE_CASTING))
+-                return;
+-
+-            while (uint32 eventId = events.ExecuteEvent())
+-            {
+-                switch (eventId)
+-                {
+-                    case EVENT_FIRE_SHIELD:
+-                        DoCast(me, SPELL_FIRE_SHIELD);
+-                        events.ScheduleEvent(EVENT_FIRE_SHIELD, 90000);
+-                        break;
+-                    case EVENT_BLAST_WAVE:
+-                        DoCast(me, SPELL_BLAST_WAVE);
+-                        events.ScheduleEvent(EVENT_BLAST_WAVE, 12000);
+-                        break;
+-                    case EVENT_FRENZY:
+-                        DoCast(me, SPELL_FRENZY);
+-                        Talk(EMOTE_FRENZY);
+-                        events.ScheduleEvent(EVENT_FRENZY, 24000);
+-                        break;
+-                    default:
+-                        break;
+-                }
+-
+-                if (me->HasUnitState(UNIT_STATE_CASTING))
+-                    return;
+-            }
+-
+-            DoMeleeAttackIfReady();
+-        }
+-
+-        private:
+-            EventMap events;
+-    };
+-
+-    CreatureAI* GetAI(Creature* creature) const override
+-    {
+-        return GetScholomanceAI<boss_vectusAI>(creature);
+-    }
+-};
+-
+-void AddSC_boss_vectus()
+-{
+-    new boss_vectus();
+-}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp b/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp
+index 187eca5..21eea02 100644
+--- a/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp
++++ b/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp
+@@ -1,158 +1,240 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Scholomance (map 1007), ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
+ #include "ScriptMgr.h"
++#include "ScriptedCreature.h"
++#include "Creature.h"
++#include "CreatureAI.h"
+ #include "GameObject.h"
+-#include "GameObjectAI.h"
+ #include "InstanceScript.h"
+ #include "Map.h"
+ #include "Player.h"
++#include "TemporarySummon.h"
+ #include "scholomance.h"
++#include <algorithm>
++#include <limits>
++
++void PlayVoiceLine(Creature* creature, uint32 soundKitId)
++{
++    if (creature && soundKitId)
++        creature->PlayDirectSound(soundKitId);
++}
+ 
+-Position const GandlingLoc = { 180.7712f, -5.428603f, 75.57024f, 1.291544f };
++uint32 RealDamage(Creature* creature, Unit* attacker, uint32 damage)
++{
++    if (!creature || !attacker || !damage)
++        return damage;
++
++    float multiplier = creature->GetHealthMultiplierForTarget(attacker);
++    if (multiplier <= 0.0f)
++        return damage;
+ 
+-ObjectGuid GateKirtonosGUID;
+-ObjectGuid GateGandlingGUID;
+-ObjectGuid GateMiliciaGUID;
+-ObjectGuid GateTheolenGUID;
+-ObjectGuid GatePolkeltGUID;
+-ObjectGuid GateRavenianGUID;
+-ObjectGuid GateBarovGUID;
+-ObjectGuid GateIlluciaGUID;
+-ObjectGuid BrazierOfTheHeraldGUID;
++    return uint32(std::min<double>(double(damage) / multiplier, double(std::numeric_limits<uint32>::max())));
++}
+ 
+-struct instance_scholomance : public InstanceScript
++DoorData const doorData[] =
+ {
+-    instance_scholomance(InstanceMap* map) : InstanceScript(map)
+-    {
+-        SetHeaders(DataHeader);
+-        SetBossNumber(EncounterCount);
+-    }
++    { GO_CHILLHEART_EXIT_DOOR,       DATA_INSTRUCTOR_CHILLHEART, DOOR_TYPE_PASSAGE, BOUNDARY_NONE },
++    { GO_JANDICE_INTRO_DOOR,         DATA_JANDICE_BAROV,         DOOR_TYPE_ROOM,    BOUNDARY_NONE },
++    { GO_JANDICE_TO_RATTLEGORE_DOOR, DATA_JANDICE_BAROV,         DOOR_TYPE_PASSAGE, BOUNDARY_NONE },
++    { GO_JANDICE_TO_RATTLEGORE_DOOR, DATA_RATTLEGORE,            DOOR_TYPE_ROOM,    BOUNDARY_NONE },
++    { GO_RATTLEGORE_EXIT_DOOR,       DATA_RATTLEGORE,            DOOR_TYPE_PASSAGE, BOUNDARY_NONE },
++    { GO_LILIAN_INTRO_DOOR,          DATA_LILIAN_VOSS,           DOOR_TYPE_ROOM,    BOUNDARY_NONE },
++    { GO_LILIAN_CHEST_DOOR,          DATA_LILIAN_VOSS,           DOOR_TYPE_PASSAGE, BOUNDARY_NONE },
++    { GO_LILIAN_TO_GANDLING_DOOR,    DATA_LILIAN_VOSS,           DOOR_TYPE_PASSAGE, BOUNDARY_NONE },
++    { GO_GANDLING_PRE_INTRO_DOOR,    DATA_GRANDMASTER_GANDLING,  DOOR_TYPE_ROOM,    BOUNDARY_NONE },
++    { GO_GANDLING_INTRO_DOOR,        DATA_GRANDMASTER_GANDLING,  DOOR_TYPE_ROOM,    BOUNDARY_NONE },
++    { 0,                             0,                          DOOR_TYPE_ROOM,    BOUNDARY_NONE } // END
++};
++
++ObjectData const creatureData[] =
++{
++    { NPC_INSTRUCTOR_CHILLHEART,      DATA_INSTRUCTOR_CHILLHEART      },
++    { NPC_JANDICE_BAROV,              DATA_JANDICE_BAROV              },
++    { NPC_RATTLEGORE,                 DATA_RATTLEGORE                 },
++    { NPC_LILIAN_VOSS,                DATA_LILIAN_VOSS                },
++    { NPC_GRANDMASTER_GANDLING,       DATA_GRANDMASTER_GANDLING       },
++    { NPC_GRANDMASTER_GANDLING_INTRO, DATA_GRANDMASTER_GANDLING_INTRO },
++    { NPC_TALKING_SKULL,              DATA_TALKING_SKULL              },
++    { NPC_LILIAN_SOUL,                DATA_LILIAN_SOUL                },
++    { 0,                              0                               } // END
++};
+ 
+-    void OnGameObjectCreate(GameObject* go) override
++class instance_scholomance : public InstanceMapScript
++{
++public:
++    instance_scholomance() : InstanceMapScript(ScholomanceScriptName, 1007) { }
++
++    struct instance_scholomance_InstanceMapScript : public InstanceScript
+     {
+-        switch (go->GetEntry())
++        instance_scholomance_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
+         {
+-        case GO_GATE_KIRTONOS:
+-            GateKirtonosGUID = go->GetGUID();
+-            break;
+-        case GO_GATE_GANDLING:
+-            GateGandlingGUID = go->GetGUID();
+-            break;
+-        case GO_GATE_MALICIA:
+-            GateMiliciaGUID = go->GetGUID();
+-            break;
+-        case GO_GATE_THEOLEN:
+-            GateTheolenGUID = go->GetGUID();
+-            break;
+-        case GO_GATE_POLKELT:
+-            GatePolkeltGUID = go->GetGUID();
+-            break;
+-        case GO_GATE_RAVENIAN:
+-            GateRavenianGUID = go->GetGUID();
+-            break;
+-        case GO_GATE_BAROV:
+-            GateBarovGUID = go->GetGUID();
+-            break;
+-        case GO_GATE_ILLUCIA:
+-            GateIlluciaGUID = go->GetGUID();
+-            break;
+-        case GO_BRAZIER_OF_THE_HERALD:
+-            BrazierOfTheHeraldGUID = go->GetGUID();
+-            break;
+-        default:
+-            break;
++            SetHeaders(DataHeader);
++            SetBossNumber(EncounterCount);
++            LoadDoorData(doorData);
++            LoadObjectData(creatureData, nullptr);
+         }
+-    }
+ 
+-    bool SetBossState(uint32 type, EncounterState state) override
+-    {
+-        if (!InstanceScript::SetBossState(type, state))
+-            return false;
++        void OnCreatureCreate(Creature* creature) override
++        {
++            InstanceScript::OnCreatureCreate(creature);
++
++            switch (creature->GetEntry())
++            {
++                case NPC_BONE_PILE:
++                    // shown when Rattlegore engages
++                    if (GetBossState(DATA_RATTLEGORE) != IN_PROGRESS)
++                        creature->SetVisible(false);
++                    break;
++                case NPC_THEOLEN_KRASTINOV:
++                    // rare: only on heroic, one run in ten
++                    if (!instance->IsHeroic() || !roll_chance_i(10))
++                    {
++                        creature->SetVisible(false);
++                        creature->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_PACIFIED));
++                    }
++                    break;
++                default:
++                    break;
++            }
++        }
+ 
+-        switch (type)
++        void OnGameObjectCreate(GameObject* go) override
+         {
+-        case DATA_LORDALEXEIBAROV:
+-        case DATA_DOCTORTHEOLENKRASTINOV:
+-        case DATA_THERAVENIAN:
+-        case DATA_LOREKEEPERPOLKELT:
+-        case DATA_INSTRUCTORMALICIA:
+-        case DATA_LADYILLUCIABAROV:
+-            CheckToSpawnGandling();
+-            break;
+-        default:
+-            break;
++            InstanceScript::OnGameObjectCreate(go);
++
++            switch (go->GetEntry())
++            {
++                case GO_CHILLHEART_INTRO_DOOR:
++                    chillheartIntroDoorGUID = go->GetGUID();
++                    go->RemoveFlag(GO_FLAG_INTERACT_COND);
++                    if (GetBossState(DATA_INSTRUCTOR_CHILLHEART) == DONE)
++                        go->SetGoState(GO_STATE_ACTIVE);
++                    break;
++                case GO_POLYFORMIC_ACID_POTION:
++                    go->RemoveFlag(GO_FLAG_INTERACT_COND);
++                    break;
++                case GO_CHILLHEART_EXIT_DOOR:
++                case GO_JANDICE_INTRO_DOOR:
++                case GO_JANDICE_TO_RATTLEGORE_DOOR:
++                case GO_RATTLEGORE_EXIT_DOOR:
++                case GO_LILIAN_INTRO_DOOR:
++                case GO_LILIAN_CHEST_DOOR:
++                case GO_LILIAN_TO_GANDLING_DOOR:
++                case GO_GANDLING_PRE_INTRO_DOOR:
++                case GO_GANDLING_INTRO_DOOR:
++                    // the door spawns are not clickable; boss states open and close them
++                    go->AddFlag(GO_FLAG_NOT_SELECTABLE);
++                    break;
++                default:
++                    break;
++            }
+         }
+ 
+-        return true;
+-    }
++        void OnPlayerEnter(Player* player) override
++        {
++            InstanceScript::OnPlayerEnter(player);
+ 
+-    ObjectGuid GetGuidData(uint32 type) const override
+-    {
+-        switch (type)
++            // the instance was reloaded after Gandling died: bring back Alexei for the quest turn-ins
++            if (GetBossState(DATA_GRANDMASTER_GANDLING) == DONE)
++                SummonAlexei();
++        }
++
++        // Spirit of Lord Alexei Barov 64660: ends An End to the Suffering 31447 and The Four Tomes 31440,
++        // the versions the Talking Skull 64562 gives (64683 only ends 31442/31448 from the unspawned skull 64563)
++        void SummonAlexei()
+         {
+-        case GO_GATE_KIRTONOS:
+-            return GateKirtonosGUID;
+-        case GO_GATE_GANDLING:
+-            return GateGandlingGUID;
+-        case GO_GATE_MALICIA:
+-            return GateMiliciaGUID;
+-        case GO_GATE_THEOLEN:
+-            return GateTheolenGUID;
+-        case GO_GATE_POLKELT:
+-            return GatePolkeltGUID;
+-        case GO_GATE_RAVENIAN:
+-            return GateRavenianGUID;
+-        case GO_GATE_BAROV:
+-            return GateBarovGUID;
+-        case GO_GATE_ILLUCIA:
+-            return GateIlluciaGUID;
+-        case GO_BRAZIER_OF_THE_HERALD:
+-            return BrazierOfTheHeraldGUID;
+-        default:
+-            break;
++            if (!alexeiGUID.IsEmpty() && instance->GetCreature(alexeiGUID))
++                return;
++
++            if (TempSummon* alexei = instance->SummonCreature(NPC_ALEXEI_BAROV, AlexeiPos))
++                alexeiGUID = alexei->GetGUID();
+         }
+ 
+-        return ObjectGuid::Empty;
+-    }
++        ObjectGuid GetGuidData(uint32 type) const override
++        {
++            if (type == GO_CHILLHEART_INTRO_DOOR)
++                return chillheartIntroDoorGUID;
+ 
+-    bool CheckPreBosses(uint32 bossId) const
+-    {
+-        switch (bossId)
++            return InstanceScript::GetGuidData(type);
++        }
++
++        bool SetBossState(uint32 type, EncounterState state) override
+         {
+-        case DATA_DARKMASTERGANDLING:
+-            if (GetBossState(DATA_LORDALEXEIBAROV) != DONE)
+-                return false;
+-            if (GetBossState(DATA_DOCTORTHEOLENKRASTINOV) != DONE)
+-                return false;
+-            if (GetBossState(DATA_THERAVENIAN) != DONE)
+-                return false;
+-            if (GetBossState(DATA_LOREKEEPERPOLKELT) != DONE)
+-                return false;
+-            if (GetBossState(DATA_INSTRUCTORMALICIA) != DONE)
++            if (!InstanceScript::SetBossState(type, state))
+                 return false;
+-            if (GetBossState(DATA_LADYILLUCIABAROV) != DONE)
+-                return false;
+-            if (GetBossState(DATA_DARKMASTERGANDLING) == DONE)
+-                return false;
+-            break;
+-        default:
+-            break;
+-        }
+ 
+-        return true;
+-    }
++            if (state != DONE)
++                return true;
+ 
+-    void CheckToSpawnGandling()
+-    {
+-        if (CheckPreBosses(DATA_DARKMASTERGANDLING))
+-            instance->SummonCreature(NPC_DARKMASTER_GANDLING, GandlingLoc);
+-    }
++            Creature* skull = GetCreature(DATA_TALKING_SKULL);
++
++            switch (type)
++            {
++                case DATA_INSTRUCTOR_CHILLHEART:
++                    HandleGameObject(chillheartIntroDoorGUID, true);
++                    if (skull)
++                        skull->AI()->Talk(TALK_SKULL_CHILLHEART_DEATH);
++                    break;
++                case DATA_JANDICE_BAROV:
++                    if (Creature* gandling = GetCreature(DATA_GRANDMASTER_GANDLING_INTRO))
++                        gandling->AI()->DoAction(ACTION_INTRO);
++                    if (skull)
++                        skull->AI()->Talk(TALK_SKULL_JANDICE_DEATH);
++                    break;
++                case DATA_RATTLEGORE:
++                    if (skull)
++                        skull->AI()->Talk(TALK_SKULL_RATTLEGORE_DEATH);
++                    break;
++                case DATA_LILIAN_VOSS:
++                    // scenario criteria 19262 "Lilian Voss defeated" is a scenario event, not a kill
++                    DoSendEventScenario(EVENT_SCENARIO_LILIAN_VOSS);
++                    if (skull)
++                        skull->AI()->Talk(TALK_SKULL_LILIAN_DEFEAT);
++                    break;
++                case DATA_GRANDMASTER_GANDLING:
++                    SummonAlexei();
++                    if (skull)
++                        skull->AI()->DoAction(ACTION_ALEXEI);
++                    break;
++                default:
++                    break;
++            }
++
++            if (skull)
++                skull->AI()->DoAction(ACTION_CONTINUE_MOVE);
++
++            return true;
++        }
++
++    private:
++        ObjectGuid chillheartIntroDoorGUID;
++        ObjectGuid alexeiGUID;
++    };
+ 
+-    void ReadSaveDataMore(std::istringstream& /*data*/) override
++    InstanceScript* GetInstanceScript(InstanceMap* map) const override
+     {
+-        CheckToSpawnGandling();
++        return new instance_scholomance_InstanceMapScript(map);
+     }
+ };
+ 
+ void AddSC_instance_scholomance()
+ {
+-    RegisterInstanceScript(instance_scholomance, 1007);
+-}
+\ No newline at end of file
++    new instance_scholomance();
++}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp
+new file mode 100644
+index 0000000..4a6eced
+--- /dev/null
++++ b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.cpp
+@@ -0,0 +1,388 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * Scholomance (map 1007): the Talking Skull, Gandling's interludes and Chillheart's door.
++ * Ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "ScriptMgr.h"
++#include "ScriptedCreature.h"
++#include "GameObject.h"
++#include "InstanceScript.h"
++#include "MotionMaster.h"
++#include "Player.h"
++#include "scholomance.h"
++
++enum GandlingIntroTexts
++{
++    TALK_GANDLING_VISITORS      = 0, // My dear, it appears we have visitors! Friends of yours, Voss?
++    TALK_GANDLING_EMPOWER       = 1,
++    TALK_GANDLING_TIRED         = 2,
++    TALK_GANDLING_BEAUTIFUL     = 3,
++    TALK_GANDLING_MIRROR        = 4,
++    TALK_GANDLING_GIFT          = 5,
++    TALK_GANDLING_FATE          = 6, // Come, Voss, your fate awaits you.
++    TALK_GANDLING_FORGET        = 7, // Did you forget, girl? I am the Darkmaster! I command the undead!
++    TALK_GANDLING_RUNEBLADES    = 8, // Now turn your lovely runeblades on our guests, and fetch me their bones!
++    TALK_GANDLING_SPIRIT        = 9, // How intriguing, her spirit will not relinquish its grasp on this world.
++    TALK_GANDLING_WHAT          = 10, // What?!
++};
++
++enum ScholomanceEvents
++{
++    EVENT_TALK_1                = 1,
++    EVENT_TALK_2,
++    EVENT_TALK_3,
++    EVENT_TALK_4,
++    EVENT_TALK_5,
++    EVENT_GO_TO_DOOR,
++    EVENT_RUNEBLADES,
++    EVENT_LEAVE,
++    EVENT_AT_LILIAN,
++
++    EVENT_ESCORT                = 20,
++    EVENT_ALEXEI,
++};
++
++// Chillheart intro door 211259: opening it wakes Chillheart and the Talking Skull
++class go_chillheart_iron_door : public GameObjectScript
++{
++public:
++    go_chillheart_iron_door() : GameObjectScript("go_chillheart_iron_door") { }
++
++    bool OnGossipHello(Player* /*player*/, GameObject* go) override
++    {
++        if (Creature* chillheart = go->FindNearestCreature(NPC_INSTRUCTOR_CHILLHEART, 150.0f))
++            chillheart->AI()->DoAction(ACTION_INTRO);
++
++        if (Creature* skull = go->FindNearestCreature(NPC_TALKING_SKULL, 150.0f))
++            skull->AI()->DoAction(ACTION_INTRO);
++
++        return false; // the door opens as usual
++    }
++};
++
++// Darkmaster Gandling 58875, before the fight: taunts Lilian Voss over Rattlegore's hall,
++// then watches her fight from the gallery of her room
++struct npc_gandling_at_rattlegore : public ScriptedAI
++{
++    npc_gandling_at_rattlegore(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript()), _atLilian(false), _introStarted(false) { }
++
++    void InitializeAI() override
++    {
++        ScriptedAI::InitializeAI();
++
++        if (!_instance)
++            return;
++
++        if (_instance->GetBossState(DATA_LILIAN_VOSS) == DONE)
++            me->DespawnOrUnsummon();
++        else if (_instance->GetBossState(DATA_JANDICE_BAROV) == DONE)
++        {
++            // instance reloaded after the speech
++            _introStarted = true;
++            me->NearTeleportTo(GandlingTeleportPos);
++            me->SetHomePosition(GandlingTeleportPos);
++            _events.ScheduleEvent(EVENT_AT_LILIAN, 3000);
++        }
++    }
++
++    void Reset() override
++    {
++        // he floats in place (hover animation, set by his template addon); he never walks or flies:
++        // a humanoid moving through the air plays the swim animation
++        me->SetDisableGravity(true);
++        me->SetReactState(REACT_PASSIVE);
++        me->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
++        if (!_atLilian && !me->HasAura(SPELL_BONE_ARMOR_VISUAL))
++            me->AddAura(SPELL_BONE_ARMOR_VISUAL, me);
++    }
++
++    void AttackStart(Unit* /*who*/) override { }
++
++    void DoAction(int32 action) override
++    {
++        switch (action)
++        {
++            case ACTION_INTRO:
++                if (_introStarted)
++                    break;
++                _introStarted = true;
++                Talk(TALK_GANDLING_VISITORS);
++                if (_instance)
++                    if (Creature* lilian = _instance->GetCreature(DATA_LILIAN_VOSS))
++                        lilian->AI()->DoAction(ACTION_INTRO);
++                _events.ScheduleEvent(EVENT_TALK_1, 6000);
++                break;
++            case ACTION_DIFF_INTRO:
++                Talk(TALK_GANDLING_SPIRIT);
++                break;
++            case ACTION_REMOVE_LILIAN_SOUL:
++                // she breaks free and leaps at him: he tears the rest of her soul out and flees
++                Talk(TALK_GANDLING_WHAT);
++                if (_instance)
++                    if (Creature* lilian = _instance->GetCreature(DATA_LILIAN_VOSS))
++                        me->CastSpell(lilian, SPELL_COSMETIC_SOUL_RIP, false);
++                _events.ScheduleEvent(EVENT_LEAVE, 4500);
++                break;
++            default:
++                break;
++        }
++    }
++
++    void MovementInform(uint32 type, uint32 pointId) override
++    {
++        if (type != POINT_MOTION_TYPE)
++            return;
++
++        switch (pointId)
++        {
++            case 0: // Rattlegore's door: he vanishes and reappears above Lilian's room
++                Talk(TALK_GANDLING_FATE);
++                DoCast(me, SPELL_TELEPORT_VISUAL, true);
++                me->RemoveAurasDueToSpell(SPELL_BONE_ARMOR_VISUAL);
++                _events.ScheduleEvent(EVENT_AT_LILIAN, 1500);
++                break;
++            case 1:
++                DoCast(me, SPELL_TELEPORT_VISUAL, true);
++                me->DespawnOrUnsummon(500);
++                break;
++            default:
++                break;
++        }
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++
++        if (_atLilian)
++        {
++            Player* player = me->SelectNearestPlayer(25.0f);
++            if (player && !player->IsGameMaster() && player->GetPositionZ() <= 109.0f)
++            {
++                _atLilian = false;
++                Talk(TALK_GANDLING_FORGET);
++                _events.ScheduleEvent(EVENT_RUNEBLADES, 8000);
++
++                if (_instance)
++                {
++                    if (Creature* lilian = _instance->GetCreature(DATA_LILIAN_VOSS))
++                        lilian->AI()->DoAction(ACTION_DIFF_INTRO);
++                    if (Creature* skull = _instance->GetCreature(DATA_TALKING_SKULL))
++                        skull->AI()->DoAction(ACTION_CONTINUE_MOVE);
++                }
++            }
++        }
++
++        while (uint32 eventId = _events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_TALK_1:
++                    Talk(TALK_GANDLING_EMPOWER);
++                    _events.ScheduleEvent(EVENT_TALK_2, 10000);
++                    break;
++                case EVENT_TALK_2:
++                    Talk(TALK_GANDLING_TIRED);
++                    _events.ScheduleEvent(EVENT_TALK_3, 10000);
++                    break;
++                case EVENT_TALK_3:
++                    Talk(TALK_GANDLING_BEAUTIFUL);
++                    _events.ScheduleEvent(EVENT_TALK_4, 10000);
++                    break;
++                case EVENT_TALK_4:
++                    Talk(TALK_GANDLING_MIRROR);
++                    _events.ScheduleEvent(EVENT_TALK_5, 10000);
++                    break;
++                case EVENT_TALK_5:
++                    Talk(TALK_GANDLING_GIFT);
++                    _events.ScheduleEvent(EVENT_GO_TO_DOOR, 6000);
++                    break;
++                case EVENT_GO_TO_DOOR:
++                    // he vanishes from Rattlegore's hall and reappears above Lilian's room
++                    me->RemoveAurasDueToSpell(SPELL_SOUL_RIP_VISUAL);
++                    me->RemoveAurasDueToSpell(SPELL_BONE_ARMOR_VISUAL);
++                    Talk(TALK_GANDLING_FATE);
++                    DoCast(me, SPELL_TELEPORT_VISUAL, true);
++                    _events.ScheduleEvent(EVENT_AT_LILIAN, 1500);
++                    break;
++                case EVENT_AT_LILIAN:
++                    me->NearTeleportTo(GandlingTeleportPos);
++                    me->SetHomePosition(GandlingTeleportPos);
++                    _atLilian = true;
++                    DoCast(me, SPELL_GANDLING_INTRO_CHANNEL, true);
++                    if (_instance)
++                        if (Creature* lilian = _instance->GetCreature(DATA_LILIAN_VOSS))
++                            me->CastSpell(lilian, SPELL_COSMETIC_SOUL_RIP, false);
++                    break;
++                case EVENT_RUNEBLADES:
++                    Talk(TALK_GANDLING_RUNEBLADES);
++                    break;
++                case EVENT_LEAVE:
++                    if (_instance)
++                        if (Creature* skull = _instance->GetCreature(DATA_TALKING_SKULL))
++                            skull->AI()->Talk(TALK_SKULL_GANDLING_LEAVE);
++                    me->InterruptNonMeleeSpells(true);
++                    me->RemoveAllAuras();
++                    DoCast(me, SPELL_TELEPORT_VISUAL, true);
++                    me->DespawnOrUnsummon(1000);
++                    break;
++                default:
++                    break;
++            }
++        }
++    }
++
++private:
++    InstanceScript* _instance;
++    EventMap _events;
++    bool _atLilian;
++    bool _introStarted;
++};
++
++// Talking Skull 64562: floats ahead of the group and comments on each boss
++struct npc_talking_skull : public ScriptedAI
++{
++    npc_talking_skull(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript()), _wp(0), _atGandling(false), _started(false) { }
++
++    void InitializeAI() override
++    {
++        ScriptedAI::InitializeAI();
++        me->SetWalk(true);
++        me->SetSpeedRate(MOVE_WALK, 2.3f);
++
++        if (!_instance)
++            return;
++
++        // instance reloaded: wait where the last boss left it
++        uint8 stop = 0;
++        if (_instance->GetBossState(DATA_LILIAN_VOSS) == DONE)
++            stop = 29;
++        else if (_instance->GetBossState(DATA_RATTLEGORE) == DONE)
++            stop = 14;
++        else if (_instance->GetBossState(DATA_JANDICE_BAROV) == DONE)
++            stop = 11;
++        else if (_instance->GetBossState(DATA_INSTRUCTOR_CHILLHEART) == DONE)
++            stop = 10;
++
++        if (stop)
++        {
++            _started = true;
++            _wp = stop + 1;
++            _atGandling = stop == 29;
++            me->NearTeleportTo(SkullPath[stop]);
++            me->SetHomePosition(SkullPath[stop]);
++        }
++    }
++
++    void AttackStart(Unit* /*who*/) override { }
++
++    void DoAction(int32 action) override
++    {
++        switch (action)
++        {
++            case ACTION_INTRO:
++                if (_started)
++                    break;
++                _started = true;
++                _events.ScheduleEvent(EVENT_ESCORT, urand(1000, 2000));
++                break;
++            case ACTION_CONTINUE_MOVE:
++                if (_started && !_atGandling)
++                    _events.ScheduleEvent(EVENT_ESCORT, urand(1000, 2000));
++                break;
++            case ACTION_ALEXEI:
++                _events.ScheduleEvent(EVENT_ALEXEI, urand(3000, 5000));
++                break;
++            default:
++                break;
++        }
++    }
++
++    void MovementInform(uint32 type, uint32 pointId) override
++    {
++        if (type != POINT_MOTION_TYPE || pointId != _wp)
++            return;
++
++        ++_wp;
++        me->SetHomePosition(me->GetPosition());
++
++        switch (pointId)
++        {
++            case 0:
++                Talk(TALK_SKULL_CHILLHEART_ENTRANCE);
++                Talk(TALK_SKULL_CHILLHEART);
++                break;
++            case 9:
++                Talk(TALK_SKULL_JANDICE_ENTRANCE);
++                _events.ScheduleEvent(EVENT_ESCORT, 4000);
++                break;
++            case 10:
++            case 14:
++                break;
++            case 11:
++                Talk(TALK_SKULL_RATTLEGORE_ENTRANCE);
++                break;
++            case 16:
++                Talk(TALK_SKULL_LILIAN_ENTRANCE);
++                break;
++            case 29:
++                Talk(TALK_SKULL_GANDLING_ENTRANCE);
++                _atGandling = true;
++                break;
++            default:
++                _events.ScheduleEvent(EVENT_ESCORT, 100);
++                break;
++        }
++    }
++
++    void UpdateAI(uint32 diff) override
++    {
++        _events.Update(diff);
++
++        while (uint32 eventId = _events.ExecuteEvent())
++        {
++            switch (eventId)
++            {
++                case EVENT_ESCORT:
++                    if (_wp < SKULL_PATH_SIZE)
++                        me->GetMotionMaster()->MovePoint(_wp, SkullPath[_wp], false);
++                    break;
++                case EVENT_ALEXEI:
++                    // Gandling is dead and Alexei's spirit is free (the instance summons him): the skull's work is done
++                    me->DespawnOrUnsummon();
++                    break;
++                default:
++                    break;
++            }
++        }
++    }
++
++private:
++    InstanceScript* _instance;
++    EventMap _events;
++    uint8 _wp;
++    bool _atGandling;
++    bool _started;
++};
++
++void AddSC_scholomance()
++{
++    new go_chillheart_iron_door();
++    RegisterCreatureAI(npc_gandling_at_rattlegore);
++    RegisterCreatureAI(npc_talking_skull);
++}
+diff --git a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
+index 4d46bc7..81ed4da 100644
+--- a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
++++ b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
+@@ -1,6 +1,8 @@
+ /*
+  * 2026 BFA-HavenCore
+  *
++ * Scholomance (map 1007), ported from the Pandaria 5.4.8 project (GPL v2 or later).
++ *
+  * This program is free software; you can redistribute it and/or modify it
+  * under the terms of the GNU General Public License as published by the
+  * Free Software Foundation, either version 3 of the License, or
+@@ -18,48 +20,240 @@
+ #ifndef DEF_SCHOLOMANCE_H
+ #define DEF_SCHOLOMANCE_H
+ 
+-#include "CreatureAIImpl.h"
++#include "Position.h"
++
++class Creature;
+ 
+ #define ScholomanceScriptName "instance_scholomance"
+-#define DataHeader "SC"
++#define DataHeader "SCM"
++
++uint32 const EncounterCount = 5;
++
++uint8 const MAX_ILLUSIONS   = 15;
++uint8 const MAX_BONE_PILES  = 6;
++
++Position const IllusionsPoints[MAX_ILLUSIONS] =
++{
++    { 311.34f, 47.12f, 113.40f, 3.15f },
++    { 302.13f, 47.23f, 113.40f, 3.15f },
++    { 292.95f, 47.17f, 113.40f, 3.15f },
++    { 283.48f, 47.28f, 113.40f, 3.15f },
++    { 274.34f, 47.05f, 113.40f, 3.15f },
++    { 311.45f, 37.43f, 113.40f, 3.15f },
++    { 302.22f, 37.55f, 113.40f, 3.15f },
++    { 292.86f, 37.44f, 113.40f, 3.15f },
++    { 283.59f, 37.50f, 113.40f, 3.15f },
++    { 274.44f, 37.47f, 113.40f, 3.15f },
++    { 311.10f, 22.84f, 113.40f, 3.15f },
++    { 301.96f, 22.92f, 113.40f, 3.15f },
++    { 292.53f, 22.99f, 113.40f, 3.15f },
++    { 283.32f, 23.06f, 113.40f, 3.15f },
++    { 274.00f, 23.14f, 113.40f, 3.15f }
++};
++
++// The Talking Skull leads the group through the school. It stops at the points listed in
++// npc_talking_skull and waits there until the next boss falls.
++uint8 const SKULL_PATH_SIZE = 30;
++Position const SkullPath[SKULL_PATH_SIZE] =
++{
++    { 200.70f,  45.02f,  132.37f, 4.70f }, // 0: Chillheart's balcony
++    { 209.48f,  48.92f,  132.33f, 0.41f },
++    { 229.89f,  49.09f,  119.22f, 0.00f },
++    { 231.26f,  25.83f,  119.24f, 4.77f },
++    { 215.05f, -22.02f,  119.22f, 4.38f },
++    { 215.17f, -43.60f,  119.24f, 4.71f },
++    { 225.47f, -43.50f,  119.24f, 6.27f },
++    { 250.28f, -43.57f,  113.43f, 6.27f },
++    { 261.05f, -43.73f,  113.43f, 6.27f },
++    { 261.12f, -27.27f,  113.45f, 1.58f }, // 9: before Jandice's hall
++    { 258.16f,  11.97f,  113.40f, 1.58f }, // 10: Jandice
++    { 259.08f,  67.95f,  113.49f, 1.55f }, // 11: Rattlegore
++    { 259.05f,  139.99f, 113.33f, 1.59f },
++    { 202.21f,  138.55f, 113.31f, 3.16f },
++    { 202.28f,  126.76f, 113.31f, 4.71f }, // 14: waits for Lilian's event
++    { 202.39f,  119.86f, 113.37f, 4.72f },
++    { 202.58f,  107.69f, 108.26f, 4.72f }, // 16: Lilian
++    { 181.53f,  94.64f,  108.23f, 3.69f },
++    { 182.85f,  74.08f,  108.23f, 4.77f },
++    { 169.07f,  73.79f,  108.24f, 3.15f },
++    { 165.94f,  73.66f,  106.53f, 3.17f },
++    { 145.33f,  73.47f,  106.39f, 3.15f },
++    { 130.90f,  63.96f,  106.40f, 3.72f },
++    { 103.02f,  64.30f,  100.94f, 3.12f },
++    { 95.71f,   101.35f, 100.92f, 2.40f },
++    { 75.69f,   100.80f, 101.02f, 3.16f },
++    { 75.65f,   90.38f,  101.02f, 4.74f },
++    { 75.70f,   68.49f,   87.03f, 4.69f },
++    { 59.60f,   58.23f,   87.02f, 3.69f },
++    { 53.56f,   59.90f,   87.22f, 2.87f }  // 29: Gandling
++};
++
++Position const LilianTeleportPos        = { 200.17f, 83.82f, 107.76f, 1.56f };
++Position const GandlingTeleportPos      = { 220.98f, 68.88f, 109.64f, 2.25f };
++Position const GandlingLilianDoorPoint  = { 261.03f, 132.80f, 113.49f, 1.59f };
++Position const LilianDeathPoint         = { 201.25f, 84.80f, 107.76f, 5.68f };
++Position const AlexeiPos                = { 53.56f, 59.90f, 87.22f, 2.87f }; // top of the stairs, where the skull waits (quest 31447 turn-in point)
++
++enum ScholomanceDataTypes
++{
++    // bosses
++    DATA_INSTRUCTOR_CHILLHEART          = 0,
++    DATA_JANDICE_BAROV                  = 1,
++    DATA_RATTLEGORE                     = 2,
++    DATA_LILIAN_VOSS                    = 3,
++    DATA_GRANDMASTER_GANDLING           = 4,
++
++    // other creatures
++    DATA_GRANDMASTER_GANDLING_INTRO     = 5,
++    DATA_TALKING_SKULL                  = 6,
++    DATA_LILIAN_SOUL                    = 7,
++};
++
++enum ScholomanceSharedSpells
++{
++    // Chillheart
++    SPELL_ICE_WALL_DUMMY_1              = 122443, // wall visual
++    SPELL_ICE_WALL_DUMMY_2              = 122449,
++    SPELL_COSMETIC_SHADOW_CHANNEL       = 122499,
++    SPELL_ARCANE_BOMB_COSMETIC          = 113848,
++    SPELL_ARCANE_BOMB_COSMETIC_SPHERE   = 109122,
++    SPELL_FILL_PHYLACTERY               = 111441,
++
++    // Rattlegore
++    SPELL_BONEWEAVING                   = 113647,
++    SPELL_BONE_SHARDS                   = 113629,
++    SPELL_BONE_WHIRLWIND                = 114079,
++    SPELL_BONE_STORM_COSMETIC           = 114076,
++    SPELL_BONE_ARMOR                    = 113996,
++
++    SPELL_TELEPORT_VISUAL               = 41232,
++    SPELL_SHADOW_STEP_VISUAL            = 127511,
++    SPELL_BONE_ARMOR_VISUAL             = 11445,
++    SPELL_SOUL_RIP_VISUAL               = 112058,
++
++    // Lilian
++    SPELL_COSMETIC_SOUL_RIP             = 112081, // beam from Gandling to Lilian
++    SPELL_GANDLING_INTRO_CHANNEL        = 114201,
++    SPELL_LILIAN_VOSS_DEAD              = 112057,
++    SPELL_LILIAN_KNEEL                  = 123821,
++};
++
++enum ScholomanceCreatures
++{
++    NPC_INSTRUCTOR_CHILLHEART           = 58633,
++    NPC_JANDICE_BAROV                   = 59184,
++    NPC_RATTLEGORE                      = 59153,
++    NPC_LILIAN_VOSS                     = 59200,
++    NPC_GRANDMASTER_GANDLING_INTRO      = 58875,
++    NPC_GRANDMASTER_GANDLING            = 59080,
++    NPC_TALKING_SKULL                   = 64562,
++
++    // stalkers
++    NPC_ICE_WALL_STALKER                = 68291,
++    NPC_ICE_WALL_MOVE                   = 62731,
++    NPC_FROSTGRASP_STALKER              = 57860,
++    NPC_GRAVITY_FLUX_STALKER            = 67272,
+ 
+-uint32 const EncounterCount             = 8;
++    // Chillheart
++    NPC_ANARCHIST_ARCANIST              = 59707,
++    NPC_ANTONIDAS_GUIDE                 = 66240,
++    NPC_WANDERS_BOOK                    = 59227,
++    NPC_PHYLACTERY                      = 58664,
++    NPC_ARCANE_BOMB                     = 58753,
++    NPC_ARCANE_BOMB_CHASE               = 59711,
++    NPC_BOOK_SPAWN_TARGET               = 58917,
++    NPC_SCHOLOMANCE_NEOPHYTE            = 58823,
++    NPC_SCHOLOMANCE_ACOLYTE             = 58757,
+ 
+-enum SCDataTypes
++    // Jandice
++    NPC_JANDICE_ILLUSION                = 59220,
++    NPC_CANDLESTICK_MAGE                = 59467,
++    NPC_CANDLE                          = 59481,
++
++    // Rattlegore
++    NPC_BONE_PILE                       = 59304,
++    NPC_BONEWEAVER                      = 59193,
++    NPC_WOVEN_BONEGUARD                 = 59242,
++    NPC_SOULFLAME_ACTIVATED_STALKER     = 45979,
++
++    // Lilian Voss
++    NPC_LILIAN_SOUL                     = 58791,
++    NPC_DARK_BLAZE                      = 58780,
++    NPC_KRASTINOV_CARVER                = 59368,
++    NPC_MEAT_GRAFT                      = 59980,
++    NPC_THEOLEN_KRASTINOV               = 59369,
++
++    // Gandling
++    NPC_EXPIRED_TEST_SUBJECT            = 59100,
++    NPC_GANDLING_ROOM_STALKER           = 59167,
++    NPC_GANDLING_FIRE_STALKER           = 30298,
++    NPC_ALEXEI_BAROV                    = 64660, // ends the Talking Skull's quests 31440 and 31447
++};
++
++enum ScholomanceActions
+ {
+-    DATA_DOCTORTHEOLENKRASTINOV         = 0,
+-    DATA_INSTRUCTORMALICIA              = 1,
+-    DATA_LADYILLUCIABAROV               = 2,
+-    DATA_LORDALEXEIBAROV                = 3,
+-    DATA_LOREKEEPERPOLKELT              = 4,
+-    DATA_THERAVENIAN                    = 5,
+-    DATA_DARKMASTERGANDLING             = 6,
+-    DATA_KIRTONOS                       = 7
++    ACTION_LILIAN_RESURRECTED           = 1,
++    ACTION_REMOVE_LILIAN_SOUL           = 2,
++    ACTION_INTRO                        = 3,
++    ACTION_DIFF_INTRO                   = 4,
++    ACTION_CHILLHEART_DEATH             = 5,
++    ACTION_CONTINUE_MOVE                = 6,
++    ACTION_ALEXEI                       = 7,
++    ACTION_CANDLESTICK_DEATH            = 8,
++    ACTION_ACTIVATE                     = 9,
++    ACTION_DESTROY_WALL                 = 10,
+ };
+ 
+-enum SCCreatureIds
++enum ScholomanceGameObjects
+ {
+-    NPC_DARKMASTER_GANDLING             = 1853,
+-    NPC_BONE_MINION                     = 16119
++    GO_CHILLHEART_INTRO_DOOR            = 211259,
++    GO_CHILLHEART_EXIT_DOOR             = 211258,
++    GO_JANDICE_INTRO_DOOR               = 211257,
++    GO_JANDICE_TO_RATTLEGORE_DOOR       = 211256,
++    GO_RATTLEGORE_EXIT_DOOR             = 211262,
++    GO_LILIAN_INTRO_DOOR                = 211261,
++    GO_LILIAN_CHEST_DOOR                = 210781,
++    GO_LILIAN_TO_GANDLING_DOOR          = 210771,
++    GO_GANDLING_PRE_INTRO_DOOR          = 211260,
++    GO_GANDLING_INTRO_DOOR              = 210789,
++    GO_POLYFORMIC_ACID_POTION           = 211669,
++    GO_HARSH_LESSON_EAST_LOW            = 210783,
++    GO_HARSH_LESSON_NORTH_LOW           = 210784,
++    GO_HARSH_LESSON_WEST_LOW            = 210788,
++    GO_HARSH_LESSON_WEST_HIGH           = 210786,
++    GO_HARSH_LESSON_NORTH_HIGH          = 210787,
++    GO_HARSH_LESSON_EAST_HIGH           = 210785,
+ };
+ 
+-enum SCGameobjectIds
++enum TalkingSkullTexts
+ {
+-    GO_GATE_KIRTONOS                    = 175570,
+-    GO_GATE_GANDLING                    = 177374,
+-    GO_GATE_RAVENIAN                    = 177372,
+-    GO_GATE_THEOLEN                     = 177377,
+-    GO_GATE_ILLUCIA                     = 177371,
+-    GO_GATE_MALICIA                     = 177375,
+-    GO_GATE_BAROV                       = 177373,
+-    GO_GATE_POLKELT                     = 177376,
+-    GO_BRAZIER_OF_THE_HERALD            = 175564
++    TALK_SKULL_CHILLHEART_ENTRANCE      = 0,
++    TALK_SKULL_CHILLHEART               = 1,
++    TALK_SKULL_CHILLHEART_DEATH         = 2,
++    TALK_SKULL_JANDICE_ENTRANCE         = 3,
++    TALK_SKULL_JANDICE_COMBAT           = 4,
++    TALK_SKULL_JANDICE_DEATH            = 5,
++    TALK_SKULL_RATTLEGORE_ENTRANCE      = 6,
++    TALK_SKULL_GANDLING_LEAVE           = 7,
++    TALK_SKULL_RATTLEGORE_DEATH         = 8,
++    TALK_SKULL_LILIAN_ENTRANCE          = 9,
++    TALK_SKULL_LILIAN_DEFEAT            = 10,
++    TALK_SKULL_GANDLING_ENTRANCE        = 11,
+ };
+ 
+-template<typename AI>
+-inline AI* GetScholomanceAI(Creature* creature)
++enum ScholomanceMisc
+ {
+-    return GetInstanceAI<AI>(creature, ScholomanceScriptName);
+-}
++    // Scenario 645 (normal) / 646 (heroic), criteria 19262 "Lilian Voss defeated" is this event
++    EVENT_SCENARIO_LILIAN_VOSS          = 30834,
++};
++
++// Some voice lines have no text in this database (no BroadcastText row), so they are played as
++// sound only instead of an empty yell.
++void PlayVoiceLine(Creature* creature, uint32 soundKitId);
++
++// Unit::DealDamage divides the damage by the level-scaling health multiplier only after
++// DamageTaken has run, so a scaled creature loses more health than DamageTaken sees. Use the
++// health it will really lose when checking for a killing blow or a health threshold.
++uint32 RealDamage(Creature* creature, Unit* attacker, uint32 damage);
+ 
+-#endif
++#endif // DEF_SCHOLOMANCE_H
+diff --git a/src/server/scripts/EasternKingdoms/eastern_kingdoms_script_loader.cpp b/src/server/scripts/EasternKingdoms/eastern_kingdoms_script_loader.cpp
+index babfa82..d65b48e 100644
+--- a/src/server/scripts/EasternKingdoms/eastern_kingdoms_script_loader.cpp
++++ b/src/server/scripts/EasternKingdoms/eastern_kingdoms_script_loader.cpp
+@@ -118,20 +118,13 @@ void AddSC_boss_thalnos_the_soulrender();
+ void AddSC_boss_brother_korloff();
+ void AddSC_boss_durand_and_whitemane();
+ void AddSC_boss_mograine_and_whitemane();
+-void AddSC_boss_darkmaster_gandling();          //Scholomance
+-void AddSC_boss_death_knight_darkreaver();
+-void AddSC_boss_theolenkrastinov();
+-void AddSC_boss_illuciabarov();
+-void AddSC_boss_instructormalicia();
+-void AddSC_boss_jandicebarov();
+-void AddSC_boss_kormok();
+-void AddSC_boss_lordalexeibarov();
+-void AddSC_boss_lorekeeperpolkelt();
+-void AddSC_boss_rasfrost();
+-void AddSC_boss_theravenian();
+-void AddSC_boss_vectus();
+-void AddSC_boss_kirtonos_the_herald();
++void AddSC_boss_instructor_chillheart();       //Scholomance
++void AddSC_boss_jandice_barov();
++void AddSC_boss_rattlegore();
++void AddSC_boss_lilian_voss();
++void AddSC_boss_grandmaster_gandling();
+ void AddSC_instance_scholomance();
++void AddSC_scholomance();
+ void AddSC_boss_magistrate_barthilas();         //Stratholme
+ void AddSC_boss_maleki_the_pallid();
+ void AddSC_boss_nerubenkan();
+@@ -370,20 +363,13 @@ void AddEasternKingdomsScripts()
+     AddSC_boss_brother_korloff();
+     AddSC_boss_durand_and_whitemane();
+     AddSC_boss_mograine_and_whitemane();
+-    AddSC_boss_darkmaster_gandling();           //Scholomance
+-    AddSC_boss_death_knight_darkreaver();
+-    AddSC_boss_theolenkrastinov();
+-    AddSC_boss_illuciabarov();
+-    AddSC_boss_instructormalicia();
+-    AddSC_boss_jandicebarov();
+-    AddSC_boss_kormok();
+-    AddSC_boss_lordalexeibarov();
+-    AddSC_boss_lorekeeperpolkelt();
+-    AddSC_boss_rasfrost();
+-    AddSC_boss_theravenian();
+-    AddSC_boss_vectus();
+-    AddSC_boss_kirtonos_the_herald();
++    AddSC_boss_instructor_chillheart();        //Scholomance
++    AddSC_boss_jandice_barov();
++    AddSC_boss_rattlegore();
++    AddSC_boss_lilian_voss();
++    AddSC_boss_grandmaster_gandling();
+     AddSC_instance_scholomance();
++    AddSC_scholomance();
+     AddSC_boss_magistrate_barthilas();          //Stratholme
+     AddSC_boss_maleki_the_pallid();
+     AddSC_boss_nerubenkan();
