@@ -5,6 +5,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-12 (World fixes: Vashj'ir ship Eastern Kingdoms stop leftovers)
 
+Merged to main via PR #61 (2026-11-12).
+
 ### World: Turgore and Adarrah stayed on the water when the Vashj'ir ship sailed on
 
 - **Found** (Four, 2026-11-12): after the ship reached the Eastern Kingdoms, Turgore and Adarrah did not
@@ -19,6 +21,8 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
 ## 2026-11-12 (World fixes: Vashj'ir ship ride end, fourth try)
+
+Merged to main via PR #61 (2026-11-12).
 
 ### World: the ride still ended without "Call of Duty" completing (rider list from Orgrimmar)
 
@@ -39,6 +43,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-12 (World fixes: Horde ship scene hidden with its ship)
 
+Merged to main via PR #61 (2026-11-12).
+
 ### World: on "Call of Duty", the Argus intro NPCs stood on the water at the Orgrimmar berth
 
 - **Found** (Four, 2026-11-12): with the scenery ships hidden (2026_11_12_42), a group of NPCs stood on
@@ -54,6 +60,8 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
 ## 2026-11-12 (World fixes: Vashj'ir ship ride end, third try)
+
+Merged to main via PR #61 (2026-11-12).
 
 ### World: the ride still ended without "Call of Duty" completing
 
@@ -75,6 +83,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-12 (World fixes: Vashj'ir quest phase hid normal spawns)
 
+Merged to main via PR #61 (2026-11-12).
+
 ### World: on "Call of Duty", Vashj'ir and the sea route looked empty
 
 - **Found** (Four, 2026-11-12): while on the quest, Four saw nothing in Vashj'ir.
@@ -88,6 +98,8 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
 ## 2026-11-12 (World fixes: Vashj'ir ship ride end, second try)
+
+Merged to main via PR #61 (2026-11-12).
 
 ### World: riding the Vashj'ir ship to its stop did not complete "Call of Duty"
 
@@ -105,6 +117,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-12 (World fixes: Orgrimmar berth scenery phase)
 
+Merged to main via PR #61 (2026-11-12).
+
 ### World: the scenery ships at the Vashj'ir berth stayed visible on "Call of Duty"
 
 - **Found** (Four, 2026-11-12): with 2026_11_12_40 applied and "Call of Duty" active (phase 170 shown by
@@ -121,6 +135,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-12 (World fixes: Call of Duty objective text)
 
+Merged to main via PR #61 (2026-11-12).
+
 ### World: "Call of Duty" tracked "0/1 Submerge Bunny slain"
 
 - **Found** (Four, 2026-11-12): the quest tracker for "Call of Duty" (25924) showed "0/1 Submerge Bunny
@@ -135,6 +151,8 @@ to do to pick it up (rebuild, restart, run SQL).
   (the client caches quest text).
 
 ## 2026-11-12 (World fixes: Vashj'ir ship only on its quest)
+
+Merged to main via PR #61 (2026-11-12).
 
 ### World: the Vashj'ir ship clipped through the Orgrimmar scenery ships, and "Call of Duty" never completed
 
@@ -169,6 +187,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-12 (World fixes: Vashj'ir ship crew)
 
+Merged to main via PR #61 (2026-11-12).
+
 ### World: the Horde ship to Vashj'ir sailed empty; 5 pier guards removed by mistake
 
 - **Found** (Four, 2026-11-12): the Ship to Vashj'ir (Horde, transport 203466, map 738) docks at
@@ -189,6 +209,8 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
 ## 2026-11-12 (World fixes: Thundercaller retired)
+
+Merged to main via PR #61 (2026-11-12).
 
 ### World: The Thundercaller still flew Orgrimmar - Undercity, but BFA replaced it with portals
 
@@ -216,6 +238,8 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
 ## 2026-11-12 (World fixes: Stormwind Wizard's Sanctum, Boralus ship)
+
+Merged to main via PR #61 (2026-11-12).
 
 ### World: the Wizard's Sanctum portal did nothing, so the Stormwind portal room was unreachable
 
@@ -254,6 +278,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-12 (World fixes: Orgrimmar wind riders and docks)
 
+Merged to main via PR #61 (2026-11-12).
+
 ### World: Orgrimmar Wind Riders hung still in the air, Vashj'ir ship crew stood in the water at the docks
 
 - **Found** (Four, 2026-11-12): wind riders frozen in the air all around Orgrimmar (west zeppelin tower,
@@ -275,6 +301,8 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
 ## 2026-11-12 (World fixes: transport crews from TDB 7.3.5)
+
+Merged to main via PR #61 (2026-11-12).
 
 ### World: boats, zeppelins, turtles and the Icecrown gunships sailed with no crew
 
@@ -311,6 +339,8 @@ to do to pick it up (rebuild, restart, run SQL).
   loads, so wait for the next departure or arrival.
 
 ## 2026-11-12 (World fixes: missing rares from TDB 7.3.5)
+
+Merged to main via PR #61 (2026-11-12).
 
 ### World: 13 rare beasts in Silithus and Tirisfal Glades never spawned
 
