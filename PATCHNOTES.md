@@ -23,7 +23,8 @@ Draft, not merged. New core patch `tools/bfa/dire-maul-west.patch` (after
   unattackable until then). Progress is saved with the instance, so a server restart keeps it. Same
   design as AzerothCore's `instance_dire_maul`; the Highborne Summoners around Immol'thar are left
   as they are (neutral Shen'dralar in this database).
-- **Status:** compiles; not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-12: all five generators shut down and each counted
+  in the scenario tracker.
 
 ### Dire Maul: Magister Kalendris reset to full when fought solo
 
