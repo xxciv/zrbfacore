@@ -1,0 +1,27 @@
+diff --git a/src/server/game/Maps/Map.cpp b/src/server/game/Maps/Map.cpp
+index d75138b..fc75272 100644
+--- a/src/server/game/Maps/Map.cpp
++++ b/src/server/game/Maps/Map.cpp
+@@ -812,7 +812,9 @@ bool Map::AddToMap(Transport* obj)
+     {
+         for (Map::PlayerList::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+         {
+-            if (itr->GetSource()->GetTransport() != obj)
++            // zrbfacore: respect transport phases here too, like SendInitTransports and
++            // SendUpdateTransportVisibility do; a phased ship that changes maps was shown to everyone
++            if (itr->GetSource()->GetTransport() != obj && itr->GetSource()->IsInPhase(obj))
+             {
+                 UpdateData data(GetId());
+                 obj->BuildCreateUpdateBlockForPlayer(&data, itr->GetSource());
+@@ -3246,6 +3248,11 @@ void Map::SendUpdateTransportVisibility(Player* player)
+     UpdateData transData(player->GetMapId());
+     for (Transport* transport : _transports)
+     {
++        // zrbfacore: never hide the ship the player is standing on (a rider sailing out of
++        // the ship's phase area, or finishing its quest on board, would drop into the sea)
++        if (transport == player->GetTransport())
++            continue;
++
+         auto transportItr = player->m_visibleTransports.find(transport->GetGUID());
+         if (player->IsInPhase(transport))
+         {
