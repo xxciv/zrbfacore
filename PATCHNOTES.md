@@ -25,6 +25,18 @@ Draft, not merged. New core patch `tools/bfa/dire-maul-west.patch` (after
   as they are (neutral Shen'dralar in this database).
 - **Status:** compiles; not tested in game yet.
 
+### Dire Maul: Magister Kalendris reset to full when fought solo
+
+- **Found** (Four, 2026-11-12): Kalendris could not be killed: his Dominate Mind broke combat and he
+  went back to full health.
+- **Cause:** his SmartAI cast Dominate Mind 7645 at a random player (`target_type` 5). Solo, that is
+  the only player he is fighting; once Four was charmed he had nobody left to attack, so he evaded
+  and healed to full. The dump has two copies of the cast (rows 3 and 12, two script versions mixed).
+- **Changed:** `sql/fixes/world/2026_11_12_02_dire_maul_kalendris_dominate.sql` sets both rows to
+  `target_type` 6 (a random player other than his current target). In a group he still dominates
+  someone; solo the cast is skipped. No other creature in Dire Maul casts a charm.
+- **Status:** not tested in game yet.
+
 ### Dire Maul: stray Mana Bursts and west wing movement
 
 - **Found** (before Four's first run): six Mana Burst 14397 spawns (guids 324130-324135) stood on top
