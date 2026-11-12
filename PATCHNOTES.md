@@ -69,7 +69,8 @@ to do to pick it up (rebuild, restart, run SQL).
   max power of that type is 0. Players, pets, player-driven vehicles and NPCs that do have the
   power are unchanged. Side effect: NPCs that never used those spells here now do, as on retail,
   so some fights (including dungeons already tested) can be harder.
-- **Status:** not tested in game. `Spell.cpp` compiles with the full patch chain.
+- **Status:** confirmed in game by Four on 2026-11-12: `.cast back 59881` (20 focus) now lands on a
+  Ghostclaw Lynx, alongside its scripted Rake 24332.
 - **Pick up:** apply the patch, rebuild, restart worldserver.
 
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
