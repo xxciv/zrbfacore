@@ -25,8 +25,8 @@ to do to pick it up (rebuild, restart, run SQL).
   - Left alone: 347 dungeon spawns (dungeon thread's area), 28 NPCs with a core script, 11 whose
     SmartAI moves them, 18 with no usable TDB path, spawns already in a formation or moving, and a
     Broom whose path starts 97 yards from our spawn.
-- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB with
-  all upstream `sql/updates/world` and our `sql/fixes/world` applied.
+- **Status:** Orgrimmar Grunts walking their circuits confirmed in game by Four on 2026-11-12. The
+  other patrols get checked as Four meets them.
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
 
 ## 2026-11-12 (World fixes: SmartAI for scriptless NPCs from TDB 7.3.5, NPC spell costs)
