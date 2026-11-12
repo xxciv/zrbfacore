@@ -212,7 +212,7 @@ Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
   `DELETE FROM instance_scenario_progress WHERE id NOT IN (SELECT id FROM instance)` with the other
   startup cleanups. It affects every dungeon with a scenario, not only Scholomance. The leftover rows
   in your database go away at the first start with the patch.
-- **Status:** compiles; not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-12 (fresh run opens with all five bosses at 0/1).
 
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
 
