@@ -164,7 +164,20 @@ Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
   instance summons Alexei at Gandling's spot (20.15, 57.74, 73.88) as soon as Gandling dies, and again
   when a player enters an instance where Gandling is already dead (only one at a time). The skull just
   leaves.
-- **Status:** not tested in game yet. Compiles; SQL checked on the test DB.
+- **Status:** level fix confirmed (Gandling now fights). Alexei part replaced by the entry below.
+
+### Scholomance: Alexei could not be talked to
+
+- **Found** (Four, 2026-11-11): Alexei appeared where Gandling died but could not be clicked, and the
+  quest map showed the turn-in at the top of the stairs, where the Talking Skull stops.
+- **Cause:** there are two copies of each quest. The Talking Skull in the dungeon (64562) gives The Four
+  Tomes 31440 and An End to the Suffering 31447, which end at Spirit of Lord Alexei Barov **64660**.
+  The script summoned **64683**, which only ends 31442/31448 (from Talking Skull 64563, which is not
+  spawned), so it had nothing to say to Four. The quest POI for 31447 puts the turn-in at (51, 59) on
+  map 1007, the skull's last stop at the top of the stairs.
+- **Changed:** `tools/bfa/scholomance.patch` (`scholomance.h`, `instance_scholomance.cpp`):
+  `NPC_ALEXEI_BAROV` = 64660, summoned at (53.56, 59.90, 87.22), facing 2.87.
+- **Status:** not tested in game yet. Compiles.
 
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
 

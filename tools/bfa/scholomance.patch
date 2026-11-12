@@ -3985,10 +3985,10 @@ index 59bc53d..0000000
 -    new boss_vectus();
 -}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp b/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp
-index 187eca5..b0808d9 100644
+index 187eca5..21eea02 100644
 --- a/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/instance_scholomance.cpp
-@@ -1,158 +1,239 @@
+@@ -1,158 +1,240 @@
 +/*
 + * 2026 BFA-HavenCore
 + *
@@ -4216,7 +4216,8 @@ index 187eca5..b0808d9 100644
 +                SummonAlexei();
 +        }
 +
-+        // Spirit of Lord Alexei Barov 64683 (ends An End to the Suffering and The Four Tomes)
++        // Spirit of Lord Alexei Barov 64660: ends An End to the Suffering 31447 and The Four Tomes 31440,
++        // the versions the Talking Skull 64562 gives (64683 only ends 31442/31448 from the unspawned skull 64563)
 +        void SummonAlexei()
          {
 -        case GO_GATE_KIRTONOS:
@@ -4743,7 +4744,7 @@ index 0000000..1c5022a
 +    RegisterCreatureAI(npc_talking_skull);
 +}
 diff --git a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
-index 4d46bc7..839db1e 100644
+index 4d46bc7..81ed4da 100644
 --- a/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
 +++ b/src/server/scripts/EasternKingdoms/Scholomance/scholomance.h
 @@ -1,6 +1,8 @@
@@ -4833,7 +4834,7 @@ index 4d46bc7..839db1e 100644
 +Position const GandlingTeleportPos      = { 220.98f, 68.88f, 109.64f, 2.25f };
 +Position const GandlingLilianDoorPoint  = { 261.03f, 132.80f, 113.49f, 1.59f };
 +Position const LilianDeathPoint         = { 201.25f, 84.80f, 107.76f, 5.68f };
-+Position const AlexeiPos                = { 20.15f, 57.74f, 73.88f, 0.0f }; // where Gandling stood
++Position const AlexeiPos                = { 53.56f, 59.90f, 87.22f, 2.87f }; // top of the stairs, where the skull waits (quest 31447 turn-in point)
 +
 +enum ScholomanceDataTypes
 +{
@@ -4930,7 +4931,7 @@ index 4d46bc7..839db1e 100644
 +    NPC_EXPIRED_TEST_SUBJECT            = 59100,
 +    NPC_GANDLING_ROOM_STALKER           = 59167,
 +    NPC_GANDLING_FIRE_STALKER           = 30298,
-+    NPC_ALEXEI_BAROV                    = 64683,
++    NPC_ALEXEI_BAROV                    = 64660, // ends the Talking Skull's quests 31440 and 31447
 +};
 +
 +enum ScholomanceActions
