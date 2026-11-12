@@ -3,6 +3,41 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (Dire Maul: Capital Gardens)
+
+Draft, not merged. New core patch `tools/bfa/dire-maul-west.patch` (after
+`instance-scenario-cleanup.patch`, build needed) and `sql/fixes/world/2026_11_12_01_dire_maul_west.sql`.
+
+### Dire Maul: shield generators did nothing, Immol'thar's force field was open
+
+- **Found** (before Four's first run): `instance_dire_maul` was an empty placeholder and nothing
+  scripted the five Crystal Generators (177259, 177257, 177258, 179504, 179505). The force field
+  around Immol'thar (179503) was spawned open, so Immol'thar could be pulled straight away, and the
+  scenario objective "Shield Generators deactivated" (scenario 668, criteria 25064, event 8200,
+  needs 5) could never move.
+- **Changed:** `tools/bfa/dire-maul-west.patch` (`src/server/scripts/Kalimdor/DireMaul/`, new
+  `dire_maul.h`): the instance keeps the generators running and the force field up. Each generator
+  belongs to the Arcane Aberrations 11480 and Mana Remnants 11483 spawned within 40 yards of it
+  (2 or 3 guards each). When its last guard dies, the generator shuts down and sends scenario event
+  8200. When all five are down, the force field opens and Immol'thar becomes attackable (he is
+  unattackable until then). Progress is saved with the instance, so a server restart keeps it. Same
+  design as AzerothCore's `instance_dire_maul`; the Highborne Summoners around Immol'thar are left
+  as they are (neutral Shen'dralar in this database).
+- **Status:** compiles; not tested in game yet.
+
+### Dire Maul: stray Mana Bursts and west wing movement
+
+- **Found** (before Four's first run): six Mana Burst 14397 spawns (guids 324130-324135) stood on top
+  of Residual Monstrosities. A Monstrosity summons Mana Bursts when it dies (22939); the static copies
+  are sniff leftovers, in neither the Pandaria 5.4.8 nor the AzerothCore database. Only 2 of the
+  west wing's 268 spawns moved.
+- **Changed:** `sql/fixes/world/2026_11_12_01_dire_maul_west.sql` deletes the six Mana Bursts, gives
+  15 spawns their Pandaria 5.4.8 patrol (same guids, paths 429001001-429001015: 4 Ironbark
+  Protectors, 3 Residual Monstrosities, 3 Eldreth Spectres, 2 Eldreth Spirits, 2 Highborne
+  Summoners, 1 Petrified Treant) and makes 7 spawns wander within 5 yards (AzerothCore, matched by
+  entry and position).
+- **Status:** SQL runs twice cleanly on a test copy of the world database; not tested in game yet.
+
 ## 2026-11-12 (World fixes: patrols from TDB 7.3.5)
 
 Merged to `main` with PR #60 on 2026-11-12.

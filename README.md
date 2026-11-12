@@ -106,6 +106,10 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   Gandling) and the Talking Skull, ported from the Pandaria 5.4.8 project in place of the classic
   Scholomance scripts. Needs `sql/fixes/world/2026_11_11_03_scholomance_rework.sql`, and `cmake build`
   once before building (it adds and removes source files).
+- [`tools/bfa/dire-maul-west.patch`](tools/bfa/dire-maul-west.patch): Dire Maul, Capital Gardens
+  (west wing): the five shield generators shut down when their Arcane Aberrations and Mana Remnants
+  are dead, each counts for the scenario, and the force field around Immol'thar drops once all five
+  are down.
 - [`tools/bfa/instance-scenario-cleanup.patch`](tools/bfa/instance-scenario-cleanup.patch): dungeon
   scenario progress from an old run no longer shows up in a new one. At startup the core deletes old
   dungeon instances but kept their scenario progress, and reused their instance ids.
