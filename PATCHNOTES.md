@@ -3,6 +3,37 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: Stormwind Wizard's Sanctum, Boralus ship)
+
+### World: the Wizard's Sanctum portal did nothing, so the Stormwind portal room was unreachable
+
+- **Found** (Four, 2026-11-12): the portal at the top of the Mage Quarter tower goes nowhere, and the
+  Wizard's Sanctum can't be entered.
+- **Cause:** the client's area triggers 4733 (top of the tower, -9016 876 148.6) and 4734 (basement,
+  -9019 888 29.6) have no `areatrigger_teleport` rows. The portals inside all work (their spells have
+  destinations).
+- **Changed:** `sql/fixes/world/2026_11_12_35_stormwind_wizards_sanctum.sql`:
+  - `areatrigger_teleport` 4733 -> world_safe_locs 7264 "Stormwind - Portal Room - Wizard's Sanctum
+    Dest" (-9004.44 870.63 64.86, where the mage Teleport: Stormwind also lands), 4734 -> 3630
+    "Stormwind - Mage Exit Target" (-9013.2 870.63 148.62, beside the top portal).
+  - Deleted doubled portal room spawns in the default phase: Maginor Dumas 331, Enchanted Broom 103033
+    and Tushui Magister 147741 (guids 3400000000001970-1972), and Portal to Paw'don Village 323844
+    (guid 3300000000298) standing inside Portal to Pandaria 315457 (same spell 130703).
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
+### World: The Relentless (Stormwind - Boralus ship) clipped through The Bravery at the pier
+
+- **Found** (Four, 2026-11-12): the Boralus ship overlaps The Bravery in Stormwind Harbor and has no crew.
+- **Cause:** both ships stop at the exact same pier in the client's path data (TaxiPath 967 and 7222,
+  both at -8651 1346), and their loops have different lengths, so no fixed schedule keeps them apart.
+  No crew data exists for it (TDB 7.3.5 predates BFA).
+- **Changed:** `sql/fixes/world/2026_11_12_36_retire_stormwind_boralus_ship.sql` deletes transport
+  294556 (The Relentless, map 2074) from `transports`. Travel goes through the Wizard's Sanctum Portal
+  to Boralus 302854 and Boralus' Portal to Stormwind 293552.
+- **Status:** Four's call (2026-11-12): retire the ship once the Wizard's Sanctum works. Not tested.
+- **Pick up:** run the SQL on `bfa_world` after the Wizard's Sanctum fix works, then restart worldserver.
+
 ## 2026-11-12 (World fixes: Orgrimmar wind riders and docks)
 
 ### World: Orgrimmar Wind Riders hung still in the air, Vashj'ir ship crew stood in the water at the docks
