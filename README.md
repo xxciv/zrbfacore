@@ -106,6 +106,9 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   Gandling) and the Talking Skull, ported from the Pandaria 5.4.8 project in place of the classic
   Scholomance scripts. Needs `sql/fixes/world/2026_11_11_03_scholomance_rework.sql`, and `cmake build`
   once before building (it adds and removes source files).
+- [`tools/bfa/instance-scenario-cleanup.patch`](tools/bfa/instance-scenario-cleanup.patch): dungeon
+  scenario progress from an old run no longer shows up in a new one. At startup the core deletes old
+  dungeon instances but kept their scenario progress, and reused their instance ids.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.

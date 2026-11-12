@@ -1,0 +1,14 @@
+diff --git a/src/server/game/Instances/InstanceSaveMgr.cpp b/src/server/game/Instances/InstanceSaveMgr.cpp
+index b76da1a..8748876 100644
+--- a/src/server/game/Instances/InstanceSaveMgr.cpp
++++ b/src/server/game/Instances/InstanceSaveMgr.cpp
+@@ -293,6 +293,9 @@ void InstanceSaveManager::LoadInstances()
+     // Delete invalid references to instance
+     CharacterDatabase.DirectExecute("DELETE FROM creature_respawn WHERE instanceId > 0 AND instanceId NOT IN (SELECT id FROM instance)");
+     CharacterDatabase.DirectExecute("DELETE FROM gameobject_respawn WHERE instanceId > 0 AND instanceId NOT IN (SELECT id FROM instance)");
++    // zrbfacore: scenario progress is keyed by instance id and instance ids are reused, so stale rows
++    // would show up as finished objectives in the next instance that gets the same id
++    CharacterDatabase.DirectExecute("DELETE FROM instance_scenario_progress WHERE id NOT IN (SELECT id FROM instance)");
+     CharacterDatabase.DirectExecute("DELETE tmp.* FROM character_instance AS tmp LEFT JOIN instance ON tmp.instance = instance.id WHERE tmp.instance > 0 AND instance.id IS NULL");
+     CharacterDatabase.DirectExecute("DELETE tmp.* FROM group_instance     AS tmp LEFT JOIN instance ON tmp.instance = instance.id WHERE tmp.instance > 0 AND instance.id IS NULL");
+ 

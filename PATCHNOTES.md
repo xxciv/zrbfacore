@@ -7,7 +7,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
 `spell-teleport-combat.patch`, build needed, `cmake build` first) and
-`sql/fixes/world/2026_11_11_03_scholomance_rework.sql`.
+`sql/fixes/world/2026_11_11_03_scholomance_rework.sql`. Also `tools/bfa/instance-scenario-cleanup.patch` (after `scholomance.patch`).
 
 ### Scholomance: Mists of Pandaria boss scripts and story
 
@@ -190,6 +190,29 @@ Draft, not merged. New core patch `tools/bfa/scholomance.patch` (applied after
   says "Leave me...to die...alone...please..." (creature_text 59200 group 5, broadcast 58528, sound
   29467), then dies 4 seconds later (`boss_lilian_voss.cpp`, new `EVENT_LAST_WORDS`).
 - **Status:** confirmed in game by Four on 2026-11-11.
+
+### Scholomance: graveyard
+
+- **Status:** confirmed in game by Four on 2026-11-12 (dying inside sends you to the Scholomance
+  graveyard).
+
+### Core: old scenario progress showed up in a new dungeon run
+
+- **Found** (Four, 2026-11-12): every new Scholomance run opened with Chillheart, Jandice, Rattlegore
+  and Gandling already at 1/1 in the scenario tracker (only Lilian at 0/1), after killing only
+  Chillheart. Earlier the Chillheart counter had climbed from 2 to 3 across runs.
+- **Cause:** the core saves boss kills (criteria types KILL_CREATURE and COMPLETE_DUNGEON_ENCOUNTER)
+  in `instance_scenario_progress` in the characters database, keyed by instance id. At startup,
+  `InstanceSaveManager::LoadInstances` deletes old rows from `instance` (expired or no longer bound to
+  anyone, which is every normal 5-man you left) and then hands their ids out again, lowest first. It
+  never deleted those instances' `instance_scenario_progress` rows, so the next dungeon that got the
+  same id loaded the old kills. Lilian is a scenario event, not a kill, so she was never saved.
+- **Changed:** new core patch `tools/bfa/instance-scenario-cleanup.patch` (after `scholomance.patch`)
+  in `src/server/game/Instances/InstanceSaveMgr.cpp`: `LoadInstances` now also runs
+  `DELETE FROM instance_scenario_progress WHERE id NOT IN (SELECT id FROM instance)` with the other
+  startup cleanups. It affects every dungeon with a scenario, not only Scholomance. The leftover rows
+  in your database go away at the first start with the patch.
+- **Status:** compiles; not tested in game yet.
 
 ## 2026-11-11 (World fixes: stacked NPCs in Stormwind Harbor and Bloodhoof Village)
 
