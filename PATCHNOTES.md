@@ -3,6 +3,42 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-12 (World fixes: transport crews from TDB 7.3.5)
+
+### World: boats, zeppelins, turtles and the Icecrown gunships sailed with no crew
+
+- **Found** (Four, 2026-11-12): the transports between zones and landmasses run with nobody on deck.
+  Ships parked in harbors (Stormwind Harbor etc.) are normal spawns and were already fine.
+- **Cause:** a transport loads its crew from `creature` rows on its own map (the map in
+  `gameobject_template` `Data6`, positions relative to the ship). Our DB has no creature on any of
+  those maps. The dump instead has copies of some crews in world coordinates, sniffed while a ship
+  passed, so they hang in the air over Tirisfal, Stranglethorn, the Barrens and Icecrown or stand on
+  the water at the docks.
+- **Changed:** `sql/fixes/world/2026_11_12_33_tdb735_transport_crews.sql`:
+  - 291 crew from TDB 7.3.5, guids 735200001-735200291: The Lady Mehley 584 (11), Elune's Blessing
+    586 (6), The Bravery 588 (10), The Iron Eagle 589 (11), The Purple Princess 590 (11), The
+    Thundercaller 591 (21), The Maiden's Fancy 593 (8), Sister Mercy 594 (24), The Cloudkisser 610
+    (7), Northspear 612 (6), The Mighty Wind 613 (7), The Kraken 614 (6), Walker of Waves 620 (2),
+    Green Island 621 (1), Orgrim's Hammer 622 (71), The Skybreaker 623 (77), Orgrimmar - Thunder
+    Bluff zeppelin 647 (12). TDB's phase 169 is our default phase 0. The 9 Lady Mehley crew that
+    walk the deck in TDB stand still here (no deck paths), 11 `creature_addon` rows keep their
+    sitting/working poses.
+  - Left out: the Feathermoon Ferry 587 (its gameobject is not a moving transport any more) and the
+    Krazzworks Attack Zeppelin 765 (quest phase 361). Cataclysm and BFA transports (Vashj'ir ships,
+    Spear of Durotar, Deepholm gunship, Krazzworks - Dragonmaw zeppelins, Kul Tiran and Zandalari
+    ships) have no crew in TDB either, so they stay empty.
+  - Deleted the 124 world-coordinate copies of crew that TDB has only on transports (Sky-Captain
+    Cloudkicker, Sky-Captain "Dusty" Blastnut, the Northspear crew at Menethil and Valgarde, the
+    Purple Princess crew over Grom'gol, the Icecrown gunship cannons, controllers and Brother Keltan,
+    the Sister Mercy sea dogs, ...), with their 2 `creature_addon` rows, 1 formation row and 5
+    `spawn_group` rows.
+  - TDB's SmartAI (11 rows) for Captain "Stash" Torgoley 24833, First Mate Kowalski 24835 and Sailor
+    Henders 24838 on The Lady Mehley (their texts were already here). No other crew member has a
+    TDB script.
+- **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
+- **Pick up:** run the SQL on `bfa_world`, then restart worldserver. Crews appear on a ship when it
+  loads, so wait for the next departure or arrival.
+
 ## 2026-11-12 (World fixes: missing rares from TDB 7.3.5)
 
 ### World: 13 rare beasts in Silithus and Tirisfal Glades never spawned
