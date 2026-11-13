@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-13 (Quest fixes: flight master stops responding after accepting his quest)
 
-Draft PR, not merged yet.
+Merged to `main` with PR #68 on 2026-11-13.
 
 ### Core: Tak can't be talked to after accepting Ride to Thunder Bluff
 
