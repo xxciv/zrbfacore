@@ -45,6 +45,19 @@ Draft, not merged. Branch `claude/project-thread-g6xhsv`.
   Compiles against upstream with the patch chain; SQL tested twice on the local database.
 - **Status:** not tested in game yet.
 
+### Uldaman: Obsidian Shards stand still
+
+- **Found** (Four, in game): the Obsidian Shards 7209 the Obsidian Sentinel 7023 splits off (Summon
+  Obsidian Shard 10061 at 80/60/40/20% health) stand where they appear and never attack. They do die
+  with the Sentinel.
+- **Cause:** spell 10061 summons with SummonProperties 61 (Control 1 = ally, Title 2 = guardian), so
+  the shard is a guardian of the Sentinel. A guardian does not pick targets from line of sight, and
+  its SmartAI (only Obsidian Reflection 9941 on aggro) never starts combat.
+- **Changed:** new `sql/fixes/world/2026_11_13_02_uldaman_obsidian_shards.sql`: `smart_scripts`
+  7209 ids 9 and 10, event 54 (just summoned): action 38 (set in combat with zone) on self, and
+  action 49 (attack start) on target 21 (closest player, 40 yards). No core change.
+- **Status:** not tested in game yet.
+
 ### Uldaman: stacked trogg packs
 
 - **Found** (Four, screenshot): a dozen troggs and scorpids standing on top of each other in the
@@ -58,7 +71,7 @@ Draft, not merged. Branch `claude/project-thread-g6xhsv`.
   320803, 320967 (Pillager), 320804, 320966 (Oracle), 321070, 321072 (Ambusher), 320828, 320829
   (Venomlash Scorpid), 320861, 321001 (Brawler). Kept: 320968, 321010, 321012, 320832 and Brawlers
   320860, 320863, 320864. No core change.
-- **Status:** not tested in game yet.
+- **Status:** in game (Four, 2026-11-13): Revelosh, the Keystone, the Seal of Khaz'Mul and Ironaya work and count; Obsidian Sentinel counts. Stone Keepers, Archaedas and the other bonus bosses not tested yet.
 
 #### To pick it up
 ```
@@ -76,7 +89,11 @@ The last line prints `12 patrols, 51 wanderers, Archaedas unit_flags 32832`.
 ```
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_01_uldaman_overspawns.sql | mysql -u root -p bfa_world
 ```
-The last line prints `283 Uldaman spawns, 4 left in the first-hall pack`. Then restart `worldserver`.
+The last line prints `283 Uldaman spawns, 4 left in the first-hall pack`.
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_02_uldaman_obsidian_shards.sql | mysql -u root -p bfa_world
+```
+The last line prints `3 Obsidian Shard SmartAI rows`. Then restart `worldserver`.
 
 ## 2026-11-13 (pet battles)
 
