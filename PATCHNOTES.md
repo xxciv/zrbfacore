@@ -51,7 +51,7 @@ Draft, not merged. Branch `claude/project-thread-g6xhsv`.
     radius, max 5 yards). Bosses, the Stone Keepers, Archaedas' room and the dig teams are left alone.
 - **Files:** `tools/bfa/uldaman.patch` (new), `sql/fixes/world/2026_11_13_00_uldaman.sql` (new).
   Compiles against upstream with the patch chain; SQL tested twice on the local database.
-- **Status:** in game (Four, 2026-11-13): Revelosh, the Keystone, the Seal of Khaz'Mul and Ironaya work and count; Obsidian Sentinel counts. Stone Keepers, Archaedas and the other bonus bosses not tested yet.
+- **Status:** confirmed in game by Four (2026-11-13): Revelosh, Keystone, Seal of Khaz'Mul and Ironaya; the four Stone Keepers wake one by one, attack and open the doors; Archaedas wakes, fights with his minions and counts; scenario step 1175 and all four bonus objectives complete (state 3).
 
 ### Uldaman: Obsidian Shards stand still
 
