@@ -26,6 +26,45 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_50_display_compa
 The last line prints `76 display companion templates unattackable (Lil' Tarecgosa: yes)`. Then restart
 `worldserver`.
 
+## 2026-11-12 (Quest fixes: stuck window after accepting from a gossip menu)
+
+Merged to `main` with PR #63 on 2026-11-13.
+
+### Core: quest window stays open after accepting a quest from a gossip NPC
+
+- **Found** (Four, 2026-11-12): Shen'dralar Ancient (14358, guid 323496, Dire Maul map 429,
+  `npcflag` 3 = gossip + quest giver, gossip menu 5729) offers The Madness Within (27110), The
+  Treasure of the Shen'dralar (27111) and The Shen'dralar Ancient (27113). Accepting any of them
+  leaves the window open, the same as Ahmo's list before `quest-list-accept.patch`.
+- **Cause:** an NPC with the gossip flag lists its quests inside its gossip menu
+  (`PlayerMenu::SendGossipMenu`, `SMSG_GOSSIP_MESSAGE`), not in a quest list
+  (`SMSG_QUEST_GIVER_QUEST_LIST_MESSAGE`). `quest-list-accept.patch` only remembered quest lists,
+  and `SendGossipMenu` cleared that memory, so after Accept the core still sent only the plain close
+  (`SMSG_GOSSIP_COMPLETE`), which the client ignores when it came from a menu.
+- **Changed:** new `tools/bfa/quest-gossip-accept.patch` (after `quest-list-accept.patch`),
+  `GossipDef.h`, `GossipDef.cpp`, `QuestHandler.cpp`:
+  - `PlayerMenu::SendGossipMenu`: a gossip menu that lists quests now also sets `_questListGiver`,
+    with the new `_questListIsGossip` = true. `SendQuestGiverQuestListMessage` sets it to false.
+  - `HandleQuestgiverAcceptQuestOpcode`: after accepting from that gossip menu, send the gossip menu
+    again the way talking to the NPC does: the creature's core gossip script if it has one
+    (`ScriptMgr::OnGossipHello`), otherwise its DB menu with quests
+    (`PrepareGossipMenu(..., GetDefaultGossipMenuForSource, true)` + `SendPreparedGossip`).
+    Only when that menu is empty does it close as before.
+  - Quest lists (`quest-list-accept.patch`) work as before. No DB change. Compiles against upstream
+    2c13546 with the full chain.
+- **Status:** confirmed in game by Four on 2026-11-12 (Shen'dralar Ancient: Accept returns to its gossip menu, Goodbye closes it).
+- **Pick up:** this only adds one patch. It touches `GossipDef.h`, so the build is longer:
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-gossip-accept.patch | git apply && echo "quest gossip accept applied"
+  grep -c "_questListIsGossip" src/server/game/Entities/Creature/GossipDef.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The echo line prints and the grep prints 3. Then restart worldserver.
+
 ## 2026-11-12 (World fixes: Vashj'ir ship Eastern Kingdoms stop leftovers)
 
 Merged to main via PR #61 (2026-11-12).
