@@ -828,6 +828,7 @@ capturable species as wild battle pets:
 
 ```sh
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_07_51_battle_pets_only_capturable_are_wild.sql
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_13_50_display_companions_unattackable.sql
 ```
 #### Legion and BFA pet tamers
 
