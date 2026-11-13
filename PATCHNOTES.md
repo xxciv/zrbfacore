@@ -89,7 +89,9 @@ The last line prints `Mastiff 33280, Slip'kik 33360, Spirit 768, 67 Warpwood Pod
     Slip'kik 14323, Kromcrush 14325 and Cho'Rush 14324 were killed (`DATA_GORDOK_GUARDS_DEAD`, saved
     after the generator state; older saves load with none killed), and gives the summoned tribute loot
     mode 1 plus one extra mode per guard still alive.
-- **Status:** compiles; not tested in game yet.
+- **Status:** confirmed in game by Four (2026-11-13): King Gordok killed first, Cho'Rush yielded, Mizzle
+  walked in; the first talk gave the King of the Gordok buff, the second the tribute, which held the
+  extra loot for every guard left alive. Looted once only.
 
 ### Dire Maul, Gordok Commons: Knot Thimblejack offered The Gordok Ogre Suit twice
 
