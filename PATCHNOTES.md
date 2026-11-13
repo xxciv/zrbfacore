@@ -45,6 +45,21 @@ Draft, not merged. Branch `claude/project-thread-g6xhsv`.
   Compiles against upstream with the patch chain; SQL tested twice on the local database.
 - **Status:** not tested in game yet.
 
+### Uldaman: stacked trogg packs
+
+- **Found** (Four, screenshot): a dozen troggs and scorpids standing on top of each other in the
+  first hall.
+- **Cause:** sniff stack in the dump (the Pandaria 5.4.8 database has the same 12). Around
+  (-274, 140, -47.4): 4 Stonevault Pillagers 24830, 3 Stonevault Oracles 4852, 2 Stonevault Ambushers
+  7175, 3 Venomlash Scorpids 7022 within 6 yards; AzerothCore has 2 troggs there. Also 5 Stonevault
+  Brawlers 4855 at (50, 332, -43), 1-2 in AzerothCore. A scan of all 293 spawns for packs of 4+
+  found no other stacks beyond what AzerothCore also has (scorpid nests, Archaedas' room).
+- **Changed:** new `sql/fixes/world/2026_11_13_01_uldaman_overspawns.sql` deletes creature guids
+  320803, 320967 (Pillager), 320804, 320966 (Oracle), 321070, 321072 (Ambusher), 320828, 320829
+  (Venomlash Scorpid), 320861, 321001 (Brawler). Kept: 320968, 321010, 321012, 320832 and Brawlers
+  320860, 320863, 320864. No core change.
+- **Status:** not tested in game yet.
+
 #### To pick it up
 ```
 cd ~/bfa/source
@@ -57,7 +72,11 @@ The `grep` prints `3`.
 ```
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_00_uldaman.sql | mysql -u root -p bfa_world
 ```
-The last line prints `12 patrols, 51 wanderers, Archaedas unit_flags 32832`. Then restart `worldserver`.
+The last line prints `12 patrols, 51 wanderers, Archaedas unit_flags 32832`.
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_01_uldaman_overspawns.sql | mysql -u root -p bfa_world
+```
+The last line prints `283 Uldaman spawns, 4 left in the first-hall pack`. Then restart `worldserver`.
 
 ## 2026-11-13 (pet battles)
 
