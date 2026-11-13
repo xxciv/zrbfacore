@@ -20,6 +20,11 @@ Draft, not merged. Branch `claude/project-thread-g6xhsv`.
     script, hostile and attackable (512). Pandaria has them immune (768), AzerothCore pacified.
   - Warpwood Pods (whole map): 262 pods on 67 spots, four stacked on each (variants 179526, 179528,
     179532, 179533). Only 179528 can be looted; AzerothCore pools one pod per spot.
+  - Guard Fengus 14321 (guid 323249) stood still in a hallway at (356, 342, 2.9), away from his
+    chest room; Four could not find him (2026-11-13). That spot is point 16 of his AzerothCore patrol
+    (guid 248079, path 2480790, 29 points through the chest room at (380, 260)).
+  - Fengus's Chest 179516 is empty (loot id 0). In AzerothCore it held only the Gordok Courtyard Key
+    18266, and the courtyard door already spawns open here, so it is left alone.
   - Overspawn check: no stacked creature packs in the north wing (largest is 6 Gordok Mastiffs in a
     kennel where AzerothCore has 7 spread out). Only 49 of 262 spawns moved.
   - Checked and left alone: boss SmartAI, encounters 362-368 (King Gordok gives the Dungeon Finder
@@ -28,8 +33,8 @@ Draft, not merged. Branch `claude/project-thread-g6xhsv`.
     gossip and the static Gordok Tribute chest beside King Gordok.
 - **Changed:** new `sql/fixes/world/2026_11_13_03_dire_maul_north.sql`: `creature_template.unit_flags`
   13036 33544 -> 33280, 14323 295504 -> 33360, 11446 512 -> 768; 195 empty Warpwood Pods deleted (one
-  179528 kept per spot, with their `gameobject_addon` rows); 5 Pandaria 5.4.8 paths on the same guids
-  (429002001-429002005: three Mastiffs, a Mage-Lord, a Brute) and AzerothCore wander radius for 50
+  179528 kept per spot, with their `gameobject_addon` rows); Guard Fengus walks his AzerothCore patrol and 5 Pandaria 5.4.8 paths on the
+  same guids (429002001-429002006: Fengus, three Mastiffs, a Mage-Lord, a Brute) and AzerothCore wander radius for 50
   Carrion Swarmers. No core change.
 - **Status:** not tested in game yet.
 
