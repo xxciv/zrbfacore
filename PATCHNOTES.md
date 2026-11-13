@@ -36,7 +36,7 @@ Draft, not merged. Branch `claude/project-thread-g6xhsv`.
   179528 kept per spot, with their `gameobject_addon` rows); Guard Fengus walks his AzerothCore patrol and 5 Pandaria 5.4.8 paths on the
   same guids (429002001-429002006: Fengus, three Mastiffs, a Mage-Lord, a Brute) and AzerothCore wander radius for 50
   Carrion Swarmers. No core change.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four (2026-11-13): Mol'dar, Fengus (on his patrol), Slip'kik (fights back), Kromcrush and King Gordok all count, plus the Kreeg and Cho'Rush bonuses; hounds, spirits, pods and patrols looked right.
 
 #### To pick it up
 ```
@@ -63,7 +63,7 @@ The last line prints `Mastiff 33280, Slip'kik 33360, Spirit 768, 67 Warpwood Pod
   `quest_template_addon.SpecialFlags |= 1` (repeatable) and the quest's turn-in text from Pandaria
   5.4.8 in `quest_offer_reward`. A frozen Slip'kik cannot be killed, so his scenario kill does not
   count in a run where you freeze him.
-- **Status:** not tested in game yet.
+- **Status:** not tested in game yet (Four did a kill-everything run and skipped the trap).
 
 ### Dire Maul, Gordok Commons: Knot Thimblejack offered The Gordok Ogre Suit twice
 
@@ -89,7 +89,7 @@ The last line prints `Mastiff 33280, Slip'kik 33360, Spirit 768, 67 Warpwood Pod
   health when it is first tracked and scales it by setting max health before
   `UpdateMaxHealth()`. Adds summoned by a boss use the boss's multiplier
   (`DungeonScale.Summons.InheritBossScaling`), so the Reavers get MiniBoss health (x0.35 solo).
-- **Status:** compiles; not tested in game yet.
+- **Status:** confirmed in game by Four (2026-11-13): the Reavers are scaled; Kromcrush's fight is hard but doable solo.
 
 ## 2026-11-13 (Uldaman)
 
