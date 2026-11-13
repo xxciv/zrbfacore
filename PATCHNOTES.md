@@ -3,6 +3,45 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-13 (Dire Maul, Gordok Commons)
+
+Draft, not merged. Branch `claude/project-thread-g6xhsv`.
+
+### Dire Maul, Gordok Commons: hounds, Slip'kik, spirits, stacked pods, movement
+
+- **Found** (survey before testing, north wing of map 429; scenario 668 needs Guard Mol'dar 14326,
+  Guard Fengus 14321, Guard Slip'kik 14323, Captain Kromcrush 14325 and King Gordok 11501; bonus
+  Stomper Kreeg 14322 and Cho'Rush 14324):
+  - Gordok Mastiff 13036 (53 spawns): `unit_flags` 33544 (0x8308) has `IMMUNE_TO_PC` 0x100 and
+    `PLAYER_CONTROLLED` 0x8, so the hounds could not be attacked. Pandaria 5.4.8 has 33280.
+  - Guard Slip'kik 14323: `unit_flags` 295504 has `UNIT_FLAG_STUNNED` 0x40000 (sniffed while frozen
+    in the Fixed Trap), so he never fought back. AzerothCore has 0.
+  - Gordok Spirit 11446: 13 ghosts on the ledges around King Gordok's arena with only an emote
+    script, hostile and attackable (512). Pandaria has them immune (768), AzerothCore pacified.
+  - Warpwood Pods (whole map): 262 pods on 67 spots, four stacked on each (variants 179526, 179528,
+    179532, 179533). Only 179528 can be looted; AzerothCore pools one pod per spot.
+  - Overspawn check: no stacked creature packs in the north wing (largest is 6 Gordok Mastiffs in a
+    kennel where AzerothCore has 7 spread out). Only 49 of 262 spawns moved.
+  - Checked and left alone: boss SmartAI, encounters 362-368 (King Gordok gives the Dungeon Finder
+    credit), quest 27124 Unfinished Gordok Business (a talk quest from Kromcrush to Mol'dar, it needs
+    no objective row), the doors (courtyard and inner doors spawn open), Mizzle the Crafty's tribute
+    gossip and the static Gordok Tribute chest beside King Gordok.
+- **Changed:** new `sql/fixes/world/2026_11_13_03_dire_maul_north.sql`: `creature_template.unit_flags`
+  13036 33544 -> 33280, 14323 295504 -> 33360, 11446 512 -> 768; 195 empty Warpwood Pods deleted (one
+  179528 kept per spot, with their `gameobject_addon` rows); 5 Pandaria 5.4.8 paths on the same guids
+  (429002001-429002005: three Mastiffs, a Mage-Lord, a Brute) and AzerothCore wander radius for 50
+  Carrion Swarmers. No core change.
+- **Status:** not tested in game yet.
+
+#### To pick it up
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_03_dire_maul_north.sql | mysql -u root -p bfa_world
+```
+The last line prints `Mastiff 33280, Slip'kik 33360, Spirit 768, 67 Warpwood Pods`. Then restart
+`worldserver`.
+
 ## 2026-11-13 (Uldaman)
 
 Merged to `main` with PR #65 on 2026-11-13.
