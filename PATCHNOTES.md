@@ -3,6 +3,44 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-13 (World fixes: Love is in the Air boats and perfume out of season)
+
+Draft, not merged. Branch `claude/project-thread-tt7jn2`.
+
+### World: love boats sailed the Darnassus canals and guards wore perfume in November
+
+- **Found** (Four, 2026-11-13, video): love boats piled up in the Darnassus canals after loading in,
+  sorted themselves out along the loop, then stacked up again; they could not be boarded. NPCs in
+  Stormwind had "Heavily Perfumed". Love is in the Air (game_event 8) was not running: its dates follow
+  the February holiday (2026_11_05_00). These pieces were simply never tied to the event.
+- **Cause:**
+  - Our dump has 22 Darnassus Love Boats 37980 and 17 Undercity Love Boats 37966 sniffed mid-canal.
+    On retail and in TrinityCore TDB 7.3.5 only the two [DND] Love Boat Summoners (37981 Darnassus,
+    37964 Undercity) are spawned, during the event, and summon a boat every 20 seconds that sails its
+    path from the summoner and despawns at the end. `2026_11_12_30` brought in the boats' TDB script
+    (start the path 5 seconds after spawning), so every static boat crossed the canal to the path's
+    first point, sailed the loop, despawned, and came back at its old spot 5 minutes later. The
+    Darnassus boats and both summoners were not in any game event.
+  - The boats had three click spells: Ride Vehicle Hardcoded 46598 and Ride Vehicle 69342 (two ride
+    spells on one click) plus Love Boat 69341, the boat's own aura. TDB has only 69342.
+  - Stormwind City Guards 68, Royal Guards 1756, City Patrollers 1976, Melris Malagan 12480, Orgrimmar
+    Grunts 3296 and Darkspear Headhunters 74228 have a dump script with a 25% chance to cast Heavily
+    Perfumed 71507 on themselves whenever they reset, with no event condition. One Love Guard Perfume
+    Bunny 38288 in Orgrimmar (guid 301908) also pulsed perfume on nearby guards all year (the other
+    ten are in the event).
+- **Changed** (`sql/fixes/world/2026_11_13_30_love_boats_and_guard_perfume.sql`):
+  - The 39 static love boats are deleted (with their game event rows).
+  - Summoners 357540 (Darnassus) and 357491 (Undercity) are in game_event 8 and stand still on the
+    first path point (`MovementType` 0, `spawndist` 0, as in TDB).
+  - Click spells 46598 and 69341 are removed from both boats, so a click only casts Ride Vehicle 69342.
+  - Conditions (type 22, `CONDITION_ACTIVE_EVENT` 8) on the Heavily Perfumed script row of the six
+    guard entries and the per-guid copy on Orgrimmar Grunt 266181.
+  - Love Guard Perfume Bunny 301908 is in game_event 8.
+- **Status:** untested. Outside the event there should be no boats in Darnassus or Undercity and no
+  new perfume on guards (guards already wearing it keep it until a restart). Boarding can only be tested
+  with `.event start 8`; whether the single click spell fixes it is a guess.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-13 (Dire Maul, Gordok Commons)
 
 Draft, not merged. Branch `claude/project-thread-g6xhsv`.
