@@ -13,6 +13,9 @@
 --      22856 on himself (stun, no duration), turns passive and gets unit_flags 768 (immune to players
 --      and NPCs), so the group can walk past him. A frozen Slip'kik cannot be killed.
 --   4. Quest 27118 repeatable (SpecialFlags |= 1) and given its turn-in text (copied from Pandaria 5.4.8).
+--      QuestType 0 (auto-complete) -> 2: the core sends a repeatable auto-complete quest straight to the
+--      reward window without accepting it, and the client greys out Complete Quest there (Four, 2026-11-13).
+--      As a normal quest with no objectives it is accepted, completes at once and is turned in at the trap.
 
 -- 1.
 DELETE FROM `gameobject` WHERE `guid` = 189237 AND `id` = 179512;
@@ -38,6 +41,7 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 -- 4.
 UPDATE `quest_template_addon` SET `SpecialFlags` = `SpecialFlags` | 1 WHERE `ID` = 27118;
+UPDATE `quest_template` SET `QuestType` = 2 WHERE `ID` = 27118;
 DELETE FROM `quest_offer_reward` WHERE `ID` = 27118;
 INSERT INTO `quest_offer_reward` (`ID`, `RewardText`, `VerifiedBuild`) VALUES
 (27118, 'A large, broken trap lies before you.  From the looks of it, the ogres have tried to repair the trap but to no avail.$B$BA hastily written note lies next to the trap, and strangely enough it details exactly how to repair it: just a few simple adjustments ought to do it.  Were the trap repaired, an ogre passing near it might get trapped, and could be avoided.$B$BClearly, it would seem fortuitous that very few ogres know how to read.$B$BClearly.', 0);
@@ -45,4 +49,5 @@ INSERT INTO `quest_offer_reward` (`ID`, `RewardText`, `VerifiedBuild`) VALUES
 SELECT CONCAT('Trap rows ', (SELECT COUNT(*) FROM `smart_scripts` WHERE `entryorguid` = 179485 AND `source_type` = 1),
               ', Slip''kik trap rows ', (SELECT COUNT(*) FROM `smart_scripts` WHERE `entryorguid` = 14323 AND `id` BETWEEN 10 AND 14),
               ', static Fixed Traps ', (SELECT COUNT(*) FROM `gameobject` WHERE `id` = 179512),
-              ', quest repeatable ', (SELECT `SpecialFlags` & 1 FROM `quest_template_addon` WHERE `ID` = 27118)) AS `check`;
+              ', quest repeatable ', (SELECT `SpecialFlags` & 1 FROM `quest_template_addon` WHERE `ID` = 27118),
+              ', quest type ', (SELECT `QuestType` FROM `quest_template` WHERE `ID` = 27118)) AS `check`;

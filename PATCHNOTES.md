@@ -61,7 +61,10 @@ The last line prints `Mastiff 33280, Slip'kik 33360, Spirit 768, 67 Warpwood Pod
   Trap at (558.8, 550.1, -25.4), set data 1 1 on Slip'kik); Slip'kik SmartAI ids 10-14 (on data 1 1
   walk to the trap; on arrival cast Ice Lock 22856 on himself, `unit_flags` 768, react passive);
   `quest_template_addon.SpecialFlags |= 1` (repeatable) and the quest's turn-in text from Pandaria
-  5.4.8 in `quest_offer_reward`. A frozen Slip'kik cannot be killed, so his scenario kill does not
+  5.4.8 in `quest_offer_reward`; `quest_template.QuestType` 0 -> 2 (a repeatable auto-complete quest
+  opens straight on the reward window without being accepted, and the client greyed out Complete
+  Quest there; as a normal quest with no objectives it is accepted, completes at once and is turned
+  in at the trap). A frozen Slip'kik cannot be killed, so his scenario kill does not
   count in a run where you freeze him.
 - **Status:** not tested in game yet (Four did a kill-everything run and skipped the trap).
 
