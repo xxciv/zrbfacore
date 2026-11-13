@@ -1,5 +1,5 @@
 diff --git a/src/server/scripts/EasternKingdoms/Uldaman/boss_archaedas.cpp b/src/server/scripts/EasternKingdoms/Uldaman/boss_archaedas.cpp
-index 556d025..4dab954 100644
+index 556d025..b33b80c 100644
 --- a/src/server/scripts/EasternKingdoms/Uldaman/boss_archaedas.cpp
 +++ b/src/server/scripts/EasternKingdoms/Uldaman/boss_archaedas.cpp
 @@ -98,7 +98,7 @@ class boss_archaedas : public CreatureScript
@@ -11,8 +11,36 @@ index 556d025..4dab954 100644
                  me->SetFaction(35);
                  me->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
                  me->SetControlled(true, UNIT_STATE_ROOT);
+@@ -153,7 +153,14 @@ class boss_archaedas : public CreatureScript
+                 } else if (bWakingUp && iAwakenTimer <= 0)
+                 {
+                     bWakingUp = false;
++                    // Turn hostile before attacking: combat cannot start while still faction 35 (friendly),
++                    // so JustEngagedWith never ran and Archaedas stayed friendly and unselectable.
++                    me->SetFaction(14);
++                    me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
++                    me->SetControlled(false, UNIT_STATE_ROOT);
+                     AttackStart(ObjectAccessor::GetUnit(*me, instance->GetGuidData(0)));
++                    if (!me->IsEngaged())
++                        DoZoneInCombat();
+                     return;     // dont want to continue until we finish the AttackStart method
+                 }
+ 
+@@ -306,7 +313,12 @@ class npc_archaedas_minions : public CreatureScript
+                 {
+                     bWakingUp = false;
+                     bAmIAwake = true;
++                    me->SetFaction(14);
++                    me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
++                    me->SetControlled(false, UNIT_STATE_ROOT);
+                     AttackStart(ObjectAccessor::GetUnit(*me, instance->GetGuidData(0))); // whoWokeArchaedasGUID
++                    if (!me->IsEngaged())
++                        DoZoneInCombat();
+                     return;     // dont want to continue until we finish the AttackStart method
+                 }
+ 
 diff --git a/src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp b/src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp
-index 905585b..e7caa66 100644
+index 905585b..9744e97 100644
 --- a/src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp
 +++ b/src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp
 @@ -34,6 +34,8 @@ EndScriptData */
@@ -101,7 +129,19 @@ index 905585b..e7caa66 100644
  
              GuidVector stoneKeepers;
              GuidVector altarOfTheKeeperCounts;
-@@ -275,6 +333,7 @@ class instance_uldaman : public InstanceMapScript
+@@ -190,6 +248,11 @@ class instance_uldaman : public InstanceMapScript
+                         target->SetFaction(14);
+                         target->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+                         target->RemoveAura(SPELL_MINION_FREEZE_ANIM);
++                        // npc_stonekeepers has no wake-up code of its own: start the fight with the players
++                        for (Map::PlayerList::const_iterator itr = instance->GetPlayers().begin(); itr != instance->GetPlayers().end(); ++itr)
++                            if (Player* player = itr->GetSource())
++                                if (player->IsAlive() && !player->IsGameMaster())
++                                    target->EngageWithTarget(player);
+ 
+                         return;        // only want the first one we find
+                     }
+@@ -275,6 +338,7 @@ class instance_uldaman : public InstanceMapScript
                  ironaya->SetFaction(415);
                  ironaya->SetControlled(false, UNIT_STATE_ROOT);
                  ironaya->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
@@ -109,7 +149,7 @@ index 905585b..e7caa66 100644
  
                  ironaya->GetMotionMaster()->Clear();
                  ironaya->GetMotionMaster()->MovePoint(0, IronayaPoint);
-@@ -479,6 +538,22 @@ class instance_uldaman : public InstanceMapScript
+@@ -479,6 +543,22 @@ class instance_uldaman : public InstanceMapScript
                          archaedasGUID = creature->GetGUID();
                          break;
  
@@ -132,7 +172,7 @@ index 905585b..e7caa66 100644
                  }
              }
  
-@@ -492,14 +567,18 @@ class instance_uldaman : public InstanceMapScript
+@@ -492,14 +572,18 @@ class instance_uldaman : public InstanceMapScript
                      case 2:
                      case 3:
                      case 4:

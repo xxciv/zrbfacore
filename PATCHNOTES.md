@@ -37,6 +37,14 @@ Draft, not merged. Branch `claude/project-thread-g6xhsv`.
       crash the server if a Vault Warder or Earthen Guardian was missing.
     - `boss_archaedas.cpp` `Reset`: `instance->SetData(0, 5)` -> `SetData(DATA_MINIONS, NOT_STARTED)`.
       Data 0 is not a valid type, so dead minions never came back when Archaedas reset.
+    - `boss_archaedas.cpp` (Archaedas and `npc_archaedas_minions`): at the end of the awaken animation
+      they now set faction 14, drop `NOT_SELECTABLE` and unroot before `AttackStart` (fallback
+      `DoZoneInCombat`). Before, they attacked while still faction 35; `CombatManager::CanBeginCombat`
+      refuses combat between friendly units, so `JustEngagedWith` (which made them hostile) never ran
+      and Archaedas woke, yelled and stayed unselectable (Four, 2026-11-13).
+    - `instance_uldaman.cpp` `ActivateStoneKeepers`: the woken keeper also engages the players in the
+      instance (`EngageWithTarget`, GMs skipped). Before, it turned faction 14 but never started a fight
+      and Four could not attack it (2026-11-13).
   - Movement in the same SQL: 12 patrols (3 Pandaria 5.4.8 paths on the same guids, 9 AzerothCore
     paths matched by entry and nearest path point; paths 70000001-70000012: Stone Stewards, Stonevault
     Brawlers and Ambushers, Shrike Bats, Ancient Stone Keeper) and 51 wanderers (AzerothCore wander
@@ -79,9 +87,10 @@ cd ~/bfa/source
 git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
 git -C ../tools-repo show FETCH_HEAD:tools/bfa/uldaman.patch | git apply
 grep -c IsAllianceDigTeam src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp
+grep -c EngageWithTarget src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
-The `grep` prints `3`.
+The two `grep` lines print `3` and `1`.
 ```
 git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_00_uldaman.sql | mysql -u root -p bfa_world
 ```
