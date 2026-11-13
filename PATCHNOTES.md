@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-13 (Uldaman)
 
-Draft, not merged. Branch `claude/project-thread-g6xhsv`.
+Merged to `main` with PR #65 on 2026-11-13.
 
 ### Uldaman: Stone Keepers, Archaedas and his minions, Ironaya, dig teams, movement
 
@@ -79,7 +79,7 @@ Draft, not merged. Branch `claude/project-thread-g6xhsv`.
   320803, 320967 (Pillager), 320804, 320966 (Oracle), 321070, 321072 (Ambusher), 320828, 320829
   (Venomlash Scorpid), 320861, 321001 (Brawler). Kept: 320968, 321010, 321012, 320832 and Brawlers
   320860, 320863, 320864. No core change.
-- **Status:** not tested in game yet.
+- **Status:** applied with the run Four confirmed on 2026-11-13.
 
 #### To pick it up
 ```
