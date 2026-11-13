@@ -137,6 +137,7 @@ git apply ../tools-repo/tools/bfa/npc-spell-power-cost.patch
 git apply ../tools-repo/tools/bfa/scholomance.patch
 git apply ../tools-repo/tools/bfa/instance-scenario-cleanup.patch
 git apply ../tools-repo/tools/bfa/transport-phase-visibility.patch
+git apply ../tools-repo/tools/bfa/dire-maul-west.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -833,6 +834,7 @@ capturable species as wild battle pets:
 
 ```sh
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_07_51_battle_pets_only_capturable_are_wild.sql
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_13_50_display_companions_unattackable.sql
 ```
 #### Legion and BFA pet tamers
 
@@ -911,6 +913,7 @@ git apply ../tools-repo/tools/bfa/npc-spell-power-cost.patch
 git apply ../tools-repo/tools/bfa/scholomance.patch
 git apply ../tools-repo/tools/bfa/instance-scenario-cleanup.patch
 git apply ../tools-repo/tools/bfa/transport-phase-visibility.patch
+git apply ../tools-repo/tools/bfa/dire-maul-west.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -1000,6 +1003,8 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_12_00_scholomance_early_entrance_trigger.sql` | Scholomance: old entrance trigger 6339 removed, so you only enter at the portal down the stairs |
 | `2026_11_11_30_stormwind_harbor_ship_double_spawns.sql` | Stormwind Harbor: the 7th Legion warship crew (riflemen, marines, Arator, Grand Admiral Jes-Tereth) stands once instead of twice (verified in game 2026-11-11) |
 | `2026_11_11_31_bloodhoof_shaman_trainers_stacked.sql` | Bloodhoof Village: only Narm Skychaser stands at the shaman trainer spot (Tarl Cloudsong stacked on him is removed) (verified in game 2026-11-11) |
+| `2026_11_12_01_dire_maul_west.sql` | Dire Maul, Capital Gardens: six stray Mana Burst spawns removed; 15 patrols and 7 wanderers (needs `dire-maul-west.patch` for the shield generators) |
+| `2026_11_12_02_dire_maul_kalendris_dominate.sql` | Dire Maul, Capital Gardens: Magister Kalendris dominates only a second player, so he no longer resets when fought solo |
 | `2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` | 854 old-world NPCs that only meleed get their SmartAI scripts from TDB 7.3.5 (casts, gossip and quest events); Ghostclaw Lynx Rake verified in game 2026-11-12 |
 | `2026_11_12_31_tdb735_patrols.sql` | 733 open-world NPCs that stood still walk their TDB 7.3.5 patrol paths, 8 followers in formation (Orgrimmar Grunts verified in game 2026-11-12) |
 | `2026_11_12_32_tdb735_missing_rares.sql` | 13 rare beasts from TDB 7.3.5 spawned (7 in Silithus, 6 in Tirisfal Glades), hostile at their TDB levels |

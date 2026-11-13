@@ -3,9 +3,32 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-13 (pet battles)
+
+### Pet battles: display companions like Lil' Tarecgosa can be attacked
+
+- **Found** (Four, screenshot): Lil' Tarecgosa 54027 in Stormwind can be attacked.
+- **Cause:** 2026_11_07_51 made display pets of non-capturable species unattackable only when their
+  template is type 14 (wild pet). 76 spawned templates of those species are type 12 (non-combat pet),
+  165 spawns in the world DB. They were never battle pets, but with faction 188 and no immunity they
+  could always be attacked.
+- **Changed:** new `sql/fixes/world/2026_11_13_50_display_companions_unattackable.sql` sets
+  `unit_flags | 0x300` (immune to players and NPCs) on those type 12 templates. Needs 2026_11_07_51
+  first. No core change.
+- **Status:** confirmed in game by Four (2026-11-13): Lil' Tarecgosa in Stormwind can no longer be attacked. Four's database printed 75 templates (76 in the raw dumps).
+
+#### To pick it up
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_50_display_companions_unattackable.sql | mysql -u root -p bfa_world
+```
+The last line prints `76 display companion templates unattackable (Lil' Tarecgosa: yes)`. Then restart
+`worldserver`.
+
 ## 2026-11-12 (Quest fixes: stuck window after accepting from a gossip menu)
 
-Draft PR, not merged yet.
+Merged to `main` with PR #63 on 2026-11-13.
 
 ### Core: quest window stays open after accepting a quest from a gossip NPC
 
@@ -401,6 +424,56 @@ Merged to main via PR #61 (2026-11-12).
     checked like the scripts batch. Acroniss, Qem and Toxx already had scripts here.
 - **Status:** not tested in game. The SQL runs cleanly, twice in a row, on a copy of our world DB.
 - **Pick up:** run the SQL on `bfa_world`, then restart worldserver.
+
+## 2026-11-12 (Dire Maul: Capital Gardens)
+
+Merged to `main` with PR #62 on 2026-11-12. New core patch `tools/bfa/dire-maul-west.patch`
+(after `transport-phase-visibility.patch`, build needed) and `sql/fixes/world/2026_11_12_01_dire_maul_west.sql`, `2026_11_12_02_dire_maul_kalendris_dominate.sql`.
+Called complete by Four on 2026-11-12.
+
+### Dire Maul: shield generators did nothing, Immol'thar's force field was open
+
+- **Found** (before Four's first run): `instance_dire_maul` was an empty placeholder and nothing
+  scripted the five Crystal Generators (177259, 177257, 177258, 179504, 179505). The force field
+  around Immol'thar (179503) was spawned open, so Immol'thar could be pulled straight away, and the
+  scenario objective "Shield Generators deactivated" (scenario 668, criteria 25064, event 8200,
+  needs 5) could never move.
+- **Changed:** `tools/bfa/dire-maul-west.patch` (`src/server/scripts/Kalimdor/DireMaul/`, new
+  `dire_maul.h`): the instance keeps the generators running and the force field up. Each generator
+  belongs to the Arcane Aberrations 11480 and Mana Remnants 11483 spawned within 40 yards of it
+  (2 or 3 guards each). When its last guard dies, the generator shuts down and sends scenario event
+  8200. When all five are down, the force field opens and Immol'thar becomes attackable (he is
+  unattackable until then). Progress is saved with the instance, so a server restart keeps it. Same
+  design as AzerothCore's `instance_dire_maul`; the Highborne Summoners around Immol'thar are left
+  as they are (neutral Shen'dralar in this database).
+- **Status:** confirmed in game by Four on 2026-11-12: all five generators shut down and each counted
+  in the scenario tracker (5/5), the force field dropped and Immol'thar was killed. All west wing
+  bosses, Prince Tortheldrin included, showed 1/1.
+
+### Dire Maul: Magister Kalendris reset to full when fought solo
+
+- **Found** (Four, 2026-11-12): Kalendris could not be killed: his Dominate Mind broke combat and he
+  went back to full health.
+- **Cause:** his SmartAI cast Dominate Mind 7645 at a random player (`target_type` 5). Solo, that is
+  the only player he is fighting; once Four was charmed he had nobody left to attack, so he evaded
+  and healed to full. The dump has two copies of the cast (rows 3 and 12, two script versions mixed).
+- **Changed:** `sql/fixes/world/2026_11_12_02_dire_maul_kalendris_dominate.sql` sets both rows to
+  `target_type` 6 (a random player other than his current target). In a group he still dominates
+  someone; solo the cast is skipped. No other creature in Dire Maul casts a charm.
+- **Status:** confirmed in game by Four on 2026-11-12 (Kalendris killed solo, 1/1 in the tracker).
+
+### Dire Maul: stray Mana Bursts and west wing movement
+
+- **Found** (before Four's first run): six Mana Burst 14397 spawns (guids 324130-324135) stood on top
+  of Residual Monstrosities. A Monstrosity summons Mana Bursts when it dies (22939); the static copies
+  are sniff leftovers, in neither the Pandaria 5.4.8 nor the AzerothCore database. Only 2 of the
+  west wing's 268 spawns moved.
+- **Changed:** `sql/fixes/world/2026_11_12_01_dire_maul_west.sql` deletes the six Mana Bursts, gives
+  15 spawns their Pandaria 5.4.8 patrol (same guids, paths 429001001-429001015: 4 Ironbark
+  Protectors, 3 Residual Monstrosities, 3 Eldreth Spectres, 2 Eldreth Spirits, 2 Highborne
+  Summoners, 1 Petrified Treant) and makes 7 spawns wander within 5 yards (AzerothCore, matched by
+  entry and position).
+- **Status:** SQL runs twice cleanly on a test copy of the world database; not tested in game yet.
 
 ## 2026-11-12 (World fixes: patrols from TDB 7.3.5)
 

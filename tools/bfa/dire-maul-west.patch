@@ -1,0 +1,257 @@
+diff --git a/src/server/scripts/Kalimdor/DireMaul/dire_maul.h b/src/server/scripts/Kalimdor/DireMaul/dire_maul.h
+new file mode 100644
+index 0000000..2fb528d
+--- /dev/null
++++ b/src/server/scripts/Kalimdor/DireMaul/dire_maul.h
+@@ -0,0 +1,54 @@
++/*
++ * 2026 BFA-HavenCore
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef DEF_DIRE_MAUL_H
++#define DEF_DIRE_MAUL_H
++
++#define DataHeader "DM"
++
++uint8 const EncounterCount = 17;
++uint8 const ShieldGeneratorCount = 5;
++
++enum DMDataTypes
++{
++    DATA_SHIELD_GENERATORS      = 0     // bitmask of the generators that are off
++};
++
++enum DMCreatureIds
++{
++    NPC_ARCANE_ABERRATION       = 11480,
++    NPC_MANA_REMNANT            = 11483,
++    NPC_IMMOLTHAR               = 11496
++};
++
++enum DMGameObjectIds
++{
++    GO_CRYSTAL_GENERATOR_1      = 177259,
++    GO_CRYSTAL_GENERATOR_2      = 177257,
++    GO_CRYSTAL_GENERATOR_3      = 177258,
++    GO_CRYSTAL_GENERATOR_4      = 179504,
++    GO_CRYSTAL_GENERATOR_5      = 179505,
++    GO_FORCE_FIELD              = 179503
++};
++
++enum DMScenarioEvents
++{
++    // scenario 668, criteria 25064 "Shield Generators deactivated" (5 times)
++    EVENT_SHIELD_GENERATOR_OFF  = 8200
++};
++
++#endif
+diff --git a/src/server/scripts/Kalimdor/DireMaul/instance_dire_maul.cpp b/src/server/scripts/Kalimdor/DireMaul/instance_dire_maul.cpp
+index e20ba1a..cee2c3b 100644
+--- a/src/server/scripts/Kalimdor/DireMaul/instance_dire_maul.cpp
++++ b/src/server/scripts/Kalimdor/DireMaul/instance_dire_maul.cpp
+@@ -16,16 +16,21 @@
+  */
+ 
+ /*
+-This placeholder for the instance is needed for dungeon finding to be able
+-to give credit after the boss defined in lastEncounterDungeon is killed.
+-Without it, the party doing random dungeon won't get satchel of spoils and
+-gets instead the deserter debuff.
++Dungeon finder credit comes from instance_encounters (lastEncounterDungeon).
++The instance script handles the west wing (Capital Gardens) shield generators:
++each of the five Crystal Generators is guarded by Arcane Aberrations and Mana
++Remnants. When the last guard of a generator dies, the generator shuts down
++and counts for the scenario. With all five down, the force field around
++Immol'thar drops.
+ */
+ 
+-//Missing scripts and bosses
+-
+ #include "ScriptMgr.h"
++#include "Creature.h"
++#include "GameObject.h"
+ #include "InstanceScript.h"
++#include "Map.h"
++#include "dire_maul.h"
++#include <list>
+ 
+ // Bosses (East)
+ // 0 - Pusillin
+@@ -50,7 +55,40 @@ gets instead the deserter debuff.
+ // 15 - Captain Kromcrush
+ // 16 - King Gordok
+ 
+-uint8 const EncounterCount = 17;
++namespace
++{
++    uint32 const GeneratorEntries[ShieldGeneratorCount] =
++    {
++        GO_CRYSTAL_GENERATOR_1, GO_CRYSTAL_GENERATOR_2, GO_CRYSTAL_GENERATOR_3, GO_CRYSTAL_GENERATOR_4, GO_CRYSTAL_GENERATOR_5
++    };
++
++    // Generator spawn points; a guard belongs to the generator nearest to its home position
++    Position const GeneratorPos[ShieldGeneratorCount] =
++    {
++        {  12.9413f, 277.931f,  -8.9329f },
++        { -92.3456f, 442.670f,  28.5470f },
++        { 121.2220f, 429.092f,  28.4548f },
++        {  78.1387f, 737.402f, -24.6216f },
++        { -155.433f, 734.166f, -24.6216f }
++    };
++
++    float const GuardRange = 40.0f;      // guards stand within 17 yards of their generator; generators are 160+ yards apart
++    uint32 const AllGeneratorsOff = (1 << ShieldGeneratorCount) - 1;
++
++    bool IsGeneratorGuard(uint32 entry)
++    {
++        return entry == NPC_ARCANE_ABERRATION || entry == NPC_MANA_REMNANT;
++    }
++
++    int8 GetGeneratorIndexForGuard(Creature const* creature)
++    {
++        Position const& home = creature->GetHomePosition();
++        for (uint8 i = 0; i < ShieldGeneratorCount; ++i)
++            if (home.GetExactDist2d(&GeneratorPos[i]) <= GuardRange)
++                return int8(i);
++        return -1;
++    }
++}
+ 
+ class instance_dire_maul : public InstanceMapScript
+ {
+@@ -61,15 +99,121 @@ public:
+     {
+         instance_dire_maul_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
+         {
++            SetHeaders(DataHeader);
+             SetBossNumber(EncounterCount);
++            _generatorsOff = 0;
++        }
++
++        void OnCreatureCreate(Creature* creature) override
++        {
++            InstanceScript::OnCreatureCreate(creature);
++
++            if (creature->GetEntry() == NPC_IMMOLTHAR)
++            {
++                _immoltharGUID = creature->GetGUID();
++                if (_generatorsOff == AllGeneratorsOff)
++                    creature->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
++                else
++                    creature->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
++            }
++        }
++
++        void OnGameObjectCreate(GameObject* go) override
++        {
++            InstanceScript::OnGameObjectCreate(go);
++
++            if (go->GetEntry() == GO_FORCE_FIELD)
++            {
++                _forceFieldGUID = go->GetGUID();
++                go->SetGoState(_generatorsOff == AllGeneratorsOff ? GO_STATE_ACTIVE : GO_STATE_READY);
++                return;
++            }
++
++            for (uint8 i = 0; i < ShieldGeneratorCount; ++i)
++            {
++                if (go->GetEntry() != GeneratorEntries[i])
++                    continue;
++
++                _generatorGUIDs[i] = go->GetGUID();
++                // READY = running (beam to the force field), ACTIVE = shut down
++                go->SetGoState((_generatorsOff & (1 << i)) ? GO_STATE_ACTIVE : GO_STATE_READY);
++                return;
++            }
+         }
++
++        void OnUnitDeath(Unit* unit) override
++        {
++            Creature* creature = unit->ToCreature();
++            if (!creature || !IsGeneratorGuard(creature->GetEntry()))
++                return;
++
++            int8 index = GetGeneratorIndexForGuard(creature);
++            if (index < 0 || (_generatorsOff & (1 << index)))
++                return;
++
++            // Any guard of this generator still alive?
++            for (uint32 entry : { uint32(NPC_ARCANE_ABERRATION), uint32(NPC_MANA_REMNANT) })
++            {
++                std::list<Creature*> guards;
++                creature->GetCreatureListWithEntryInGrid(guards, entry, 250.0f);
++                for (Creature* guard : guards)
++                    if (guard != creature && guard->IsAlive() && GetGeneratorIndexForGuard(guard) == index)
++                        return;
++            }
++
++            ShutDownGenerator(uint8(index));
++        }
++
++        void ShutDownGenerator(uint8 index)
++        {
++            _generatorsOff |= (1 << index);
++
++            if (GameObject* generator = instance->GetGameObject(_generatorGUIDs[index]))
++                generator->SetGoState(GO_STATE_ACTIVE);
++
++            DoSendEventScenario(EVENT_SHIELD_GENERATOR_OFF);
++
++            if (_generatorsOff == AllGeneratorsOff)
++            {
++                if (GameObject* forceField = instance->GetGameObject(_forceFieldGUID))
++                    forceField->SetGoState(GO_STATE_ACTIVE);
++
++                if (Creature* immolthar = instance->GetCreature(_immoltharGUID))
++                    immolthar->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
++            }
++
++            SaveToDB();
++        }
++
++        uint32 GetData(uint32 type) const override
++        {
++            if (type == DATA_SHIELD_GENERATORS)
++                return _generatorsOff;
++            return 0;
++        }
++
++        void ReadSaveDataMore(std::istringstream& data) override
++        {
++            data >> _generatorsOff;
++            _generatorsOff &= AllGeneratorsOff;
++        }
++
++        void WriteSaveDataMore(std::ostringstream& data) override
++        {
++            data << _generatorsOff;
++        }
++
++    private:
++        uint32 _generatorsOff;
++        ObjectGuid _generatorGUIDs[ShieldGeneratorCount];
++        ObjectGuid _forceFieldGUID;
++        ObjectGuid _immoltharGUID;
+     };
+ 
+     InstanceScript* GetInstanceScript(InstanceMap* map) const override
+     {
+         return new instance_dire_maul_InstanceMapScript(map);
+     }
+-
+ };
+ 
+ void AddSC_instance_dire_maul()
