@@ -91,7 +91,7 @@ The last line prints `Mastiff 33280, Slip'kik 33360, Spirit 768, 67 Warpwood Pod
     mode 1 plus one extra mode per guard still alive.
 - **Status:** confirmed in game by Four (2026-11-13): King Gordok killed first, Cho'Rush yielded, Mizzle
   walked in; the first talk gave the King of the Gordok buff, the second the tribute, which held the
-  extra loot for every guard left alive. Looted once only.
+  extra loot for every guard left alive.
 
 ### Dire Maul, Gordok Commons: Knot Thimblejack offered The Gordok Ogre Suit twice
 
