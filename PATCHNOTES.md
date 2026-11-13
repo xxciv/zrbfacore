@@ -65,6 +65,18 @@ The last line prints `Mastiff 33280, Slip'kik 33360, Spirit 768, 67 Warpwood Pod
   count in a run where you freeze him.
 - **Status:** not tested in game yet.
 
+### Dire Maul, Gordok Commons: Knot Thimblejack offered The Gordok Ogre Suit twice
+
+- **Found** (Four, 2026-11-13): Knot Thimblejack 14338 lists The Gordok Ogre Suit twice.
+- **Cause:** 27119 is the first-time quest (story text, XP) and 27120 the repeat version (no text, no
+  XP). Both ask for one Ogre Tannin 18240 and give the Gordok Ogre Suit 18258, but nothing tied 27120
+  to 27119 and 27120 was not repeatable.
+- **Changed:** new `sql/fixes/world/2026_11_13_05_dire_maul_ogre_suit_quests.sql`:
+  `quest_template_addon` 27120 `PrevQuestID` 0 -> 27119 and `SpecialFlags |= 1` (repeatable), like
+  the classic pair 5518/5519; `quest_offer_reward` texts for 27119 and 27120 and the
+  `quest_request_items` text for 27119, copied from Pandaria 5.4.8 (all three were missing).
+- **Status:** not tested in game yet.
+
 ### DungeonScale: adds a boss summons as guardians were never scaled
 
 - **Found** (Four, 2026-11-13): Captain Kromcrush 14325 calls two elite Gordok Reavers with over 12k

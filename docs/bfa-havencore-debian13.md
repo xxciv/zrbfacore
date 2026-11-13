@@ -1014,6 +1014,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_13_02_uldaman_obsidian_shards.sql` | Uldaman: the Obsidian Shards the Obsidian Sentinel splits off attack instead of standing still |
 | `2026_11_13_03_dire_maul_north.sql` | Dire Maul, Gordok Commons: Gordok Mastiffs attackable, Guard Slip'kik no longer permanently stunned, Gordok Spirits around King Gordok's arena stay out of the fight, Guard Fengus patrols past his chest; stacked Warpwood Pods (whole map) cut to one per spot; 6 patrols and 50 wanderers |
 | `2026_11_13_04_dire_maul_slipkik_trap.sql` | Dire Maul, Gordok Commons: repairing the Broken Trap (quest A Broken Trap, now repeatable) makes Guard Slip'kik walk into the Fixed Trap and freeze, so you can walk past him |
+| `2026_11_13_05_dire_maul_ogre_suit_quests.sql` | Dire Maul, Gordok Commons: Knot Thimblejack offers the repeatable The Gordok Ogre Suit only after the first one is done, instead of both at once |
 | `2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` | 854 old-world NPCs that only meleed get their SmartAI scripts from TDB 7.3.5 (casts, gossip and quest events); Ghostclaw Lynx Rake verified in game 2026-11-12 |
 | `2026_11_12_31_tdb735_patrols.sql` | 733 open-world NPCs that stood still walk their TDB 7.3.5 patrol paths, 8 followers in formation (Orgrimmar Grunts verified in game 2026-11-12) |
 | `2026_11_12_32_tdb735_missing_rares.sql` | 13 rare beasts from TDB 7.3.5 spawned (7 in Silithus, 6 in Tirisfal Glades), hostile at their TDB levels |
