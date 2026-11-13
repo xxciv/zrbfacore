@@ -30,7 +30,7 @@ Draft PR, not merged yet.
   (`SendCloseGossip`, `SMSG_GOSSIP_COMPLETE`), which ends the hidden conversation. The menu is still
   sent first because it is what takes the client off the quest details page. No DB change. Compiles
   against upstream 2c13546 with the full chain.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four on 2026-11-13 (Tak opens the flight map right after Accept).
 - **Pick up:** the patch itself changed, so the old version comes out first (`QuestHandler.cpp`
   only, short build):
 
