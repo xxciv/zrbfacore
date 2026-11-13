@@ -3,6 +3,125 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-13 (Dire Maul, Gordok Commons)
+
+Draft, not merged. Branch `claude/project-thread-g6xhsv`.
+
+### Dire Maul, Gordok Commons: hounds, Slip'kik, spirits, stacked pods, movement
+
+- **Found** (survey before testing, north wing of map 429; scenario 668 needs Guard Mol'dar 14326,
+  Guard Fengus 14321, Guard Slip'kik 14323, Captain Kromcrush 14325 and King Gordok 11501; bonus
+  Stomper Kreeg 14322 and Cho'Rush 14324):
+  - Gordok Mastiff 13036 (53 spawns): `unit_flags` 33544 (0x8308) has `IMMUNE_TO_PC` 0x100 and
+    `PLAYER_CONTROLLED` 0x8, so the hounds could not be attacked. Pandaria 5.4.8 has 33280.
+  - Guard Slip'kik 14323: `unit_flags` 295504 has `UNIT_FLAG_STUNNED` 0x40000 (sniffed while frozen
+    in the Fixed Trap), so he never fought back. AzerothCore has 0.
+  - Gordok Spirit 11446: 13 ghosts on the ledges around King Gordok's arena with only an emote
+    script, hostile and attackable (512). Pandaria has them immune (768), AzerothCore pacified.
+  - Warpwood Pods (whole map): 262 pods on 67 spots, four stacked on each (variants 179526, 179528,
+    179532, 179533). Only 179528 can be looted; AzerothCore pools one pod per spot.
+  - Guard Fengus 14321 (guid 323249) stood still in a hallway at (356, 342, 2.9), away from his
+    chest room; Four could not find him (2026-11-13). That spot is point 16 of his AzerothCore patrol
+    (guid 248079, path 2480790, 29 points through the chest room at (380, 260)).
+  - Fengus's Chest 179516 is empty (loot id 0). In AzerothCore it held only the Gordok Courtyard Key
+    18266, and the courtyard door already spawns open here, so it is left alone.
+  - Overspawn check: no stacked creature packs in the north wing (largest is 6 Gordok Mastiffs in a
+    kennel where AzerothCore has 7 spread out). Only 49 of 262 spawns moved.
+  - Checked and left alone: boss SmartAI, encounters 362-368 (King Gordok gives the Dungeon Finder
+    credit), quest 27124 Unfinished Gordok Business (a talk quest from Kromcrush to Mol'dar, it needs
+    no objective row), the doors (courtyard and inner doors spawn open), Mizzle the Crafty's tribute
+    gossip and the static Gordok Tribute chest beside King Gordok.
+- **Changed:** new `sql/fixes/world/2026_11_13_03_dire_maul_north.sql`: `creature_template.unit_flags`
+  13036 33544 -> 33280, 14323 295504 -> 33360, 11446 512 -> 768; 195 empty Warpwood Pods deleted (one
+  179528 kept per spot, with their `gameobject_addon` rows); Guard Fengus walks his AzerothCore patrol and 5 Pandaria 5.4.8 paths on the
+  same guids (429002001-429002006: Fengus, three Mastiffs, a Mage-Lord, a Brute) and AzerothCore wander radius for 50
+  Carrion Swarmers. No core change.
+- **Status:** confirmed in game by Four (2026-11-13): Mol'dar, Fengus (on his patrol), Slip'kik (fights back), Kromcrush and King Gordok all count, plus the Kreeg and Cho'Rush bonuses; hounds, spirits, pods and patrols looked right.
+
+#### To pick it up
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_03_dire_maul_north.sql | mysql -u root -p bfa_world
+```
+The last line prints `Mastiff 33280, Slip'kik 33360, Spirit 768, 67 Warpwood Pods`. Then restart
+`worldserver`.
+
+### Dire Maul, Gordok Commons: Knot Thimblejack's ice trap catches Guard Slip'kik
+
+- **Found** (Four, 2026-11-13): turning in A Broken Trap 27118 at the Broken Trap 179485 did
+  nothing, although Knot Thimblejack says the repaired trap freezes the guard.
+- **Cause:** nothing scripts the event in the BFA dump. The Broken Trap has no SmartAI rows, Slip'kik
+  has none for it, and a Fixed Trap 179512 (guid 189237) is already spawned on top of the broken one.
+  The Fixed Trap is a type 6 trap with radius 0, so it never fires by itself. The quest was also not
+  repeatable, so it could only be done once per character.
+- **Changed:** new `sql/fixes/world/2026_11_13_04_dire_maul_slipkik_trap.sql`, following
+  AzerothCore's script for the same event: static Fixed Trap guid 189237 deleted; Broken Trap guid
+  189157 respawn 7200 -> 86400; Broken Trap SmartAI (on reward of 27118: despawn, summon the Fixed
+  Trap at (558.8, 550.1, -25.4), set data 1 1 on Slip'kik); Slip'kik SmartAI ids 10-14 (on data 1 1
+  walk to the trap; on arrival cast Ice Lock 22856 on himself, `unit_flags` 768, react passive);
+  `quest_template_addon.SpecialFlags |= 1` (repeatable) and the quest's turn-in text from Pandaria
+  5.4.8 in `quest_offer_reward`; `quest_template.QuestType` 0 -> 2 (a repeatable auto-complete quest
+  opens straight on the reward window without being accepted, and the client greyed out Complete
+  Quest there; as a normal quest with no objectives it is accepted, completes at once and is turned
+  in at the trap). A frozen Slip'kik cannot be killed, so his scenario kill does not
+  count in a run where you freeze him.
+- **Status:** confirmed in game by Four (2026-11-13): the trap quest can be completed and turned in, and
+  Slip'kik walks over to the fixed trap and freezes.
+
+### Dire Maul, Gordok Commons: the tribute run ending (Mizzle, Cho'Rush, Gordok Tribute)
+
+- **Found** (Four, 2026-11-13, tribute run in the Ogre Suit): the Gordok Tribute could be looted twice.
+  The chest 179564 is a fixed spawn (guid 189238) beside King Gordok, lootable at any time, and Mizzle
+  the Crafty 14353 stands in the courtyard from the start (guid 323984), so his gossip summoned a second
+  one. Cho'Rush the Observer 14324 kept fighting after King Gordok 11501 died. Mizzle's own script (walk
+  in, say his lines, crown the player with King of the Gordok 22799, summon the tribute once) was in the
+  dump, but nothing summoned him.
+- **Changed:**
+  - New `sql/fixes/world/2026_11_13_06_dire_maul_gordok_tribute.sql`, following AzerothCore: fixed
+    tribute guid 189238 and fixed Mizzle guid 323984 deleted; King Gordok SmartAI ids 100-101 (on death
+    summon Mizzle at (683.3, 484.4, 29.5), the start of his path `waypoints` 14353, and set data 1 1 on
+    Cho'Rush); Cho'Rush SmartAI ids 100-102 (on data 1 1 yell, faction 35, evade) and his yell in
+    `creature_text` 14324/0; condition: Mizzle's "Henchmen? Tribute?" option needs aura 22799; tribute
+    loot 16577: the reference row 12007 (loot mode 1, up to 2 rolls) replaced by five reference rows
+    (items 1-5) on loot modes 2, 4, 8, 16, 32.
+  - New `tools/bfa/dire-maul-north.patch` (after `dungeon-scale-guardians.patch`),
+    `src/server/scripts/Kalimdor/DireMaul/`: the instance saves which of Mol'dar 14326, Fengus 14321,
+    Slip'kik 14323, Kromcrush 14325 and Cho'Rush 14324 were killed (`DATA_GORDOK_GUARDS_DEAD`, saved
+    after the generator state; older saves load with none killed), and gives the summoned tribute loot
+    mode 1 plus one extra mode per guard still alive.
+- **Status:** confirmed in game by Four (2026-11-13): King Gordok killed first, Cho'Rush yielded, Mizzle
+  walked in; the first talk gave the King of the Gordok buff, the second the tribute, which held the
+  extra loot for every guard left alive.
+
+### Dire Maul, Gordok Commons: Knot Thimblejack offered The Gordok Ogre Suit twice
+
+- **Found** (Four, 2026-11-13): Knot Thimblejack 14338 lists The Gordok Ogre Suit twice.
+- **Cause:** 27119 is the first-time quest (story text, XP) and 27120 the repeat version (no text, no
+  XP). Both ask for one Ogre Tannin 18240 and give the Gordok Ogre Suit 18258, but nothing tied 27120
+  to 27119 and 27120 was not repeatable.
+- **Changed:** new `sql/fixes/world/2026_11_13_05_dire_maul_ogre_suit_quests.sql`:
+  `quest_template_addon` 27120 `PrevQuestID` 0 -> 27119 and `SpecialFlags |= 1` (repeatable), like
+  the classic pair 5518/5519; `quest_offer_reward` texts for 27119 and 27120 and the
+  `quest_request_items` text for 27119, copied from Pandaria 5.4.8 (all three were missing).
+- **Status:** confirmed in game by Four (2026-11-13): Knot shows the quest once, and the suit keeps
+  Kromcrush from attacking. The Gordok Reavers already standing in the rooms still attack; they use the
+  plain Ogre faction, which the suit does not change (same as classic and AzerothCore).
+
+### DungeonScale: adds a boss summons as guardians were never scaled
+
+- **Found** (Four, 2026-11-13): Captain Kromcrush 14325 calls two elite Gordok Reavers with over 12k
+  health each, more than Kromcrush himself.
+- **Cause:** Call Reavers 22860 summons Gordok Reaver 52761 with SummonProperties 61, which makes a
+  `Guardian`. `Guardian::UpdateMaxHealth` rebuilds the health base from the current max health, so
+  the scaled base DungeonScale sets was replaced by the unscaled value straight away.
+- **Changed:** new `tools/bfa/dungeon-scale-guardians.patch` (after `uldaman.patch`),
+  `src/server/scripts/Custom/solocraft.cpp`: DungeonScale remembers a guardian's unscaled max
+  health when it is first tracked and scales it by setting max health before
+  `UpdateMaxHealth()`. Adds summoned by a boss use the boss's multiplier
+  (`DungeonScale.Summons.InheritBossScaling`), so the Reavers get MiniBoss health (x0.35 solo).
+- **Status:** confirmed in game by Four (2026-11-13): the Reavers are scaled; Kromcrush's fight is hard but doable solo.
+
 ## 2026-11-13 (Uldaman)
 
 Merged to `main` with PR #65 on 2026-11-13.
