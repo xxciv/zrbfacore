@@ -3,6 +3,29 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-13 (pet battles)
+
+### Pet battles: display companions like Lil' Tarecgosa can be attacked
+
+- **Found** (Four, screenshot): Lil' Tarecgosa 54027 in Stormwind can be attacked.
+- **Cause:** 2026_11_07_51 made display pets of non-capturable species unattackable only when their
+  template is type 14 (wild pet). 76 spawned templates of those species are type 12 (non-combat pet),
+  165 spawns in the world DB. They were never battle pets, but with faction 188 and no immunity they
+  could always be attacked.
+- **Changed:** new `sql/fixes/world/2026_11_13_50_display_companions_unattackable.sql` sets
+  `unit_flags | 0x300` (immune to players and NPCs) on those type 12 templates. Needs 2026_11_07_51
+  first. No core change.
+- **Status:** confirmed in game by Four (2026-11-13): Lil' Tarecgosa in Stormwind can no longer be attacked. Four's database printed 75 templates (76 in the raw dumps).
+
+#### To pick it up
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-cwgt5u
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_50_display_companions_unattackable.sql | mysql -u root -p bfa_world
+```
+The last line prints `76 display companion templates unattackable (Lil' Tarecgosa: yes)`. Then restart
+`worldserver`.
+
 ## 2026-11-12 (World fixes: Vashj'ir ship Eastern Kingdoms stop leftovers)
 
 Merged to main via PR #61 (2026-11-12).
