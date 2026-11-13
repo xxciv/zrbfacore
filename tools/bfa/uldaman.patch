@@ -1,0 +1,195 @@
+diff --git a/src/server/scripts/EasternKingdoms/Uldaman/boss_archaedas.cpp b/src/server/scripts/EasternKingdoms/Uldaman/boss_archaedas.cpp
+index 556d025..b33b80c 100644
+--- a/src/server/scripts/EasternKingdoms/Uldaman/boss_archaedas.cpp
++++ b/src/server/scripts/EasternKingdoms/Uldaman/boss_archaedas.cpp
+@@ -98,7 +98,7 @@ class boss_archaedas : public CreatureScript
+             {
+                 Initialize();
+ 
+-                instance->SetData(0, 5);    // respawn any dead minions
++                instance->SetData(DATA_MINIONS, NOT_STARTED);    // respawn any dead minions
+                 me->SetFaction(35);
+                 me->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+                 me->SetControlled(true, UNIT_STATE_ROOT);
+@@ -153,7 +153,14 @@ class boss_archaedas : public CreatureScript
+                 } else if (bWakingUp && iAwakenTimer <= 0)
+                 {
+                     bWakingUp = false;
++                    // Turn hostile before attacking: combat cannot start while still faction 35 (friendly),
++                    // so JustEngagedWith never ran and Archaedas stayed friendly and unselectable.
++                    me->SetFaction(14);
++                    me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
++                    me->SetControlled(false, UNIT_STATE_ROOT);
+                     AttackStart(ObjectAccessor::GetUnit(*me, instance->GetGuidData(0)));
++                    if (!me->IsEngaged())
++                        DoZoneInCombat();
+                     return;     // dont want to continue until we finish the AttackStart method
+                 }
+ 
+@@ -306,7 +313,12 @@ class npc_archaedas_minions : public CreatureScript
+                 {
+                     bWakingUp = false;
+                     bAmIAwake = true;
++                    me->SetFaction(14);
++                    me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
++                    me->SetControlled(false, UNIT_STATE_ROOT);
+                     AttackStart(ObjectAccessor::GetUnit(*me, instance->GetGuidData(0))); // whoWokeArchaedasGUID
++                    if (!me->IsEngaged())
++                        DoZoneInCombat();
+                     return;     // dont want to continue until we finish the AttackStart method
+                 }
+ 
+diff --git a/src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp b/src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp
+index 905585b..9744e97 100644
+--- a/src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp
++++ b/src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp
+@@ -34,6 +34,8 @@ EndScriptData */
+ #include "Map.h"
+ #include "MotionMaster.h"
+ #include "ObjectAccessor.h"
++#include "Timer.h"
++#include "Player.h"
+ #include "uldaman.h"
+ 
+ enum Spells
+@@ -56,6 +58,36 @@ enum IronayaTalk
+ 
+ const Position IronayaPoint = { -231.228f, 246.6135f, -49.01617f, 0.0f };
+ 
++// The dig team at the entrance is spawned twice on the same spots, once per faction.
++// Only the team of the players inside stays.
++static bool IsAllianceDigTeam(uint32 entry)
++{
++    switch (entry)
++    {
++        case 46232: // Explorer's League Digger
++        case 46233: // Olga Runesworn
++        case 46234: // Lead Prospector Durdin
++        case 46247: // Kand Sandseeker
++            return true;
++        default:
++            return false;
++    }
++}
++
++static bool IsHordeDigTeam(uint32 entry)
++{
++    switch (entry)
++    {
++        case 46231: // Reliquary Digger
++        case 46235: // Lidia Sunglow
++        case 46236: // High Examiner Tae'thelan Bloodwatcher
++        case 46241: // Aoren Sunglow
++            return true;
++        default:
++            return false;
++    }
++}
++
+ class instance_uldaman : public InstanceMapScript
+ {
+     public:
+@@ -70,6 +102,30 @@ class instance_uldaman : public InstanceMapScript
+ 
+                 ironayaSealDoorTimer = 27000; //animation time
+                 keystoneCheck = false;
++                teamInInstance = 0;
++            }
++
++            void OnPlayerEnter(Player* player) override
++            {
++                InstanceScript::OnPlayerEnter(player);
++
++                if (teamInInstance)
++                    return;
++
++                teamInInstance = player->GetTeam();
++                for (ObjectGuid const& guid : digTeam)
++                    if (Creature* creature = instance->GetCreature(guid))
++                        RemoveIfOtherTeam(creature);
++            }
++
++            void RemoveIfOtherTeam(Creature* creature)
++            {
++                if (!teamInInstance)
++                    return;
++
++                if ((teamInInstance == ALLIANCE && IsHordeDigTeam(creature->GetEntry())) ||
++                    (teamInInstance == HORDE && IsAllianceDigTeam(creature->GetEntry())))
++                    creature->DespawnOrUnsummon(1, Seconds(WEEK));
+             }
+ 
+             bool IsEncounterInProgress() const override
+@@ -94,6 +150,8 @@ class instance_uldaman : public InstanceMapScript
+ 
+             uint32 ironayaSealDoorTimer;
+             bool keystoneCheck;
++            uint32 teamInInstance;
++            GuidVector digTeam;
+ 
+             GuidVector stoneKeepers;
+             GuidVector altarOfTheKeeperCounts;
+@@ -190,6 +248,11 @@ class instance_uldaman : public InstanceMapScript
+                         target->SetFaction(14);
+                         target->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+                         target->RemoveAura(SPELL_MINION_FREEZE_ANIM);
++                        // npc_stonekeepers has no wake-up code of its own: start the fight with the players
++                        for (Map::PlayerList::const_iterator itr = instance->GetPlayers().begin(); itr != instance->GetPlayers().end(); ++itr)
++                            if (Player* player = itr->GetSource())
++                                if (player->IsAlive() && !player->IsGameMaster())
++                                    target->EngageWithTarget(player);
+ 
+                         return;        // only want the first one we find
+                     }
+@@ -275,6 +338,7 @@ class instance_uldaman : public InstanceMapScript
+                 ironaya->SetFaction(415);
+                 ironaya->SetControlled(false, UNIT_STATE_ROOT);
+                 ironaya->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
++                ironaya->RemoveAura(SPELL_MINION_FREEZE_ANIM);
+ 
+                 ironaya->GetMotionMaster()->Clear();
+                 ironaya->GetMotionMaster()->MovePoint(0, IronayaPoint);
+@@ -479,6 +543,22 @@ class instance_uldaman : public InstanceMapScript
+                         archaedasGUID = creature->GetGUID();
+                         break;
+ 
++                    default:
++                        if (IsAllianceDigTeam(creature->GetEntry()) || IsHordeDigTeam(creature->GetEntry()))
++                        {
++                            digTeam.push_back(creature->GetGUID());
++
++                            if (!teamInInstance)
++                            {
++                                Map::PlayerList const& players = instance->GetPlayers();
++                                if (!players.isEmpty())
++                                    if (Player* player = players.begin()->GetSource())
++                                        teamInInstance = player->GetTeam();
++                            }
++
++                            RemoveIfOtherTeam(creature);
++                        }
++                        break;
+                 }
+             }
+ 
+@@ -492,14 +572,18 @@ class instance_uldaman : public InstanceMapScript
+                     case 2:
+                     case 3:
+                     case 4:
+-                        return vaultWalkers.at(identifier - 1);
++                        if (identifier - 1 < vaultWalkers.size())
++                            return vaultWalkers[identifier - 1];
++                        break;
+                     case 5:
+                     case 6:
+                     case 7:
+                     case 8:
+                     case 9:
+                     case 10:
+-                        return earthenGuardians.at(identifier - 5);
++                        if (identifier - 5 < earthenGuardians.size())
++                            return earthenGuardians[identifier - 5];
++                        break;
+                     default:
+                         break;
+                 }

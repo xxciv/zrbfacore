@@ -110,6 +110,10 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   (west wing): the five shield generators shut down when their Arcane Aberrations and Mana Remnants
   are dead, each counts for the scenario, and the force field around Immol'thar drops once all five
   are down.
+- [`tools/bfa/uldaman.patch`](tools/bfa/uldaman.patch): Uldaman: only the dig team of your own faction
+  stays at the entrance (both were spawned on the same spots and fought you), Ironaya loses her stone
+  aura when the Seal of Khaz'Mul opens, and Archaedas' minions come back when he resets. Needs
+  `sql/fixes/world/2026_11_13_00_uldaman.sql`.
 - [`tools/bfa/instance-scenario-cleanup.patch`](tools/bfa/instance-scenario-cleanup.patch): dungeon
   scenario progress from an old run no longer shows up in a new one. At startup the core deletes old
   dungeon instances but kept their scenario progress, and reused their instance ids.

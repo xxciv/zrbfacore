@@ -3,6 +3,107 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-13 (Uldaman)
+
+Merged to `main` with PR #65 on 2026-11-13.
+
+### Uldaman: Stone Keepers, Archaedas and his minions, Ironaya, dig teams, movement
+
+- **Found** (survey before testing, map 70): the event creatures could never be fought, the
+  Keystone was spawned already used, both factions' dig teams stood on the same spots at the
+  entrance, and all 293 spawns stood still.
+- **Cause and changes:**
+  - Stone Keepers 4857, Archaedas 2748, Earthen Guardian 7076, Earthen Hallshaper 7077, Earthen
+    Custodian 7309 and Vault Warder 10120 have `UNIT_FLAG_IMMUNE_TO_PC` 0x100 + `IMMUNE_TO_NPC` 0x200
+    + `NOT_SELECTABLE` 0x2000000 in `creature_template.unit_flags`. Their scripts freeze them on reset
+    and on waking only remove `NOT_SELECTABLE` and set faction 14, so a woken Stone Keeper or Archaedas
+    still could not be attacked. SQL strips the three flags: 2748 33588032 -> 32832, 4857 and 10120
+    33555264 -> 64, 7076/7077/7309 33587968 -> 32768.
+  - Only 7077 had `ScriptName` `npc_archaedas_minions`; 7076, 7309 and 10120 had none, so they never
+    froze or woke with Archaedas. SQL sets it on all four (as in the Pandaria 5.4.8 database).
+  - Keystone 124371 (gameobject guid 188122) `state` 0 -> 1, so clicking it opens the Seal of
+    Khaz'Mul and releases Ironaya.
+  - New `tools/bfa/uldaman.patch` (after `dire-maul-west.patch`), `src/server/scripts/EasternKingdoms/Uldaman/`:
+    - `instance_uldaman.cpp`: the Alliance dig team (46232 Explorer's League Digger, 46233 Olga
+      Runesworn, 46234 Lead Prospector Durdin, 46247 Kand Sandseeker) and the Horde one (46231
+      Reliquary Digger, 46235 Lidia Sunglow, 46236 High Examiner Tae'thelan Bloodwatcher, 46241 Aoren
+      Sunglow) are both spawned at the entrance and are hostile to the other faction. The instance
+      now takes the faction of the first player inside (`OnPlayerEnter`, or the map's players in
+      `OnCreatureCreate`) and despawns the other team for the life of the instance
+      (`DespawnOrUnsummon(1, Seconds(WEEK))`).
+    - `instance_uldaman.cpp` `ActivateIronaya`: also removes the stone aura 10255
+      (`SPELL_MINION_FREEZE_ANIM`), so Ironaya does not walk out still frozen.
+    - `instance_uldaman.cpp` `GetGuidData`: bounds-checked lookups instead of `.at()`, which would
+      crash the server if a Vault Warder or Earthen Guardian was missing.
+    - `boss_archaedas.cpp` `Reset`: `instance->SetData(0, 5)` -> `SetData(DATA_MINIONS, NOT_STARTED)`.
+      Data 0 is not a valid type, so dead minions never came back when Archaedas reset.
+    - `boss_archaedas.cpp` (Archaedas and `npc_archaedas_minions`): at the end of the awaken animation
+      they now set faction 14, drop `NOT_SELECTABLE` and unroot before `AttackStart` (fallback
+      `DoZoneInCombat`). Before, they attacked while still faction 35; `CombatManager::CanBeginCombat`
+      refuses combat between friendly units, so `JustEngagedWith` (which made them hostile) never ran
+      and Archaedas woke, yelled and stayed unselectable (Four, 2026-11-13).
+    - `instance_uldaman.cpp` `ActivateStoneKeepers`: the woken keeper also engages the players in the
+      instance (`EngageWithTarget`, GMs skipped). Before, it turned faction 14 but never started a fight
+      and Four could not attack it (2026-11-13).
+  - Movement in the same SQL: 12 patrols (3 Pandaria 5.4.8 paths on the same guids, 9 AzerothCore
+    paths matched by entry and nearest path point; paths 70000001-70000012: Stone Stewards, Stonevault
+    Brawlers and Ambushers, Shrike Bats, Ancient Stone Keeper) and 51 wanderers (AzerothCore wander
+    radius, max 5 yards). Bosses, the Stone Keepers, Archaedas' room and the dig teams are left alone.
+- **Files:** `tools/bfa/uldaman.patch` (new), `sql/fixes/world/2026_11_13_00_uldaman.sql` (new).
+  Compiles against upstream with the patch chain; SQL tested twice on the local database.
+- **Status:** confirmed in game by Four (2026-11-13): Revelosh, Keystone, Seal of Khaz'Mul and Ironaya; the four Stone Keepers wake one by one, attack and open the doors; Archaedas wakes, fights with his minions and counts; scenario step 1175 and all four bonus objectives complete (state 3).
+
+### Uldaman: Obsidian Shards stand still
+
+- **Found** (Four, in game): the Obsidian Shards 7209 the Obsidian Sentinel 7023 splits off (Summon
+  Obsidian Shard 10061 at 80/60/40/20% health) stand where they appear and never attack. They do die
+  with the Sentinel.
+- **Cause:** spell 10061 summons with SummonProperties 61 (Control 1 = ally, Title 2 = guardian), so
+  the shard is a guardian of the Sentinel. A guardian does not pick targets from line of sight, and
+  its SmartAI (only Obsidian Reflection 9941 on aggro) never starts combat.
+- **Changed:** new `sql/fixes/world/2026_11_13_02_uldaman_obsidian_shards.sql`: `smart_scripts`
+  7209 ids 9 and 10, event 54 (just summoned): action 38 (set in combat with zone) on self, and
+  action 49 (attack start) on target 21 (closest player, 40 yards). No core change.
+- **Status:** confirmed in game by Four (2026-11-13): the shards attack.
+
+### Uldaman: stacked trogg packs
+
+- **Found** (Four, screenshot): a dozen troggs and scorpids standing on top of each other in the
+  first hall.
+- **Cause:** sniff stack in the dump (the Pandaria 5.4.8 database has the same 12). Around
+  (-274, 140, -47.4): 4 Stonevault Pillagers 24830, 3 Stonevault Oracles 4852, 2 Stonevault Ambushers
+  7175, 3 Venomlash Scorpids 7022 within 6 yards; AzerothCore has 2 troggs there. Also 5 Stonevault
+  Brawlers 4855 at (50, 332, -43), 1-2 in AzerothCore. A scan of all 293 spawns for packs of 4+
+  found no other stacks beyond what AzerothCore also has (scorpid nests, Archaedas' room).
+- **Changed:** new `sql/fixes/world/2026_11_13_01_uldaman_overspawns.sql` deletes creature guids
+  320803, 320967 (Pillager), 320804, 320966 (Oracle), 321070, 321072 (Ambusher), 320828, 320829
+  (Venomlash Scorpid), 320861, 321001 (Brawler). Kept: 320968, 321010, 321012, 320832 and Brawlers
+  320860, 320863, 320864. No core change.
+- **Status:** not checked separately in game.
+
+#### To pick it up
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/uldaman.patch | git apply
+grep -c IsAllianceDigTeam src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp
+grep -c EngageWithTarget src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The two `grep` lines print `3` and `1`.
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_00_uldaman.sql | mysql -u root -p bfa_world
+```
+The last line prints `12 patrols, 51 wanderers, Archaedas unit_flags 32832`.
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_01_uldaman_overspawns.sql | mysql -u root -p bfa_world
+```
+The last line prints `283 Uldaman spawns, 4 left in the first-hall pack`.
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_02_uldaman_obsidian_shards.sql | mysql -u root -p bfa_world
+```
+The last line prints `3 Obsidian Shard SmartAI rows`. Then restart `worldserver`.
+
 ## 2026-11-13 (pet battles)
 
 ### Pet battles: display companions like Lil' Tarecgosa can be attacked
