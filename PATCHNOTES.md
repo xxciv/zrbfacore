@@ -64,7 +64,7 @@ Draft, not merged. Branch `claude/project-thread-g6xhsv`.
 - **Changed:** new `sql/fixes/world/2026_11_13_02_uldaman_obsidian_shards.sql`: `smart_scripts`
   7209 ids 9 and 10, event 54 (just summoned): action 38 (set in combat with zone) on self, and
   action 49 (attack start) on target 21 (closest player, 40 yards). No core change.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four (2026-11-13): the shards attack.
 
 ### Uldaman: stacked trogg packs
 
