@@ -117,6 +117,9 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/dungeon-scale-guardians.patch`](tools/bfa/dungeon-scale-guardians.patch): DungeonScale
   also scales the health of adds a boss summons as guardians (Captain Kromcrush's Gordok Reavers in
   Dire Maul had full 5-player health).
+- [`tools/bfa/dire-maul-north.patch`](tools/bfa/dire-maul-north.patch): Dire Maul, Gordok Commons:
+  the instance remembers which of the five Gordok guards were killed, and the Gordok Tribute gets one
+  extra loot roll for each guard left alive. Needs `sql/fixes/world/2026_11_13_06_dire_maul_gordok_tribute.sql`.
 - [`tools/bfa/instance-scenario-cleanup.patch`](tools/bfa/instance-scenario-cleanup.patch): dungeon
   scenario progress from an old run no longer shows up in a new one. At startup the core deletes old
   dungeon instances but kept their scenario progress, and reused their instance ids.

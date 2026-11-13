@@ -1,0 +1,152 @@
+diff --git a/src/server/scripts/Kalimdor/DireMaul/dire_maul.h b/src/server/scripts/Kalimdor/DireMaul/dire_maul.h
+index 2fb528d..2c1582e 100644
+--- a/src/server/scripts/Kalimdor/DireMaul/dire_maul.h
++++ b/src/server/scripts/Kalimdor/DireMaul/dire_maul.h
+@@ -22,17 +22,26 @@
+ 
+ uint8 const EncounterCount = 17;
+ uint8 const ShieldGeneratorCount = 5;
++uint8 const GordokGuardCount = 5;
+ 
+ enum DMDataTypes
+ {
+-    DATA_SHIELD_GENERATORS      = 0     // bitmask of the generators that are off
++    DATA_SHIELD_GENERATORS      = 0,    // bitmask of the generators that are off
++    DATA_GORDOK_GUARDS_DEAD     = 1     // bitmask of the Gordok Commons guards that were killed
+ };
+ 
+ enum DMCreatureIds
+ {
+     NPC_ARCANE_ABERRATION       = 11480,
+     NPC_MANA_REMNANT            = 11483,
+-    NPC_IMMOLTHAR               = 11496
++    NPC_IMMOLTHAR               = 11496,
++
++    // Gordok Commons guards: each one left alive adds a roll to the Gordok Tribute
++    NPC_GUARD_MOLDAR            = 14326,
++    NPC_GUARD_FENGUS            = 14321,
++    NPC_GUARD_SLIPKIK           = 14323,
++    NPC_CAPTAIN_KROMCRUSH       = 14325,
++    NPC_CHORUSH_THE_OBSERVER    = 14324
+ };
+ 
+ enum DMGameObjectIds
+@@ -42,7 +51,8 @@ enum DMGameObjectIds
+     GO_CRYSTAL_GENERATOR_3      = 177258,
+     GO_CRYSTAL_GENERATOR_4      = 179504,
+     GO_CRYSTAL_GENERATOR_5      = 179505,
+-    GO_FORCE_FIELD              = 179503
++    GO_FORCE_FIELD              = 179503,
++    GO_GORDOK_TRIBUTE           = 179564
+ };
+ 
+ enum DMScenarioEvents
+diff --git a/src/server/scripts/Kalimdor/DireMaul/instance_dire_maul.cpp b/src/server/scripts/Kalimdor/DireMaul/instance_dire_maul.cpp
+index cee2c3b..ef374f2 100644
+--- a/src/server/scripts/Kalimdor/DireMaul/instance_dire_maul.cpp
++++ b/src/server/scripts/Kalimdor/DireMaul/instance_dire_maul.cpp
+@@ -75,6 +75,21 @@ namespace
+     float const GuardRange = 40.0f;      // guards stand within 17 yards of their generator; generators are 160+ yards apart
+     uint32 const AllGeneratorsOff = (1 << ShieldGeneratorCount) - 1;
+ 
++    uint32 const GordokGuardEntries[GordokGuardCount] =
++    {
++        NPC_GUARD_MOLDAR, NPC_GUARD_FENGUS, NPC_GUARD_SLIPKIK, NPC_CAPTAIN_KROMCRUSH, NPC_CHORUSH_THE_OBSERVER
++    };
++
++    uint32 const AllGordokGuards = (1 << GordokGuardCount) - 1;
++
++    int8 GetGordokGuardIndex(uint32 entry)
++    {
++        for (uint8 i = 0; i < GordokGuardCount; ++i)
++            if (GordokGuardEntries[i] == entry)
++                return int8(i);
++        return -1;
++    }
++
+     bool IsGeneratorGuard(uint32 entry)
+     {
+         return entry == NPC_ARCANE_ABERRATION || entry == NPC_MANA_REMNANT;
+@@ -102,6 +117,7 @@ public:
+             SetHeaders(DataHeader);
+             SetBossNumber(EncounterCount);
+             _generatorsOff = 0;
++            _gordokGuardsDead = 0;
+         }
+ 
+         void OnCreatureCreate(Creature* creature) override
+@@ -122,6 +138,19 @@ public:
+         {
+             InstanceScript::OnGameObjectCreate(go);
+ 
++            if (go->GetEntry() == GO_GORDOK_TRIBUTE)
++            {
++                // Loot mode 1 is the base tribute; modes 2, 4, 8, 16 and 32 each add one more roll
++                // (gameobject_loot_template 16577), one for every Gordok guard still alive.
++                uint32 alive = 0;
++                for (uint8 i = 0; i < GordokGuardCount; ++i)
++                    if (!(_gordokGuardsDead & (1 << i)))
++                        ++alive;
++
++                go->SetLootMode(uint16(1 | (((1 << alive) - 1) << 1)));
++                return;
++            }
++
+             if (go->GetEntry() == GO_FORCE_FIELD)
+             {
+                 _forceFieldGUID = go->GetGUID();
+@@ -144,7 +173,21 @@ public:
+         void OnUnitDeath(Unit* unit) override
+         {
+             Creature* creature = unit->ToCreature();
+-            if (!creature || !IsGeneratorGuard(creature->GetEntry()))
++            if (!creature)
++                return;
++
++            int8 gordokGuard = GetGordokGuardIndex(creature->GetEntry());
++            if (gordokGuard >= 0)
++            {
++                if (!(_gordokGuardsDead & (1 << gordokGuard)))
++                {
++                    _gordokGuardsDead |= (1 << gordokGuard);
++                    SaveToDB();
++                }
++                return;
++            }
++
++            if (!IsGeneratorGuard(creature->GetEntry()))
+                 return;
+ 
+             int8 index = GetGeneratorIndexForGuard(creature);
+@@ -189,6 +232,8 @@ public:
+         {
+             if (type == DATA_SHIELD_GENERATORS)
+                 return _generatorsOff;
++            if (type == DATA_GORDOK_GUARDS_DEAD)
++                return _gordokGuardsDead;
+             return 0;
+         }
+ 
+@@ -196,15 +241,21 @@ public:
+         {
+             data >> _generatorsOff;
+             _generatorsOff &= AllGeneratorsOff;
++
++            // Saves from before the Gordok guards were tracked end here.
++            if (!(data >> _gordokGuardsDead))
++                _gordokGuardsDead = 0;
++            _gordokGuardsDead &= AllGordokGuards;
+         }
+ 
+         void WriteSaveDataMore(std::ostringstream& data) override
+         {
+-            data << _generatorsOff;
++            data << _generatorsOff << ' ' << _gordokGuardsDead;
+         }
+ 
+     private:
+         uint32 _generatorsOff;
++        uint32 _gordokGuardsDead;
+         ObjectGuid _generatorGUIDs[ShieldGeneratorCount];
+         ObjectGuid _forceFieldGUID;
+         ObjectGuid _immoltharGUID;

@@ -68,6 +68,29 @@ The last line prints `Mastiff 33280, Slip'kik 33360, Spirit 768, 67 Warpwood Pod
   count in a run where you freeze him.
 - **Status:** not tested in game yet (Four did a kill-everything run and skipped the trap).
 
+### Dire Maul, Gordok Commons: the tribute run ending (Mizzle, Cho'Rush, Gordok Tribute)
+
+- **Found** (Four, 2026-11-13, tribute run in the Ogre Suit): the Gordok Tribute could be looted twice.
+  The chest 179564 is a fixed spawn (guid 189238) beside King Gordok, lootable at any time, and Mizzle
+  the Crafty 14353 stands in the courtyard from the start (guid 323984), so his gossip summoned a second
+  one. Cho'Rush the Observer 14324 kept fighting after King Gordok 11501 died. Mizzle's own script (walk
+  in, say his lines, crown the player with King of the Gordok 22799, summon the tribute once) was in the
+  dump, but nothing summoned him.
+- **Changed:**
+  - New `sql/fixes/world/2026_11_13_06_dire_maul_gordok_tribute.sql`, following AzerothCore: fixed
+    tribute guid 189238 and fixed Mizzle guid 323984 deleted; King Gordok SmartAI ids 100-101 (on death
+    summon Mizzle at (683.3, 484.4, 29.5), the start of his path `waypoints` 14353, and set data 1 1 on
+    Cho'Rush); Cho'Rush SmartAI ids 100-102 (on data 1 1 yell, faction 35, evade) and his yell in
+    `creature_text` 14324/0; condition: Mizzle's "Henchmen? Tribute?" option needs aura 22799; tribute
+    loot 16577: the reference row 12007 (loot mode 1, up to 2 rolls) replaced by five reference rows
+    (items 1-5) on loot modes 2, 4, 8, 16, 32.
+  - New `tools/bfa/dire-maul-north.patch` (after `dungeon-scale-guardians.patch`),
+    `src/server/scripts/Kalimdor/DireMaul/`: the instance saves which of Mol'dar 14326, Fengus 14321,
+    Slip'kik 14323, Kromcrush 14325 and Cho'Rush 14324 were killed (`DATA_GORDOK_GUARDS_DEAD`, saved
+    after the generator state; older saves load with none killed), and gives the summoned tribute loot
+    mode 1 plus one extra mode per guard still alive.
+- **Status:** compiles; not tested in game yet.
+
 ### Dire Maul, Gordok Commons: Knot Thimblejack offered The Gordok Ogre Suit twice
 
 - **Found** (Four, 2026-11-13): Knot Thimblejack 14338 lists The Gordok Ogre Suit twice.
