@@ -29,7 +29,7 @@ Draft PR, not merged yet.
     Only when that menu is empty does it close as before.
   - Quest lists (`quest-list-accept.patch`) work as before. No DB change. Compiles against upstream
     2c13546 with the full chain.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four on 2026-11-12 (Shen'dralar Ancient: Accept returns to its gossip menu, Goodbye closes it).
 - **Pick up:** this only adds one patch. It touches `GossipDef.h`, so the build is longer:
 
   ```
