@@ -19,7 +19,7 @@
 -- The dig teams, Ironaya and Archaedas' minion respawn are handled by tools/bfa/uldaman.patch.
 
 -- 1. Immune flags
-UPDATE `creature_template` SET `unit_flags` = `unit_flags` & ~(0x100 | 0x200 | 0x2000000)
+UPDATE `creature_template` SET `unit_flags` = `unit_flags` & ~33555200    -- 0x100 | 0x200 | 0x2000000
 WHERE `entry` IN (2748, 4857, 7076, 7077, 7309, 10120);
 
 -- 2. Archaedas' minions
