@@ -79,7 +79,7 @@ Merged to `main` with PR #65 on 2026-11-13.
   320803, 320967 (Pillager), 320804, 320966 (Oracle), 321070, 321072 (Ambusher), 320828, 320829
   (Venomlash Scorpid), 320861, 321001 (Brawler). Kept: 320968, 321010, 321012, 320832 and Brawlers
   320860, 320863, 320864. No core change.
-- **Status:** applied with the run Four confirmed on 2026-11-13.
+- **Status:** not checked separately in game.
 
 #### To pick it up
 ```
