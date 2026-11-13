@@ -45,10 +45,10 @@ index 2a1452e..257b722 100644
  };
  #endif
 diff --git a/src/server/game/Handlers/QuestHandler.cpp b/src/server/game/Handlers/QuestHandler.cpp
-index fb26ce6..b2899fb 100644
+index fb26ce6..3341fca 100644
 --- a/src/server/game/Handlers/QuestHandler.cpp
 +++ b/src/server/game/Handlers/QuestHandler.cpp
-@@ -206,7 +206,24 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPackets::Quest::QuestG
+@@ -206,7 +206,30 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPackets::Quest::QuestG
              // Send the NPC's updated quest list instead, as retail does; close only when nothing is left.
              if (object->GetTypeId() == TYPEID_UNIT || object->GetTypeId() == TYPEID_GAMEOBJECT)
              {
@@ -66,8 +66,14 @@ index fb26ce6..b2899fb 100644
 +                    _player->PrepareGossipMenu(source, Player::GetDefaultGossipMenuForSource(source), true);
 +                    if (!_player->PlayerTalkClass->Empty())
 +                    {
++                        // With no quest left in the menu the client may pick a lone option (flight master,
++                        // vendor) by itself without showing a window and then hangs in a hidden
++                        // conversation (Ride to Thunder Bluff at Tak 40809). The menu still takes the client
++                        // off the details page; the close below then ends the conversation.
++                        bool questsLeft = !_player->PlayerTalkClass->GetQuestMenu().Empty();
 +                        _player->SendPreparedGossip(source);
-+                        return;
++                        if (questsLeft)
++                            return;
 +                    }
 +                }
 +                else if (_player->PlayerTalkClass->GetQuestListGiver() == object->GetGUID())
