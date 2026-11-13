@@ -15,7 +15,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed:** new `sql/fixes/world/2026_11_13_50_display_companions_unattackable.sql` sets
   `unit_flags | 0x300` (immune to players and NPCs) on those type 12 templates. Needs 2026_11_07_51
   first. No core change.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four (2026-11-13): Lil' Tarecgosa in Stormwind can no longer be attacked. Four's database printed 75 templates (76 in the raw dumps).
 
 #### To pick it up
 ```
