@@ -1,0 +1,61 @@
+diff --git a/src/server/scripts/Custom/solocraft.cpp b/src/server/scripts/Custom/solocraft.cpp
+index 11e81a8..2f79726 100644
+--- a/src/server/scripts/Custom/solocraft.cpp
++++ b/src/server/scripts/Custom/solocraft.cpp
+@@ -318,6 +318,7 @@ namespace DungeonScale
+     {
+         uint32 players = 0;
+         uint32 generation = 0;
++        float guardianBase = 0.0f;      // unscaled max health of a guardian summon (0 = not a guardian)
+     };
+ 
+     // Everything known about one instance. Only ever touched by the thread updating that map.
+@@ -716,7 +717,7 @@ namespace DungeonScale
+ 
+                 scale.players = players;
+                 scale.generation = generation;
+-                ApplyHealth(itr.first, players);
++                ApplyHealth(itr.first, players, scale.guardianBase);
+                 ++rescaled;
+             }
+             state->pending = waiting;
+@@ -926,13 +927,21 @@ namespace DungeonScale
+             }
+ 
+             // A creature that is just spawning (or respawning) is scaled for the players inside right now.
+-            state.creatures[creature] = { players, generation };
+-            ApplyHealth(creature, players);
++            CreatureScale& scale = state.creatures[creature];
++            scale.players = players;
++            scale.generation = generation;
++
++            // Guardian::UpdateMaxHealth rebuilds the health base from the current max health and copies the
++            // result into CreateHealth, so a guardian's unscaled health has to be remembered before scaling it.
++            if (creature->IsGuardian() && scale.guardianBase <= 0.0f)
++                scale.guardianBase = float(creature->GetMaxHealth());
++
++            ApplyHealth(creature, players, scale.guardianBase);
+         }
+ 
+-        void ApplyHealth(Creature* creature, uint32 players) const
++        void ApplyHealth(Creature* creature, uint32 players, float guardianBase = 0.0f) const
+         {
+-            float const base = float(creature->GetCreateHealth());
++            float const base = guardianBase > 0.0f ? guardianBase : float(creature->GetCreateHealth());
+             if (base <= 0.0f)
+                 return;
+ 
+@@ -944,7 +953,12 @@ namespace DungeonScale
+             float const pct = creature->GetMaxHealth() ? creature->GetHealthPct() : 100.0f;
+ 
+             // Scale the base value (not max health directly) so health auras keep stacking on top of it.
+-            creature->SetModifierValue(UNIT_MOD_HEALTH, BASE_VALUE, wanted);
++            // Adds a boss summons as guardians (e.g. Gordok Reavers, SummonProperties 61) take that base from
++            // their max health in Guardian::UpdateMaxHealth, which would put the unscaled value straight back.
++            if (guardianBase > 0.0f)
++                creature->SetMaxHealth(uint64(wanted));
++            else
++                creature->SetModifierValue(UNIT_MOD_HEALTH, BASE_VALUE, wanted);
+             creature->UpdateMaxHealth();
+ 
+             if (creature->IsAlive())

@@ -47,6 +47,38 @@ git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_03_dire_maul_nor
 The last line prints `Mastiff 33280, Slip'kik 33360, Spirit 768, 67 Warpwood Pods`. Then restart
 `worldserver`.
 
+### Dire Maul, Gordok Commons: Knot Thimblejack's ice trap catches Guard Slip'kik
+
+- **Found** (Four, 2026-11-13): turning in A Broken Trap 27118 at the Broken Trap 179485 did
+  nothing, although Knot Thimblejack says the repaired trap freezes the guard.
+- **Cause:** nothing scripts the event in the BFA dump. The Broken Trap has no SmartAI rows, Slip'kik
+  has none for it, and a Fixed Trap 179512 (guid 189237) is already spawned on top of the broken one.
+  The Fixed Trap is a type 6 trap with radius 0, so it never fires by itself. The quest was also not
+  repeatable, so it could only be done once per character.
+- **Changed:** new `sql/fixes/world/2026_11_13_04_dire_maul_slipkik_trap.sql`, following
+  AzerothCore's script for the same event: static Fixed Trap guid 189237 deleted; Broken Trap guid
+  189157 respawn 7200 -> 86400; Broken Trap SmartAI (on reward of 27118: despawn, summon the Fixed
+  Trap at (558.8, 550.1, -25.4), set data 1 1 on Slip'kik); Slip'kik SmartAI ids 10-14 (on data 1 1
+  walk to the trap; on arrival cast Ice Lock 22856 on himself, `unit_flags` 768, react passive);
+  `quest_template_addon.SpecialFlags |= 1` (repeatable) and the quest's turn-in text from Pandaria
+  5.4.8 in `quest_offer_reward`. A frozen Slip'kik cannot be killed, so his scenario kill does not
+  count in a run where you freeze him.
+- **Status:** not tested in game yet.
+
+### DungeonScale: adds a boss summons as guardians were never scaled
+
+- **Found** (Four, 2026-11-13): Captain Kromcrush 14325 calls two elite Gordok Reavers with over 12k
+  health each, more than Kromcrush himself.
+- **Cause:** Call Reavers 22860 summons Gordok Reaver 52761 with SummonProperties 61, which makes a
+  `Guardian`. `Guardian::UpdateMaxHealth` rebuilds the health base from the current max health, so
+  the scaled base DungeonScale sets was replaced by the unscaled value straight away.
+- **Changed:** new `tools/bfa/dungeon-scale-guardians.patch` (after `uldaman.patch`),
+  `src/server/scripts/Custom/solocraft.cpp`: DungeonScale remembers a guardian's unscaled max
+  health when it is first tracked and scales it by setting max health before
+  `UpdateMaxHealth()`. Adds summoned by a boss use the boss's multiplier
+  (`DungeonScale.Summons.InheritBossScaling`), so the Reavers get MiniBoss health (x0.35 solo).
+- **Status:** compiles; not tested in game yet.
+
 ## 2026-11-13 (Uldaman)
 
 Merged to `main` with PR #65 on 2026-11-13.
