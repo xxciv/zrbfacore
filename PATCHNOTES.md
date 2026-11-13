@@ -66,7 +66,8 @@ The last line prints `Mastiff 33280, Slip'kik 33360, Spirit 768, 67 Warpwood Pod
   Quest there; as a normal quest with no objectives it is accepted, completes at once and is turned
   in at the trap). A frozen Slip'kik cannot be killed, so his scenario kill does not
   count in a run where you freeze him.
-- **Status:** not tested in game yet (Four did a kill-everything run and skipped the trap).
+- **Status:** confirmed in game by Four (2026-11-13): the trap quest can be completed and turned in, and
+  Slip'kik walks over to the fixed trap and freezes.
 
 ### Dire Maul, Gordok Commons: the tribute run ending (Mizzle, Cho'Rush, Gordok Tribute)
 
