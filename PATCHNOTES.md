@@ -3,6 +3,48 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-13 (Quest fixes: flight master stops responding after accepting his quest)
+
+Draft PR, not merged yet.
+
+### Core: Tak can't be talked to after accepting Ride to Thunder Bluff
+
+- **Found** (Four, 2026-11-13, screen recording + packet trace): Tak (40809, guid 260314, Bloodhoof
+  Village, `npcflag` 8195 = gossip + quest giver + flight master, gossip menu 6944) gives Ride to
+  Thunder Bluff (6362). After Accept the window closed, but right-clicking Tak did nothing at all
+  until a relog or restart. With `Logger.network.opcode=1,Server` the trace after
+  `CMSG_QUEST_GIVER_ACCEPT_QUEST` showed `SMSG_GOSSIP_MESSAGE`, then `CMSG_GOSSIP_SELECT_OPTION`
+  with no answer. A normal click on Tak shows `CMSG_TALK_TO_GOSSIP`, `SMSG_GOSSIP_MESSAGE`,
+  `CMSG_GOSSIP_SELECT_OPTION`, `SMSG_SHOW_TAXI_NODES`.
+- **Cause:** `quest-gossip-accept.patch` (2026-11-12) sends the NPC's gossip menu again after a quest
+  is accepted from it. For Tak that menu has no quest left, only "Show me where I can fly."
+  (option type 4, taxi). The client picks a lone non-chat option by itself without showing a window
+  and sends `CMSG_GOSSIP_SELECT_OPTION`. By then the client had closed the quest conversation, which
+  resets the server's record of who the player is talking to, so `HandleGossipSelectOptionOpcode`
+  drops the request (`InteractionData.SourceGuid` no longer matches) and sends nothing. The client
+  keeps waiting for the flight map inside a hidden conversation and ignores further clicks on Tak.
+  The Shen'dralar Ancient was fine because his menu still lists quests, so the window is shown.
+- **Changed:** `tools/bfa/quest-gossip-accept.patch`, `HandleQuestgiverAcceptQuestOpcode`
+  (`QuestHandler.cpp`): after sending the gossip menu again, it only stops there when the menu still
+  lists a quest (`GetQuestMenu()` not empty). With no quest left it also sends the close
+  (`SendCloseGossip`, `SMSG_GOSSIP_COMPLETE`), which ends the hidden conversation. The menu is still
+  sent first because it is what takes the client off the quest details page. No DB change. Compiles
+  against upstream 2c13546 with the full chain.
+- **Status:** untested in game.
+- **Pick up:** the patch itself changed, so the old version comes out first (`QuestHandler.cpp`
+  only, short build):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin
+  git -C ../tools-repo show 3e5264e:tools/bfa/quest-gossip-accept.patch | git apply -R && echo "old gossip accept removed"
+  git -C ../tools-repo show origin/claude/project-thread-8ftb1c:tools/bfa/quest-gossip-accept.patch | git apply && echo "new gossip accept applied"
+  grep -c "questsLeft" src/server/game/Handlers/QuestHandler.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  Both echo lines print and the grep prints 2. Then restart worldserver.
+
 ## 2026-11-13 (World fixes: Love is in the Air boats and perfume out of season)
 
 Merged to main via PR #67 (2026-11-13).
