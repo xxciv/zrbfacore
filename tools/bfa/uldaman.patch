@@ -1,0 +1,155 @@
+diff --git a/src/server/scripts/EasternKingdoms/Uldaman/boss_archaedas.cpp b/src/server/scripts/EasternKingdoms/Uldaman/boss_archaedas.cpp
+index 556d025..4dab954 100644
+--- a/src/server/scripts/EasternKingdoms/Uldaman/boss_archaedas.cpp
++++ b/src/server/scripts/EasternKingdoms/Uldaman/boss_archaedas.cpp
+@@ -98,7 +98,7 @@ class boss_archaedas : public CreatureScript
+             {
+                 Initialize();
+ 
+-                instance->SetData(0, 5);    // respawn any dead minions
++                instance->SetData(DATA_MINIONS, NOT_STARTED);    // respawn any dead minions
+                 me->SetFaction(35);
+                 me->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+                 me->SetControlled(true, UNIT_STATE_ROOT);
+diff --git a/src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp b/src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp
+index 905585b..e7caa66 100644
+--- a/src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp
++++ b/src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp
+@@ -34,6 +34,8 @@ EndScriptData */
+ #include "Map.h"
+ #include "MotionMaster.h"
+ #include "ObjectAccessor.h"
++#include "Timer.h"
++#include "Player.h"
+ #include "uldaman.h"
+ 
+ enum Spells
+@@ -56,6 +58,36 @@ enum IronayaTalk
+ 
+ const Position IronayaPoint = { -231.228f, 246.6135f, -49.01617f, 0.0f };
+ 
++// The dig team at the entrance is spawned twice on the same spots, once per faction.
++// Only the team of the players inside stays.
++static bool IsAllianceDigTeam(uint32 entry)
++{
++    switch (entry)
++    {
++        case 46232: // Explorer's League Digger
++        case 46233: // Olga Runesworn
++        case 46234: // Lead Prospector Durdin
++        case 46247: // Kand Sandseeker
++            return true;
++        default:
++            return false;
++    }
++}
++
++static bool IsHordeDigTeam(uint32 entry)
++{
++    switch (entry)
++    {
++        case 46231: // Reliquary Digger
++        case 46235: // Lidia Sunglow
++        case 46236: // High Examiner Tae'thelan Bloodwatcher
++        case 46241: // Aoren Sunglow
++            return true;
++        default:
++            return false;
++    }
++}
++
+ class instance_uldaman : public InstanceMapScript
+ {
+     public:
+@@ -70,6 +102,30 @@ class instance_uldaman : public InstanceMapScript
+ 
+                 ironayaSealDoorTimer = 27000; //animation time
+                 keystoneCheck = false;
++                teamInInstance = 0;
++            }
++
++            void OnPlayerEnter(Player* player) override
++            {
++                InstanceScript::OnPlayerEnter(player);
++
++                if (teamInInstance)
++                    return;
++
++                teamInInstance = player->GetTeam();
++                for (ObjectGuid const& guid : digTeam)
++                    if (Creature* creature = instance->GetCreature(guid))
++                        RemoveIfOtherTeam(creature);
++            }
++
++            void RemoveIfOtherTeam(Creature* creature)
++            {
++                if (!teamInInstance)
++                    return;
++
++                if ((teamInInstance == ALLIANCE && IsHordeDigTeam(creature->GetEntry())) ||
++                    (teamInInstance == HORDE && IsAllianceDigTeam(creature->GetEntry())))
++                    creature->DespawnOrUnsummon(1, Seconds(WEEK));
+             }
+ 
+             bool IsEncounterInProgress() const override
+@@ -94,6 +150,8 @@ class instance_uldaman : public InstanceMapScript
+ 
+             uint32 ironayaSealDoorTimer;
+             bool keystoneCheck;
++            uint32 teamInInstance;
++            GuidVector digTeam;
+ 
+             GuidVector stoneKeepers;
+             GuidVector altarOfTheKeeperCounts;
+@@ -275,6 +333,7 @@ class instance_uldaman : public InstanceMapScript
+                 ironaya->SetFaction(415);
+                 ironaya->SetControlled(false, UNIT_STATE_ROOT);
+                 ironaya->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
++                ironaya->RemoveAura(SPELL_MINION_FREEZE_ANIM);
+ 
+                 ironaya->GetMotionMaster()->Clear();
+                 ironaya->GetMotionMaster()->MovePoint(0, IronayaPoint);
+@@ -479,6 +538,22 @@ class instance_uldaman : public InstanceMapScript
+                         archaedasGUID = creature->GetGUID();
+                         break;
+ 
++                    default:
++                        if (IsAllianceDigTeam(creature->GetEntry()) || IsHordeDigTeam(creature->GetEntry()))
++                        {
++                            digTeam.push_back(creature->GetGUID());
++
++                            if (!teamInInstance)
++                            {
++                                Map::PlayerList const& players = instance->GetPlayers();
++                                if (!players.isEmpty())
++                                    if (Player* player = players.begin()->GetSource())
++                                        teamInInstance = player->GetTeam();
++                            }
++
++                            RemoveIfOtherTeam(creature);
++                        }
++                        break;
+                 }
+             }
+ 
+@@ -492,14 +567,18 @@ class instance_uldaman : public InstanceMapScript
+                     case 2:
+                     case 3:
+                     case 4:
+-                        return vaultWalkers.at(identifier - 1);
++                        if (identifier - 1 < vaultWalkers.size())
++                            return vaultWalkers[identifier - 1];
++                        break;
+                     case 5:
+                     case 6:
+                     case 7:
+                     case 8:
+                     case 9:
+                     case 10:
+-                        return earthenGuardians.at(identifier - 5);
++                        if (identifier - 5 < earthenGuardians.size())
++                            return earthenGuardians[identifier - 5];
++                        break;
+                     default:
+                         break;
+                 }

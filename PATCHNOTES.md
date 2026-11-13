@@ -3,6 +3,62 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-13 (Uldaman)
+
+Draft, not merged. Branch `claude/project-thread-g6xhsv`.
+
+### Uldaman: Stone Keepers, Archaedas and his minions, Ironaya, dig teams, movement
+
+- **Found** (survey before testing, map 70): the event creatures could never be fought, the
+  Keystone was spawned already used, both factions' dig teams stood on the same spots at the
+  entrance, and all 293 spawns stood still.
+- **Cause and changes:**
+  - Stone Keepers 4857, Archaedas 2748, Earthen Guardian 7076, Earthen Hallshaper 7077, Earthen
+    Custodian 7309 and Vault Warder 10120 have `UNIT_FLAG_IMMUNE_TO_PC` 0x100 + `IMMUNE_TO_NPC` 0x200
+    + `NOT_SELECTABLE` 0x2000000 in `creature_template.unit_flags`. Their scripts freeze them on reset
+    and on waking only remove `NOT_SELECTABLE` and set faction 14, so a woken Stone Keeper or Archaedas
+    still could not be attacked. SQL strips the three flags: 2748 33588032 -> 32832, 4857 and 10120
+    33555264 -> 64, 7076/7077/7309 33587968 -> 32768.
+  - Only 7077 had `ScriptName` `npc_archaedas_minions`; 7076, 7309 and 10120 had none, so they never
+    froze or woke with Archaedas. SQL sets it on all four (as in the Pandaria 5.4.8 database).
+  - Keystone 124371 (gameobject guid 188122) `state` 0 -> 1, so clicking it opens the Seal of
+    Khaz'Mul and releases Ironaya.
+  - New `tools/bfa/uldaman.patch` (after `dire-maul-west.patch`), `src/server/scripts/EasternKingdoms/Uldaman/`:
+    - `instance_uldaman.cpp`: the Alliance dig team (46232 Explorer's League Digger, 46233 Olga
+      Runesworn, 46234 Lead Prospector Durdin, 46247 Kand Sandseeker) and the Horde one (46231
+      Reliquary Digger, 46235 Lidia Sunglow, 46236 High Examiner Tae'thelan Bloodwatcher, 46241 Aoren
+      Sunglow) are both spawned at the entrance and are hostile to the other faction. The instance
+      now takes the faction of the first player inside (`OnPlayerEnter`, or the map's players in
+      `OnCreatureCreate`) and despawns the other team for the life of the instance
+      (`DespawnOrUnsummon(1, Seconds(WEEK))`).
+    - `instance_uldaman.cpp` `ActivateIronaya`: also removes the stone aura 10255
+      (`SPELL_MINION_FREEZE_ANIM`), so Ironaya does not walk out still frozen.
+    - `instance_uldaman.cpp` `GetGuidData`: bounds-checked lookups instead of `.at()`, which would
+      crash the server if a Vault Warder or Earthen Guardian was missing.
+    - `boss_archaedas.cpp` `Reset`: `instance->SetData(0, 5)` -> `SetData(DATA_MINIONS, NOT_STARTED)`.
+      Data 0 is not a valid type, so dead minions never came back when Archaedas reset.
+  - Movement in the same SQL: 12 patrols (3 Pandaria 5.4.8 paths on the same guids, 9 AzerothCore
+    paths matched by entry and nearest path point; paths 70000001-70000012: Stone Stewards, Stonevault
+    Brawlers and Ambushers, Shrike Bats, Ancient Stone Keeper) and 51 wanderers (AzerothCore wander
+    radius, max 5 yards). Bosses, the Stone Keepers, Archaedas' room and the dig teams are left alone.
+- **Files:** `tools/bfa/uldaman.patch` (new), `sql/fixes/world/2026_11_13_00_uldaman.sql` (new).
+  Compiles against upstream with the patch chain; SQL tested twice on the local database.
+- **Status:** not tested in game yet.
+
+#### To pick it up
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-g6xhsv
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/uldaman.patch | git apply
+grep -c IsAllianceDigTeam src/server/scripts/EasternKingdoms/Uldaman/instance_uldaman.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The `grep` prints `3`.
+```
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_13_00_uldaman.sql | mysql -u root -p bfa_world
+```
+The last line prints `12 patrols, 51 wanderers, Archaedas unit_flags 32832`. Then restart `worldserver`.
+
 ## 2026-11-13 (pet battles)
 
 ### Pet battles: display companions like Lil' Tarecgosa can be attacked
