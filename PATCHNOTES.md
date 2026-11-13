@@ -43,7 +43,7 @@ Draft, not merged. Branch `claude/project-thread-g6xhsv`.
     radius, max 5 yards). Bosses, the Stone Keepers, Archaedas' room and the dig teams are left alone.
 - **Files:** `tools/bfa/uldaman.patch` (new), `sql/fixes/world/2026_11_13_00_uldaman.sql` (new).
   Compiles against upstream with the patch chain; SQL tested twice on the local database.
-- **Status:** not tested in game yet.
+- **Status:** in game (Four, 2026-11-13): Revelosh, the Keystone, the Seal of Khaz'Mul and Ironaya work and count; Obsidian Sentinel counts. Stone Keepers, Archaedas and the other bonus bosses not tested yet.
 
 ### Uldaman: Obsidian Shards stand still
 
@@ -71,7 +71,7 @@ Draft, not merged. Branch `claude/project-thread-g6xhsv`.
   320803, 320967 (Pillager), 320804, 320966 (Oracle), 321070, 321072 (Ambusher), 320828, 320829
   (Venomlash Scorpid), 320861, 321001 (Brawler). Kept: 320968, 321010, 321012, 320832 and Brawlers
   320860, 320863, 320864. No core change.
-- **Status:** in game (Four, 2026-11-13): Revelosh, the Keystone, the Seal of Khaz'Mul and Ironaya work and count; Obsidian Sentinel counts. Stone Keepers, Archaedas and the other bonus bosses not tested yet.
+- **Status:** not tested in game yet.
 
 #### To pick it up
 ```
