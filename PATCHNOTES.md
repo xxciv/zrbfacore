@@ -103,7 +103,9 @@ The last line prints `Mastiff 33280, Slip'kik 33360, Spirit 768, 67 Warpwood Pod
   `quest_template_addon` 27120 `PrevQuestID` 0 -> 27119 and `SpecialFlags |= 1` (repeatable), like
   the classic pair 5518/5519; `quest_offer_reward` texts for 27119 and 27120 and the
   `quest_request_items` text for 27119, copied from Pandaria 5.4.8 (all three were missing).
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four (2026-11-13): Knot shows the quest once, and the suit keeps
+  Kromcrush from attacking. The Gordok Reavers already standing in the rooms still attack; they use the
+  plain Ogre faction, which the suit does not change (same as classic and AzerothCore).
 
 ### DungeonScale: adds a boss summons as guardians were never scaled
 
