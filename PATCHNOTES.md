@@ -36,9 +36,9 @@ Draft, not merged. Branch `claude/project-thread-tt7jn2`.
   - Conditions (type 22, `CONDITION_ACTIVE_EVENT` 8) on the Heavily Perfumed script row of the six
     guard entries and the per-guid copy on Orgrimmar Grunt 266181.
   - Love Guard Perfume Bunny 301908 is in game_event 8.
-- **Status:** untested. Outside the event there should be no boats in Darnassus or Undercity and no
-  new perfume on guards (guards already wearing it keep it until a restart). Boarding can only be tested
-  with `.event start 8`; whether the single click spell fixes it is a guess.
+- **Status:** confirmed out of season by Four (2026-11-13): no boats in Darnassus, no perfumed guards
+  after a restart. Boarding during the event is untested (February, or `.event start 8`); whether the
+  single click spell fixes it is a guess.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ## 2026-11-13 (Dire Maul, Gordok Commons)
