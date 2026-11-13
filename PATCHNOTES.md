@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-13 (World fixes: Love is in the Air boats and perfume out of season)
 
-Draft, not merged. Branch `claude/project-thread-tt7jn2`.
+Merged to main via PR #67 (2026-11-13).
 
 ### World: love boats sailed the Darnassus canals and guards wore perfume in November
 
