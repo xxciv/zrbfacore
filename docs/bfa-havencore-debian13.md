@@ -846,6 +846,14 @@ This lowers it to 10 silver (9s 50c at Friendly):
 ```sh
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_14_50_battle_pet_training_cost.sql
 ```
+
+The guild vendors hide their battle pets (Guild Page, Guild Herald, Dark Phoenix Hatchling,
+Lil' Tarecgosa) behind guild achievements the core checks on the character, so they never show.
+This removes those guild locks from the pets only:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_14_51_guild_vendor_pets_solo.sql
+```
 #### Legion and BFA pet tamers
 
 Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest

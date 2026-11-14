@@ -5,6 +5,40 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-14 (pet battles)
 
+### Pet battles: guild vendors sell their battle pets without guild progress
+
+- **Found** (Four, 2026-11-14, screenshots): Shay Pressler (46602, Stormwind guild vendor) lists
+  heirlooms and guild shirts but none of the guild battle pets, although `npc_vendor` has them on every
+  guild vendor.
+- **Cause:** vendor `conditions` (`SourceTypeOrReferenceId` 23) on the 6 pet items need a guild
+  achievement (`CONDITION_ACHIEVEMENT` 17) and a Guild reputation rank (`CONDITION_REPUTATION_RANK` 5,
+  faction 1168). `ConditionMgr` checks the achievement with `Player::HasAchieved`, which only looks at
+  the character's own achievements, while 5031/5201/5812/5840 are guild achievements. The condition
+  never passes, so `WorldSession::SendListInventory` leaves the item out of the list.
+
+  | Item | Pet | Achievement | Guild rank | Faction |
+  |---|---|---|---|---|
+  | 63138 | Dark Phoenix Hatchling | 5812 | Exalted | both |
+  | 65361 / 65362 | Guild Page | 5031 | Honored+ | Alliance / Horde |
+  | 65363 / 65364 | Guild Herald | 5201 | Revered+ | Horde / Alliance |
+  | 71033 | Lil' Tarecgosa | 5840 | Exalted | both |
+
+- **Changed:** `sql/fixes/world/2026_11_14_51_guild_vendor_pets_solo.sql` deletes the achievement and
+  Guild reputation conditions (120 rows in the dump) on these 6 items on the 10 Cataclysm guild vendors (46572,
+  46602, 51495, 51496, 51501, 51502, 51503, 51504, 51512, 52268). The faction conditions stay
+  (40 rows), so each side still sees only its own Page and Herald. Other guild vendor items
+  (heirlooms, banners, mounts) keep their guild locks. Docs: Pet battles section.
+- **Status:** not tested in game yet. Expected output: `0 guild locks left on guild pets, 40 faction rows kept`.
+- **Pick up:**
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo pull
+  mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_14_51_guild_vendor_pets_solo.sql
+  ```
+
+  Then restart `worldserver`.
+
 ### Pet battles: Battle Pet Training costs 10 silver instead of 10 gold
 
 - **Found** (Four, 2026-11-14, screenshot): Battle Pet Training (spell 119467, "Requires: Level 5")
