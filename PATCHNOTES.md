@@ -27,7 +27,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
   Then restart `worldserver`.
 
-## 2026-11-14 (World fixes: Thunder Bluff, Orgrimmar, Undercity and Silvermoon pass)
+## 2026-11-14 (World fixes: Horde and Alliance capital city pass)
 
 Draft, not merged. Branch `claude/project-thread-tt7jn2`.
 
@@ -98,6 +98,43 @@ Draft, not merged. Branch `claude/project-thread-tt7jn2`.
   - `2026_11_14_30` now uses path id 735400200 for Bluffwatcher 260098 (735400037 is an Orgrimmar walker).
 - **Status:** untested.
 - **Pick up:** run `2026_11_14_30` (again, if you ran it before) and `2026_11_14_31`, restart `worldserver`.
+
+### World: Stormwind, Ironforge, Darnassus and Exodar pass
+
+- **Found** (Four, 2026-11-14: "do the same with the Alliance cities of Stormwind, Ironforge, Darnassus, and
+  Exodar"). Same checks as the Horde cities, against TrinityCore TDB 7.3.5. No foreign names in any of the four.
+  - Stormwind, doubles: the fishing kids Justin 1368, Brandon 1370 and Roman 1371 at the canal, three Stormwind
+    Orphans 14496, a Dockhand 29019, Vereesa Windrunner 121754 and Vindicator Boros 121756 at the harbor and
+    Ambassador Moorgard 133362 each stood twice; Orphan Matron Nightingale 51988 stood inside 14450 and Celestine
+    of the Harvest 44395 inside 44396. Objects placed twice: ice cream shop scoops, cones and ice, the Shady Lady
+    figurine and silver bar, five flower bunches, a softball.
+  - Stormwind patrols: 30 Gryphon Riders 51348 hung still in the air (TDB flies 10 paths, some with wingmen);
+    Nikova Raskol, Ol' Emma (twice) and Lana Ashwin stood off their routes; Myrla Stoneround had a second,
+    standing copy; City Guards froze along TDB's patrol routes.
+  - Ironforge: 11 Gryphon Riders 51383 hung still (TDB: 6 flight paths with wingmen); Courier Hammerfall, Thief
+    Catchers Farmountain (twice) and Thunderbrew, Myra Tyrngaarde, Roetten Stonehammer, Bimble Longberry and
+    Curator Thorius stood off their routes; Sognar Cliffbeard had a second copy; Ironforge Guards froze on routes.
+  - Darnassus: Dendrythis 4167 spawned twice, Blessed Rice Cakes placed twice, 20 Hippogryph Riders 51371 hung
+    still (TDB: 7 flight paths with wingmen), and TDB's Sentinel, Darnassian Protector and Ancient Protector
+    patrols were missing.
+  - Exodar: Arena Promoter 22101 twice, Peacekeepers 16733 frozen on TDB's routes (77 here, 50 in TDB), Nibblet
+    19073 off his route, TDB's walking Worker 18800 missing.
+  - Holiday spawns out all year: Midsummer bunnies in all four cities, Spirit of Summer in Darnassus and a
+    Toasting Goblet in Stormwind; Pilgrim's Bounty turkey bunnies in Stormwind and Ironforge; a Hallow's End
+    pumpkin in Stormwind.
+  - Checked and left alone: BFA content (Stormwind refugee camp, war campaign NPCs, Stormwind Infantry
+    formations), critter stacks already in pools, Darnassus NPCs that already walk on their template paths.
+- **Changed** (`sql/fixes/world/2026_11_14_32_alliance_cities_pass.sql`):
+  - Stormwind: doubles removed; 43 standing copies replaced by TDB's 26 walkers and fliers (guids
+    735400076-735400101: 14 gryphon riders, 9 guards, Nikova, Ol' Emma, Lana).
+  - Ironforge: 29 standing copies replaced by TDB's 25 (guids 735400102-735400126: 8 gryphon riders, 10 guards
+    and the named walkers); existing guids 180626 and 180781 walk paths 735400127-735400128.
+  - Darnassus: Dendrythis copy and rice cakes removed; 21 standing riders replaced by TDB's 22 walkers and fliers
+    (guids 735400129-735400150); guild pets wander 2 yards.
+  - Exodar: Arena Promoter copy removed; 19 standing copies replaced by TDB's 5 (guids 735400151-735400155).
+  - Midsummer spawns in game_event 1, turkey bunnies in 26, the pumpkin in 12.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart `worldserver`.
 
 ## 2026-11-13 (Quest fixes: flight master stops responding after accepting his quest)
 
