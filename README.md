@@ -124,7 +124,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   earnable. Guild members get guild reputation (~167, `Guild.QuestReputation`) for every quest that
   is not gray, guild-achievement locks on vendor items check the guild instead of the character, the
   Guild Champion tabards add their bonus to guild reputation only, guild crafting/cooking achievements
-  count crafted items, and the guild roster shows each member's guild reputation. Use with
+  count crafted items, a guild member alone in a dungeon counts as a guild group (`Guild.SoloGuildGroup`),
+  and the guild roster shows each member's guild reputation. Use with
   `sql/fixes/world/2026_11_14_70_guild_vendor_locks.sql`.
 - [`tools/bfa/instance-scenario-cleanup.patch`](tools/bfa/instance-scenario-cleanup.patch): dungeon
   scenario progress from an old run no longer shows up in a new one. At startup the core deletes old

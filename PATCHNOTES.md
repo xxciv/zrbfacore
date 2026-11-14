@@ -47,6 +47,11 @@ to do to pick it up (rebuild, restart, run SQL).
   - `Guild::Member::SetStats`: the roster shows each member's guild reputation (updated at login,
     level-up and logout).
   - `.achievement add <id>` on a guild achievement gives it to the selected player's guild (GM testing).
+  - `Map::GetOwnerGuildId` (Four's choice, 2026-11-14): a guild member alone in a dungeon, raid or
+    scenario, not in a group, counts as a guild group. Every guild-run credit in the core goes through
+    it (boss kills, encounters, scenarios, guild runs of the Dungeon Hero / Glory / Scenario Roundup /
+    Challenge Gold achievements). `Guild.SoloGuildGroup = 0` in worldserver.conf restores the retail
+    rule (3 of 5 / 80% of the group from one guild); the setting is optional, default 1.
 - **Changed** (`sql/fixes/world/2026_11_14_70_guild_vendor_locks.sql`):
   - All 12 guild vendors sell the BFA list: Alliance vendors (Shay Pressler 46602, Steeg Haskell 51495,
     Nuri 51501, Velia Moonbow 51504) Perry Charlton's 54 items, Horde vendors (Goram 46572, Kim Horn
@@ -64,9 +69,10 @@ to do to pick it up (rebuild, restart, run SQL).
   Unity, Guild Vault Voucher (7th slot) need reputation only (plus Extended Storage for the voucher).
   Achievements done by the guild's members (professions, A Class Act, Profit Sharing, A Daily Routine,
   That's a Lot of Bait, Critter Kill Squad, crafting/cooking, United Nations, Pandaren Embassy, Stay
-  Classy, Guild Vault) count every member, alts included. The guild-group ones (Guild Cataclysm /
+  Classy, Guild Vault) count every member, alts included. The guild-run ones (Guild Cataclysm /
   Pandaria / Draenor Dungeon Hero, the Guild Glory raid ones, Scenario Roundup, Challenge Warlords Gold
-  Guild Edition, the Slayer ones) need 3 of 5 guild members in the group, like retail.
+  Guild Edition) count solo runs (see `Guild.SoloGuildGroup`). The Horde/Alliance Slayer ones need
+  honorable kills on players of each race and class, so the Guild Page stays out of reach solo.
 - **Not done:** retail also gave guild reputation for boss kills and rated wins in guild groups and for
   honorable kills; only quests do here.
 - **Status:** compiled (all changed files), SQL tested on a copy of the world DB. Not tested in game yet.
