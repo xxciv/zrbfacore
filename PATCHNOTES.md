@@ -3,6 +3,41 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-14 (core)
+
+### Chat: character posts ".ticket CUticketGet" in guild chat
+
+Open on branch `claude/project-thread-z3fwbh` (not merged yet).
+
+- **Found** (Four, 2026-11-14): the character keeps saying `.ticket CUticketGet` in guild chat
+  without typing it.
+- **Cause:** the WoW Circle client's built-in ticket UI polls the server by sending chat commands
+  such as `.ticket CUticketGet` (the WoW Circle server answers them; HavenCore has no `CU...` ticket
+  subcommands). `WorldSession::HandleChatMessage` hands every message to
+  `ChatHandler::ParseCommands` first; for a player the unknown subcommand makes it return false, so
+  the text continued down the normal path and was broadcast to the chat type the client used
+  (guild here).
+- **Changed:** new `tools/bfa/client-ticket-poll.patch`
+  (`src/server/game/Handlers/ChatHandler.cpp`, `WorldSession::HandleChatMessage`): any message that
+  starts with `.ticket CU` is dropped at the top of the function, before the language, mute and
+  command checks, so nothing is sent to any channel and no error is shown. A debug line
+  (`network` logger) records each dropped poll. Real `.ticket` GM commands (`.ticket list`, etc.)
+  are unaffected. No SQL.
+- **Status:** the patch applies cleanly after the full chain on upstream 2c13546 and
+  `ChatHandler.cpp` compiles. Not yet checked in game.
+
+#### To pick up the ticket poll fix
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/client-ticket-poll.patch | git apply && echo "ticket poll patch applied"
+grep -c "ticket CU" src/server/game/Handlers/ChatHandler.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 2. Then restart `worldserver`.
+
 ## 2026-11-14 (pet battles)
 
 ### Pet battles: Battle Pet Training costs 10 silver instead of 10 gold

@@ -83,6 +83,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/battle-pet-trainers.patch`](tools/bfa/battle-pet-trainers.patch): pet tamers such as
   Julia Stevens can be battled ("Let's do battle!") and the win credits their quest; a capture with
   2 or 3 pets in the team no longer adds the pet 2 or 3 times.
+- [`tools/bfa/client-ticket-poll.patch`](tools/bfa/client-ticket-poll.patch): drops the WoW Circle
+  client's `.ticket CU...` ticket polls instead of posting them as chat (guild, say).
 - [`tools/bfa/core-branding.patch`](tools/bfa/core-branding.patch): the startup banner reads
   zrbfacore ("Based on HavenCore"), without the old BfaCore Discord link and email address.
 - [`tools/bfa/razorfen-downs.patch`](tools/bfa/razorfen-downs.patch): Razorfen Downs: Death Speaker
