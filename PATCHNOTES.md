@@ -5,6 +5,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-14 (guild progression)
 
+Merged to `main` with PR #72 on 2026-11-14.
+
 ### Guild: guild reputation, guild achievements and the guild vendor locks can be earned
 
 - **Found** (Four, 2026-11-14, pet battles thread): the guild vendors (Shay Pressler in Stormwind,
@@ -75,7 +77,8 @@ to do to pick it up (rebuild, restart, run SQL).
   honorable kills on players of each race and class, so the Guild Page stays out of reach solo.
 - **Not done:** retail also gave guild reputation for boss kills and rated wins in guild groups and for
   honorable kills; only quests do here.
-- **Status:** compiled (all changed files), SQL tested on a copy of the world DB. Not tested in game yet.
+- **Status:** guild reputation from quests confirmed in game by Four (2026-11-14). Vendor locks, solo
+  guild runs and crafting credit not tested in game yet. Merged to `main` with PR #72 on 2026-11-14.
 - **Pick up:**
 
   ```
