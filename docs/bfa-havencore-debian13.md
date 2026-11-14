@@ -142,6 +142,7 @@ git apply ../tools-repo/tools/bfa/uldaman.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale-guardians.patch
 git apply ../tools-repo/tools/bfa/dire-maul-north.patch
 git apply ../tools-repo/tools/bfa/guild-progression.patch
+git apply ../tools-repo/tools/bfa/client-ticket-poll.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -929,6 +930,7 @@ git apply ../tools-repo/tools/bfa/uldaman.patch
 git apply ../tools-repo/tools/bfa/dungeon-scale-guardians.patch
 git apply ../tools-repo/tools/bfa/dire-maul-north.patch
 git apply ../tools-repo/tools/bfa/guild-progression.patch
+git apply ../tools-repo/tools/bfa/client-ticket-poll.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
