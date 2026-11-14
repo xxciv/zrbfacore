@@ -3,6 +3,30 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-14 (pet battles)
+
+### Pet battles: Battle Pet Training costs 10 silver instead of 10 gold
+
+- **Found** (Four, 2026-11-14, screenshot): Battle Pet Training (spell 119467, "Requires: Level 5")
+  costs 9g 50s at a battle pet trainer, far too much for a starter-zone spell.
+- **Cause:** the 12 battle pet trainer lists in `npc_trainer` (63014, 63061, 63067, 63070, 63073,
+  63075, 63077, 63080, 63083, 63086, 63596, 63626) list 119467 at `MoneyCost` 100000 (10g). The
+  window shows 9g 50s because Friendly reputation with the trainer's faction takes 5% off
+  (`Player::GetReputationPriceDiscount`).
+- **Changed:** `sql/fixes/world/2026_11_14_50_battle_pet_training_cost.sql` sets `MoneyCost`
+  100000 -> 1000 (10s) for spell 119467 in `npc_trainer`, and in `trainer_spell` too in case an update
+  added it there (the dump has no such row). At Friendly it shows 9s 50c. Docs: Pet battles section.
+- **Status:** confirmed in game by Four (2026-11-14): Battle Pet Training now shows 9s 50c at a trainer. SQL output: `12 trainer lists at 10s, 0 left at another price`.
+- **Pick up:**
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo pull
+  mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_14_50_battle_pet_training_cost.sql
+  ```
+
+  Then restart `worldserver`.
+
 ## 2026-11-13 (Quest fixes: flight master stops responding after accepting his quest)
 
 Merged to `main` with PR #68 on 2026-11-13.

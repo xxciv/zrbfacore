@@ -839,6 +839,13 @@ capturable species as wild battle pets:
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_07_51_battle_pets_only_capturable_are_wild.sql
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_13_50_display_companions_unattackable.sql
 ```
+
+Battle Pet Training (spell 119467, level 5) costs 10 gold at the battle pet trainers in the dump.
+This lowers it to 10 silver (9s 50c at Friendly):
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_14_50_battle_pet_training_cost.sql
+```
 #### Legion and BFA pet tamers
 
 Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest
