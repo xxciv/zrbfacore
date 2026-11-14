@@ -16,7 +16,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed:** `sql/fixes/world/2026_11_14_50_battle_pet_training_cost.sql` sets `MoneyCost`
   100000 -> 1000 (10s) for spell 119467 in `npc_trainer`, and in `trainer_spell` too in case an update
   added it there (the dump has no such row). At Friendly it shows 9s 50c. Docs: Pet battles section.
-- **Status:** not tested in game yet. Expected output: `12 trainer lists at 10s, 0 left at another price`.
+- **Status:** confirmed in game by Four (2026-11-14): Battle Pet Training now shows 9s 50c at a trainer. SQL output: `12 trainer lists at 10s, 0 left at another price`.
 - **Pick up:**
 
   ```
