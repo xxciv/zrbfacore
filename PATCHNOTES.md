@@ -3,6 +3,94 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-14 (guild progression)
+
+Merged to `main` with PR #72 on 2026-11-14.
+
+### Guild: guild reputation, guild achievements and the guild vendor locks can be earned
+
+- **Found** (Four, 2026-11-14, pet battles thread): the guild vendors (Shay Pressler in Stormwind,
+  Randah Songhorn in Thunder Bluff...) show 28 of 68 items. Four wants the retail locks kept but the
+  guild system working, so the locks can be earned.
+- **Causes:**
+  - Guild reputation (faction 1168) was never granted by anything in the core, so every member stayed
+    Neutral. Every guild reward needs Friendly to Exalted, and most guild achievements only count members
+    at Honored (profession, class and reputation achievements: modifier 62 = guild reputation >= 9000,
+    or 42000 for United Nations / Pandaren Embassy).
+  - Vendor locks on guild achievements (`CONDITION_ACHIEVEMENT`, type 17) were checked with
+    `Player::HasAchieved`, the character's own achievements. Guild achievements live on the guild, so
+    the check could never pass.
+  - Mix Master, Better Leveling Through Chemistry, Master Crafter and Set the Oven to "Cataclysmic"
+    (criteria types 126 CRAFT_ITEMS_GUILD / 79 COOK_RECIPES_GUILD) were never credited: nothing in the
+    core reported crafted items to the guild.
+  - `SPELL_AURA_MOD_REPUTATION_GAIN` (156) ignored its MiscValue, which is a faction filter in 8.3.7. The
+    Guild Champion tabard auras 97340 (+50%) / 97341 (+100%) are filtered to faction 1168 and would have
+    boosted every reputation (same for the per-faction 50% bonuses of spells 335149-335152).
+  - The vendor data was Cataclysm-era: 16 items were locked behind "Guild Level 5/10/15/20/25"
+    (achievements 4943-4946, 4912), which have no criteria since guild levels were removed in 6.0
+    (Reins of the Golden King, Reins of the Kor'kron Annihilator, Wrap of Unity, Guild Vault Voucher
+    (7th Slot), old Cataclysm heirlooms). Guild Herald 65363/65364 had Alliance/Horde swapped, Guild Page
+    65362 (Horde) asked for the Alliance-side Horde Slayer, the 7th slot voucher used a negated check.
+    The Pandaria/Draenor rewards were missing. The BFA vendors Perry Charlton 142086 (Boralus) and Ulla
+    Skycloven 142185 (Dazar'alor) had the BFA list but no locks at all.
+  - The guild roster's guild reputation column was always 0.
+- **Changed** (`tools/bfa/guild-progression.patch`, new, applies after `dire-maul-north.patch`):
+  - `Player::RewardQuest`: a guild member who turns in a quest that is not gray to them (quest level
+    above `Trinity::XP::GetGrayLevel`) gets guild reputation. Retail: 1 reputation per 360 guild
+    experience, 60,000 guild experience per quest, about 167. The base is
+    `Guild.QuestReputation` in worldserver.conf (default 167, 0 turns it off; the setting is optional),
+    then the normal reputation bonuses apply (Guild Champion tabards, Diplomacy, `Rate.Reputation.*`).
+  - `ConditionMgr` `CONDITION_ACHIEVEMENT`: an achievement with the guild flag (0x4000) is checked on
+    the player's guild (`Guild::GetAchievementMgr().HasAchieved`); no guild = not met.
+  - `Player::CalculateReputationGain`: aura 156 counts only when its MiscValue is 0 or the faction.
+  - `Spell::DoCreateItem`: an item made with a profession recipe credits the guild with
+    CRAFT_ITEMS_GUILD (or COOK_RECIPES_GUILD for Cooking), item id + count; the achievements' own
+    filters (flask, food, epic, item level) do the rest.
+  - `Guild::Member::SetStats`: the roster shows each member's guild reputation (updated at login,
+    level-up and logout).
+  - `.achievement add <id>` on a guild achievement gives it to the selected player's guild (GM testing).
+  - `Map::GetOwnerGuildId` (Four's choice, 2026-11-14): a guild member alone in a dungeon, raid or
+    scenario, not in a group, counts as a guild group. Every guild-run credit in the core goes through
+    it (boss kills, encounters, scenarios, guild runs of the Dungeon Hero / Glory / Scenario Roundup /
+    Challenge Gold achievements). `Guild.SoloGuildGroup = 0` in worldserver.conf restores the retail
+    rule (3 of 5 / 80% of the group from one guild); the setting is optional, default 1.
+- **Changed** (`sql/fixes/world/2026_11_14_70_guild_vendor_locks.sql`):
+  - All 12 guild vendors sell the BFA list: Alliance vendors (Shay Pressler 46602, Steeg Haskell 51495,
+    Nuri 51501, Velia Moonbow 51504) Perry Charlton's 54 items, Horde vendors (Goram 46572, Kim Horn
+    51496, Larissia 51502, Randah Songhorn 51503) Ulla Skycloven's 54, Mirla Silverblaze 51512 (Dalaran)
+    and Riha 52268 (Shattrath) both (64). The old Cataclysm heirlooms (replaced by the 6.1 ones) are gone;
+    the Pandaria/Draenor rewards are added (Initiate's/Member's/Officer's Shirts and their Tailored /
+    Artisan versions, Reins of the Thundering Jade Cloud Serpent, Deathwatch Hatchling, Blacksteel
+    Battleboar, Garrison Guild Banners).
+  - Every item that is in `guild_rewards` (the guild window's Rewards tab) gets exactly its locks:
+    guild reputation rank, the listed guild achievements, and Alliance/Horde from its race mask. Rewards
+    that list one achievement per faction (United Nations, Pandaren Embassy, Scenario Roundup) accept
+    either. The 6.1 heirlooms stay unlocked (not guild rewards). 1,294 condition rows.
+  - Backups: `zr_guild_vendor_backup_npc_vendor`, `zr_guild_vendor_backup_conditions`.
+- **What is earnable solo:** both tabards and Reins of the Golden King / Kor'kron Annihilator, Wrap of
+  Unity, Guild Vault Voucher (7th slot) need reputation only (plus Extended Storage for the voucher).
+  Achievements done by the guild's members (professions, A Class Act, Profit Sharing, A Daily Routine,
+  That's a Lot of Bait, Critter Kill Squad, crafting/cooking, United Nations, Pandaren Embassy, Stay
+  Classy, Guild Vault) count every member, alts included. The guild-run ones (Guild Cataclysm /
+  Pandaria / Draenor Dungeon Hero, the Guild Glory raid ones, Scenario Roundup, Challenge Warlords Gold
+  Guild Edition) count solo runs (see `Guild.SoloGuildGroup`). The Horde/Alliance Slayer ones need
+  honorable kills on players of each race and class, so the Guild Page stays out of reach solo.
+- **Not done:** retail also gave guild reputation for boss kills and rated wins in guild groups and for
+  honorable kills; only quests do here.
+- **Status:** guild reputation from quests confirmed in game by Four (2026-11-14). Vendor locks, solo
+  guild runs and crafting credit not tested in game yet. Merged to `main` with PR #72 on 2026-11-14.
+- **Pick up:**
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-ouu80u
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/guild-progression.patch | git apply
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_14_70_guild_vendor_locks.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart `worldserver`.
+
 ## 2026-11-14 (pet battles)
 
 ### Pet battles: Battle Pet Training costs 10 silver instead of 10 gold
