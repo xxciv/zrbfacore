@@ -122,6 +122,13 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/dire-maul-north.patch`](tools/bfa/dire-maul-north.patch): Dire Maul, Gordok Commons:
   the instance remembers which of the five Gordok guards were killed, and the Gordok Tribute gets one
   extra loot roll for each guard left alive. Needs `sql/fixes/world/2026_11_13_06_dire_maul_gordok_tribute.sql`.
+- [`tools/bfa/guild-progression.patch`](tools/bfa/guild-progression.patch): makes guild progress
+  earnable. Guild members get guild reputation (~167, `Guild.QuestReputation`) for every quest that
+  is not gray, guild-achievement locks on vendor items check the guild instead of the character, the
+  Guild Champion tabards add their bonus to guild reputation only, guild crafting/cooking achievements
+  count crafted items, a guild member alone in a dungeon counts as a guild group (`Guild.SoloGuildGroup`),
+  and the guild roster shows each member's guild reputation. Use with
+  `sql/fixes/world/2026_11_14_70_guild_vendor_locks.sql`.
 - [`tools/bfa/instance-scenario-cleanup.patch`](tools/bfa/instance-scenario-cleanup.patch): dungeon
   scenario progress from an old run no longer shows up in a new one. At startup the core deletes old
   dungeon instances but kept their scenario progress, and reused their instance ids.
