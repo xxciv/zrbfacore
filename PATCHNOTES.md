@@ -29,7 +29,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-14 (World fixes: Horde and Alliance capital city pass)
 
-Draft, not merged. Branch `claude/project-thread-tt7jn2`.
+Merged to `main` with PR #70 on 2026-11-14.
 
 ### World: Thunder Bluff overspawns, a Spanish Baine, standing wind riders and guards
 
@@ -133,7 +133,7 @@ Draft, not merged. Branch `claude/project-thread-tt7jn2`.
     (guids 735400129-735400150); guild pets wander 2 yards.
   - Exodar: Arena Promoter copy removed; 19 standing copies replaced by TDB's 5 (guids 735400151-735400155).
   - Midsummer spawns in game_event 1, turkey bunnies in 26, the pumpkin in 12.
-- **Status:** untested.
+- **Status:** confirmed in game by Four (2026-11-14).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ## 2026-11-13 (Quest fixes: flight master stops responding after accepting his quest)
