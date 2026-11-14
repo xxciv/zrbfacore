@@ -1,0 +1,206 @@
+diff --git a/src/server/game/Conditions/ConditionMgr.cpp b/src/server/game/Conditions/ConditionMgr.cpp
+index d189580..291c1c7 100644
+--- a/src/server/game/Conditions/ConditionMgr.cpp
++++ b/src/server/game/Conditions/ConditionMgr.cpp
+@@ -20,6 +20,7 @@
+ #include "Containers.h"
+ #include "DatabaseEnv.h"
+ #include "DB2Stores.h"
++#include "Guild.h"
+ #include "GameEventMgr.h"
+ #include "GameObject.h"
+ #include "GameTime.h"
+@@ -189,7 +190,18 @@ bool Condition::Meets(ConditionSourceInfo& sourceInfo) const
+         case CONDITION_ACHIEVEMENT:
+         {
+             if (Player* player = object->ToPlayer())
+-                condMeets = player->HasAchieved(ConditionValue1);
++            {
++                // zrbfacore: guild achievements (vendor locks on guild rewards) belong to
++                // the guild, not to the character; check the player's guild for them.
++                AchievementEntry const* achievement = sAchievementStore.LookupEntry(ConditionValue1);
++                if (achievement && (achievement->Flags & ACHIEVEMENT_FLAG_GUILD))
++                {
++                    Guild* guild = player->GetGuild();
++                    condMeets = guild && guild->GetAchievementMgr().HasAchieved(ConditionValue1);
++                }
++                else
++                    condMeets = player->HasAchieved(ConditionValue1);
++            }
+             break;
+         }
+         case CONDITION_TEAM:
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index e27e354..9a2e698 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -6704,7 +6704,12 @@ int32 Player::CalculateReputationGain(ReputationSource source, uint32 creatureOr
+ {
+     float percent = 100.0f;
+ 
+-    float repMod = noQuestBonus ? 0.0f : float(GetTotalAuraModifier(SPELL_AURA_MOD_REPUTATION_GAIN));
++    // zrbfacore: SPELL_AURA_MOD_REPUTATION_GAIN's MiscValue is a faction filter in 8.3.7
++    // (0 = every faction; e.g. Guild Champion 97340/97341 use 1168 = Guild only).
++    float repMod = noQuestBonus ? 0.0f : float(GetTotalAuraModifier(SPELL_AURA_MOD_REPUTATION_GAIN, [faction](AuraEffect const* aurEff) -> bool
++    {
++        return aurEff->GetMiscValue() == 0 || aurEff->GetMiscValue() == faction;
++    }));
+ 
+     // faction specific auras only seem to apply to kills
+     if (source == REPUTATION_SOURCE_KILL)
+@@ -16624,6 +16629,37 @@ void Player::RewardQuestPackage(uint32 questPackageId, uint32 onlyItemId /*= 0*/
+     }
+ }
+ 
++// zrbfacore: guild reputation (faction 1168). Retail grants it to guild members for
++// every quest turned in that is not gray to them (1 reputation per 360 guild
++// experience, 60,000 guild experience per quest = ~167 before bonuses such as the
++// Guild Champion tabards). HavenCore never granted any, so the guild vendor
++// reputation locks could not be earned. Base amount: Guild.QuestReputation.
++static constexpr uint32 GUILD_REPUTATION_FACTION_ID = 1168;
++
++static void RewardGuildReputationForQuest(Player* player, Quest const* quest)
++{
++    if (!player->GetGuildId())
++        return;
++
++    int32 baseRep = sConfigMgr->GetIntDefault("Guild.QuestReputation", 167);
++    if (baseRep <= 0)
++        return;
++
++    int32 questLevel = player->GetQuestLevel(quest);
++    if (questLevel <= 0)
++        questLevel = player->getLevel();
++    if (questLevel <= int32(Trinity::XP::GetGrayLevel(player->getLevel())))
++        return;                                             // gray quests give nothing
++
++    FactionEntry const* guildFaction = sFactionStore.LookupEntry(GUILD_REPUTATION_FACTION_ID);
++    if (!guildFaction)
++        return;
++
++    int32 rep = player->CalculateReputationGain(REPUTATION_SOURCE_QUEST, questLevel, baseRep, GUILD_REPUTATION_FACTION_ID);
++    if (rep > 0)
++        player->GetReputationMgr().ModifyReputation(guildFaction, rep);
++}
++
+ void Player::RewardQuest(Quest const* quest, uint32 reward, Object* questGiver, bool announce)
+ {
+     //this THING should be here to protect code from quest, which cast on player far teleport as a reward
+@@ -16708,6 +16744,7 @@ void Player::RewardQuest(Quest const* quest, uint32 reward, Object* questGiver,
+         UpdateSkillPro(skill, 1000, quest->GetRewardSkillPoints());
+ 
+     RewardReputation(quest);
++    RewardGuildReputationForQuest(this, quest);
+ 
+     uint16 log_slot = FindQuestSlot(quest_id);
+     if (log_slot < MAX_QUEST_LOG_SIZE)
+diff --git a/src/server/game/Guilds/Guild.cpp b/src/server/game/Guilds/Guild.cpp
+index 528c8d0..49457f7 100644
+--- a/src/server/game/Guilds/Guild.cpp
++++ b/src/server/game/Guilds/Guild.cpp
+@@ -38,6 +38,7 @@
+ #include "ObjectAccessor.h"
+ #include "ObjectMgr.h"
+ #include "Player.h"
++#include "ReputationMgr.h"
+ #include "ScriptMgr.h"
+ #include "SpellInfo.h"
+ #include "SpellMgr.h"
+@@ -624,6 +625,8 @@ void Guild::Member::SetStats(Player* player)
+     m_zoneId    = player->GetZoneId();
+     m_accountId = player->GetSession()->GetAccountId();
+     m_achievementPoints = player->GetAchievementPoints();
++    // zrbfacore: roster "Guild Reputation" column (was always 0)
++    m_totalReputation = uint32(std::max(0, player->GetReputationMgr().GetReputation(1168)));
+ }
+ 
+ void Guild::Member::SetStats(std::string const& name, uint8 level, uint8 _class, uint8 gender, uint32 zoneId, uint32 accountId, uint32 reputation)
+diff --git a/src/server/game/Spells/SpellEffects.cpp b/src/server/game/Spells/SpellEffects.cpp
+index f5f6d59..e8001c8 100644
+--- a/src/server/game/Spells/SpellEffects.cpp
++++ b/src/server/game/Spells/SpellEffects.cpp
+@@ -1547,6 +1547,26 @@ void Spell::DoCreateItem(uint32 /*i*/, uint32 itemtype, ItemContext context /*=
+ 
+         // we succeeded in creating at least one item, so a levelup is possible
+         player->UpdateCraftSkill(m_spellInfo->Id);
++
++        // zrbfacore: guild crafting achievements (Mix Master, Better Leveling Through
++        // Chemistry, Master Crafter, Set the Oven to "Cataclysmic") were never credited.
++        // Their modifier trees filter by the created item (class, quality, item level).
++        if (player->GetGuildId())
++        {
++            SkillLineAbilityMapBounds bounds = sSpellMgr->GetSkillLineAbilityMapBounds(m_spellInfo->Id);
++            for (SkillLineAbilityMap::const_iterator itr = bounds.first; itr != bounds.second; ++itr)
++            {
++                SkillLineEntry const* skill = sSkillLineStore.LookupEntry(itr->second->SkillLine);
++                if (!skill)
++                    continue;
++                uint32 rootSkillId = skill->ParentSkillLineID ? skill->ParentSkillLineID : skill->ID;
++                SkillLineEntry const* rootSkill = sSkillLineStore.LookupEntry(rootSkillId);
++                if (!rootSkill || (rootSkill->CategoryID != SKILL_CATEGORY_PROFESSION && rootSkill->CategoryID != SKILL_CATEGORY_SECONDARY))
++                    continue;
++                player->UpdateCriteria(rootSkillId == SKILL_COOKING ? CRITERIA_TYPE_COOK_RECIPES_GUILD : CRITERIA_TYPE_CRAFT_ITEMS_GUILD, newitemid, num_to_add);
++                break;
++            }
++        }
+     }
+ }
+ 
+diff --git a/src/server/scripts/Commands/cs_achievement.cpp b/src/server/scripts/Commands/cs_achievement.cpp
+index 0e568ce..3a24675 100644
+--- a/src/server/scripts/Commands/cs_achievement.cpp
++++ b/src/server/scripts/Commands/cs_achievement.cpp
+@@ -27,6 +27,7 @@ EndScriptData */
+ #include "Chat.h"
+ #include "DB2Stores.h"
+ #include "Language.h"
++#include "Guild.h"
+ #include "Player.h"
+ #include "RBAC.h"
+ 
+@@ -71,7 +72,23 @@ public:
+         }
+ 
+         if (AchievementEntry const* achievementEntry = sAchievementStore.LookupEntry(achievementId))
++        {
++            // zrbfacore: guild achievements go to the target's guild (testing guild reward locks)
++            if (achievementEntry->Flags & ACHIEVEMENT_FLAG_GUILD)
++            {
++                Guild* guild = target->GetGuild();
++                if (!guild)
++                {
++                    handler->PSendSysMessage("Achievement %u is a guild achievement and %s is not in a guild.", achievementId, target->GetName().c_str());
++                    handler->SetSentErrorMessage(true);
++                    return false;
++                }
++                guild->GetAchievementMgr().CompletedAchievement(achievementEntry, target);
++                handler->PSendSysMessage("Guild achievement %u given to guild %s.", achievementId, guild->GetName().c_str());
++                return true;
++            }
+             target->CompletedAchievement(achievementEntry);
++        }
+ 
+         return true;
+     }
+diff --git a/src/server/worldserver/worldserver.conf.dist b/src/server/worldserver/worldserver.conf.dist
+index 84d05a2..c18e1da 100644
+--- a/src/server/worldserver/worldserver.conf.dist
++++ b/src/server/worldserver/worldserver.conf.dist
+@@ -1077,6 +1077,17 @@ Guild.EventLogRecordsCount = 100
+ 
+ Guild.ResetHour = 6
+ 
++#
++#    Guild.QuestReputation
++#        Description: Guild reputation (faction 1168) a guild member earns for each quest turned
++#                     in that is not gray to them (zrbfacore guild-progression.patch).
++#                     Retail: 1 reputation per 360 guild experience, 60,000 per quest = ~167.
++#                     Bonuses (Guild Champion tabards, Diplomacy) are added on top.
++#        Default:     167
++#                     0 - (Disabled)
++
++Guild.QuestReputation = 167
++
+ #
+ #    Guild.BankEventLogRecordsCount
+ #        Description: Number of log entries for guild bank events that are stored per guild. Old
