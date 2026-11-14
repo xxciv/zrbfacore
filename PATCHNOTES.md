@@ -27,7 +27,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
   Then restart `worldserver`.
 
-## 2026-11-14 (World fixes: Thunder Bluff pass)
+## 2026-11-14 (World fixes: Thunder Bluff, Orgrimmar, Undercity and Silvermoon pass)
 
 Draft, not merged. Branch `claude/project-thread-tt7jn2`.
 
@@ -58,12 +58,46 @@ Draft, not merged. Branch `claude/project-thread-tt7jn2`.
   - 130773 spawns removed, template name set to "Baine Bloodhoof".
   - 27 snapshot spawns removed (13 wind riders, 7 Bluffwatchers, Honor Guard 260252, two Windstriders,
     two Chepis, the two hunters) and TDB's 19 spawns added (guids 735400003-735400021) with 16 waypoint
-    paths (599 points, ids 735400003-735400018, 735400021, 735400037) and two wind rider formations.
-    Bluffwatcher 260098 keeps its spot and walks TDB's path 735400037.
+    paths (599 points, ids 735400003-735400018, 735400021, 735400200) and two wind rider formations.
+    Bluffwatcher 260098 keeps its spot and walks TDB's path 735400200.
   - The four guild pets wander 2 yards.
   - Midsummer spawns in game_event 1, the extra Moonlight in game_event 7.
 - **Status:** untested.
 - **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Orgrimmar, Undercity and Silvermoon City pass
+
+- **Found** (Four, 2026-11-14: "do the same once over for Orgrimmar, Undercity, and Silvermoon"). Same checks
+  as Thunder Bluff, against TrinityCore TDB 7.3.5. No foreign names in any of the three cities.
+  - Orgrimmar, exact doubles: Voidbinder Zorlan 68979 and the "Take a potion" marker 137762 three times each,
+    two Orgrimmar Grunts on other grunts, a Thunder Bluff Protector 72559 and a Skyway Peon 44158 on their twins.
+  - Orgrimmar front gate: eight Mag'har (Grunt, Giantslayer, Warder, Warrior, Blademaster) stood inside
+    Orgrimmar Grunts, two models on one spot.
+  - Orgrimmar patrols: eleven named walkers stood off their routes (Scouts Stronghand, Manslayer, Tharr and
+    Obrok, Krixx, Felika, Grunt Karus, Witch Doctor Umbu, Engineer Niff, Blax Bottlerocket, Craven Drok) and
+    Snang, Muraga and Xan'tish had a second, standing copy. Grunts, Siegeworkers, Skyway Peons, Darkspear
+    Headhunters, Bruisers, Braves and the Chief Engineer had extra copies frozen along TDB's patrol routes
+    (sniff snapshots of walkers), while the walkers themselves were missing.
+  - Stacked companion pets: guild reward pets (Orgrimmar and Silvermoon), the Children's Week pets at the
+    Orgrimmar orphanage, Warbot with Blue Clockwork Rocket Bot.
+  - Midsummer pieces out all year in Orgrimmar and Silvermoon (Spirit of Summer, torch tossing / catching
+    bunnies); Lunar Festival lanterns, firecrackers and a second Moonlight out all year in Orgrimmar.
+  - Undercity: Apothecary Katrina 5732 stood twice and Hepzibah Sedgewick 5747 off her route. The rest of the
+    city matches TDB (the cages full of animals in the Apothecarium are stacked in TDB too).
+  - Silvermoon: Brooms 17213 (17 here, 6 in TDB), Arcane Guardians 18103 and City Guardians 16222 frozen on
+    TDB's patrol routes, their walkers missing.
+  - Checked and left alone: Orgrimmar's BFA refugee camp, war campaign NPCs and Mag'har at the gate (not
+    stacked), the Orgrimmar wind riders (fixed in `2026_11_12_34`), city bonfires, critter stacks already in pools.
+- **Changed** (`sql/fixes/world/2026_11_14_31_orgrimmar_undercity_silvermoon_pass.sql`):
+  - Orgrimmar: 16 doubles and Mag'har copies removed; 70 standing copies replaced by TDB's 39 walkers
+    (guids 735400022-735400060, paths of the same ids), Darkspear Headhunters 266061 and 266090 walk TDB's
+    routes (paths 735400061-735400062); pets wander 2 yards; Midsummer bunnies in game_event 1, Lunar pieces in 7.
+  - Undercity: 3 spawns replaced by TDB's Katrina and Hepzibah on their paths (guids 735400063-735400064).
+  - Silvermoon: 15 standing copies replaced by TDB's 10 walkers (guids 735400065-735400074), Broom 68155 walks
+    path 735400075; guild pets wander 2 yards; Midsummer spawns in game_event 1.
+  - `2026_11_14_30` now uses path id 735400200 for Bluffwatcher 260098 (735400037 is an Orgrimmar walker).
+- **Status:** untested.
+- **Pick up:** run `2026_11_14_30` (again, if you ran it before) and `2026_11_14_31`, restart `worldserver`.
 
 ## 2026-11-13 (Quest fixes: flight master stops responding after accepting his quest)
 
