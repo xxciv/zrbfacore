@@ -62,7 +62,7 @@ Merged to `main` with PR #70 on 2026-11-14.
     Bluffwatcher 260098 keeps its spot and walks TDB's path 735400200.
   - The four guild pets wander 2 yards.
   - Midsummer spawns in game_event 1, the extra Moonlight in game_event 7.
-- **Status:** untested.
+- **Status:** confirmed in game by Four (2026-11-14).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Orgrimmar, Undercity and Silvermoon City pass
@@ -96,7 +96,7 @@ Merged to `main` with PR #70 on 2026-11-14.
   - Silvermoon: 15 standing copies replaced by TDB's 10 walkers (guids 735400065-735400074), Broom 68155 walks
     path 735400075; guild pets wander 2 yards; Midsummer spawns in game_event 1.
   - `2026_11_14_30` now uses path id 735400200 for Bluffwatcher 260098 (735400037 is an Orgrimmar walker).
-- **Status:** untested.
+- **Status:** confirmed in game by Four (2026-11-14).
 - **Pick up:** run `2026_11_14_30` (again, if you ran it before) and `2026_11_14_31`, restart `worldserver`.
 
 ### World: Stormwind, Ironforge, Darnassus and Exodar pass
