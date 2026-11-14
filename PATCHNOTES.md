@@ -27,6 +27,44 @@ to do to pick it up (rebuild, restart, run SQL).
 
   Then restart `worldserver`.
 
+## 2026-11-14 (World fixes: Thunder Bluff pass)
+
+Draft, not merged. Branch `claude/project-thread-tt7jn2`.
+
+### World: Thunder Bluff overspawns, a Spanish Baine, standing wind riders and guards
+
+- **Found** (Four, 2026-11-14: "Baine pezuña de sangre" in Thunder Bluff; asked for a full pass of the city
+  for double spawns, foreign names, pathing and standing flyers). Every spawn in zone 1638 (726 creatures,
+  907 gameobjects) was compared with TrinityCore TDB 7.3.5:
+  - Baine pezuña de sangre 130773 (faction 35, level 1, no gossip): a Spanish-named copy of Baine
+    Bloodhoof from a BFA scene, spawned twice (guids 6740131 in Baine's hut next to the real Baine 36648,
+    6740132 near Hunter Rise). It is the only non-English creature or object name in the city.
+  - Thunder Bluff Wind Rider 51372: 13 riders hanging still in the air (sniffed snapshots of patrols).
+    TDB has 9: 5 leaders on flight paths, two of them with two wingmen in formation.
+  - Ground patrols were snapshots too: 7 Bluffwatchers 3084 and 1 Honor Guard 3083 stood where no
+    guard stands in TDB, Bluff Runner Windstrider 10881 and Chepi 8361 were each spawned twice, Hunter
+    Sagewind 14440 and Hunter Ragetotem 14441 stood away from their routes. TDB walks 6 Bluffwatchers,
+    1 Honor Guard, Windstrider, Chepi and both hunters on waypoint paths; none of them had a path here.
+  - Four guild reward pets (Dark Phoenix Hatchling, Armadillo Pup, Lil' Tarecgosa, Thundering Serpent
+    Hatchling) stood on exactly the same spot at the guild vendor.
+  - Midsummer pieces on Elder Rise were not in the event, so they stood there all year: Spirit of Summer
+    16701, Ribbon Pole Debug Target 17066 and 7 torch tossing / catching bunnies (25535, 25536, 26188).
+    A second Lunar Festival TEMP Greater Moonlight (guid 19728807) stood next to the event's own.
+  - Checked and left alone: the other 18 Bluffwatchers and 5 Honor Guards match TDB's posts; no two
+    copies of the same NPC stand together anywhere else; the Cataclysm invasion elementals and Earthen
+    Ring defenders (258 spawns) are in a game event that never runs; holiday decorations that are in their
+    events (Winter Veil gifts, Hallow's End haystacks, Lunar Festival fireworks) are left as they are.
+- **Changed** (`sql/fixes/world/2026_11_14_30_thunder_bluff_pass.sql`):
+  - 130773 spawns removed, template name set to "Baine Bloodhoof".
+  - 27 snapshot spawns removed (13 wind riders, 7 Bluffwatchers, Honor Guard 260252, two Windstriders,
+    two Chepis, the two hunters) and TDB's 19 spawns added (guids 735400003-735400021) with 16 waypoint
+    paths (599 points, ids 735400003-735400018, 735400021, 735400037) and two wind rider formations.
+    Bluffwatcher 260098 keeps its spot and walks TDB's path 735400037.
+  - The four guild pets wander 2 yards.
+  - Midsummer spawns in game_event 1, the extra Moonlight in game_event 7.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-13 (Quest fixes: flight master stops responding after accepting his quest)
 
 Merged to `main` with PR #68 on 2026-11-13.
