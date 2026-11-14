@@ -27,6 +27,115 @@ to do to pick it up (rebuild, restart, run SQL).
 
   Then restart `worldserver`.
 
+## 2026-11-14 (World fixes: Horde and Alliance capital city pass)
+
+Merged to `main` with PR #70 on 2026-11-14.
+
+### World: Thunder Bluff overspawns, a Spanish Baine, standing wind riders and guards
+
+- **Found** (Four, 2026-11-14: "Baine pezuña de sangre" in Thunder Bluff; asked for a full pass of the city
+  for double spawns, foreign names, pathing and standing flyers). Every spawn in zone 1638 (726 creatures,
+  907 gameobjects) was compared with TrinityCore TDB 7.3.5:
+  - Baine pezuña de sangre 130773 (faction 35, level 1, no gossip): a Spanish-named copy of Baine
+    Bloodhoof from a BFA scene, spawned twice (guids 6740131 in Baine's hut next to the real Baine 36648,
+    6740132 near Hunter Rise). It is the only non-English creature or object name in the city.
+  - Thunder Bluff Wind Rider 51372: 13 riders hanging still in the air (sniffed snapshots of patrols).
+    TDB has 9: 5 leaders on flight paths, two of them with two wingmen in formation.
+  - Ground patrols were snapshots too: 7 Bluffwatchers 3084 and 1 Honor Guard 3083 stood where no
+    guard stands in TDB, Bluff Runner Windstrider 10881 and Chepi 8361 were each spawned twice, Hunter
+    Sagewind 14440 and Hunter Ragetotem 14441 stood away from their routes. TDB walks 6 Bluffwatchers,
+    1 Honor Guard, Windstrider, Chepi and both hunters on waypoint paths; none of them had a path here.
+  - Four guild reward pets (Dark Phoenix Hatchling, Armadillo Pup, Lil' Tarecgosa, Thundering Serpent
+    Hatchling) stood on exactly the same spot at the guild vendor.
+  - Midsummer pieces on Elder Rise were not in the event, so they stood there all year: Spirit of Summer
+    16701, Ribbon Pole Debug Target 17066 and 7 torch tossing / catching bunnies (25535, 25536, 26188).
+    A second Lunar Festival TEMP Greater Moonlight (guid 19728807) stood next to the event's own.
+  - Checked and left alone: the other 18 Bluffwatchers and 5 Honor Guards match TDB's posts; no two
+    copies of the same NPC stand together anywhere else; the Cataclysm invasion elementals and Earthen
+    Ring defenders (258 spawns) are in a game event that never runs; holiday decorations that are in their
+    events (Winter Veil gifts, Hallow's End haystacks, Lunar Festival fireworks) are left as they are.
+- **Changed** (`sql/fixes/world/2026_11_14_30_thunder_bluff_pass.sql`):
+  - 130773 spawns removed, template name set to "Baine Bloodhoof".
+  - 27 snapshot spawns removed (13 wind riders, 7 Bluffwatchers, Honor Guard 260252, two Windstriders,
+    two Chepis, the two hunters) and TDB's 19 spawns added (guids 735400003-735400021) with 16 waypoint
+    paths (599 points, ids 735400003-735400018, 735400021, 735400200) and two wind rider formations.
+    Bluffwatcher 260098 keeps its spot and walks TDB's path 735400200.
+  - The four guild pets wander 2 yards.
+  - Midsummer spawns in game_event 1, the extra Moonlight in game_event 7.
+- **Status:** confirmed in game by Four (2026-11-14).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Orgrimmar, Undercity and Silvermoon City pass
+
+- **Found** (Four, 2026-11-14: "do the same once over for Orgrimmar, Undercity, and Silvermoon"). Same checks
+  as Thunder Bluff, against TrinityCore TDB 7.3.5. No foreign names in any of the three cities.
+  - Orgrimmar, exact doubles: Voidbinder Zorlan 68979 and the "Take a potion" marker 137762 three times each,
+    two Orgrimmar Grunts on other grunts, a Thunder Bluff Protector 72559 and a Skyway Peon 44158 on their twins.
+  - Orgrimmar front gate: eight Mag'har (Grunt, Giantslayer, Warder, Warrior, Blademaster) stood inside
+    Orgrimmar Grunts, two models on one spot.
+  - Orgrimmar patrols: eleven named walkers stood off their routes (Scouts Stronghand, Manslayer, Tharr and
+    Obrok, Krixx, Felika, Grunt Karus, Witch Doctor Umbu, Engineer Niff, Blax Bottlerocket, Craven Drok) and
+    Snang, Muraga and Xan'tish had a second, standing copy. Grunts, Siegeworkers, Skyway Peons, Darkspear
+    Headhunters, Bruisers, Braves and the Chief Engineer had extra copies frozen along TDB's patrol routes
+    (sniff snapshots of walkers), while the walkers themselves were missing.
+  - Stacked companion pets: guild reward pets (Orgrimmar and Silvermoon), the Children's Week pets at the
+    Orgrimmar orphanage, Warbot with Blue Clockwork Rocket Bot.
+  - Midsummer pieces out all year in Orgrimmar and Silvermoon (Spirit of Summer, torch tossing / catching
+    bunnies); Lunar Festival lanterns, firecrackers and a second Moonlight out all year in Orgrimmar.
+  - Undercity: Apothecary Katrina 5732 stood twice and Hepzibah Sedgewick 5747 off her route. The rest of the
+    city matches TDB (the cages full of animals in the Apothecarium are stacked in TDB too).
+  - Silvermoon: Brooms 17213 (17 here, 6 in TDB), Arcane Guardians 18103 and City Guardians 16222 frozen on
+    TDB's patrol routes, their walkers missing.
+  - Checked and left alone: Orgrimmar's BFA refugee camp, war campaign NPCs and Mag'har at the gate (not
+    stacked), the Orgrimmar wind riders (fixed in `2026_11_12_34`), city bonfires, critter stacks already in pools.
+- **Changed** (`sql/fixes/world/2026_11_14_31_orgrimmar_undercity_silvermoon_pass.sql`):
+  - Orgrimmar: 16 doubles and Mag'har copies removed; 70 standing copies replaced by TDB's 39 walkers
+    (guids 735400022-735400060, paths of the same ids), Darkspear Headhunters 266061 and 266090 walk TDB's
+    routes (paths 735400061-735400062); pets wander 2 yards; Midsummer bunnies in game_event 1, Lunar pieces in 7.
+  - Undercity: 3 spawns replaced by TDB's Katrina and Hepzibah on their paths (guids 735400063-735400064).
+  - Silvermoon: 15 standing copies replaced by TDB's 10 walkers (guids 735400065-735400074), Broom 68155 walks
+    path 735400075; guild pets wander 2 yards; Midsummer spawns in game_event 1.
+  - `2026_11_14_30` now uses path id 735400200 for Bluffwatcher 260098 (735400037 is an Orgrimmar walker).
+- **Status:** confirmed in game by Four (2026-11-14).
+- **Pick up:** run `2026_11_14_30` (again, if you ran it before) and `2026_11_14_31`, restart `worldserver`.
+
+### World: Stormwind, Ironforge, Darnassus and Exodar pass
+
+- **Found** (Four, 2026-11-14: "do the same with the Alliance cities of Stormwind, Ironforge, Darnassus, and
+  Exodar"). Same checks as the Horde cities, against TrinityCore TDB 7.3.5. No foreign names in any of the four.
+  - Stormwind, doubles: the fishing kids Justin 1368, Brandon 1370 and Roman 1371 at the canal, three Stormwind
+    Orphans 14496, a Dockhand 29019, Vereesa Windrunner 121754 and Vindicator Boros 121756 at the harbor and
+    Ambassador Moorgard 133362 each stood twice; Orphan Matron Nightingale 51988 stood inside 14450 and Celestine
+    of the Harvest 44395 inside 44396. Objects placed twice: ice cream shop scoops, cones and ice, the Shady Lady
+    figurine and silver bar, five flower bunches, a softball.
+  - Stormwind patrols: 30 Gryphon Riders 51348 hung still in the air (TDB flies 10 paths, some with wingmen);
+    Nikova Raskol, Ol' Emma (twice) and Lana Ashwin stood off their routes; Myrla Stoneround had a second,
+    standing copy; City Guards froze along TDB's patrol routes.
+  - Ironforge: 11 Gryphon Riders 51383 hung still (TDB: 6 flight paths with wingmen); Courier Hammerfall, Thief
+    Catchers Farmountain (twice) and Thunderbrew, Myra Tyrngaarde, Roetten Stonehammer, Bimble Longberry and
+    Curator Thorius stood off their routes; Sognar Cliffbeard had a second copy; Ironforge Guards froze on routes.
+  - Darnassus: Dendrythis 4167 spawned twice, Blessed Rice Cakes placed twice, 20 Hippogryph Riders 51371 hung
+    still (TDB: 7 flight paths with wingmen), and TDB's Sentinel, Darnassian Protector and Ancient Protector
+    patrols were missing.
+  - Exodar: Arena Promoter 22101 twice, Peacekeepers 16733 frozen on TDB's routes (77 here, 50 in TDB), Nibblet
+    19073 off his route, TDB's walking Worker 18800 missing.
+  - Holiday spawns out all year: Midsummer bunnies in all four cities, Spirit of Summer in Darnassus and a
+    Toasting Goblet in Stormwind; Pilgrim's Bounty turkey bunnies in Stormwind and Ironforge; a Hallow's End
+    pumpkin in Stormwind.
+  - Checked and left alone: BFA content (Stormwind refugee camp, war campaign NPCs, Stormwind Infantry
+    formations), critter stacks already in pools, Darnassus NPCs that already walk on their template paths.
+- **Changed** (`sql/fixes/world/2026_11_14_32_alliance_cities_pass.sql`):
+  - Stormwind: doubles removed; 43 standing copies replaced by TDB's 26 walkers and fliers (guids
+    735400076-735400101: 14 gryphon riders, 9 guards, Nikova, Ol' Emma, Lana).
+  - Ironforge: 29 standing copies replaced by TDB's 25 (guids 735400102-735400126: 8 gryphon riders, 10 guards
+    and the named walkers); existing guids 180626 and 180781 walk paths 735400127-735400128.
+  - Darnassus: Dendrythis copy and rice cakes removed; 21 standing riders replaced by TDB's 22 walkers and fliers
+    (guids 735400129-735400150); guild pets wander 2 yards.
+  - Exodar: Arena Promoter copy removed; 19 standing copies replaced by TDB's 5 (guids 735400151-735400155).
+  - Midsummer spawns in game_event 1, turkey bunnies in 26, the pumpkin in 12.
+- **Status:** confirmed in game by Four (2026-11-14).
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-13 (Quest fixes: flight master stops responding after accepting his quest)
 
 Merged to `main` with PR #68 on 2026-11-13.
