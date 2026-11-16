@@ -3,9 +3,89 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-16 (World fixes: starter zones, Elwynn Forest, Dun Morogh and Teldrassil)
+## 2026-11-16 (World fixes: starter zones review)
 
 Open in a draft PR, not merged yet.
+
+### World: Gilneas review
+
+- **Found:** Gilneas and Gilneas City compared with TDB 8.3.7. 139 Wolfmaw Outriders 37938 ran loose around the Battle for Gilneas lines (phase 189), where TDB has 35 Riding War Wolves 37939 carrying them plus 3 on foot. Tempest's Reach Watchmen (40, TDB 20), Attack Mastiffs (22, TDB 9) and Mountain Mastiffs (12, TDB 6) were doubled. 5 creatures and 15 objects stood twice on the same spot.
+- **Changed** (`sql/fixes/world/2026_11_16_43_gilneas_review.sql`):
+  - 183 creatures removed: Wolfmaw Outrider 139, Tempest's Reach Watchman 20, Attack Mastiff 13, Mountain Mastiff 6, Orc Raider 3, Forsaken Invader 2.
+  - 35 Riding War Wolves and 3 Wolfmaw Outriders added at TDB's positions (guids 735400175-735400212, phase 189); each wolf brings its rider through the existing vehicle accessory row.
+  - 15 doubled objects removed: Old Journal Page 6, Disturbed Soil 5, Moonleaf 2, Linen-Wrapped Book 1, Dustfall 1.
+- **Not changed:** Gilneas has fewer battle NPCs than TDB in several phases (TDB has 123 Forsaken Infantry, 116 Worgen Warriors and 84 Gilnean Militia that we don't have at all). Adding them is a bigger job and would need your call. The Hippogryphs and a few Gilneas City NPCs standing close together are phase scenes, so they were left.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Kezan review
+
+- **Found:** Kezan matches TDB 8.3.7 closely; ours has slightly fewer party NPCs, not more. One Kezan Citizen and 3 fire effects (phase 7) stood twice.
+- **Changed** (`sql/fixes/world/2026_11_16_42_kezan_review.sql`):
+  - Removed: Kezan Citizen 1, Kezan Small Fire - Phase 7 2, Kezan Large Fire - Phase 7 1.
+- **Not changed:** Kezan's party fireworks and fires belong to the zone's own phases and stay.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: The Wandering Isle review
+
+- **Found:** The Wandering Isle matches TDB 8.3.7 closely and has no extra creatures (TDB has more in some phases, e.g. Deepscale Ravagers in the turtle's wound). Two objects stood twice.
+- **Changed** (`sql/fixes/world/2026_11_16_41_wandering_isle_review.sql`):
+  - Removed: Kun-pai Ritual Charm 1, Explosive Bundle 1.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Tirisfal Glades review
+
+- **Found:** Tirisfal Glades and Deathknell compared with TDB 8.3.7: several mobs doubled, e.g. Wretched Ghoul 67 (TDB 47), Wailing Ancestor 32 (15), Scarlet Zealot 38 (22), Tirisfal Farmer 21 (11). Brill's Midsummer torch-tossing bunnies, the Spirit of Summer and two ribbon pole targets showed all year, as did Brill's Hallow's End props (Wickermen, decorations, candy bucket, lamps) and the cauldrons and campfire TDB ties to Hallow's End.
+- **Changed** (`sql/fixes/world/2026_11_16_40_tirisfal_glades_review.sql`):
+  - 116 creatures removed: Wretched Ghoul 20, Wailing Ancestor 17, Decrepit Darkhound 16, Scarlet Zealot 16, Rotting Ancestor 12, Tirisfal Farmer 10, Rot Hide Mongrel 8, Scarlet Disciple 6, Rotbrain Magus 5, Scarlet Sentry 5, Scarlet Missionary 1.
+  - Midsummer (1): Spirit of Summer 10651846, ribbon pole targets 352573 352544, torch bunnies 370240 370241 370253 370254 370308 370309 370242.
+  - Hallow's End (12): objects 162730 162527 162533 162534 (TDB), 20358958-61 decorations, candy bucket 20361246, lamps 20359152-53, Alliance Wickerman 20363057, Horde Wickerman 20363435.
+- **Not changed:** a door TDB also ties to Hallow's End (158047) stays permanent.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Mulgore review
+
+- **Found:** Mulgore and Camp Narache were the most overspawned so far: Venture Co. Worker 105 (TDB 29), Venture Co. Supervisor 63 (6), Flatland Prowler 72 (4), Prairie Wolf Alpha 71 (7), Windfury Sorceress 44 (9), Windfury Matriarch 42 (13), Taloned Swoop 21 (2). TDB 8.3.7 through TC 12.1.0 all agree on the lower numbers. 12 herb nodes stood twice on the same spot.
+- **Changed** (`sql/fixes/world/2026_11_16_39_mulgore_review.sql`):
+  - 418 creatures removed: Venture Co. Worker 76, Flatland Prowler 68, Prairie Wolf Alpha 64, Venture Co. Supervisor 57, Windfury Sorceress 35, Elder Plainstrider 35, Windfury Matriarch 29, Taloned Swoop 19, Wiry Swoop 13, Palemane Skinner 8, Palemane Poacher 8, Palemane Tanner 6.
+  - 12 doubled nodes removed: Ambercorn 6, Peacebloom 2, Silverleaf 2, Earthroot 2.
+  - Spring Rabbit 10649757 tied to Noblegarden (9).
+- **Not changed:** Bristleback Interlopers, Grimtotem Defenders and Vandals and Ghost Howl are not in TDB here but stay (TDB has none to compare with).
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Durotar review
+
+- **Found:** Durotar, Valley of Trials and Echo Isles: a few mobs doubled, e.g. Encrusted Surf Crawler 43 (TDB 22), Dustwind Harpy 32 (17), Razormane Quilboar 29 (15), Burning Blade Fanatic 25 (13). The twelve Brew of the Month vendors at the Brewfest grounds stood all year, as did a Headless Horseman fire, a Hallow's End cauldron and a Spring Rabbit.
+- **Changed** (`sql/fixes/world/2026_11_16_38_durotar_review.sql`):
+  - 103 creatures removed: Encrusted Surf Crawler 21, Dustwind Harpy 15, Burning Blade Fanatic 14, Wildmane Cat 14, Docile Island Boar 14, Razormane Quilboar 14, Burning Blade Apprentice 6, Dustwind Storm Witch 4, Pygmy Surf Crawler 1.
+  - Brew vendors 27806-27820 tied to their Brew of the Month events (34-45) as in TDB; fire 20500905 and cauldron 172811 to Hallow's End (12); Spring Rabbit 10647406 to Noblegarden (9).
+- **Not changed:** The Kodo (6, not in TDB) and the Dranosh'ar Fishermen (match TDB) stay.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Eversong Woods review
+
+- **Found:** Eversong Woods and Sunstrider Isle: many mobs doubled, e.g. Springpaw Cub 68 (TDB 30), Darkwraith 35 (11), Arcane Patroller 38 (17), Rotlimb Marauder 69 (40), Mana Wyrm 80 (52). A ribbon pole target and a Spring Rabbit showed all year.
+- **Changed** (`sql/fixes/world/2026_11_16_37_eversong_woods_review.sql`):
+  - 228 creatures removed: Springpaw Cub 38, Rotlimb Marauder 29, Mana Wyrm 28, Darkwraith 23, Arcane Patroller 21, Angershade 13, Rotlimb Cannibal 12, Withered Green Keeper 12, Ether Fiend 12, Amani Shadowpriest 12, Amani Axe Thrower 11, Arcane Wraith 7, Wretched Thug 6, Tainted Arcane Wraith 4.
+  - Ribbon pole target 353254 tied to Midsummer (1), Spring Rabbit 10652209 to Noblegarden (9).
+- **Not changed:** Enraged Wraiths, Lake Snappers and the Blood Elf Revelers (not in TDB) stay.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Azuremyst Isle review
+
+- **Found:** Azuremyst Isle and Ammen Vale: Timberstrider Fledgling 76 (TDB 30), Root Thresher 128 (97), Venture Co. Saboteur 16 (6), Venture Co. Gemologist 9 (3), owlbeasts and elemental spirits a little doubled. Spirit of Summer, a ribbon pole target, a bonfire bunny and a Spring Rabbit showed all year.
+- **Changed** (`sql/fixes/world/2026_11_16_36_azuremyst_isle_review.sql`):
+  - 112 creatures removed: Timberstrider Fledgling 46, Root Thresher 31, Venture Co. Saboteur 10, Deranged Owlbeast 7, Venture Co. Gemologist 6, Raving Owlbeast 5, Spirit of Water 4, Spirit of Fire 3.
+  - Midsummer (1): Spirit of Summer 10653172, ribbon pole target 353211, bonfire bunny 353222; Spring Rabbit 10652904 to Noblegarden (9).
+- **Not changed:** Angry Murlocs (not in TDB) stay.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Teldrassil review
 
