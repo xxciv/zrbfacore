@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-16 (Quest fixes: Mulgore batch and gossip menu options after Accept)
 
-Draft PR, not merged yet.
+Merged to `main` with PR #77 on 2026-11-16.
 
 ### DB: Supervisor Fizsprocket summons a Deviate Viper
 
