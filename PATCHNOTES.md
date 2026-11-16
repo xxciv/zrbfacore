@@ -7,6 +7,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet.
 
+### World: Wandering Isle trainees hit softer
+
+- **Found** (Four, 2026-11-16, video): after 2026_11_16_48 the trainees fought one at a time, but a single trainee still
+  killed a level 1 monk (72 health). They hit for 6-7 with melee every 2 seconds and cast Blackout Kick or Jab every
+  2 seconds (TDB 8.3.7's timer), with double health. Their level, health and damage values match TDB 8.3.7, and the
+  core's energy regeneration matches TrinityCore 8.3.7 (Tiger Palm costs 50 of 100 energy, so a level 1 monk gets one
+  about every 5 seconds).
+- **Changed** (`sql/fixes/world/2026_11_16_49_wandering_isle_trainee_damage.sql`), our own tuning rather than TDB's:
+  - Melee damage halved (`DamageModifier` 0.5) for the four trainee entries 54586, 54587, 65470, 65471.
+  - Blackout Kick and Jab every 5 to 7 seconds instead of every 2.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Wandering Isle trainees fight one at a time
 
 - **Found** (Four, 2026-11-16): during The Lesson of Stifled Pride (29524), hitting one Huojin or Tushui Trainee pulled the
