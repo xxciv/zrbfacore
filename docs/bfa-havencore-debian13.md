@@ -282,9 +282,18 @@ other two, and again if you ever re-run them:
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_09_02_profession_tier_levels.sql
 ```
 
-Then restart `worldserver`. The trainers only teach the skill itself: this database has no trainer
-recipes for the Outland to Legion crafting skills, so those recipes come from recipe items only.
-`PATCHNOTES.md` (2026-11-09) lists every profession trainer by zone.
+Then restart `worldserver`. `PATCHNOTES.md` (2026-11-09) lists every profession trainer by zone.
+
+A sixth world fix gives every crafting trainer the full set of Classic to Pandaria trainer recipes, each
+needing its own expansion skill at the level it is learned at (Rough Grinding Stone at Classic
+Blacksmithing 25). Most trainers used lists that asked for the wrong skill level and had no Outland,
+Northrend or Pandaria recipes:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_15_80_profession_trainer_recipes.sql
+```
+
+Then restart `worldserver`. Draenor and Legion recipes are not sold by trainers.
 
 `deadmines-fixes.patch` collects the fixes for The Deadmines (map 36):
 
@@ -1054,7 +1063,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_14_31_orgrimmar_undercity_silvermoon_pass.sql` | Orgrimmar, Undercity, Silvermoon: exact double spawns and Mag'har inside grunts removed, standing copies of walkers replaced by TDB 7.3.5 patrols, stacked pets spread out, Midsummer and Lunar pieces only during their events |
 | `2026_11_14_32_alliance_cities_pass.sql` | Stormwind, Ironforge, Darnassus, Exodar: double spawns and objects removed, still gryphon/hippogryph riders and standing copies of walkers replaced by TDB 7.3.5 flight paths and patrols, stacked pets spread out, Midsummer, Pilgrim's Bounty and Hallow's End pieces only during their events |
 
-Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills, `2026_11_09_02_profession_tier_levels.sql` gates them by expansion level).
+Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills, `2026_11_09_02_profession_tier_levels.sql` gates them by expansion level, `2026_11_15_80_profession_trainer_recipes.sql` gives every crafting trainer its recipes).
 
 ## 11. Status
 
