@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-16 (World fixes: the remaining cities pass)
 
-Draft, not merged. Branch `claude/project-thread-tt7jn2`.
+Merged to `main` with PR #75 on 2026-11-16 (untested in game at merge).
 
 ### World: foreign object and NPC names
 
