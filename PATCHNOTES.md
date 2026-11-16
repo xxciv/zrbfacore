@@ -7,6 +7,17 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet.
 
+### World: Northwatch caravans carry their lugs and crates
+
+- **Found** (Four, 2026-11-16, screenshots): after 2026_11_16_44 the caravan carriers walked the road (visible in GM mode),
+  but no lugs or crates rode with them. The core only loads `vehicle_template_accessory` rows for a vehicle that also has
+  an `npc_spellclick_spells` row; the three caravans had none, so their passengers were dropped at startup.
+- **Changed** (`sql/fixes/world/2026_11_16_47_northwatch_caravan_riders.sql`): Northwatch Caravan A/B/C (39244/39318/39319)
+  get the standard Ride Vehicle Hardcoded 46598 click spell. The caravans have no spellclick npcflag, so players still
+  can't click them.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: stray toy cart in Orgrimmar
 
 - **Found** (Four, 2026-11-16, screenshot and `.gps` at The Drag 1805.9 -4531.8): a Toy Cart stood on its own next to
