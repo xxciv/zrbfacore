@@ -3,6 +3,85 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-16 (Quest fixes: Mulgore batch and gossip menu options after Accept)
+
+Draft PR, not merged yet.
+
+### DB: Supervisor Fizsprocket summons a Deviate Viper
+
+- **Found** (Four, 2026-11-16): Supervisor Fizsprocket (3051) summons an elite Deviate Viper when
+  pulled. Nothing documents that.
+- **Cause:** his SmartAI row 0, commented "Cast Commanding Shout on Aggro", casts spell 7973. That
+  spell is "Summon Deviate Viper" (effect 28 summon, creature 5755), not a shout.
+- **Changed:** `sql/fixes/world/2026_11_16_70_mulgore_quest_fixes.sql` deletes `smart_scripts` row
+  (3051, source 0, id 0). Rows 1-3 stay: Lantern Blaze 81767, Motivate 81754, Throw Lantern 81764.
+- **Status:** untested in game.
+
+### DB: The Restless Earth tracker reads "Earth Spirit Credit Bunny slain"
+
+- **Found** (Four, 2026-11-16): quest 14491.
+- **Cause:** the objective is kill credit 36872 (Earth Spirit Credit Bunny) x6 with no
+  `quest_objectives.Description`, so the client shows the creature's name.
+- **Changed:** same SQL file sets `Description` = 'Spirits Calmed' (the retail text) for
+  QuestID 14491, ObjectID 36872.
+- **Status:** untested in game. The client caches quest text: delete the client's `Cache` folder.
+
+### DB: Morin Cloudstalker offers Supervisor Fizsprocket twice
+
+- **Found** (Four, 2026-11-16): two quests named Supervisor Fizsprocket at Morin Cloudstalker (2988),
+  one rewarding the removed Goblin Smasher.
+- **Cause:** the pre-Cataclysm quests are still in the DB next to their replacements: 765
+  Supervisor Fizsprocket (all races, follows The Ravaged Caravan 751, `QuestPackageID` 873, no
+  money) beside 26180, and 764 The Venture Co. (kill 14 + 6) beside 26179 (kill 7).
+- **Changed:** same SQL file renames `quest_template.LogTitle` 765 to
+  'Legacy - Supervisor Fizsprocket' and 764 to 'Legacy - The Venture Co.'. Nothing else about them
+  changes; both stay available. Other legacy duplicates in the DB are not touched yet.
+- **Status:** untested in game. Needs the client `Cache` folder deleted to show the new titles.
+
+### Core: gossip options do nothing after accepting a quest in the same window
+
+- **Found** (Four, 2026-11-16): Skorn Whitecloud (3052, `npcflag` 4227 = gossip + quest giver +
+  vendor + repair, gossip menu 24: "Tell me a story, Skorn." and "Let me browse your goods."). After
+  accepting The Hunter's Way (861) the menu comes back, but "Let me browse your goods." does
+  nothing until the window is closed and opened again.
+- **Cause:** `quest-gossip-accept.patch` sends the gossip menu again after Accept. The client then
+  ends the quest conversation with `CMSG_CLOSE_INTERACTION`, and `HandleCloseInteraction`
+  (`MiscHandler.cpp`) resets `InteractionData.SourceGuid`. `HandleGossipSelectOptionOpcode` drops
+  every option of a menu whose `SourceGuid` doesn't match, without a message. When the menu had no
+  quest left, the patch also sent `SendCloseGossip` itself (the Tak fix), which reset it as well
+  while the window stayed up. This is the same drop that hung Tak.
+- **Changed:** new `tools/bfa/quest-gossip-options.patch` (last in the chain, after
+  `client-ticket-poll.patch`), `GossipDef.h`, `GossipDef.cpp`, `QuestHandler.cpp`, `MiscHandler.cpp`:
+  - `PlayerMenu` gets `_keepInteractionOnNextClose` (`KeepInteractionOnNextClose`,
+    `ConsumeKeepInteraction`), cleared by `SendGossipMenu` and `SendCloseGossip`.
+  - `HandleQuestgiverAcceptQuestOpcode`: after re-sending the gossip menu it sets that flag and
+    returns. It only still sends the close when the menu is a single option that is not plain chat
+    and no quest is left, which is the case the client picks by itself (Tak's flight map).
+  - `HandleCloseInteraction`: when the flag is set, the next close for that NPC clears the flag and
+    leaves the interaction data alone.
+  - No DB change. Compiles against upstream 2c13546 and applies at the end of the full chain.
+- **Status:** untested in game.
+
+### To pick up this batch
+
+The core patch touches `GossipDef.h`, so expect a long build (about 226 files, like the last one).
+
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/quest-gossip-options.patch | git apply && echo "quest gossip options applied"
+grep -c "ConsumeKeepInteraction" src/server/game/Handlers/MiscHandler.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+
+The echo line prints and the grep prints 1. Then the SQL:
+
+```
+git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_16_70_mulgore_quest_fixes.sql | mysql -u root -p bfa_world
+```
+
+Restart worldserver and delete the client's `Cache` folder.
+
 ## 2026-11-16 (World fixes: the remaining cities pass)
 
 Merged to `main` with PR #75 on 2026-11-16 (untested in game at merge).
