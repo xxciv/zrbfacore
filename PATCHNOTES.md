@@ -7,6 +7,21 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet.
 
+### World: Wandering Isle trainees fight one at a time
+
+- **Found** (Four, 2026-11-16): during The Lesson of Stifled Pride (29524), hitting one Huojin or Tushui Trainee pulled the
+  ones around it, and the group killed the player. Our four trainee templates (54586, 54587, 65470, 65471) used a monster
+  faction (58) without TDB's civilian flag, so nearby trainees joined in. Their SmartAI mixed two script versions:
+  duplicate event ids, a missing actionlist, and a 15-second faction reset on the Tushui trainees, which also had a core
+  script on top.
+- **Changed** (`sql/fixes/world/2026_11_16_48_wandering_isle_trainees.sql`):
+  - TDB 8.3.7 template values for all four entries: Huojin faction 2263, Tushui faction 2101, civilian, no core script.
+  - TDB 8.3.7's trainee SmartAI for all four: one-on-one fight, and at 10% health the trainee yields, gives the quest
+    credit, says a line and leaves after 4 seconds. TDB gives the Huojin trainees no script (players had to kill them),
+    so here they get the same yield script, casting Jab instead of Blackout Kick.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Northwatch caravans carry their lugs and crates
 
 - **Found** (Four, 2026-11-16, screenshots): after 2026_11_16_44 the caravan carriers walked the road (visible in GM mode),
