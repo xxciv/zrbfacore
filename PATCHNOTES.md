@@ -3,6 +3,60 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-16 (World fixes: the remaining cities pass)
+
+Draft, not merged. Branch `claude/project-thread-tt7jn2`.
+
+### World: foreign object and NPC names
+
+- **Found** (Four, 2026-11-15: pass of Stormshield, Shrine of Seven Stars, Boralus, Dazar'alor, Warspear, Dalaran and
+  Shattrath). Stormshield and Warspear objects had French names (mailboxes "Boîte aux lettres", "Échelle", "Clé gnome").
+  The whole world has the same problem: 293 spawned object templates carry French names (mostly Draenor props), a few
+  Russian or broken ones (Argus "Lighthouse Vindicarа", carts and buckets in Cyrillic). Creatures: Genn Greymane 95891 was
+  "Genn Grisetête", Gidwin Goldbraids 100197 "Gidwin Nattes-d'Or", Dave's Gyrocopter 91083 French, Kin'garoth 120354 a
+  broken apostrophe, and the Traveler's Tundra Mammoth and Grand Expedition Yak vendors (32641, 32642, 62821, 62822)
+  were named "0".
+- **Changed** (`sql/fixes/world/2026_11_16_30_foreign_object_and_npc_names.sql`): 274 object names taken from TrinityCore
+  TDB 7.3.5, 18 translated by hand (Mailbox, Smoke, Guts, Training Arena, Cart, Oar, ...); one object named only "???"
+  (273846) left. The 8 creature names (and the vendors' subnames) set to their English names.
+- **Not fixed:** 17 BFA ambient creatures in Zandalar (130448, 130441, 130445, 125455, 130699, 132447 and others, about
+  2,500 spawns) are named "0". Their real names are not in any reference I can reach here.
+- **Status:** untested. Objects and NPCs you have already seen may keep the old name until the client `Cache` folder is deleted.
+- **Pick up:** run the SQL, restart `worldserver`, delete the client `Cache` folder.
+
+### World: Stormshield, Warspear, Boralus, Dazar'alor, both Dalarans and Shattrath pass
+
+- **Found:** same checks as the capitals. TDB 7.3.5 covers Stormshield, Shattrath and Northrend Dalaran; Warspear, Boralus,
+  Dazar'alor and Broken Isles Dalaran have no reference, so there only clear doubles were looked for.
+  - Shrine of Seven Stars: nothing to fix.
+  - Stormshield: the two Stormshield Officers 86433 and the cart horses 88194 stood still; TDB walks them.
+  - Warspear: two Warspear Grunts 86472 stood inside two other Warspear Grunts 86460.
+  - Boralus: overlapping sniffs left 42 creatures twice, among them Katherine Proudmoore, Captain Cunningham, Diana
+    Seafinch, Tabrina, Erma Milforth and Aurora (three each), Urban Planner Volrath, Constable Taylor and the children with
+    their pets (Lilly, Jack, Mika, Kenshi, Gizmo, Holly, Elsie, Xander, Val, Sir Reginald). 934 objects stood two to four
+    times on the same spot: chairs (526), benches, stools, braziers, campfires, mailboxes, rune traps.
+  - Dazar'alor: 32 doubles: the pet trainers' pets (Bailey, Iron Starlette, Nibbler, Nuts, Piper three each), Enchantress
+    Quinni (three), the Bloodscalp, Revantusk and Shatterspear Speakers, Huk, Spears, Simi, Heal Bot, Da White Shark,
+    Encyclopedia Antagonistica.
+  - Dalaran (Broken Isles): the yak vendors stood at map origin (0, 0, 0); 10 chairs, stools, a bench, a mailbox and The
+    Arsenal Absolute were placed twice; 117 autumn decorations (named "... - Brewfest", Pilgrim's Bounty everywhere else)
+    and the Battered Brewmaster 40441 stood out all year.
+  - Dalaran (Northrend): 24 Skybreaker Marines 30352 at Krasus' Landing, six on each of TDB's four spots; the mammoth and yak
+    vendors at map origin.
+  - Shattrath: Salandria 22914 twice; 2 Avatars and 13 Minions of Terokk (hostile, only summoned by a Skettis quest event,
+    not in TDB) stood in Lower City; 12 Farm Chickens where TDB has 5.
+  - Checked and left alone: Boralus and Dazar'alor pterrordaxes and gryphons (perched, no reference to say otherwise),
+    critter stacks (pooled or moving), training dummies, Shattrath and Dalaran dungeon image platforms (images share a spot
+    on purpose), Stormshield Peasants (working emotes).
+- **Changed** (`sql/fixes/world/2026_11_16_31_remaining_cities_pass.sql`):
+  - Stormshield: officers and one horse replaced by TDB's walkers (guids 735400156-735400158), horse 10181767 walks path
+    735400159.
+  - Warspear 2, Boralus 42 creatures and 934 objects, Dazar'alor 32, Broken Isles Dalaran 2 creatures and 10 objects,
+    Northrend Dalaran 23 (20 marines, 3 vendors), Shattrath 23 removed. The lowest guid of each double is kept.
+  - Broken Isles Dalaran: autumn decorations in game_event 26 (Pilgrim's Bounty), Battered Brewmaster in 24 (Brewfest).
+- **Status:** untested.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-15 (Professions: trainer recipes)
 
 ### World: crafting trainers teach every trainer recipe, at the right skill
