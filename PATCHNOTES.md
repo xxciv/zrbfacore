@@ -27,7 +27,7 @@ Open in a draft PR, not merged yet.
 - **Changed** (`sql/fixes/world/2026_11_16_46_orgrimmar_toy_cart.sql`): the loose cart and bunny removed.
 - **Not changed:** three stacks of fire elementals (Surging Elemental, Searing Fire Elemental, Agitated Fire Spirit and two
   others) at the same spot belong to the Elemental Invasion event (48) and only show while it runs.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Tirisfal Glades and Undercity follow-up
@@ -44,7 +44,7 @@ Open in a draft PR, not merged yet.
   hover in place (MovementType 0); the 7 Tirisfal and Deathknell 187234 decorations tied to Winter Veil (event 2).
 - **Not changed:** the same decoration stands all year in other zones (Elwynn, Dun Morogh, Westfall, Hillsbrad, Silverpine and others);
   those are left for those zones' reviews.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Northwatch supply caravans (Durotar)
