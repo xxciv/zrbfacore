@@ -3,9 +3,28 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-16 (World fixes: starter zones, Elwynn Forest)
+## 2026-11-16 (World fixes: starter zones, Elwynn Forest and Dun Morogh)
 
 Open in a draft PR, not merged yet.
+
+### World: Dun Morogh review
+
+- **Found** (Four, 2026-11-15, starter zones). Dun Morogh, Coldridge Valley and New Tinkertown compared with TDB 8.3.7.
+  Unlike Elwynn the zone is close to TDB overall; only some mobs were doubled: Crazed Leper Gnome 77 (TDB 40), Target
+  Acquisition Device 46 (15), Young Snow Leopard 76 (50), Rockjaw Invader 27 (11), Living Contamination 32 (19), Dark Iron
+  Spy 28 (16), Winter Wolf 48 (37), Snow Leopard Cub 26 (16). A Dark Iron Golem, a Rockjaw Backbreaker and a Wendigo stood
+  twice. Only 1 of TDB's 4 Keg of Gnomenbrau quest objects was spawned. A ribbon pole target and bonfire bunny (Midsummer)
+  and a Spring Rabbit (Noblegarden) showed all year.
+- **Changed** (`sql/fixes/world/2026_11_16_33_dun_morogh_review.sql`):
+  - 190 extra creatures removed, same matching as Elwynn: Crazed Leper Gnome 42, Target Acquisition Device 31, Young Snow
+    Leopard 26, Living Contamination 18, Rockjaw Invader 16, Dark Iron Spy 12, Winter Wolf 11, Snow Leopard Cub 10, Rockjaw
+    Skullthumper 9, Dark Iron Pyromancer 5, Crushcog Sentry-Bot 4, Rockjaw Scavenger 3, and the three doubles.
+  - Critters and wild battle pets untouched. Warstrider Prototypes, launchers, Sanitron 500 and the S.A.F.E. Operatives
+    look doubled but match TDB, so they stay. The Dark Iron Invaders at the airfield (71, not in TDB) stay too.
+  - 3 Keg of Gnomenbrau objects added from TDB (guids 735400102-104).
+  - Event links: ribbon pole target 352654 and bonfire bunny 352653 to Midsummer (1), Spring Rabbit 10646516 to Noblegarden (9).
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Elwynn Forest review
 
@@ -34,7 +53,7 @@ Open in a draft PR, not merged yet.
     to Midsummer (1), Spring Rabbit 10647297 to Noblegarden (9), moonlight object 19728596 to Lunar Festival (7).
 - **Not changed:** herb and ore nodes (Silverleaf 109 vs TDB 28, Copper Vein 110 vs 37); they rarely overlap, so they stay
   unless you want them trimmed.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ## 2026-11-16 (World fixes: the remaining cities pass)
