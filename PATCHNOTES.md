@@ -7,6 +7,18 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet.
 
+### World: stray toy cart in Orgrimmar
+
+- **Found** (Four, 2026-11-16, screenshot and `.gps` at The Drag 1805.9 -4531.8): a Toy Cart stood on its own next to
+  Blax Bottlerocket, who already pulls his own. The loose Toy Cart 52812 (guid 299102) and its Toy Cart Bunny 52810
+  (guid 299103) are leftovers: Blax's cart comes from his vehicle passengers (cart on Blax, bunny on the cart), and TDB 8.3.7
+  spawns only Blax.
+- **Changed** (`sql/fixes/world/2026_11_16_46_orgrimmar_toy_cart.sql`): the loose cart and bunny removed.
+- **Not changed:** three stacks of fire elementals (Surging Elemental, Searing Fire Elemental, Agitated Fire Spirit and two
+  others) at the same spot belong to the Elemental Invasion event (48) and only show while it runs.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Tirisfal Glades and Undercity follow-up
 
 - **Found** (Four, 2026-11-16, screenshots and video):
