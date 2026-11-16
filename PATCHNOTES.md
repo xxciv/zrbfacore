@@ -15,7 +15,7 @@ Open in a draft PR, not merged yet.
 - **Changed** (`sql/fixes/world/2026_11_16_47_northwatch_caravan_riders.sql`): Northwatch Caravan A/B/C (39244/39318/39319)
   get the standard Ride Vehicle Hardcoded 46598 click spell. The caravans have no spellclick npcflag, so players still
   can't click them.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: stray toy cart in Orgrimmar
@@ -62,7 +62,7 @@ Open in a draft PR, not merged yet.
     caravan's end-of-path event now fires at point 9 instead of 10.
   - The three Northwatch Caravan Spawners 251643-251645 stand still and each send out a caravan (B, A, C) every 2 to
     2.5 minutes, staggered.
-- **Status:** untested in game. The crate size is the game's own model at normal scale (TDB has the same).
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Gilneas review
