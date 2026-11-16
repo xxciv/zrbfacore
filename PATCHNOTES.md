@@ -73,7 +73,7 @@ Open in a draft PR, not merged yet.
   - 35 Riding War Wolves and 3 Wolfmaw Outriders added at TDB's positions (guids 735400175-735400212, phase 189); each wolf brings its rider through the existing vehicle accessory row.
   - 15 doubled objects removed: Old Journal Page 6, Disturbed Soil 5, Moonleaf 2, Linen-Wrapped Book 1, Dustfall 1.
 - **Not changed:** Gilneas has fewer battle NPCs than TDB in several phases (TDB has 123 Forsaken Infantry, 116 Worgen Warriors and 84 Gilnean Militia that we don't have at all). Adding them is a bigger job and would need your call. The Hippogryphs and a few Gilneas City NPCs standing close together are phase scenes, so they were left.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Kezan review
@@ -132,7 +132,7 @@ Open in a draft PR, not merged yet.
   - 228 creatures removed: Springpaw Cub 38, Rotlimb Marauder 29, Mana Wyrm 28, Darkwraith 23, Arcane Patroller 21, Angershade 13, Rotlimb Cannibal 12, Withered Green Keeper 12, Ether Fiend 12, Amani Shadowpriest 12, Amani Axe Thrower 11, Arcane Wraith 7, Wretched Thug 6, Tainted Arcane Wraith 4.
   - Ribbon pole target 353254 tied to Midsummer (1), Spring Rabbit 10652209 to Noblegarden (9).
 - **Not changed:** Enraged Wraiths, Lake Snappers and the Blood Elf Revelers (not in TDB) stay.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Azuremyst Isle review
@@ -155,7 +155,7 @@ Open in a draft PR, not merged yet.
   the 3 Boglings removed; the 6 doubled Fel Cones removed; bonfire bunny 353124 linked to Midsummer (1), Spring Rabbit
   10649606 to Noblegarden (9); every Noblegarden Bunny Controller 32784 linked to Noblegarden (9).
 - **Not changed:** critters and wild pets; herbs (as in Elwynn); the 63 large Fel Cone props 208046 sitting on the quest cones (decoration only).
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Gnomeregan convoys and Gnome Travelers march
