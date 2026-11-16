@@ -3,6 +3,60 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-16 (core)
+
+### Combat: abilities that scale with attack power hit far too weakly
+
+Open on branch `claude/project-thread-z3fwbh` (not merged yet).
+
+- **Found** (Four, 2026-11-16, level 1 Pandaren monk): Tiger Palm hits for 1, and the monk dies to
+  any mob of the same level.
+- **Cause:** in 8.3.7 a melee or hunter ability's damage is "x% of attack power", and attack power
+  includes the equipped weapon's share (weapon DPS x 6) and flat attack power from buffs.
+  HavenCore's `Unit::GetTotalAttackPowerValue` returned only the attack power from stats
+  (`AttackPower * (1 + multiplier)`). It ignored `AttackPowerModPos/Neg` (flat attack power
+  auras) and the weapon fields `MainHandWeaponAttackPower`, `OffHandWeaponAttackPower` and
+  `RangedWeaponAttackPower`, which HavenCore never set at all. Tiger Palm (100780) is effect 0
+  School Damage with `BonusCoefficientFromAP` 0.2703 and no base points (SpellEffect.db2 row 108857),
+  so a level 1 monk (17 agility, `player_classlevelstats` class 10 level 1) got about
+  0.27 x 17 = 4.6 damage before armor. The weapon's share was missing.
+  Armor mitigation (`Unit::CalcArmorReducedDamage`) and creature armor
+  (`Creature::GetBaseArmorForLevel`, ExpectedStat) were compared with TrinityCore 8.3.7 (tag
+  TDB837.20101) and are identical, so they are not part of this bug.
+- **Changed:** new `tools/bfa/weapon-attack-power.patch`, all ported from TrinityCore 8.3.7:
+  - `Unit::GetTotalAttackPowerValue(attType, includeWeapon = true)` (`Unit.cpp`, `Unit.h`): adds
+    `AttackPowerModPos + AttackPowerModNeg` (ranged: the ranged pair), and with `includeWeapon` the
+    weapon attack power: main hand and ranged take the larger of main hand / ranged weapon AP; the
+    off hand adds off hand weapon AP and halves the total.
+  - White hits do not count the weapon twice: `Player::CalculateMinMaxDamage`,
+    `Creature::CalculateMinMaxDamage` and `Guardian::UpdateDamagePhysical` (`StatSystem.cpp`) call it
+    with `includeWeapon = false`, because they already add the weapon's own damage.
+  - `Player::_ApplyWeaponDamage` (`Player.cpp`): sets the weapon attack power field for the slot to
+    `weapon DPS * 6` when a weapon is equipped and 0 when it is removed. New setters
+    `SetMainHandWeaponAttackPower` / `SetOffHandWeaponAttackPower` / `SetRangedWeaponAttackPower`
+    (`Unit.h`).
+  - `ItemTemplate::GetDPS(itemLevel)` (`ItemTemplate.cpp/.h`): the DPS lookup is split out of
+    `ItemTemplate::GetDamage`, which now calls it. Weapon damage itself is unchanged.
+  - `Unit::SpellDamageBonusDone` (`Unit.cpp`): spells that need the off hand and not the main hand
+    (`SPELL_ATTR3_REQ_OFFHAND` without `SPELL_ATTR3_MAIN_HAND`) use off hand attack power.
+  - No SQL. The character sheet's attack power now also shows the weapon's share.
+- **Status:** the patch applies cleanly after the full chain on upstream 2c13546, and all four changed
+  source files compile. Not yet checked in game. `Unit.h` is in the precompiled header, so expect a
+  near-full rebuild.
+
+#### To pick up the attack power fix
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/weapon-attack-power.patch | git apply && echo "attack power patch applied"
+grep -c "WeaponAttackPower" src/server/game/Entities/Unit/Unit.cpp src/server/game/Entities/Player/Player.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 3 for `Unit.cpp` and 3 for `Player.cpp`. Then restart `worldserver`. Log in, take the
+weapon off and put it back on (or just relog), and check the attack power on the character sheet.
+
 ## 2026-11-16 (Quest fixes: Mulgore batch and gossip menu options after Accept)
 
 Merged to `main` with PR #77 on 2026-11-16.
