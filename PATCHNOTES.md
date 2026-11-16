@@ -3,6 +3,78 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-15 (Professions: trainer recipes)
+
+### World: crafting trainers teach every trainer recipe, at the right skill
+
+- **Found** (Four, 2026-11-15): Karn Stonehoof (Thunder Bluff) at Blacksmithing 44 never offered Rough
+  Grinding Stone (25), Runed Copper Gauntlets (40), Copper Chain Belt (35), Copper Chain Pants (1),
+  Copper Chain Boots (20) or the Copper weapons; Alliance blacksmiths too. Cause, for every crafting
+  profession:
+  - Most trainers use HavenCore-made lists (`VerifiedBuild` 0): 991 Blacksmithing, 993 Engineering, 990
+    Leatherworking, 122 Alchemy, 119 Jewelcrafting. They ask for the recipe's yellow skill instead of
+    the skill it is learned at (Rough Grinding Stone 45 instead of 25, Copper Chain Pants 50 instead of 1,
+    Copper Chain Belt 75 instead of 35, Runed Copper Gauntlets 80 instead of 40). They have no Outland,
+    Northrend or Pandaria recipes, and list 119 has only 27 Classic Jewelcrafting recipes.
+  - Blizzard's own 8.0 lists are in the dump and complete (27 Blacksmithing, 62 Enchanting, 407 Engineering,
+    63 Inscription, 29 Jewelcrafting, 56 Leatherworking, 163 Tailoring, 136 Cooking), but they ask for the
+    profession skill on the old scale (Blacksmithing 350 for a Northrend recipe). The expansion skills
+    never reach that, so those recipes stayed unavailable.
+  - Sungshin Ironpaw (64231, Pandaria cooking) opened the old fallback list.
+- **Changed:** `sql/fixes/world/2026_11_15_80_profession_trainer_recipes.sql` (`bfa_world`):
+  - 11,463 `trainer_spell` rows, 7,863 of them new: every trainer list that teaches a profession's Classic
+    skill (so every crafting trainer, the Kul Tiras and Zandalar ones included) teaches that profession's
+    full Classic to Pandaria recipe set:
+
+    | Profession | Recipes | Classic | Outland | Northrend | Cataclysm | Pandaria | Lists |
+    |---|---|---|---|---|---|---|---|
+    | Alchemy | 135 | 43 | 12 | 35 | 42 | 3 | 59, 105, 122, 846, 847, 987 |
+    | Blacksmithing | 240 | 82 | 15 | 92 | 35 | 16 | 27, 37, 80, 695, 817, 991, 133536 |
+    | Cooking | 61 | 20 | 3 | 16 | 2 | 20 | 136, 582, 858, 995 |
+    | Enchanting | 185 | 63 | 18 | 39 | 35 | 30 | 51, 62, 125, 831, 832 |
+    | Engineering | 225 | 80 | 36 | 43 | 30 | 36 | 102, 126, 405, 406, 407, 873, 874, 993 |
+    | Inscription | 139 | 54 | 8 | 22 | 26 | 29 | 63, 383, 387, 786, 789, 790, 791, 836, 837 |
+    | Jewelcrafting | 253 | 49 | 26 | 62 | 38 | 78 | 29, 48, 119, 608, 821, 822, 19778 |
+    | Leatherworking | 270 | 108 | 33 | 73 | 30 | 26 | 4, 56, 103, 826, 827, 990 |
+    | Tailoring | 227 | 103 | 8 | 62 | 40 | 14 | 117, 157, 163, 774, 863, 864 |
+
+  - Each recipe requires its own expansion skill (`ReqSkillLine`), for example Classic Blacksmithing
+    2477 or Northrend Blacksmithing 2475, at the skill it is learned at (`ReqSkillRank`):
+    - Recipe set and Classic skill come from Blizzard's 8.0 list above. Alchemy has no Blizzard list in
+      the dump, so it uses the Mists of Pandaria 5.4.8 trainer data, keeping only recipes the 8.3.7 client
+      still has as Alchemy recipes.
+    - Expansion recipes use the 1-75 scale: old skill minus 300 (Outland), 375 (Northrend), 450
+      (Cataclysm) or 525 (Pandaria), at least 1. Blizzard's own 8.0 rows for Cataclysm recipes use
+      exactly old minus 450. Examples: Rough Grinding Stone 3320 at Classic 25; Copper Chain Pants 2662
+      at 1; Copper Chain Boots 3319 at 20; Copper Chain Belt 2661 at 35; Runed Copper Gauntlets 3323 at
+      40; Copper Mace 2737 at 15; a Northrend recipe learned at 415 (55185) at Northrend 40.
+    - The 18 Pandaria cooking recipes from list 582 need Pandaria Cooking 1, which is where the 8.3.7
+      client rates them (yellow 1, grey 10).
+    - `MoneyCost` is the highest cost any source lists. There is no level requirement: the expansion
+      skill itself is gated by level (2026_11_09_02).
+  - `creature_trainer` (64231, 582, 0, 3): Sungshin Ironpaw opens list 582.
+  - Each list's rows for these recipes are deleted first, so the file is safe to run more than once. Ran
+    twice in a test database with the dump's trainer rows: 7,863 rows added each time, no other row
+    touched.
+- **Not changed:**
+  - Draenor and Legion recipes: trainers did not sell them in 8.x (garrison buildings and quests).
+  - Kul Tiran recipes: already on the Kul Tiras and Zandalar lists.
+  - The six Ironpaw way masters in Halfhill: their way recipes are no longer cooking recipes in the 8.3.7
+    client.
+  - 28 extra Pandaria Jewelcrafting rows on list 608, 18 old rows on list 582, and 3 other old rows are
+    left as they were.
+- **Status:** not yet tested in game. Check: Karn Stonehoof at Blacksmithing 44 should list Rough Grinding
+  Stone, Runed Copper Gauntlets and the Copper Chain pieces as learnable. Higher recipes should show in
+  red with "Requires Blacksmithing (n)", and Northrend recipes with "Requires Northrend Blacksmithing (n)".
+
+#### To pick up the recipe fix
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-2e6el5
+git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_15_80_profession_trainer_recipes.sql | mysql -u root -p bfa_world
+```
+Then restart `worldserver`.
+
 ## 2026-11-14 (core)
 
 ### Chat: character posts ".ticket CUticketGet" in guild chat
@@ -2731,9 +2803,9 @@ Then restart `worldserver`. Run 2026_11_09_00 first if you have not yet.
   - `creature_trainer` list 133 -> 424 (herbalism), and Grix 994 -> 133536 (his own list).
   - Kul Tiran stays with the Kul Tiras/Zandalar lists; fishing lists already teach every expansion.
   - Ran twice in a test database: 436 rows each time, no existing row removed.
-- **Not fixed:** the database has no trainer recipes for the Outland to Legion crafting skills
-  (Outland Alchemy's 11 on list 987 aside). Those skills can be learned and raised with recipe items,
-  but trainers don't sell their recipes.
+- **Not fixed:** trainers did not sell the Outland to Pandaria crafting recipes. (This entry first said the
+  database had none; it had them on Blizzard's lists at the wrong skill. Fixed on 2026-11-15, see
+  "Crafting trainers teach every trainer recipe".)
 - **Status:** confirmed in game 2026-11-09: Simon Tanner (Stormwind) lists Outland to Legion
   Leatherworking.
 
