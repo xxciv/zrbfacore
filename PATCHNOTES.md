@@ -15,7 +15,7 @@ Draft PR, not merged yet.
   spell is "Summon Deviate Viper" (effect 28 summon, creature 5755), not a shout.
 - **Changed:** `sql/fixes/world/2026_11_16_70_mulgore_quest_fixes.sql` deletes `smart_scripts` row
   (3051, source 0, id 0). Rows 1-3 stay: Lantern Blaze 81767, Motivate 81754, Throw Lantern 81764.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four on 2026-11-16.
 
 ### DB: The Restless Earth tracker reads "Earth Spirit Credit Bunny slain"
 
@@ -24,7 +24,7 @@ Draft PR, not merged yet.
   `quest_objectives.Description`, so the client shows the creature's name.
 - **Changed:** same SQL file sets `Description` = 'Spirits Calmed' (the retail text) for
   QuestID 14491, ObjectID 36872.
-- **Status:** untested in game. The client caches quest text: delete the client's `Cache` folder.
+- **Status:** confirmed in game by Four on 2026-11-16. The client caches quest text: delete the client's `Cache` folder.
 
 ### DB: Morin Cloudstalker offers Supervisor Fizsprocket twice
 
@@ -36,7 +36,7 @@ Draft PR, not merged yet.
 - **Changed:** same SQL file renames `quest_template.LogTitle` 765 to
   'Legacy - Supervisor Fizsprocket' and 764 to 'Legacy - The Venture Co.'. Nothing else about them
   changes; both stay available. Other legacy duplicates in the DB are not touched yet.
-- **Status:** untested in game. Needs the client `Cache` folder deleted to show the new titles.
+- **Status:** confirmed in game by Four on 2026-11-16. Needs the client `Cache` folder deleted to show the new titles.
 
 ### Core: gossip options do nothing after accepting a quest in the same window
 
@@ -60,7 +60,7 @@ Draft PR, not merged yet.
   - `HandleCloseInteraction`: when the flag is set, the next close for that NPC clears the flag and
     leaves the interaction data alone.
   - No DB change. Compiles against upstream 2c13546 and applies at the end of the full chain.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four on 2026-11-16.
 
 ### To pick up this batch
 
