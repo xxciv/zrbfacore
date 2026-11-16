@@ -7,6 +7,18 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet.
 
+### World: Jaomin Ro hits softer
+
+- **Found** (Four, with the Main core changes thread, 2026-11-16): Jaomin Ro (54611, The Disciple's Challenge) is level 3
+  with 160 health and hit a level 1-2 monk (72 health) for 4-8 per swing, crits up to 22, plus Baby Elephant Takes a Bath
+  (about 14) or Hawk Diving to Earth (5-6) every 6 to 10 seconds. His level, health and damage modifiers match TDB 8.3.7.
+  TDB gives him no script (melee only); our SmartAI adds the two specials. The player-side damage problem is a core bug
+  handled in the Main core changes thread (PR #80).
+- **Changed** (`sql/fixes/world/2026_11_16_51_jaomin_ro_damage.sql`), our own tuning rather than TDB's: half melee damage
+  (`DamageModifier` 0.5), first special after 6-8 seconds, then every 10 to 14 seconds.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: The Master's Flame no longer stays on the player
 
 - **Found** (Four, 2026-11-16): after The Lesson of the Burning Scroll (29408) the buff "The Master's Flame" stayed on
