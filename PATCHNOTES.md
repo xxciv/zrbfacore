@@ -3,9 +3,22 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-16 (World fixes: starter zones, Elwynn Forest and Dun Morogh)
+## 2026-11-16 (World fixes: starter zones, Elwynn Forest, Dun Morogh and Teldrassil)
 
 Open in a draft PR, not merged yet.
+
+### World: Teldrassil review
+
+- **Found** (Four, 2026-11-16, starter zones). Teldrassil and Shadowglen compared with TDB 8.3.7: close to TDB, with only
+  a few extra Vicious Grells (12, TDB 7) and Giant Webwood Spiders (8, TDB 5), three Boglings stacked on one spot, and 6 Fel
+  Cone quest objects standing twice. A Midsummer bonfire bunny and a Spring Rabbit showed all year, and none of the
+  world's 194 Noblegarden Bunny Controllers were tied to Noblegarden.
+- **Changed** (`sql/fixes/world/2026_11_16_35_teldrassil_review.sql`): 5 Vicious Grells, 3 Giant Webwood Spiders and 2 of
+  the 3 Boglings removed; the 6 doubled Fel Cones removed; bonfire bunny 353124 linked to Midsummer (1), Spring Rabbit
+  10649606 to Noblegarden (9); every Noblegarden Bunny Controller 32784 linked to Noblegarden (9).
+- **Not changed:** critters and wild pets; herbs (as in Elwynn); the 63 large Fel Cone props 208046 sitting on the quest cones (decoration only).
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Gnomeregan convoys and Gnome Travelers march
 
@@ -22,8 +35,7 @@ Open in a draft PR, not merged yet.
   - 3 mounted Gnome Travelers (guids 735400172-174, formation led by 735400172) ride the same road the other way (path
     7354167) and despawn together at New Tinkertown.
   - The route points are the frozen snapshots' own positions, so the stretches between them follow pathfinding, not a sniff.
-- **Status:** untested in game. Worth watching one recruit for the whole road: the cart should stay hitched and nobody
-  should cut through hills.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Dun Morogh review
@@ -42,7 +54,7 @@ Open in a draft PR, not merged yet.
     look doubled but match TDB, so they stay. The Dark Iron Invaders at the airfield (71, not in TDB) stay too.
   - 3 Keg of Gnomenbrau objects added from TDB (guids 735400102-104).
   - Event links: ribbon pole target 352654 and bonfire bunny 352653 to Midsummer (1), Spring Rabbit 10646516 to Noblegarden (9).
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Elwynn Forest review
