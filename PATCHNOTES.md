@@ -7,6 +7,23 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet.
 
+### World: Tirisfal Glades and Undercity follow-up
+
+- **Found** (Four, 2026-11-16, screenshots and video):
+  - Green fires burned on top of the Undercity bank. They are "Undercity - Forsaken - Fire Small" 193413, 13 in Undercity
+    and 5 at the Ruins of Lordaeron, left over from Wrath's Battle for the Undercity. TDB 8.3.7 to 12.1.0 spawn none of them.
+    The skulls' glowing eyes are part of the building and are not affected.
+  - Two Forsaken Bats 51384 over Undercity's central area darted around. All 11 wandered 5 yards at the template's walk speed
+    of 4.8 (12 yards a second). TDB has them hovering in place.
+  - A Winter Veil wreath decoration ("Tall/Thin Medium - Xmas" 187234) hung at Calston Estate all year, with 6 more in Tirisfal
+    and Deathknell. TrinityCore also spawns them all year, but they are Winter Veil models.
+- **Changed** (`sql/fixes/world/2026_11_16_45_tirisfal_undercity_followup.sql`): the 18 fire effects removed; Forsaken Bats
+  hover in place (MovementType 0); the 7 Tirisfal and Deathknell 187234 decorations tied to Winter Veil (event 2).
+- **Not changed:** the same decoration stands all year in other zones (Elwynn, Dun Morogh, Westfall, Hillsbrad, Silverpine and others);
+  those are left for those zones' reviews.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Northwatch supply caravans (Durotar)
 
 - **Found** (Four, 2026-11-16, screenshots): on Durotar's south road Northwatch Supply Crates hung in the air with Northwatch
@@ -61,7 +78,7 @@ Open in a draft PR, not merged yet.
   - Midsummer (1): Spirit of Summer 10651846, ribbon pole targets 352573 352544, torch bunnies 370240 370241 370253 370254 370308 370309 370242.
   - Hallow's End (12): objects 162730 162527 162533 162534 (TDB), 20358958-61 decorations, candy bucket 20361246, lamps 20359152-53, Alliance Wickerman 20363057, Horde Wickerman 20363435.
 - **Not changed:** a door TDB also ties to Hallow's End (158047) stays permanent.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Mulgore review
