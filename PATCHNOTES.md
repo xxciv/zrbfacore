@@ -7,6 +7,24 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet.
 
+### World: Northwatch supply caravans (Durotar)
+
+- **Found** (Four, 2026-11-16, screenshots): on Durotar's south road Northwatch Supply Crates hung in the air with Northwatch
+  Lugs standing inside and beside them, and "Northwatch Caravan A" men were only visible in GM mode. These are snapshots of
+  moving caravans: an invisible carrier (Northwatch Caravan A/B/C 39244/39318/39319) whose vehicle seats hold the lugs and the
+  crate they carry overhead (the crate seat sits higher, which is why the crates looked like they were floating). TDB 8.3.7
+  has the same frozen crates and lugs (13 and 26) without the carriers. Our database already had the caravan script (start
+  path 39244, make the passengers despawn at the end), but the path, the seat passengers and the spawners' script were missing.
+- **Changed** (`sql/fixes/world/2026_11_16_44_northwatch_caravans.sql`):
+  - The 67 frozen pieces removed: 17 carriers, 17 crates, 33 lugs.
+  - Vehicle passengers (seats from VehicleSeat.db2): Caravan A = 3 lugs + crate, Caravan B = 1 lug + crate, Caravan C = 2 lugs + crate.
+  - SAI path 39244: 9 points along the road from the spawners north, taken from where the frozen caravans stood. The
+    caravan's end-of-path event now fires at point 9 instead of 10.
+  - The three Northwatch Caravan Spawners 251643-251645 stand still and each send out a caravan (B, A, C) every 2 to
+    2.5 minutes, staggered.
+- **Status:** untested in game. The crate size is the game's own model at normal scale (TDB has the same).
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Gilneas review
 
 - **Found:** Gilneas and Gilneas City compared with TDB 8.3.7. 139 Wolfmaw Outriders 37938 ran loose around the Battle for Gilneas lines (phase 189), where TDB has 35 Riding War Wolves 37939 carrying them plus 3 on foot. Tempest's Reach Watchmen (40, TDB 20), Attack Mastiffs (22, TDB 9) and Mountain Mastiffs (12, TDB 6) were doubled. 5 creatures and 15 objects stood twice on the same spot.
@@ -64,7 +82,7 @@ Open in a draft PR, not merged yet.
   - 103 creatures removed: Encrusted Surf Crawler 21, Dustwind Harpy 15, Burning Blade Fanatic 14, Wildmane Cat 14, Docile Island Boar 14, Razormane Quilboar 14, Burning Blade Apprentice 6, Dustwind Storm Witch 4, Pygmy Surf Crawler 1.
   - Brew vendors 27806-27820 tied to their Brew of the Month events (34-45) as in TDB; fire 20500905 and cauldron 172811 to Hallow's End (12); Spring Rabbit 10647406 to Noblegarden (9).
 - **Not changed:** The Kodo (6, not in TDB) and the Dranosh'ar Fishermen (match TDB) stay.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16), apart from the Northwatch caravans (own entry).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Eversong Woods review
