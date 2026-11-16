@@ -7,6 +7,25 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet.
 
+### World: Gnomeregan convoys and Gnome Travelers march
+
+- **Found** (Four, 2026-11-16): on the road between New Tinkertown and Kharanos, 18 Gnomeregan Recruits, each stacked with
+  an Ammo Cart and a cart helper, and 6 Gnome Travelers on mechastriders stood frozen. They are snapshots of groups that
+  move in retail. No TrinityCore dump (6.0.4 to 12.1.0) scripts them. Our database had half a script (the recruit
+  summons its cart and hitches it), but it was attached to spawn ids that no longer exist, and its 4-minute cart timer was
+  shorter than the walk.
+- **Changed** (`sql/fixes/world/2026_11_16_34_gnomeregan_convoys.sql`):
+  - The 54 frozen convoy NPCs and 6 travelers are removed.
+  - 3 Gnomeregan Recruits (guids 735400169-171) start at three points of the road. Each summons and hitches its own
+    Ammo Cart (actionlist 4327601, cart lasts 15 minutes), walks from New Tinkertown toward Kharanos (SAI waypoints
+    7354164-7354166, using the server's pathfinding), despawns the cart and itself at the end and respawns after 60 seconds.
+  - 3 mounted Gnome Travelers (guids 735400172-174, formation led by 735400172) ride the same road the other way (path
+    7354167) and despawn together at New Tinkertown.
+  - The route points are the frozen snapshots' own positions, so the stretches between them follow pathfinding, not a sniff.
+- **Status:** untested in game. Worth watching one recruit for the whole road: the cart should stay hitched and nobody
+  should cut through hills.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Dun Morogh review
 
 - **Found** (Four, 2026-11-15, starter zones). Dun Morogh, Coldridge Valley and New Tinkertown compared with TDB 8.3.7.
