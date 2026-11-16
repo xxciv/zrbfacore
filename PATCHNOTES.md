@@ -63,9 +63,7 @@ to do to pick it up (rebuild, restart, run SQL).
     client.
   - 28 extra Pandaria Jewelcrafting rows on list 608, 18 old rows on list 582, and 3 other old rows are
     left as they were.
-- **Status:** not yet tested in game. Check: Karn Stonehoof at Blacksmithing 44 should list Rough Grinding
-  Stone, Runed Copper Gauntlets and the Copper Chain pieces as learnable. Higher recipes should show in
-  red with "Requires Blacksmithing (n)", and Northrend recipes with "Requires Northrend Blacksmithing (n)".
+- **Status:** confirmed in game 2026-11-15 (Four, blacksmithing trainers).
 
 #### To pick up the recipe fix
 ```
