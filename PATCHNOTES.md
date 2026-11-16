@@ -17,10 +17,12 @@ Draft, not merged. Branch `claude/project-thread-tt7jn2`.
   broken apostrophe, and the Traveler's Tundra Mammoth and Grand Expedition Yak vendors (32641, 32642, 62821, 62822)
   were named "0".
 - **Changed** (`sql/fixes/world/2026_11_16_30_foreign_object_and_npc_names.sql`): 274 object names taken from TrinityCore
-  TDB 7.3.5, 18 translated by hand (Mailbox, Smoke, Guts, Training Arena, Cart, Oar, ...); one object named only "???"
-  (273846) left. The 8 creature names (and the vendors' subnames) set to their English names.
-- **Not fixed:** 14 BFA creature templates, mostly ambient critters in Zandalar (130448, 130441, 130445, 125455, 130699,
-  132447 and others, about 2,100 spawns), are named "0". Their real names are not in any reference I can reach here.
+  TDB 7.3.5, 18 translated by hand (Mailbox, Smoke, Guts, Training Arena, Cart, Oar, ...).
+  The 8 creature names (and the vendors' subnames) set to their English names.
+- **Also** (Four, 2026-11-15, TDB 8.3.7 added to the dumps repo): 37 creature templates named "0" or with no name, among
+  them the Zandalar critters seen about 2,100 times (Shadric Crawler 130448, Temple Beetle 130441, Jungle Gulper 130445,
+  Mosquito 125455, Emerald Boa 130699, Root Frog 132447, ...), four 7th Legion troops, Thaumaturge Vashreen and Argus quest
+  bunnies, take their names from TrinityCore TDB 8.3.7; object 273846 is the Crown Pedestal.
 - **Status:** untested. Objects and NPCs you have already seen may keep the old name until the client `Cache` folder is deleted.
 - **Pick up:** run the SQL, restart `worldserver`, delete the client `Cache` folder.
 

@@ -1,9 +1,11 @@
 -- Object and NPC names in French, Russian or broken encoding (Four, 2026-11-15: Stormshield and Warspear show French
 -- names such as 'Boîte aux lettres' for a mailbox). 293 spawned gameobject templates had a foreign name. English names come
 -- from TrinityCore TDB 7.3.5 gameobject_template; 18 objects TDB does not name were translated by hand. One object
--- (273846, name is only question marks) is left as it is.
+-- (273846, name is only question marks) is the Crown Pedestal in TrinityCore TDB 8.3.7.
 -- Creatures: Genn Greymane, Gidwin Goldbraids, Dave's Gyrocopter and Kin'garoth had French names or a broken apostrophe,
 -- and the Traveler's Tundra Mammoth and Grand Expedition Yak vendors were named '0'.
+-- 37 more creature templates named '0' or with no name (Zandalar critters such as Shadric Crawler, Temple Beetle and
+-- Jungle Gulper, 7th Legion troops, Thaumaturge Vashreen, Argus quest bunnies) get their names from TrinityCore TDB 8.3.7.
 
 UPDATE `gameobject_template` SET `name`='"We got them to laugh... eventually."' WHERE `entry` IN (224827);
 UPDATE `gameobject_template` SET `name`='Alchemy Kit' WHERE `entry` IN (235879);
@@ -234,3 +236,42 @@ UPDATE `creature_template` SET `name`='Drix Blackwrench', `subname`='The Fixer' 
 UPDATE `creature_template` SET `name`='Mojodishu', `subname`='Traveling Trader' WHERE `entry`=32642;
 UPDATE `creature_template` SET `name`='Mystic Birdhat', `subname`='Transmogrifier' WHERE `entry`=62821;
 UPDATE `creature_template` SET `name`='Cousin Slowhands', `subname`='Traveling Trader' WHERE `entry`=62822;
+UPDATE `gameobject_template` SET `name`='Crown Pedestal' WHERE `entry`=273846;
+
+UPDATE `creature_template` SET `name`='Leap Target' WHERE `entry`=47319;
+UPDATE `creature_template` SET `name`='General Purpose Bunny ZTO' WHERE `entry`=62167;
+UPDATE `creature_template` SET `name`='Spell Effect Bunny' WHERE `entry`=119508;
+UPDATE `creature_template` SET `name`='Fel Bunny' WHERE `entry`=120586;
+UPDATE `creature_template` SET `name`='Quest Credit Stalker - Follow Velen' WHERE `entry`=120894;
+UPDATE `creature_template` SET `name`='Quest Credit Stalker - Activate Drop Pod' WHERE `entry`=121059;
+UPDATE `creature_template` SET `name`='Quest Credit Stalker - Escort Complete' WHERE `entry`=121555;
+UPDATE `creature_template` SET `name`='Quest Credit Stalker - Gauntlet Complete' WHERE `entry`=121644;
+UPDATE `creature_template` SET `name`='Quest Credit Stalker - Gauntlet Start' WHERE `entry`=121645;
+UPDATE `creature_template` SET `name`='Quest Credit Stalker - Follow Alleria' WHERE `entry`=123051;
+UPDATE `creature_template` SET `name`='Argus Cosmetic Volcano Eruption Missile Target' WHERE `entry`=123698;
+UPDATE `creature_template` SET `name`='Quest Credit - Enter Building' WHERE `entry`=124076;
+UPDATE `creature_template` SET `name`='Quest Credit - Entrance Marker' WHERE `entry`=124485;
+UPDATE `creature_template` SET `name`='Beam Bunny' WHERE `entry`=125178;
+UPDATE `creature_template` SET `name`='Mosquito' WHERE `entry`=125455;
+UPDATE `creature_template` SET `name`='Spire Trigger Target' WHERE `entry`=126854;
+UPDATE `creature_template` SET `name`='[DNT] Barrier' WHERE `entry`=128195;
+UPDATE `creature_template` SET `name`='[DNT] Cart' WHERE `entry`=128217;
+UPDATE `creature_template` SET `name`='Temple Beetle' WHERE `entry`=130441;
+UPDATE `creature_template` SET `name`='Jungle Gulper' WHERE `entry`=130445;
+UPDATE `creature_template` SET `name`='Shadric Crawler' WHERE `entry`=130448;
+UPDATE `creature_template` SET `name`='Emerald Boa' WHERE `entry`=130699;
+UPDATE `creature_template` SET `name`='Adolescent Direhorn' WHERE `entry`=130712;
+UPDATE `creature_template` SET `name`='Banded Moth' WHERE `entry`=130718;
+UPDATE `creature_template` SET `name`='Crested Gekkota' WHERE `entry`=130749;
+UPDATE `creature_template` SET `name`='Root Frog' WHERE `entry`=132447;
+UPDATE `creature_template` SET `name`='Dark Ranger Alina' WHERE `entry`=146013;
+UPDATE `creature_template` SET `name`='7th Legion Battlemage' WHERE `entry`=147787;
+UPDATE `creature_template` SET `name`='7th Legion Medic' WHERE `entry`=147825;
+UPDATE `creature_template` SET `name`='7th Legion Marine' WHERE `entry`=147827;
+UPDATE `creature_template` SET `name`='7th Legion Cavalier' WHERE `entry`=147828;
+UPDATE `creature_template` SET `name`='Forsaken Deathguard' WHERE `entry`=147974;
+UPDATE `creature_template` SET `name`='Forsaken Blightguard' WHERE `entry`=147975;
+UPDATE `creature_template` SET `name`='Captain Zen\'taga', `subname`='Dubloons Trader' WHERE `entry`=148923;
+UPDATE `creature_template` SET `name`='Provisioner Mukra', `subname`='Service Medal Quartermaster' WHERE `entry`=148924;
+UPDATE `creature_template` SET `name`='Thaumaturge Vashreen', `subname`='Purveyor of Exquisite Furnishings' WHERE `entry`=149045;
+UPDATE `creature_template` SET `name`='Bluffwatcher Proudscar' WHERE `entry`=150433;
