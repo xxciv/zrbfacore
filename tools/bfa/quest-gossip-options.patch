@@ -1,0 +1,84 @@
+diff --git a/src/server/game/Entities/Creature/GossipDef.cpp b/src/server/game/Entities/Creature/GossipDef.cpp
+index e74f7b0..23afbba 100644
+--- a/src/server/game/Entities/Creature/GossipDef.cpp
++++ b/src/server/game/Entities/Creature/GossipDef.cpp
+@@ -208,6 +208,7 @@ void PlayerMenu::SendGossipMenu(uint32 titleTextId, ObjectGuid objectGUID)
+ {
+     _interactionData.Reset();
+     _interactionData.SourceGuid = objectGUID;
++    _keepInteractionOnNextClose = false;
+     // zrbfacore: a gossip menu that lists quests counts as a quest list too (quest-gossip-accept.patch)
+     _questListGiver.Clear();
+     _questListIsGossip = false;
+@@ -279,6 +280,7 @@ void PlayerMenu::SendGossipMenu(uint32 titleTextId, ObjectGuid objectGUID)
+ void PlayerMenu::SendCloseGossip()
+ {
+     _interactionData.Reset();
++    _keepInteractionOnNextClose = false;
+     _questListGiver.Clear();
+ 
+     WorldPackets::NPC::GossipComplete packet;
+diff --git a/src/server/game/Entities/Creature/GossipDef.h b/src/server/game/Entities/Creature/GossipDef.h
+index 257b722..db5ce3e 100644
+--- a/src/server/game/Entities/Creature/GossipDef.h
++++ b/src/server/game/Entities/Creature/GossipDef.h
+@@ -287,6 +287,9 @@ class TC_GAME_API PlayerMenu
+         ObjectGuid GetQuestListGiver() const { return _questListGiver; }
+         void ClearQuestListGiver() { _questListGiver.Clear(); }
+         bool IsQuestListGossip() const { return _questListIsGossip; } // zrbfacore: quest-gossip-accept.patch
++        // zrbfacore: quest-gossip-options.patch, see HandleCloseInteraction
++        void KeepInteractionOnNextClose() { _keepInteractionOnNextClose = true; }
++        bool ConsumeKeepInteraction() { bool keep = _keepInteractionOnNextClose; _keepInteractionOnNextClose = false; return keep; }
+ 
+         bool Empty() const { return _gossipMenu.Empty() && _questMenu.Empty(); }
+ 
+@@ -319,5 +322,6 @@ class TC_GAME_API PlayerMenu
+         InteractionData _interactionData;
+         ObjectGuid _questListGiver;
+         bool _questListIsGossip = false;
++        bool _keepInteractionOnNextClose = false;
+ };
+ #endif
+diff --git a/src/server/game/Handlers/MiscHandler.cpp b/src/server/game/Handlers/MiscHandler.cpp
+index 2eb5bb0..ae0d250 100644
+--- a/src/server/game/Handlers/MiscHandler.cpp
++++ b/src/server/game/Handlers/MiscHandler.cpp
+@@ -1157,8 +1157,12 @@ void WorldSession::HandleMountSetFavorite(WorldPackets::Misc::MountSetFavorite&
+ 
+ void WorldSession::HandleCloseInteraction(WorldPackets::Misc::CloseInteraction& closeInteraction)
+ {
++    // zrbfacore: after a quest is accepted from a gossip menu the menu is sent again, and the client then
++    // closes the quest conversation with the same NPC. That close must not invalidate the new menu, or
++    // its options are silently dropped in HandleGossipSelectOptionOpcode.
+     if (_player->PlayerTalkClass->GetInteractionData().SourceGuid == closeInteraction.SourceGuid)
+-        _player->PlayerTalkClass->GetInteractionData().Reset();
++        if (!_player->PlayerTalkClass->ConsumeKeepInteraction())
++            _player->PlayerTalkClass->GetInteractionData().Reset();
+ }
+ 
+ void WorldSession::HandleAdventureJournalOpenQuest(WorldPackets::Misc::AdventureJournalOpenQuest& packet)
+diff --git a/src/server/game/Handlers/QuestHandler.cpp b/src/server/game/Handlers/QuestHandler.cpp
+index 3341fca..b7411de 100644
+--- a/src/server/game/Handlers/QuestHandler.cpp
++++ b/src/server/game/Handlers/QuestHandler.cpp
+@@ -224,9 +224,19 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPackets::Quest::QuestG
+                         // conversation (Ride to Thunder Bluff at Tak 40809). The menu still takes the client
+                         // off the details page; the close below then ends the conversation.
+                         bool questsLeft = !_player->PlayerTalkClass->GetQuestMenu().Empty();
++                        // zrbfacore (quest-gossip-options.patch): the client only picks by itself when the
++                        // menu is one single option that is not plain chat. Any other menu is shown, and
++                        // its options must keep working (Skorn Whitecloud 3052: accept The Hunter's Way,
++                        // then "Let me browse your goods."), so it must not be closed. The client ends the
++                        // quest conversation after this menu was sent; keep the menu valid through that.
++                        GossipMenuItemContainer const& options = _player->PlayerTalkClass->GetGossipMenu().GetMenuItems();
++                        bool loneAutoOption = !questsLeft && options.size() == 1 && options.begin()->second.OptionType != GOSSIP_OPTION_GOSSIP;
+                         _player->SendPreparedGossip(source);
+-                        if (questsLeft)
++                        if (!loneAutoOption)
++                        {
++                            _player->PlayerTalkClass->KeepInteractionOnNextClose();
+                             return;
++                        }
+                     }
+                 }
+                 else if (_player->PlayerTalkClass->GetQuestListGiver() == object->GetGUID())
