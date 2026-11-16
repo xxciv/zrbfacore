@@ -7,6 +7,17 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet.
 
+### World: The Master's Flame no longer stays on the player
+
+- **Found** (Four, 2026-11-16): after The Lesson of the Burning Scroll (29408) the buff "The Master's Flame" stayed on
+  the character, through relogs and later quests. The quest puts The Master's Flame (114610, infinite duration, a dummy
+  aura that gives the quest credit) on the player, and nothing took it off again.
+- **Changed** (`sql/fixes/world/2026_11_16_50_masters_flame_aura.sql`): Master Shang Xi 53566 removes The Master's Flame
+  (114610), its cosmetic version (114613) and Snatch Master's Flame (114746) from the player when 29408 is turned in.
+  A character already past that quest can clear it with `.unaura 114610`.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Wandering Isle trainees hit softer
 
 - **Found** (Four, 2026-11-16, video): after 2026_11_16_48 the trainees fought one at a time, but a single trainee still
