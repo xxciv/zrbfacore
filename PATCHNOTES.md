@@ -40,9 +40,16 @@ Open on branch `claude/project-thread-z3fwbh` (not merged yet).
   - `Unit::SpellDamageBonusDone` (`Unit.cpp`): spells that need the off hand and not the main hand
     (`SPELL_ATTR3_REQ_OFFHAND` without `SPELL_ATTR3_MAIN_HAND`) use off hand attack power.
   - No SQL. The character sheet's attack power now also shows the weapon's share.
-- **Status:** the patch applies cleanly after the full chain on upstream 2c13546, and all four changed
-  source files compile. Not yet checked in game. `Unit.h` is in the precompiled header, so expect a
-  near-full rebuild.
+- **Status:** in game on 2026-11-16 (level 1 Windwalker monk, 15 agility): Tiger Palm's tooltip
+  went up to 5 (the client counts the weapon share), Four now beats the Tushui Trainees, but Tiger
+  Palm still lands for 2 every hit. Armor is not the cause: `.damage 100 0` and `.damage 100 1`
+  both dealt 97. Still being traced; see the debug command below.
+- **Also added:** `tools/bfa/attack-power-debug.patch` (`src/server/scripts/Commands/cs_debug.cpp`):
+  GM command `.debug attackpower [spell id or link]`. It prints your `AttackPower`, `ModPos/ModNeg`,
+  multiplier, weapon attack power fields, the totals for main hand, off hand and ranged, and main
+  hand weapon damage. With a spell and a selected target it prints, per attack power damage effect,
+  the AP coefficient before and after spell mods, the percent damage done multiplier, the damage
+  spell mods, and the damage done before the target's own modifiers, armor and crit.
 
 #### To pick up the attack power fix
 A new patch on top of the others, the build and a restart. The patches you already applied are
@@ -56,6 +63,16 @@ sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target insta
 ```
 The grep prints 3 for `Unit.cpp` and 3 for `Player.cpp`. Then restart `worldserver`. Log in, take the
 weapon off and put it back on (or just relog), and check the attack power on the character sheet.
+
+The debug command on top (only `cs_debug.cpp` changes, so this rebuild is short):
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/attack-power-debug.patch | git apply && echo "attack power debug patch applied"
+grep -c "HandleDebugAttackPowerCommand" src/server/scripts/Commands/cs_debug.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 2. Restart `worldserver`, target a mob and type `.debug attackpower 100780`.
 
 ## 2026-11-16 (Quest fixes: Mulgore batch and gossip menu options after Accept)
 

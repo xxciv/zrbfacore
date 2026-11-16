@@ -1,0 +1,87 @@
+diff --git a/src/server/scripts/Commands/cs_debug.cpp b/src/server/scripts/Commands/cs_debug.cpp
+index bc0c529..97df5d2 100644
+--- a/src/server/scripts/Commands/cs_debug.cpp
++++ b/src/server/scripts/Commands/cs_debug.cpp
+@@ -46,6 +46,8 @@ EndScriptData */
+ #include "Scenario.h"
+ #include "ScenarioMgr.h"
+ #include "RBAC.h"
++#include "SpellInfo.h"
++#include "SpellMgr.h"
+ #include "SpellPackets.h"
+ #include "Transport.h"
+ #include "World.h"
+@@ -123,6 +125,7 @@ public:
+             { "wsexpression" , rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugWSExpressionCommand,     "" },
+             { "transmog",      rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugTransmogCommand,         "" },
+             { "scenario",      rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugScenarioCommand,         "" },
++            { "attackpower",   rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugAttackPowerCommand,      "" },
+         };
+         static std::vector<ChatCommand> commandTable =
+         {
+@@ -1694,6 +1697,65 @@ public:
+ 
+         return true;
+     }
++    // zrbfacore: .debug attackpower [spellId]
++    // Prints your attack power fields and the totals the server uses. With a spell id and a
++    // selected target, also prints how each attack power based damage effect of that spell is
++    // computed (coefficient after spell mods, percent done modifier, damage before the target's
++    // own modifiers, armor and crit).
++    static bool HandleDebugAttackPowerCommand(ChatHandler* handler, char const* args)
++    {
++        Player* player = handler->GetSession()->GetPlayer();
++        if (!player)
++            return false;
++
++        UF::UnitData const& data = *player->m_unitData;
++        handler->PSendSysMessage("AttackPower %d, ModPos %d, ModNeg %d, Multiplier %.3f",
++            int32(data.AttackPower), int32(data.AttackPowerModPos), int32(data.AttackPowerModNeg), float(data.AttackPowerMultiplier));
++        handler->PSendSysMessage("RangedAttackPower %d, ModPos %d, ModNeg %d, Multiplier %.3f",
++            int32(data.RangedAttackPower), int32(data.RangedAttackPowerModPos), int32(data.RangedAttackPowerModNeg), float(data.RangedAttackPowerMultiplier));
++        handler->PSendSysMessage("Weapon attack power: main hand %d, off hand %d, ranged %d",
++            int32(data.MainHandWeaponAttackPower), int32(data.OffHandWeaponAttackPower), int32(data.RangedWeaponAttackPower));
++        handler->PSendSysMessage("Total attack power: main hand %.1f, off hand %.1f, ranged %.1f (white hits use %.1f)",
++            player->GetTotalAttackPowerValue(BASE_ATTACK), player->GetTotalAttackPowerValue(OFF_ATTACK),
++            player->GetTotalAttackPowerValue(RANGED_ATTACK), player->GetTotalAttackPowerValue(BASE_ATTACK, false));
++        handler->PSendSysMessage("Main hand weapon damage %.1f - %.1f",
++            player->GetWeaponDamageRange(BASE_ATTACK, MINDAMAGE), player->GetWeaponDamageRange(BASE_ATTACK, MAXDAMAGE));
++
++        if (!*args)
++            return true;
++
++        uint32 spellId = handler->extractSpellIdFromLink((char*)args);
++        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
++        if (!spellInfo)
++        {
++            handler->PSendSysMessage("Spell %u not found.", spellId);
++            return true;
++        }
++
++        Unit* target = handler->getSelectedUnit();
++        if (!target || target == player)
++        {
++            handler->SendSysMessage("Select a target to see the spell's damage against it.");
++            return true;
++        }
++
++        for (SpellEffectInfo const* effect : spellInfo->GetEffectsForDifficulty(DIFFICULTY_NONE))
++        {
++            if (!effect || effect->BonusCoefficientFromAP <= 0.0f)
++                continue;
++
++            float coeff = effect->BonusCoefficientFromAP * 100.0f;
++            player->ApplySpellMod(spellInfo->Id, SPELLMOD_BONUS_MULTIPLIER, coeff);
++            float pctDone = player->SpellDamagePctDone(target, spellInfo, SPELL_DIRECT_DAMAGE);
++            float flatDamage = 100.0f;
++            player->ApplySpellMod(spellInfo->Id, SPELLMOD_DAMAGE, flatDamage);
++            uint32 done = player->SpellDamageBonusDone(target, spellInfo, 0, SPELL_DIRECT_DAMAGE, effect);
++            handler->PSendSysMessage("%s effect %u: AP coefficient %.4f, after spell mods %.4f, percent done x%.3f, damage spell mods x%.3f, damage done %u",
++                spellInfo->SpellName->Str[handler->GetSessionDbcLocale()], effect->EffectIndex, effect->BonusCoefficientFromAP,
++                coeff / 100.0f, pctDone, flatDamage / 100.0f, done);
++        }
++        return true;
++    }
+ };
+ 
+ void AddSC_debug_commandscript()
