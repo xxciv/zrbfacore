@@ -19,8 +19,8 @@ Draft, not merged. Branch `claude/project-thread-tt7jn2`.
 - **Changed** (`sql/fixes/world/2026_11_16_30_foreign_object_and_npc_names.sql`): 274 object names taken from TrinityCore
   TDB 7.3.5, 18 translated by hand (Mailbox, Smoke, Guts, Training Arena, Cart, Oar, ...); one object named only "???"
   (273846) left. The 8 creature names (and the vendors' subnames) set to their English names.
-- **Not fixed:** 17 BFA ambient creatures in Zandalar (130448, 130441, 130445, 125455, 130699, 132447 and others, about
-  2,500 spawns) are named "0". Their real names are not in any reference I can reach here.
+- **Not fixed:** 14 BFA creature templates, mostly ambient critters in Zandalar (130448, 130441, 130445, 125455, 130699,
+  132447 and others, about 2,100 spawns), are named "0". Their real names are not in any reference I can reach here.
 - **Status:** untested. Objects and NPCs you have already seen may keep the old name until the client `Cache` folder is deleted.
 - **Pick up:** run the SQL, restart `worldserver`, delete the client `Cache` folder.
 
