@@ -7,7 +7,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### Combat: abilities that scale with attack power hit far too weakly
 
-Open on branch `claude/project-thread-z3fwbh` (not merged yet).
+Merged to `main` with PR #79 on 2026-11-16.
 
 - **Found** (Four, 2026-11-16, level 1 Pandaren monk): Tiger Palm hits for 1, and the monk dies to
   any mob of the same level.
@@ -57,14 +57,21 @@ Open on branch `claude/project-thread-z3fwbh` (not merged yet).
   off hand, total 19.0 main hand; Tiger Palm coefficient 0.2703 (no spell mods), percent done
   x1.000, damage spell mods x1.046, damage done 5. So the server computes 5 on the attacker's side
   and the cut to 2 happens on the target's side.
+- **Debug result 2** (in combat, Tushui Trainee 54587): AttackPower 15 in combat (17 seen idle, a
+  temporary buff), weapon AP 2, total 17; Tiger Palm 17 x 0.2703 = 4 before armor. The trainee has
+  49 armor (ArmorModifier 1, value from the client's level 1 ExpectedStat), which takes 30-31%
+  (100 physical -> 69-70), so Tiger Palm lands for 2. Every step matches TrinityCore 8.3.7; the
+  remaining weakness is level 1 tuning, not a core bug.
+- **Final status:** confirmed by Four on 2026-11-16 (Tiger Palm 1 -> 2, trainees now beatable) and
+  merged. The open question of the monk dying to early quest mobs is mob tuning, not this patch.
 
 #### To pick up the attack power fix
 A new patch on top of the others, the build and a restart. The patches you already applied are
 unchanged.
 ```
 cd ~/bfa/source
-git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
-git -C ../tools-repo show FETCH_HEAD:tools/bfa/weapon-attack-power.patch | git apply && echo "attack power patch applied"
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/weapon-attack-power.patch && echo "attack power patch applied"
 grep -c "WeaponAttackPower" src/server/game/Entities/Unit/Unit.cpp src/server/game/Entities/Player/Player.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
@@ -74,8 +81,8 @@ weapon off and put it back on (or just relog), and check the attack power on the
 The debug command on top (only `cs_debug.cpp` changes, so this rebuild is short):
 ```
 cd ~/bfa/source
-git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
-git -C ../tools-repo show FETCH_HEAD:tools/bfa/attack-power-debug.patch | git apply && echo "attack power debug patch applied"
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/attack-power-debug.patch && echo "attack power debug patch applied"
 grep -c "HandleDebugAttackPowerCommand" src/server/scripts/Commands/cs_debug.cpp
 sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
 ```
