@@ -49,7 +49,14 @@ Open on branch `claude/project-thread-z3fwbh` (not merged yet).
   multiplier, weapon attack power fields, the totals for main hand, off hand and ranged, and main
   hand weapon damage. With a spell and a selected target it prints, per attack power damage effect,
   the AP coefficient before and after spell mods, the percent damage done multiplier, the damage
-  spell mods, and the damage done before the target's own modifiers, armor and crit.
+  spell mods, and the damage done before the target's own modifiers, armor and crit. With a target
+  selected it also prints the target's level, armor, health and auras, the level scaling
+  multipliers, a 100 damage melee hit through your bonuses, the target's bonuses and armor, and the
+  spell's damage after the target's modifiers and armor.
+- **Debug result 1** (Four, Tushui Trainee): AttackPower 17, weapon attack power 2 main hand and 2
+  off hand, total 19.0 main hand; Tiger Palm coefficient 0.2703 (no spell mods), percent done
+  x1.000, damage spell mods x1.046, damage done 5. So the server computes 5 on the attacker's side
+  and the cut to 2 happens on the target's side.
 
 #### To pick up the attack power fix
 A new patch on top of the others, the build and a restart. The patches you already applied are

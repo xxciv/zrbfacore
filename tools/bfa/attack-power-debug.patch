@@ -1,5 +1,5 @@
 diff --git a/src/server/scripts/Commands/cs_debug.cpp b/src/server/scripts/Commands/cs_debug.cpp
-index bc0c529..97df5d2 100644
+index bc0c529..91c3534 100644
 --- a/src/server/scripts/Commands/cs_debug.cpp
 +++ b/src/server/scripts/Commands/cs_debug.cpp
 @@ -46,6 +46,8 @@ EndScriptData */
@@ -19,7 +19,7 @@ index bc0c529..97df5d2 100644
          };
          static std::vector<ChatCommand> commandTable =
          {
-@@ -1694,6 +1697,65 @@ public:
+@@ -1694,6 +1697,87 @@ public:
  
          return true;
      }
@@ -47,6 +47,24 @@ index bc0c529..97df5d2 100644
 +        handler->PSendSysMessage("Main hand weapon damage %.1f - %.1f",
 +            player->GetWeaponDamageRange(BASE_ATTACK, MINDAMAGE), player->GetWeaponDamageRange(BASE_ATTACK, MAXDAMAGE));
 +
++        Unit* target = handler->getSelectedUnit();
++        if (target && target != player)
++        {
++            std::ostringstream auras;
++            for (auto const& app : target->GetAppliedAuras())
++                auras << ' ' << app.first;
++            handler->PSendSysMessage("Target %s level %u, armor %u, health %u/%u, auras:%s",
++                target->GetName().c_str(), uint32(target->getLevel()), target->GetArmor(), uint32(target->GetHealth()), uint32(target->GetMaxHealth()),
++                auras.str().empty() ? " none" : auras.str().c_str());
++            handler->PSendSysMessage("Multipliers: your damage x%.3f, target health x%.3f, target armor x%.3f, 100 physical after armor %u",
++                player->GetDamageMultiplierForTarget(target), target->GetHealthMultiplierForTarget(player),
++                target->GetArmorMultiplierForTarget(player), player->CalcArmorReducedDamage(player, target, 100, nullptr, BASE_ATTACK));
++            uint32 meleeDone = player->MeleeDamageBonusDone(target, 100, BASE_ATTACK);
++            uint32 meleeTaken = target->MeleeDamageBonusTaken(player, meleeDone, BASE_ATTACK);
++            handler->PSendSysMessage("A 100 damage main hand hit: after your bonuses %u, after target's %u, after armor %u",
++                meleeDone, meleeTaken, player->CalcArmorReducedDamage(player, target, meleeTaken, nullptr, BASE_ATTACK));
++        }
++
 +        if (!*args)
 +            return true;
 +
@@ -58,7 +76,6 @@ index bc0c529..97df5d2 100644
 +            return true;
 +        }
 +
-+        Unit* target = handler->getSelectedUnit();
 +        if (!target || target == player)
 +        {
 +            handler->SendSysMessage("Select a target to see the spell's damage against it.");
@@ -76,9 +93,14 @@ index bc0c529..97df5d2 100644
 +            float flatDamage = 100.0f;
 +            player->ApplySpellMod(spellInfo->Id, SPELLMOD_DAMAGE, flatDamage);
 +            uint32 done = player->SpellDamageBonusDone(target, spellInfo, 0, SPELL_DIRECT_DAMAGE, effect);
++            uint32 taken = target->SpellDamageBonusTaken(player, spellInfo, done, SPELL_DIRECT_DAMAGE, effect);
++            uint32 armored = player->IsDamageReducedByArmor(spellInfo->GetSchoolMask(), spellInfo) ? player->CalcArmorReducedDamage(player, target, taken, spellInfo, BASE_ATTACK) : taken;
 +            handler->PSendSysMessage("%s effect %u: AP coefficient %.4f, after spell mods %.4f, percent done x%.3f, damage spell mods x%.3f, damage done %u",
 +                spellInfo->SpellName->Str[handler->GetSessionDbcLocale()], effect->EffectIndex, effect->BonusCoefficientFromAP,
 +                coeff / 100.0f, pctDone, flatDamage / 100.0f, done);
++            handler->PSendSysMessage("%s effect %u: after target's modifiers %u, after armor %u, after damage multiplier %u",
++                spellInfo->SpellName->Str[handler->GetSessionDbcLocale()], effect->EffectIndex, taken, armored,
++                uint32(armored * player->GetDamageMultiplierForTarget(target)));
 +        }
 +        return true;
 +    }
