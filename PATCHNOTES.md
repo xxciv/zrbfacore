@@ -56,6 +56,11 @@ Draft, not merged. Branch `claude/project-thread-tt7jn2`.
   - Warspear 2, Boralus 42 creatures and 934 objects, Dazar'alor 32, Broken Isles Dalaran 2 creatures and 10 objects,
     Northrend Dalaran 23 (20 marines, 3 vendors), Shattrath 23 removed. The lowest guid of each double is kept.
   - Broken Isles Dalaran: autumn decorations in game_event 26 (Pilgrim's Bounty), Battered Brewmaster in 24 (Brewfest).
+  - Boralus harbor (TrinityCore TDB 12.1.0, positions and paths only): Harbor Guard Captain 210321508, Harbor Guard Cadet
+    280001882 and Tradewinds Tailor 280001932 walk their sniffed routes (paths 735400160-735400162); Tradewinds Dockworker
+    210320946, a still copy on the route Dockworker 280001893 walks, removed. The other 13 sniffed walkers already walk here.
+    TDB 9.2.7 to 12.1.0 have no Warspear or Dazar'alor spawns and only the harbor of Boralus (110 Harbor Guards there, 104
+    here), so the rest of these cities could not be compared.
 - **Status:** untested.
 - **Pick up:** run the SQL, restart `worldserver`.
 
