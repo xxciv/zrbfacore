@@ -3,6 +3,40 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-16 (World fixes: starter zones, Elwynn Forest)
+
+Open in a draft PR, not merged yet.
+
+### World: Elwynn Forest review
+
+- **Found** (Four, 2026-11-15: zone review, starter zones first). Compared against TrinityCore TDB 8.3.7 (the full world
+  DB for this client build; TC 9.2.7 to 12.1.0 have the same Elwynn spawns):
+  - Most Elwynn mobs were spawned about twice: two overlapping spawn sets, often a few yards apart. Mangy Wolf 170 (TDB 85),
+    Prowler 140 (74), Murloc Forager 124 (62), Stonetusk Boar 101 (47), Murloc Lurker 94 (43), Rockhide Boar 148 (87).
+  - Stormwind Royal Guard 42218: 15 guards stood in two blobs on the road south of Goldshire (8 and 5) plus singles. They are
+    snapshots of TDB's mounted 9-guard patrol from the Stormwind gate to Eastvale.
+  - Morgaine the Sly, Bradford and Ashley Bridenbecker and an Expeditionary Priest stood twice; 3 Stormwind Guards and 2
+    Eastvale Peasants stood inside each other.
+  - Holiday pieces shown all year: the Goldshire Wickerman's torch points and crowd bunnies, the Alliance Wickerman object
+    and 10 Hallow's End decorations (Hallow's End), a ribbon pole target (Midsummer), a Spring Rabbit (Noblegarden) and a
+    moonlight object at the Stormwind gate (Lunar Festival).
+- **Changed** (`sql/fixes/world/2026_11_16_32_elwynn_forest_review.sql`):
+  - 634 extra creatures removed. Each TDB spawn keeps its nearest match of ours and the unmatched extras go, down to the TDB
+    count: Mangy Wolf 86, Prowler 66, Murloc Forager 62, Rockhide Boar 61, Stonetusk Boar 54, Murloc Lurker 51, Cow 37,
+    Riverpaw Outrunner 32, Gray Forest Wolf 28, Cutpurse 25, Young Forest Bear 24, Bandit 23, Kobold Tunneler 16,
+    Forest Spider 15, Riverpaw Runt 9, Young Wolf 7, Dockworker 5, Murloc Streamrunner 5, Longsnout 4, plus the doubles above.
+  - Never touched: critters and wild battle pets (the pet battles thread owns those), rares and elites, NPCs with a menu,
+    friendly NPCs, fireworks, holiday spawns, and anything pathed, pooled, linked or scripted.
+  - Royal Guards: the 15 static guards (and the old one-way path 178448) replaced by TDB's patrol, guids 735400160-168,
+    path 735400163, formation led by 735400160, which despawns the escort at Eastvale and respawns at the gate after 2 minutes.
+  - Morgaine the Sly 177291 stands still (TDB).
+  - Event links: 13 Wickerman creatures and 11 Wickerman/decoration objects to Hallow's End (12), ribbon pole target 352657
+    to Midsummer (1), Spring Rabbit 10647297 to Noblegarden (9), moonlight object 19728596 to Lunar Festival (7).
+- **Not changed:** herb and ore nodes (Silverleaf 109 vs TDB 28, Copper Vein 110 vs 37); they rarely overlap, so they stay
+  unless you want them trimmed.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-16 (World fixes: the remaining cities pass)
 
 Merged to `main` with PR #75 on 2026-11-16 (untested in game at merge).
