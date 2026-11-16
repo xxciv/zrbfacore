@@ -112,7 +112,7 @@ Open in a draft PR, not merged yet.
   - 12 doubled nodes removed: Ambercorn 6, Peacebloom 2, Silverleaf 2, Earthroot 2.
   - Spring Rabbit 10649757 tied to Noblegarden (9).
 - **Not changed:** Bristleback Interlopers, Grimtotem Defenders and Vandals and Ghost Howl are not in TDB here but stay (TDB has none to compare with).
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Durotar review
