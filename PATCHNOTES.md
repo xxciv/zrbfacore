@@ -55,7 +55,7 @@ Open in a draft PR, not merged yet.
 - **Changed** (`sql/fixes/world/2026_11_16_50_masters_flame_aura.sql`): Master Shang Xi 53566 removes The Master's Flame
   (114610), its cosmetic version (114613) and Snatch Master's Flame (114746) from the player when 29408 is turned in.
   A character already past that quest can clear it with `.unaura 114610`.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Wandering Isle trainees hit softer
@@ -169,7 +169,7 @@ Open in a draft PR, not merged yet.
 - **Found:** The Wandering Isle matches TDB 8.3.7 closely and has no extra creatures (TDB has more in some phases, e.g. Deepscale Ravagers in the turtle's wound). Two objects stood twice.
 - **Changed** (`sql/fixes/world/2026_11_16_41_wandering_isle_review.sql`):
   - Removed: Kun-pai Ritual Charm 1, Explosive Bundle 1.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Tirisfal Glades review
@@ -221,7 +221,7 @@ Open in a draft PR, not merged yet.
   - 112 creatures removed: Timberstrider Fledgling 46, Root Thresher 31, Venture Co. Saboteur 10, Deranged Owlbeast 7, Venture Co. Gemologist 6, Raving Owlbeast 5, Spirit of Water 4, Spirit of Fire 3.
   - Midsummer (1): Spirit of Summer 10653172, ribbon pole target 353211, bonfire bunny 353222; Spring Rabbit 10652904 to Noblegarden (9).
 - **Not changed:** Angry Murlocs (not in TDB) stay.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Teldrassil review
