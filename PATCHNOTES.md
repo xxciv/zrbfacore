@@ -7,6 +7,15 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet.
 
+### World: Lost Isles Pterrordax Scavengers glide instead of jittering
+
+- **Found** (Four, 2026-11-16, video): the Pterrordax Scavengers (36719) on the Lost Isles darted back and forth like the
+  Undercity bats did. All 70 wandered in a 3-yard radius at their template walk speed of 4.4. TDB 8.3.7 has the same
+  speed but a 10-yard radius (86 spawns) or none (30).
+- **Changed** (`sql/fixes/world/2026_11_16_54_lost_isles_pterrordax.sql`): wander radius 10 yards, as in TDB.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Master Shang Xi stops handing out The Master's Flame
 
 - **Found** (Four, 2026-11-16, screenshot): every quest accept or turn-in at Master Shang Xi (53566) gave The Master's
