@@ -147,6 +147,7 @@ git apply ../tools-repo/tools/bfa/quest-gossip-options.patch
 git apply ../tools-repo/tools/bfa/weapon-attack-power.patch
 git apply ../tools-repo/tools/bfa/attack-power-debug.patch
 git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
+git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -518,6 +519,13 @@ Strength). Fledgling Braves and Bristleback Invaders fight there forever because
 that player, the braves move on to other invaders, and NPC hits stop touching it. NPC hits also no
 longer heal: the old code set an invader back up to 80%, undoing the player's damage. It only touches
 `zone_mulgore.cpp`.
+
+`staged-npc-battles.patch` makes the open-world NPC battles last (Sentinel Hill, Ruins of Gilneas,
+Azshara, Silverpine, the Barrens). A creature with `flags_extra` bit `0x400` takes no damage from
+other creatures below 85% health, so both sides keep fighting instead of killing each other and then
+standing around. Players and their pets, totems and guardians deal full damage, so quest kills work as
+before. Which creatures carry the flag is set in `sql/fixes/world/2026_11_17_44_staged_battles.sql`.
+It touches `Unit::DealDamage` (`Unit.cpp`) and the flag list in `CreatureData.h`.
 
 `npc-spell-power-cost.patch` lets NPCs cast spells whose cost is a power they don't have. Creatures
 only get a power pool from their class (mana for paladin and mage), but many NPC spells list a focus,
@@ -954,6 +962,7 @@ git apply ../tools-repo/tools/bfa/quest-gossip-options.patch
 git apply ../tools-repo/tools/bfa/weapon-attack-power.patch
 git apply ../tools-repo/tools/bfa/attack-power-debug.patch
 git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
+git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -1115,6 +1124,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_17_41_second_tier_doubles.sql` | Second-tier zones: unique NPCs standing twice (Deborah Fain and others) and stacked copies removed, Sentinel Hill guards and gnolls fight again |
 | `2026_11_17_42_sentinel_hill_balance.sql` | Westfall: Sentinel Hill guards no longer outnumbered by added gnolls, six stray Defias removed |
 | `2026_11_17_43_second_tier_reaudit.sql` | Second-tier zones re-audit: staged fights wander again, fighters and quest-phase spawns put back, unbalanced adds removed |
+| `2026_11_17_44_staged_battles.sql` | Staged NPC battles last (needs `staged-npc-battles.patch`): flag 0x400 on the fighters in Westfall, Silverpine, Ruins of Gilneas, Azshara and the Northern Barrens; Sentinel Hill gnolls and guards 1:1 with 8.3.7; Counterattack! event leftovers removed; rowboat sea dogs and dead bodies stop wandering |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills, `2026_11_09_02_profession_tier_levels.sql` gates them by expansion level, `2026_11_15_80_profession_trainer_recipes.sql` gives every crafting trainer its recipes).
 
