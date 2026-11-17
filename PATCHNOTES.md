@@ -3,6 +3,140 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-17 (World fixes: second-tier zones review)
+
+Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
+
+### World: Ghostlands review
+
+- **Found:** Ghostlands was spawned unlike TDB: some mobs doubled (Ghostclaw Lynx 101, TDB 38; Phantasmal Watcher 21, TDB 5; Dreadbone Sentinel 35, TDB 13) while others were thin (Sentinel Infiltrator 10, TDB 30; Shadowpine Catlord 15, TDB 32; Mummified Headhunter 8, TDB 22). Most mobs wandered 5 or 15 yards where TDB has them standing, or the other way round. Rathis Tomber never walked his route. The rare Dr. Whitherlimb had four spawn points up at once.
+- **Changed** (`sql/fixes/world/2026_11_17_30_ghostlands_review.sql`):
+  - 274 creatures removed: Ghostclaw Lynx 63, Spindleweb Lurker 29, Mistbat 25, Dreadbone Sentinel 22, Spindleweb Spider 17, Phantasmal Watcher 16, Gangled Cannibal 12, Mana Shifter 12, Shadowpine Oracle 11, Quel'dorei Wraith 10, Shadowpine Hexxer 9, Risen Creeper 9, Arcane Devourer 8, Risen Hungerer 7, Vengeful Apparition 6, Fallen Ranger 5, Deatholme Acolyte 5, Quel'dorei Ghost 5, Deatholme Darkmage 3.
+  - 186 TDB spawns added (guids 735400213-735400398, only where none of ours stands within 30 yards): Shadowpine Catlord 17, Eye of Dar'Khan 14, Greater Spindleweb 14, Ghostclaw Ravager 14, Shadowpine Shadowcaster 13, Lesser Scourgebat 12, Nerubis Guard 12, Stonewing Slayer 10, Mummified Headhunter 10, Shadowpine Witch 9, Sentinel Spy 8, Sentinel Infiltrator 8, Blackpaw Scavenger 7, Blackpaw Gnoll 6, Blackpaw Shaman 6, Stonewing Tracker 5, Nerubis Centurion 5, Shadowpine Ripper 5, Shadowpine Headhunter 4, Whitetail Frenzy 3, Darnassian Druid 2, Phantasmal Seeker 2.
+  - Wander set to TDB on 318 spawns (most: Shadowpine Hexxer 24, Risen Stalker 23, Nerubis Centurion 19, Wailer 18, Risen Hungerer 18, Shadowpine Catlord 15, Dreadbone Sentinel 13, Phantasmal Seeker 12).
+  - Rares pooled so only one spawn point is up at a time (pool 5100600): Dr. Whitherlimb (4 spots).
+  - Patrols put on the TDB waypoint paths already in our database: Rathis Tomber 67932 (path 817200).
+  - Holiday spawns tied to their events: creatures 352635 to Midsummer (1).
+- **Not changed:** Zul'Aman Exterior InvisMen, campfires and the burning troll huts (not in TDB) stay. Harvest nodes exist (copper, tin, silver, herbs) and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Bloodmyst Isle review
+
+- **Found:** Bloodmyst Isle had the same mix: Corrupted Stomper, Blacksilt Scout and Sunhawk Spy doubled, while Enraged Ravager (34, TDB 69), Blacksilt Tidecaller (1, TDB 12) and Thistle Lasher (65, TDB 87) were thin and the Barbed Crawlers were missing. Eight Nazzivus satyrs, the Myst Spinner, the Void Anomaly and a Bloodcursed Naga had waypoint paths in the database but never used them. A ribbon pole target and a bonfire bunny showed all year.
+- **Changed** (`sql/fixes/world/2026_11_17_31_bloodmyst_isle_review.sql`):
+  - 87 creatures removed: Corrupted Stomper 14, Blacksilt Scout 11, Bristlelimb Warrior 9, Sunhawk Spy 9, Sunhawk Agent 8, Corrupted Treant 7, Mutated Tangler 7, Void Anomaly 5, Wrathscale Screamer 5, Axxarien Hellcaller 4, Axxarien Trickster 4, Contaminated Wildkin 4.
+  - 156 TDB spawns added (guids 735400399-735400554, only where none of ours stands within 30 yards): Enraged Ravager 35, Thistle Lasher 22, Veridian Whelp 12, Blacksilt Tidecaller 11, Void Critter 10, Grizzled Brown Bear 10, Blacksilt Warrior 10, Sunhawk Reclaimer 9, Mutated Constrictor 8, Blacksilt Forager 6, Veridian Broodling 6, Barbed Crawler 5, Elder Brown Bear 5, Sunhawk Pyromancer 4, Nazzivus Felsworn 3.
+  - Wander set to TDB on 182 spawns (most: Enraged Ravager 30, Bloodcursed Voyager 20, Wrathscale Sorceress 17, Void Critter 11, Blacksilt Forager 11, Blacksilt Scout 10, Mutated Tangler 9, Wrathscale Shorestalker 8).
+  - Patrols put on the TDB waypoint paths already in our database: Void Anomaly 56327 (path 631500), Myst Spinner 66196 (path 630220), Nazzivus Satyr 66556 (path 623610), Nazzivus Rogue 66566 (path 623840), Nazzivus Satyr 66569 (path 623630), Nazzivus Rogue 66572 (path 623740), Bloodcursed Naga 68554 (path 634860), Nazzivus Felsworn 68667 (path 623980).
+  - Holiday spawns tied to their events: creatures 353197, 353194 to Midsummer (1).
+- **Not changed:** Harvest nodes exist and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Darkshore review
+
+- **Found:** Darkshore had almost every mob, guard and even the Buried Treasure Bunnies shuffling in a 3-yard circle (1,605 spawns); TDB has most of them standing, the rest wandering 5 to 20 yards. Nine rares (Flagglemurk, Carnivous, Lady Vespira, Shadowclaw and others) had two to four spawn points up at once. Vile Spray and Twilight Zealots were thin.
+- **Changed** (`sql/fixes/world/2026_11_17_32_darkshore_review.sql`):
+  - 4 creatures removed: Greymist Refugee 4.
+  - 1 object(s) standing twice removed: Cat Figurine 1.
+  - 29 TDB spawns added (guids 735400555-735400583, only where none of ours stands within 30 yards): Vile Spray 14, Twilight Zealot 6, Thistle Bear Cub 4, Corrupted Thistle Bear Matriarch 3, Greymist Oracle 2.
+  - Wander set to TDB on 1605 spawns (most: Greymist Warrior 108, Greymist Tidehunter 92, Buried Treasure Bunny 90, Shatterspear Laborer 77, Lor'danel Sentinel 73, Shatterspear Raider 65, Corrupted Tide Crawler 64, Encrusted Tide Crawler 55).
+  - Rares pooled so only one spawn point is up at a time (pools 5100601-5100609): Flagglemurk the Cruel (4 spots), Carnivous the Breaker (4 spots), Lady Vespira (3 spots), Shadowclaw (2 spots), Lord Sinslayer (2 spots), Licillin (2 spots), Lady Moongazer (2 spots), Firecaller Radison (2 spots), Strider Clutchmother (2 spots).
+  - Holiday spawns tied to their events: creatures 353122 to Midsummer (1).
+- **Not changed:** Darkshore's spawns otherwise match TDB closely (only 4 extra Greymist Refugees). TDB's 58 Deer are ambient animals and were not added. Harvest nodes exist and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Northern Barrens review
+
+- **Found:** Northern Barrens was the most overspawned: Ornery Plainstrider 72 (TDB 28), Venture Co. Drudger 72 (32), Razormane Thornweaver 28 (5), Burning Blade Attacker 17 (1), Kolkar Invader 11 (1). Nearly every animal shuffled 3 yards where TDB has them standing or roaming 15. Five rares had two or three copies up at once. King Reaperclaw and Trok were set to walk a path but had none assigned; a Razormane Defender never patrolled.
+- **Changed** (`sql/fixes/world/2026_11_17_33_northern_barrens_review.sql`):
+  - 479 creatures removed: Ornery Plainstrider 44, Venture Co. Drudger 40, Zhevra Runner 38, Sunscale Screecher 37, Barrens Vulture 35, Razormane Thornweaver 23, Savannah Prowler 19, Razormane Defender 17, Venture Co. Enforcer 17, Burning Blade Attacker 16, Venture Co. Mercenary 16, Venture Co. Overseer 14, Deviate Slayer 13, Lost Barrens Kodo 13, Razormane Plunderer 11, Kolkar Invader 10, Kolkar Wrangler 10, Deviate Stinglash 8, Razormane Hunter 8, Deviate Creeper 8, Savannah Matriarch 7, Dreadmaw Crocolisk 7, Sunscale Raptor 7, Barrens Boar 6, Razormane Frenzy 6, Kolkar Bloodcharger 6, Kolkar Packhound 6, Witchwing Harpy 5, Sunscale Lashtail 5, Razormane Geomancer 4, Kolkar Pack Runner 4, Slimeshell Makrura 4, Zhevra Charger 3, Venture Co. Drone 3, Venture Co. Lookout 3, Deviate Lurker 3, Kreenig Snarlsnout 3.
+  - 31 TDB spawns added (guids 735400584-735400618, only where none of ours stands within 30 yards): Ashenvale Skirmisher 11, Hecklefang Hyena 10, Burning Blade Acolyte 5, Burning Blade Bruiser 4, Ashenvale Bowman 1.
+  - Wander set to TDB on 1858 spawns (most: Fleeting Plainstrider 155, Zhevra Runner 147, Sunscale Screecher 120, Savannah Huntress 98, Barrens Vulture 78, Savannah Prowler 70, Sunscale Scytheclaw 60, Barrens Giraffe 58).
+  - Rares pooled so only one spawn point is up at a time (pools 5100610-5100614): Stonearm (3 spots), Trigore the Lasher (3 spots), Sister Rathtalon (2 spots), Elder Mystic Razorsnout (2 spots), Boahn (3 spots).
+  - Patrols put on the TDB waypoint paths already in our database: King Reaperclaw 303909 (path 3039090), Trok 303759 (path 3037590), Razormane Defender 262497 (path 3040270).
+- **Not changed:** TDB's Caravan Kodos were not added (caravan quests spawn their own). Harvest nodes exist and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Silverpine Forest review
+
+- **Found:** Silverpine Forest: Vile Fin Tidehunters 152 (TDB 72), Vile Fin Oracles 155 (96) and Inconspicuous Bears 69 (29). Almost everything shuffled 3 yards (TDB: standing). Old Vicejaw had 11 copies up at once and Gorefang 6. Reef Frenzies were nearly missing (6, TDB 39). Two Winter Veil decorations at the Sepulcher and a ribbon pole target showed all year.
+- **Changed** (`sql/fixes/world/2026_11_17_34_silverpine_forest_review.sql`):
+  - 190 creatures removed: Vile Fin Tidehunter 80, Vile Fin Oracle 60, Inconspicuous Bear 40, Skitterweb Striker 8, Hillsbrad Worgen 1, Catapult Target 1.
+  - 1 object(s) standing twice removed: Ambermill Strongbox 1.
+  - 69 TDB spawns added (guids 735400619-735400687, only where none of ours stands within 30 yards): Reef Frenzy 33, Forsaken Trooper 16, Skitterweb Lurker 9, Bloodfang Scavenger 8, Horde Engineer 3.
+  - Wander set to TDB on 997 spawns (most: Giant Rabid Bear 101, Vile Fin Oracle 100, Rabid Worg 94, Forsaken Trooper 83, Vile Fin Tidehunter 81, North Tide's Invisible Stalker 52, Hillsbrad Worgen 47, Elemental Servitor 43).
+  - Rares pooled so only one spawn point is up at a time (pools 5100615-5100618): Gorefang (6 spots), Rot Hide Bruiser (2 spots), Krethis the Shadowspinner (2 spots), Old Vicejaw (11 spots).
+  - Holiday spawns tied to their events: creatures 352539 to Midsummer (1); 2 Winter Veil decorations to Winter Veil (2).
+- **Not changed:** The Forsaken and worgen battle NPCs that TDB lacks stay. Harvest nodes exist and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Ruins of Gilneas review
+
+- **Found:** Ruins of Gilneas: most of the Forsaken and worgen fighters shuffled 3 yards (TDB: standing), a few stood twice on the same spot, and the zone had only 5 Gilnean Hounds and 3 Highlands Foxes (TDB 43 and 42).
+- **Changed** (`sql/fixes/world/2026_11_17_35_ruins_of_gilneas_review.sql`):
+  - 7 creatures removed: Worgen Rebel 3, Forsaken Vanguard 2, Worgen Rusher 2.
+  - 56 TDB spawns added (guids 735400688-735400743, only where none of ours stands within 30 yards): Gilnean Hound 28, Highlands Fox 28.
+  - Wander set to TDB on 201 spawns (most: Forsaken Vanguard 81, Worgen Rebel 52, Forsaken Sharpshooter 20, Worgen Rusher 20, Forsaken Catapult 11, General Purpose Bunny JMF x2 size 5, Gilnean Hound 5, Highlands Fox 3).
+- **Not changed:** The Forsaken vs Gilneas battle (Bloodfang Scouts, 7th Legion Submariners, Gilnean Warhounds and others, not in TDB) stays. TDB's quest-phase copies of the hounds and foxes were not added. Neither TDB nor our database has harvest nodes in Ruins of Gilneas, so none were added.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Loch Modan review
+
+- **Found:** Loch Modan: animals and Stonesplinter troggs a third over TDB (Black Bear 65, TDB 40; Bluegill Wanderer 69, TDB 43), all shuffling 3 yards where TDB has them standing or roaming 20. Five rares (Magosh, Gosh-Haldir, Kubb, Shanda, Boss Galgosh) had two or three copies up at once. A ribbon pole target and bonfire bunny showed all year.
+- **Changed** (`sql/fixes/world/2026_11_17_36_loch_modan_review.sql`):
+  - 225 creatures removed: Bluegill Wanderer 26, Black Bear 25, Forest Lurker 21, Bobcat 19, Mudbelly Boar 19, Loch Buzzard 17, Loch Crocolisk 16, Golden Eagle 14, Stonesplinter Geomancer 14, Stonesplinter Digger 13, Marsh Wasp 11, Tunnel Rat Forager 10, Hill Fox 8, Tunnel Rat Surveyor 6, Scarred Crag Boar 3, Bluegill Mudskipper 3.
+  - 1 object(s) standing twice removed: Silverleaf 1.
+  - Wander set to TDB on 764 spawns (most: Bluegill Wanderer 42, Black Bear 39, Mudbelly Boar 38, Hill Grizzly 37, Forest Lurker 37, Marsh Wasp 36, Bobcat 32, Twilight Encroacher 30).
+  - Rares pooled so only one spawn point is up at a time (pools 5100619-5100623): Magosh (2 spots), Gosh-Haldir (2 spots), Kubb (2 spots), Shanda the Spinner (2 spots), Boss Galgosh (3 spots).
+  - Holiday spawns tied to their events: creatures 352648, 352647 to Midsummer (1).
+- **Not changed:** Harvest nodes exist and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Westfall review
+
+- **Found:** Westfall: 1,200 mobs shuffled 3 yards (TDB: standing). Sea Crawlers, Small-Time Hustlers and West Plains Drifters were thin, Sand Crawlers and Coyotes a little doubled, and six Hobo Goods bags stood twice. Brainwashed Noble and Slark had two copies each. A ribbon pole target and bonfire bunny showed all year.
+- **Changed** (`sql/fixes/world/2026_11_17_37_westfall_review.sql`):
+  - 107 creatures removed: Sand Crawler 21, Coyote 17, Riverpaw Bandit 15, Riverpaw Mongrel 14, Riverpaw Brute 13, Young Fleshripper 7, Hobo Goods (Bag) 6, Riverpaw Gnoll 6, Unbound Cyclone 5, Murloc Coastrunner 3.
+  - 2 object(s) standing twice removed: Sack of Oats 2.
+  - 153 TDB spawns added (guids 735400744-735400896, only where none of ours stands within 30 yards): Sea Crawler 89, Small-Time Hustler 11, Chasm Slime 10, Murloc Tidehunter 9, West Plains Drifter 9, Riverpaw Bandit 7, Energized Harvest Reaper 6, Riverpaw Herbalist 6, Riverpaw Brute 6.
+  - Wander set to TDB on 1200 spawns (most: Sea Crawler 179, Goretusk 92, Coyote 56, Riverpaw Herbalist 54, Sand Crawler 46, Young Goretusk 43, Hulking Goretusk 39, Riverpaw Mongrel 38).
+  - Rares pooled so only one spawn point is up at a time (pools 5100624-5100625): Brainwashed Noble (2 spots), Slark (2 spots).
+  - Holiday spawns tied to their events: creatures 352749, 352754 to Midsummer (1).
+- **Not changed:** Westfall keeps our own quest phasing (170/171): TDB phases the Defias and the homeless NPCs differently, so its Defias copies and the Thugs were not added. Harvest nodes exist and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: The Lost Isles review
+
+- **Found:** The Lost Isles: Jungle Panthers and Goblin Zombies wandered where TDB has them standing (and the reverse), Daggertooth Sharks and Ravenous Lurkers a little doubled, and Pterrordax Scavengers, Spiny Raptors, Venom Spitters and Iceeyas were thin.
+- **Changed** (`sql/fixes/world/2026_11_17_38_lost_isles_review.sql`):
+  - 23 creatures removed: Daggertooth Shark 13, Ravenous Lurker 9, Goblin Zombie 1.
+  - 106 TDB spawns added (guids 735400897-735401002, only where none of ours stands within 30 yards): Pterrordax Scavenger 35, Spiny Raptor 13, Venom Spitter 9, Iceeya 8, Naga Hatchling 8, Alliance Sailor 7, Steamwheedle Shark 6, Vashj'elan Warrior 5, Smart Mining Monkey 5, Frightened Miner 5, Oostan Headhunter 2, Vashj'elan Siren 2, Bomb-Throwing Monkey 1.
+  - Wander set to TDB on 389 spawns (most: Jungle Panther 109, Goblin Zombie 65, Spiny Raptor 31, Oomlot Warrior 27, Alliance Sailor 25, Daggertooth Shark 17, Child of Volcanoth 14, Naga Hatchling 12).
+- **Not changed:** The Lost Isles keep our own quest phasing: 1,222 spawns sit in a different phase than in TDB, and TDB's extra per-phase copies were not added where one of ours already stands. Harvest nodes exist and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Azshara review
+
+- **Found:** Azshara: Mosshoof Coursers 123 (TDB 68), Weakened Mosshoof Stags 98 (47), Thunderhead Hippogryphs 116 (66), Restless Spirits, Greystone Basilisks and the Blackmaw furbolgs about doubled. 2,266 mobs shuffled 3 yards (TDB: standing or roaming 20). Nine rares had two to five copies up at once. 59 Winter Veil decorations stood all year.
+- **Changed** (`sql/fixes/world/2026_11_17_39_azshara_review.sql`):
+  - 445 creatures removed: Mosshoof Courser 55, Weakened Mosshoof Stag 51, Thunderhead Hippogryph 50, Spitelash Myrmidon 33, Restless Spirit 32, Greystone Basilisk 31, Vile Splash 21, Mistwing Ravager 19, Blackmaw Pathfinder 17, Spitelash Enchantress 17, Blackmaw Warrior 17, Spitelash Battlemaster 16, Blackmaw Shaman 16, Makrinni Snapclaw 14, Spitelash Invader 12, Thunderhead Stagwing 12, Sable Drake 9, Legashi Rogue 8, Legashi Satyr 7, Skychaser Hippogryph 4, Warsong Assault Wind Rider 3, Goblin Cocktail 1.
+  - 23 TDB spawns added (guids 735401003-735401025, only where none of ours stands within 30 yards): Mistwing Cliffdweller 17, Yellowfin Shark 3, Azshara Bombardier 3.
+  - Wander set to TDB on 2266 spawns (most: Coralshell Lurker 235, Bilgewater Seal 193, Makrinni Scrabbler 108, Makrinni Razorclaw 92, Vile Splash 84, Thunderhead Hippogryph 66, Mosshoof Courser 63, Static-Charged Hippogryph 60).
+  - Rares pooled so only one spawn point is up at a time (pools 5100626-5100634): Master Feardred (2 spots), The Evalcharr (4 spots), Antilos (5 spots), Varo'then's Ghost (5 spots), Scalebeard (2 spots), Monnos the Elder (2 spots), Gatekeeper Rageroar (2 spots), Lady Sesspira (2 spots), General Fangferror (2 spots).
+  - Holiday spawns tied to their events: 59 Winter Veil decorations to Winter Veil (2).
+- **Not changed:** Land mines and the old high-level harvest nodes (not in TDB) were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-16 (World fixes: starter zones review)
 
 Open in a draft PR, not merged yet.
