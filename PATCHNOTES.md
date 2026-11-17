@@ -20,7 +20,7 @@ Open in a draft PR, not merged yet.
     row and the first credit from his quest-accept row.
   - The gossip row is re-added as its own row (id 13) and only fires while 29408 is in the quest log and the flame item
     (80212) isn't in the bags (conditions on SmartAI source 22).
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Jaomin Ro stays in the fight after Hawk Diving to Earth
@@ -32,7 +32,7 @@ Open in a draft PR, not merged yet.
   the hawk form himself (model 39796, the same one the core's own Jaomin script uses), casts the dive 108935 Hawk Diving
   to Earth one second later (instant, 75% weapon damage and a short stun around him), and turns back half a second after
   that. He stays the same creature and keeps his target.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Jaomin Ro hits softer
@@ -44,7 +44,7 @@ Open in a draft PR, not merged yet.
   handled in the Main core changes thread (PR #80).
 - **Changed** (`sql/fixes/world/2026_11_16_51_jaomin_ro_damage.sql`), our own tuning rather than TDB's: half melee damage
   (`DamageModifier` 0.5), first special after 6-8 seconds, then every 10 to 14 seconds.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: The Master's Flame no longer stays on the player
@@ -68,7 +68,7 @@ Open in a draft PR, not merged yet.
 - **Changed** (`sql/fixes/world/2026_11_16_49_wandering_isle_trainee_damage.sql`), our own tuning rather than TDB's:
   - Melee damage halved (`DamageModifier` 0.5) for the four trainee entries 54586, 54587, 65470, 65471.
   - Blackout Kick and Jab every 5 to 7 seconds instead of every 2.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Wandering Isle trainees fight one at a time
@@ -83,7 +83,7 @@ Open in a draft PR, not merged yet.
   - TDB 8.3.7's trainee SmartAI for all four: one-on-one fight, and at 10% health the trainee yields, gives the quest
     credit, says a line and leaves after 4 seconds. TDB gives the Huojin trainees no script (players had to kill them),
     so here they get the same yield script, casting Jab instead of Blackout Kick.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-16).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Northwatch caravans carry their lugs and crates
