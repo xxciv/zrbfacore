@@ -7,6 +7,17 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet.
 
+### World: Jaomin Ro stays in the fight after Hawk Diving to Earth
+
+- **Found** (Four, 2026-11-16): after Hawk Diving to Earth, Jaomin Ro went invisible and sometimes reset the fight. His
+  script cast 108955, which summons a hawk vehicle (57750) and seats him in it; as a passenger he lost his target and
+  evaded.
+- **Changed** (`sql/fixes/world/2026_11_16_52_jaomin_ro_hawk_dive.sql`): his special now casts the dive itself, 108935
+  Hawk Diving to Earth (instant, 75% weapon damage and a short stun around him), which the hawk would have triggered.
+  No vehicle is involved, so he stays visible and in combat.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Jaomin Ro hits softer
 
 - **Found** (Four, with the Main core changes thread, 2026-11-16): Jaomin Ro (54611, The Disciple's Challenge) is level 3
