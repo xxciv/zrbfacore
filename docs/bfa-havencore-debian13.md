@@ -147,6 +147,7 @@ git apply ../tools-repo/tools/bfa/quest-gossip-options.patch
 git apply ../tools-repo/tools/bfa/weapon-attack-power.patch
 git apply ../tools-repo/tools/bfa/attack-power-debug.patch
 git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
+git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -511,6 +512,11 @@ conversation, and the core took that as the end of the gossip menu too, so its o
 "Let me browse your goods.", for example at Skorn Whitecloud) did nothing until the window was
 closed and opened again. The menu now stays valid, and it is only closed straight away when it is a
 single option the client would pick by itself (a flight master's map).
+
+`lost-isles-zapnozzle.patch` gives Doc Zapnozzle (start of the Lost Isles, Don't Go Into the
+Light!) someone to talk to. He is a fixed spawn here instead of being summoned for you, so his lines
+had no target and the client printed "$n" instead of your name. He now talks to the player who turned
+the quest in, or else the nearest player.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -954,6 +960,7 @@ git apply ../tools-repo/tools/bfa/quest-gossip-options.patch
 git apply ../tools-repo/tools/bfa/weapon-attack-power.patch
 git apply ../tools-repo/tools/bfa/attack-power-debug.patch
 git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
+git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

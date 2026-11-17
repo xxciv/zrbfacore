@@ -102,6 +102,33 @@ tested in game yet.
   pool-side Ace, Gobber and Izzy already have (33280).
 - **Status:** not tested in game.
 
+### DB: too many pirates at the pool party (14115)
+
+- **Found** (Four, 2026-11-16, screenshot): the pool area is packed with pirates; thin by half.
+- **Cause:** 34 Pirate Party Crashers 35200 in phase 380 for a 12-kill quest. Separately, Kezan
+  Partygoer 35202 (70 spawns, phase 380) and 35235 (4, phase 381) use the invisible-stalker display
+  21342: hidden anchors that the pirates fought, shown as "invisible attackers" with name plates.
+- **Changed:** `sql/fixes/world/2026_11_17_73_kezan_pool_party_pirates.sql`: 17 of the 34 pirates
+  deleted (kept 17 spread over the whole area, guids in the file); 35202 and 35235
+  `unit_flags` |= 0x02000200 (not selectable, immune to NPCs).
+- **Left:** the sleeping Pirate Party Crasher 35237 (guid 21015340, phase 381) is a deliberate
+  knocked-out decoration (template aura 87259 Permanent Feign Death (Drowned), unattackable
+  faction 14); the kill target is 35200.
+- **Status:** not tested in game.
+
+### Core: Doc Zapnozzle says "$n" (Don't Go Into the Light!, 14239, Lost Isles)
+
+- **Found** (Four, 2026-11-16): `Doc Zapnozzle says: You made the right choice. We all owe you a
+  great deal, $n.`
+- **Cause:** on retail spell 69018 summons a personal Doc for each player; here he is a fixed spawn
+  (guid 280009397, phase 0) and nothing casts 69018. `npc_zapnozzle` (lost_isles.cpp) talks to
+  `GetSummoner()`, which is empty for a fixed spawn, so the chat packet had no target and the
+  client could not fill in the name.
+- **Changed:** new `tools/bfa/lost-isles-zapnozzle.patch` (lost_isles.cpp only, last in the chain
+  after weapon-slot-attack-power.patch): `sQuestReward` remembers the player who turned in 14239,
+  and `GetSummoner()` falls back to the nearest player within 40 yards. Compile-checked.
+- **Status:** not tested in game.
+
 ### Not changed, for the record
 
 - Rolling with my Homies (14071): the Keys to the Hot Rod stay after the turn-in on purpose. The
@@ -111,7 +138,7 @@ tested in game yet.
   so by the code this happens on accept and skips the ride to the yacht and Gallywix. Left as is
   until Four reaches it and reports what happens; fixing it needs a core patch.
 
-- **Pick up:** SQL only, no rebuild. Delete the client `Cache` folder afterwards (objective texts).
+- **Pick up:** SQL plus one scripts-only patch. Delete the client `Cache` folder afterwards (objective texts).
 
   ```
   git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
@@ -127,6 +154,18 @@ tested in game yet.
 
   ```
   git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_17_72_kezan_party_fixes.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_17_73_kezan_pool_party_pirates.sql | mysql -u root -p bfa_world
+  ```
+
+  For the Doc Zapnozzle patch (scripts only, short build):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/lost-isles-zapnozzle.patch | git apply
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
   ```
 
   Then restart worldserver.
