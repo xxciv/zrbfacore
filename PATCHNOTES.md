@@ -7,6 +7,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
 
+### World: Darkshore, Shatterspear Pass shows the aftermath of the battle
+
+- **Found** (Four, 2026-11-17: "no one is fighting"; Four chose the 8.3.7 aftermath over a live battle): in the 8.3.7 data (retail-sniffed template) the Shatterspear Raiders 34309 at the pass play dead (`unit_flags2` 0x1), are stunned and immune, and the Lor'danel Sentinels 32969 stand still among them. Our template had the raiders alive but immune to NPCs, and the dump scripted both sides to attack each other on reset, so 6 raiders just stood there. Most of our dead raiders and some sentinels there carry aura 65181 (phase 170), which nobody sees in Darkshore. Of our 10 visible sentinels only 3 stand on 8.3.7 spots; 4 of the others were stacked on one spot (7415, -1298).
+- **Changed** (`sql/fixes/world/2026_11_17_45_darkshore_shatterspear_pass.sql`):
+  - Shatterspear Raider 34309 template takes the 8.3.7 flags: `unit_flags` 537166592, `unit_flags2` 2049, `unit_flags3` 8192.
+  - Our 6 visible raiders (all on 8.3.7 spots) stand still without the combat-ready emote; the 3 sentinels on 8.3.7 spots stand still without emote.
+  - The 7 other visible sentinels removed: 245754, 246906, 246850, 245755 (stacked), 247284, 247290, 247673.
+  - The dump's "on reset, attack" rows removed: `smart_scripts` 32969 id 20 and 34309 id 22 (8.3.7 has neither).
+  - Added the 12 raiders and 14 sentinels of 8.3.7 we lacked, at 8.3.7 positions, standing still (guids 735401043-735401068). The pass now has 18 raiders and 17 sentinels, as in 8.3.7.
+- **Not changed:** the phase-170 copies (aura 65181); they stay hidden.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`, delete the client's `Cache` folder (the raider template changed).
+
 ### World: staged NPC battles last instead of dying out
 
 - **Found** (Four, 2026-11-17, after `2026_11_17_43`): the open-world battles start, then one side kills the other and the survivors stand around. Westfall's gnolls still outnumbered the guards, the Ruins of Gilneas looked like an old battlefield, Azshara was half fighting and half standing, the Barrens sea dogs swam off and the Kolkar fight died out. Nothing in the data keeps these fights going: TDB 8.3.7 scripts them the same way, so creatures simply kill each other. The Camp Narache battle in Mulgore lasts only because of our own C++ script (`mulgore-bristleback-fight.patch`: NPC hits stop at 80% health).
