@@ -3,6 +3,39 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-16 (Quest fixes: The Lesson of the Burning Scroll)
+
+Merged to `main` with PR #78 on 2026-11-16.
+
+### DB: the Edict of Temperance doesn't burn
+
+- **Found** (Four, 2026-11-16): The Lesson of the Burning Scroll (29408, Wandering Isle). Using the
+  flame on the Edict of Temperance gives the credit, but the scroll never catches fire.
+- **Cause:** the scroll is gameobject 210986 (goober, `Data5` consumable 1, spell 114580, spawn guid
+  21000000 on map 860). Spell 114580 has no fire visual: it gives kill credit 59570, removes the
+  flame aura 122486 and destroys item 80212. The burn is the model's despawn effect
+  (`SMSG_GAMEOBJECT_DESPAWN`); Four confirmed it with `.gobject set state 21000000 -1`, while the
+  custom animations 0-3 and states 0 and 2 showed nothing. `gameobject_template_addon.flags` for
+  210986 was 65572 (0x10024), which includes `GO_FLAG_NODESPAWN` (0x20). With that flag
+  `GameObject::Update` (`GO_JUST_DEACTIVATED`) returns before `SendGameObjectDespawn` for a used
+  goober, so the effect was never sent.
+- **Changed:** `sql/fixes/world/2026_11_16_71_burning_scroll.sql` clears 0x20:
+  flags 65572 -> 65540 (0x10004). After use the scroll now burns away and comes back after its
+  5 second spawn time. The burn starts 3 seconds after the click, together with the quest credit
+  (`Data3` autoClose 3000, unchanged).
+- **Status:** confirmed in game by Four on 2026-11-16 (the scroll burns when used).
+- **Pick up:** SQL only, no rebuild:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_16_71_burning_scroll.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-16 (core: weapon attack power reset)
 
 ### Combat: main hand weapon attack power drops to 0 after equipping or removing any other item
