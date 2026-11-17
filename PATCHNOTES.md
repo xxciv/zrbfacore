@@ -3,6 +3,111 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-17 (Quest fixes: Kezan)
+
+Draft PR, not merged yet. Checked against the DB and the core scripts only; nothing here has been
+tested in game yet.
+
+### DB: Necessary Roughness (24502) has no shredder and only one objective
+
+- **Found** (Four, 2026-11-16): after The Replacements the next quest Necessary Roughness is
+  accepted, but no Bilgewater Buccaneer appears, and the tracker reads `0/1 "Necessary Roughness"
+  Kill Credit slain` while the quest text asks for 8 Steamwheedle Sharks.
+- **Cause:** four separate data faults.
+  1. Coach Crosscheck's script (`npc_coach_crosscheck`) casts 70015 (Summon Bilgewater Buccaneer)
+     on accept. The spell places the shredder on the parked Bilgewater Buccaneer 48526, and the
+     `conditions` row naming that target was type 31 (legacy type ids) with value 5. In legacy ids
+     5 is a gameobject, so the core looked for gameobject 48526 (a "Dwarven Campfire") and the cast
+     failed every time.
+  2. The parked shredder carries invisibility aura 90366 and is only seen with detection 90161.
+     `spell_area` gave 90161 only in Kajaro Field (area 4822); the coach stands in Bilgewater Port
+     (4767). At the coach the shredder was invisible, and an invisible unit cannot be an implicit
+     spell target either.
+  3. `quest_objectives` only had row 266618 (kill credit 48271, the boarding credit, no text). Row
+     266619 (8 x Steamwheedle Shark 37114) was missing; retail lists "Bilgewater Buccaneer (1)" and
+     "Steamwheedle Shark Footbombed (8)".
+  4. The parked shredder had `npcflag` 0, so its spellclick row (70015) could not be used to get
+     back in after leaving the shredder.
+- **Changed:** `sql/fixes/world/2026_11_17_70_kezan_quest_fixes.sql`:
+  - `conditions` (13, 1, 70015): type 31 -> 51 (unit 48526).
+  - `spell_area` 90161: area 4822 -> zone 4737 (all of Kezan).
+  - `creature_template` 48526: `npcflag` |= 16777216 (spellclick), with a `conditions` row
+    (18, 48526, 70015) so it only works while 24502 is in progress.
+  - `quest_objectives`: 266618 text "Bilgewater Buccaneer"; new row 266619 (24502, kill credit
+    37114, amount 8, "Steamwheedle Shark Footbombed").
+  - Leftovers removed: `creature_queststarter` (37114, 24502); Coach Crosscheck `smart_scripts`
+    ids 1 and 2 (two extra shark summons, the core script summons the 8 sharks); the hand-placed
+    permanent shark spawn guid 3530203330003155.
+- **Status:** not tested in game.
+
+### DB: Fourth and Goal (28414) never seats the player
+
+- **Cause:** the quest script summons a second shredder, entry 37213, and the creature script
+  `npc_boucanier_gob` seats the player in it. `creature_template.ScriptName` for 37213 was empty.
+- **Changed:** same file: `ScriptName` 'npc_boucanier_gob' on 37213.
+- **Status:** not tested in game. Known leftover: the Deathwing fly-by (spell 66322) targets a bunny
+  that only exists in the headquarters phase, so it will probably not show.
+
+### DB: 447 (14125) completes without the Gasbot
+
+- **Cause:** `quest_objectives` had the three objects (generator, stove, bed) but not the fourth
+  retail objective "KTC Headquarters Set Ablaze with Gasbot!" (kill credit 37598, given by the
+  core script `npc_kezan_gasbot`). The Gasbot Control Panel 201736 stood in phase 169, which the
+  player leaves when The Uninvited Guest is rewarded, so it could not be seen at that point. The
+  Claims Adjuster 37602 (second turn-in) was in 169 as well.
+- **Changed:** same file: new row 266734 (14125, kill credit 37598, amount 1) plus texts for
+  266731-266733; panel `PhaseId` 169 -> 382; Claims Adjuster `phaseId` 169 -> 384 (shown once 447
+  is complete).
+- **Status:** not tested in game.
+
+### DB: objective texts
+
+- Do it Yourself (14070): "<name> beaten down" for 265427-265430. Life of the Party (14113, 14153):
+  "Partygoer entertained". Same file.
+
+### DB: 177 conditions used the wrong object type id
+
+- **Cause:** found through fault 1 above. The core has condition 31 (legacy type ids: 3 unit,
+  4 player, 5 gameobject) and condition 51 (current ids: 5 unit, 6 player, 8 gameobject). 154 rows
+  were type 31 with value 5 while meaning a creature (145 name a creature entry, 9 are "require
+  unit" rows with no entry), so the core read them as gameobjects and the spell, spellclick or
+  script they guard never found its target. 23 rows were type 51 with the legacy unit id 3 (read
+  as an Azerite item). Examples: Dragonflayer installations (43986, 43990, 44213, 44214), Legion
+  transporters and antennas in Netherstorm (33644, 33655, 33744), taming spells (19692-19700),
+  Shade of Akama, vehicle spellclicks 46598 on 28312/32627/34776/35069/35431/35433, Wandering Isle
+  summons (105333, 106623, 126040, 126043, 126059), Siege of Orgrimmar spells.
+- **Changed:** `sql/fixes/world/2026_11_17_71_condition_object_types.sql`: type 31 value 5 ->
+  type 51 value 5 (one row that already had a correct twin is deleted); type 51 value 3 -> value 5.
+  The two type 51 value 4 rows are left alone (intent unclear).
+- **Status:** not tested in game.
+
+### Not changed, for the record
+
+- Rolling with my Homies (14071): the Keys to the Hot Rod staying after the turn-in, with Izzy, Ace
+  and Gobber riding along, is the retail design. The car is needed for Robbing Hoods (14121) and
+  Sassy takes the keys at Life Savings. `npc_hot_rod_rolling_my_homies` resummons the three when
+  the quest is rewarded on purpose.
+- Life Savings (14126): the core `PlayerScript` `LifeSavings` plays the movie and teleports to the
+  Lost Isles as soon as the quest is complete. The quest's only objective is its own provided item,
+  so by the code this happens on accept and skips the ride to the yacht and Gallywix. Left as is
+  until Four reaches it and reports what happens; fixing it needs a core patch.
+
+- **Pick up:** SQL only, no rebuild. Delete the client `Cache` folder afterwards (objective texts).
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_17_70_kezan_quest_fixes.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_17_71_condition_object_types.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-16 (Quest fixes: The Lesson of the Burning Scroll)
 
 Merged to `main` with PR #78 on 2026-11-16.
