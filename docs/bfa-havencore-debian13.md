@@ -146,6 +146,7 @@ git apply ../tools-repo/tools/bfa/client-ticket-poll.patch
 git apply ../tools-repo/tools/bfa/quest-gossip-options.patch
 git apply ../tools-repo/tools/bfa/weapon-attack-power.patch
 git apply ../tools-repo/tools/bfa/attack-power-debug.patch
+git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -952,6 +953,7 @@ git apply ../tools-repo/tools/bfa/client-ticket-poll.patch
 git apply ../tools-repo/tools/bfa/quest-gossip-options.patch
 git apply ../tools-repo/tools/bfa/weapon-attack-power.patch
 git apply ../tools-repo/tools/bfa/attack-power-debug.patch
+git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

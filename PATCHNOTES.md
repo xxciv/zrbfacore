@@ -3,6 +3,41 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-16 (core: weapon attack power reset)
+
+### Combat: main hand weapon attack power drops to 0 after equipping or removing any other item
+
+Open on branch `claude/project-thread-z3fwbh` (not merged yet).
+
+- **Found** (Four, 2026-11-16, level 1 Windwalker monk fighting Jaomin Ro 54611): `.debug attackpower`
+  showed `Weapon attack power: main hand 0, off hand 2` although the fist weapon was still equipped
+  (main hand weapon damage 0.9 - 1.0). Tiger Palm dropped back to 1. It happened after the quest item
+  Master's Flame was taken away.
+- **Cause:** a bug in `weapon-attack-power.patch` (PR #79). `Player::_ApplyItemBonuses` called
+  `Player::_ApplyWeaponDamage` for every equipped item, treating every slot that is not the off hand
+  as the main hand (`BASE_ATTACK`). Before PR #79 that did nothing for non-weapons (no damage, no
+  delay). Since PR #79, `_ApplyWeaponDamage` also sets the weapon attack power field, so equipping or
+  removing armor, a ring, a tabard or a quest item set the main hand's weapon attack power to that
+  item's DPS x 6, which is 0. TrinityCore 8.3.7 only calls it for weapon slots (`GetAttackBySlot`).
+- **Changed:** new `tools/bfa/weapon-slot-attack-power.patch`
+  (`src/server/game/Entities/Player/Player.cpp`, `Player::_ApplyItemBonuses`): returns before
+  `_ApplyWeaponDamage` unless the slot is the main hand or off hand. No SQL.
+- **Status:** applies cleanly after the full chain on upstream 2c13546, `Player.cpp` compiles.
+  Confirmed in game by Four on 2026-11-16 (armor swaps no longer reset main hand weapon AP).
+
+#### To pick up the main hand fix
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/weapon-slot-attack-power.patch | git apply && echo "weapon slot patch applied"
+grep -c "only the weapon slots carry weapon damage" src/server/game/Entities/Player/Player.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1. Restart `worldserver`, log in, and check `.debug attackpower`: main hand weapon
+attack power should be 2 again (it is set when the weapon is applied at login).
+
 ## 2026-11-16 (core)
 
 ### Combat: abilities that scale with attack power hit far too weakly
