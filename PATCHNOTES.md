@@ -22,8 +22,8 @@ Open on branch `claude/project-thread-z3fwbh` (not merged yet).
 - **Changed:** new `tools/bfa/weapon-slot-attack-power.patch`
   (`src/server/game/Entities/Player/Player.cpp`, `Player::_ApplyItemBonuses`): returns before
   `_ApplyWeaponDamage` unless the slot is the main hand or off hand. No SQL.
-- **Status:** applies cleanly after the full chain on upstream 2c13546, `Player.cpp` compiles. Not
-  yet checked in game.
+- **Status:** applies cleanly after the full chain on upstream 2c13546, `Player.cpp` compiles.
+  Confirmed in game by Four on 2026-11-16 (armor swaps no longer reset main hand weapon AP).
 
 #### To pick up the main hand fix
 A new patch on top of the others, the build and a restart. The patches you already applied are
