@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-16 (Quest fixes: The Lesson of the Burning Scroll)
 
-Draft PR, not merged yet.
+Merged to `main` with PR #78 on 2026-11-16.
 
 ### DB: the Edict of Temperance doesn't burn
 
@@ -23,7 +23,7 @@ Draft PR, not merged yet.
   flags 65572 -> 65540 (0x10004). After use the scroll now burns away and comes back after its
   5 second spawn time. The burn starts 3 seconds after the click, together with the quest credit
   (`Data3` autoClose 3000, unchanged).
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four on 2026-11-16 (the scroll burns when used).
 - **Pick up:** SQL only, no rebuild:
 
   ```
@@ -35,6 +35,126 @@ Draft PR, not merged yet.
   ```
 
   Then restart worldserver.
+
+## 2026-11-16 (core: weapon attack power reset)
+
+### Combat: main hand weapon attack power drops to 0 after equipping or removing any other item
+
+Open on branch `claude/project-thread-z3fwbh` (not merged yet).
+
+- **Found** (Four, 2026-11-16, level 1 Windwalker monk fighting Jaomin Ro 54611): `.debug attackpower`
+  showed `Weapon attack power: main hand 0, off hand 2` although the fist weapon was still equipped
+  (main hand weapon damage 0.9 - 1.0). Tiger Palm dropped back to 1. It happened after the quest item
+  Master's Flame was taken away.
+- **Cause:** a bug in `weapon-attack-power.patch` (PR #79). `Player::_ApplyItemBonuses` called
+  `Player::_ApplyWeaponDamage` for every equipped item, treating every slot that is not the off hand
+  as the main hand (`BASE_ATTACK`). Before PR #79 that did nothing for non-weapons (no damage, no
+  delay). Since PR #79, `_ApplyWeaponDamage` also sets the weapon attack power field, so equipping or
+  removing armor, a ring, a tabard or a quest item set the main hand's weapon attack power to that
+  item's DPS x 6, which is 0. TrinityCore 8.3.7 only calls it for weapon slots (`GetAttackBySlot`).
+- **Changed:** new `tools/bfa/weapon-slot-attack-power.patch`
+  (`src/server/game/Entities/Player/Player.cpp`, `Player::_ApplyItemBonuses`): returns before
+  `_ApplyWeaponDamage` unless the slot is the main hand or off hand. No SQL.
+- **Status:** applies cleanly after the full chain on upstream 2c13546, `Player.cpp` compiles.
+  Confirmed in game by Four on 2026-11-16 (armor swaps no longer reset main hand weapon AP).
+
+#### To pick up the main hand fix
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
+git -C ../tools-repo show FETCH_HEAD:tools/bfa/weapon-slot-attack-power.patch | git apply && echo "weapon slot patch applied"
+grep -c "only the weapon slots carry weapon damage" src/server/game/Entities/Player/Player.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 1. Restart `worldserver`, log in, and check `.debug attackpower`: main hand weapon
+attack power should be 2 again (it is set when the weapon is applied at login).
+
+## 2026-11-16 (core)
+
+### Combat: abilities that scale with attack power hit far too weakly
+
+Merged to `main` with PR #79 on 2026-11-16.
+
+- **Found** (Four, 2026-11-16, level 1 Pandaren monk): Tiger Palm hits for 1, and the monk dies to
+  any mob of the same level.
+- **Cause:** in 8.3.7 a melee or hunter ability's damage is "x% of attack power", and attack power
+  includes the equipped weapon's share (weapon DPS x 6) and flat attack power from buffs.
+  HavenCore's `Unit::GetTotalAttackPowerValue` returned only the attack power from stats
+  (`AttackPower * (1 + multiplier)`). It ignored `AttackPowerModPos/Neg` (flat attack power
+  auras) and the weapon fields `MainHandWeaponAttackPower`, `OffHandWeaponAttackPower` and
+  `RangedWeaponAttackPower`, which HavenCore never set at all. Tiger Palm (100780) is effect 0
+  School Damage with `BonusCoefficientFromAP` 0.2703 and no base points (SpellEffect.db2 row 108857),
+  so a level 1 monk (17 agility, `player_classlevelstats` class 10 level 1) got about
+  0.27 x 17 = 4.6 damage before armor. The weapon's share was missing.
+  Armor mitigation (`Unit::CalcArmorReducedDamage`) and creature armor
+  (`Creature::GetBaseArmorForLevel`, ExpectedStat) were compared with TrinityCore 8.3.7 (tag
+  TDB837.20101) and are identical, so they are not part of this bug.
+- **Changed:** new `tools/bfa/weapon-attack-power.patch`, all ported from TrinityCore 8.3.7:
+  - `Unit::GetTotalAttackPowerValue(attType, includeWeapon = true)` (`Unit.cpp`, `Unit.h`): adds
+    `AttackPowerModPos + AttackPowerModNeg` (ranged: the ranged pair), and with `includeWeapon` the
+    weapon attack power: main hand and ranged take the larger of main hand / ranged weapon AP; the
+    off hand adds off hand weapon AP and halves the total.
+  - White hits do not count the weapon twice: `Player::CalculateMinMaxDamage`,
+    `Creature::CalculateMinMaxDamage` and `Guardian::UpdateDamagePhysical` (`StatSystem.cpp`) call it
+    with `includeWeapon = false`, because they already add the weapon's own damage.
+  - `Player::_ApplyWeaponDamage` (`Player.cpp`): sets the weapon attack power field for the slot to
+    `weapon DPS * 6` when a weapon is equipped and 0 when it is removed. New setters
+    `SetMainHandWeaponAttackPower` / `SetOffHandWeaponAttackPower` / `SetRangedWeaponAttackPower`
+    (`Unit.h`).
+  - `ItemTemplate::GetDPS(itemLevel)` (`ItemTemplate.cpp/.h`): the DPS lookup is split out of
+    `ItemTemplate::GetDamage`, which now calls it. Weapon damage itself is unchanged.
+  - `Unit::SpellDamageBonusDone` (`Unit.cpp`): spells that need the off hand and not the main hand
+    (`SPELL_ATTR3_REQ_OFFHAND` without `SPELL_ATTR3_MAIN_HAND`) use off hand attack power.
+  - No SQL. The character sheet's attack power now also shows the weapon's share.
+- **Status:** in game on 2026-11-16 (level 1 Windwalker monk, 15 agility): Tiger Palm's tooltip
+  went up to 5 (the client counts the weapon share), Four now beats the Tushui Trainees, but Tiger
+  Palm still lands for 2 every hit. Armor is not the cause: `.damage 100 0` and `.damage 100 1`
+  both dealt 97. Still being traced; see the debug command below.
+- **Also added:** `tools/bfa/attack-power-debug.patch` (`src/server/scripts/Commands/cs_debug.cpp`):
+  GM command `.debug attackpower [spell id or link]`. It prints your `AttackPower`, `ModPos/ModNeg`,
+  multiplier, weapon attack power fields, the totals for main hand, off hand and ranged, and main
+  hand weapon damage. With a spell and a selected target it prints, per attack power damage effect,
+  the AP coefficient before and after spell mods, the percent damage done multiplier, the damage
+  spell mods, and the damage done before the target's own modifiers, armor and crit. With a target
+  selected it also prints the target's level, armor, health and auras, the level scaling
+  multipliers, a 100 damage melee hit through your bonuses, the target's bonuses and armor, and the
+  spell's damage after the target's modifiers and armor.
+- **Debug result 1** (Four, Tushui Trainee): AttackPower 17, weapon attack power 2 main hand and 2
+  off hand, total 19.0 main hand; Tiger Palm coefficient 0.2703 (no spell mods), percent done
+  x1.000, damage spell mods x1.046, damage done 5. So the server computes 5 on the attacker's side
+  and the cut to 2 happens on the target's side.
+- **Debug result 2** (in combat, Tushui Trainee 54587): AttackPower 15 in combat (17 seen idle, a
+  temporary buff), weapon AP 2, total 17; Tiger Palm 17 x 0.2703 = 4 before armor. The trainee has
+  49 armor (ArmorModifier 1, value from the client's level 1 ExpectedStat), which takes 30-31%
+  (100 physical -> 69-70), so Tiger Palm lands for 2. Every step matches TrinityCore 8.3.7; the
+  remaining weakness is level 1 tuning, not a core bug.
+- **Final status:** confirmed by Four on 2026-11-16 (Tiger Palm 1 -> 2, trainees now beatable) and
+  merged. The open question of the monk dying to early quest mobs is mob tuning, not this patch.
+
+#### To pick up the attack power fix
+A new patch on top of the others, the build and a restart. The patches you already applied are
+unchanged.
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/weapon-attack-power.patch && echo "attack power patch applied"
+grep -c "WeaponAttackPower" src/server/game/Entities/Unit/Unit.cpp src/server/game/Entities/Player/Player.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 3 for `Unit.cpp` and 3 for `Player.cpp`. Then restart `worldserver`. Log in, take the
+weapon off and put it back on (or just relog), and check the attack power on the character sheet.
+
+The debug command on top (only `cs_debug.cpp` changes, so this rebuild is short):
+```
+cd ~/bfa/source
+git -C ../tools-repo pull
+git apply ../tools-repo/tools/bfa/attack-power-debug.patch && echo "attack power debug patch applied"
+grep -c "HandleDebugAttackPowerCommand" src/server/scripts/Commands/cs_debug.cpp
+sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+```
+The grep prints 2. Restart `worldserver`, target a mob and type `.debug attackpower 100780`.
 
 ## 2026-11-16 (Quest fixes: Mulgore batch and gossip menu options after Accept)
 
