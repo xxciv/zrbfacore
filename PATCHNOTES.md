@@ -11,7 +11,7 @@ Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 
 
 - **Found** (Four, 2026-11-17, screenshot): some Bomb-Throwing Monkeys (34699) floated in a flying pose on the ground. Seven spawns had `bytes1` 50331648 in `creature_addon` (animation tier 3 = fly); TDB has the same flag on seven of its own, but these spawns stand on the ground, not in the trees.
 - **Changed** (`sql/fixes/world/2026_11_17_40_lost_isles_bomb_monkeys.sql`): `bytes1` 0 on guids 40000114, 40000127, 40000134, 40000136, 40000144, 40000234, 40000441, like the other 31 monkeys.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-17).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Ghostlands review
