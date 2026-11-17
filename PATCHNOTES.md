@@ -7,6 +7,13 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
 
+### World: Sentinel Hill guards no longer outnumbered, stray Defias removed
+
+- **Found** (Four, 2026-11-17, screenshots): after `2026_11_17_41` the Sentinel Hill fight was back but the guards were outnumbered and died almost at once. `2026_11_17_37` had added 19 Riverpaw gnolls at TDB spots; TDB pairs those with guards we do not spawn. A Defias Knuckleduster (308243) stood alone near the hill: it and five other Defias are leftovers of the Defias attack on Sentinel Hill, which TDB keeps in quest phase 226 (we have no such phase).
+- **Changed** (`sql/fixes/world/2026_11_17_42_sentinel_hill_balance.sql`): the 19 added gnolls removed (back to our 13), and Defias 308180, 308184, 308237, 308239, 308242, 308243 removed.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: second-tier zones, NPCs standing twice and the Sentinel Hill fight
 
 - **Found** (Four, 2026-11-17, screenshot): Deborah Fain stood twice in Sentinel Hill, each with her own Fizzle. The zone files only removed doubles on the exact same spot that TDB did not explain, so a second copy a yard or two away stayed. Four also found nobody fighting in Sentinel Hill after `2026_11_17_37`: the guards (42407) and Riverpaw gnolls (54371-54373) only notice each other while they move, and 37 had made them stand still like TDB.
