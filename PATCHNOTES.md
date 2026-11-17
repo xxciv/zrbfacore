@@ -9,11 +9,12 @@ Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 
 
 ### World: second-tier zones, NPCs standing twice and the Sentinel Hill fight
 
-- **Found** (Four, 2026-11-17, screenshot): Deborah Fain stood twice in Sentinel Hill, each with her own Fizzle. The zone files only removed doubles on the exact same spot, so copies a yard or two apart stayed. Four also found nobody fighting in Sentinel Hill after `2026_11_17_37`: the guards (42407) and Riverpaw gnolls (54371-54373) only notice each other while they move, and 37 had made them stand still like TDB.
+- **Found** (Four, 2026-11-17, screenshot): Deborah Fain stood twice in Sentinel Hill, each with her own Fizzle. The zone files only removed doubles on the exact same spot that TDB did not explain, so a second copy a yard or two away stayed. Four also found nobody fighting in Sentinel Hill after `2026_11_17_37`: the guards (42407) and Riverpaw gnolls (54371-54373) only notice each other while they move, and 37 had made them stand still like TDB.
 - **Changed** (`sql/fixes/world/2026_11_17_41_second_tier_doubles.sql`):
-  - 469 creatures removed that stood within 3 yards of a copy of themselves in the same phase, where TDB has at most one there (not pooled, scripted, pathed or holiday): Ghostlands 10; Bloodmyst Isle 8; Darkshore 28; Northern Barrens 26; Silverpine Forest 57; Ruins of Gilneas 98; Loch Modan 23; Westfall 36; The Lost Isles 122; Azshara 61. Biggest: Jungle Panther 43, Goblin Zombie 32 (Lost Isles), Gilnean Warhound 27, 7th Legion Submariner 22, Worgen Rusher 20 (Ruins of Gilneas), Forsaken Trooper 21 (Silverpine), Baby Bluegill Murloc 13 (Loch Modan); Deborah Fain 215425 in Westfall.
+  - The first version of this file removed 469 creatures that stood within 3 yards of their own kind. That rule was too loose: it took out normal mob groups (Four, 2026-11-17). Section 1 puts all 469 back (`INSERT IGNORE`, so it does nothing if the first version was never run) with the wander the zone files gave them.
+  - 23 removed: a second copy of a unique named NPC next to the first (Deborah Fain 215425, Foreman Silixiz, Cap'n Garvey, Taskmaster Fizzule, Karu, Mountaineer Morran, Warlord Krogg, Teresa Spireleaf), or a copy stacked within half a yard of another in the same phase (Lost Isles: Oomlot Warrior 5, Jungle Panther 4, Goblin Zombie 2, Spiny Raptor 2, Orc Battlesworn 1; Azshara: Spitelash Myrmidon 1).
   - Sentinel Hill: 12 guards and 12 gnolls back to the 3-yard wander they had before 37, and the gnolls 37 added wander too. Our own call, not TDB.
-- **Not changed:** bunnies, triggers and other invisible helpers that stack on purpose.
+- **Not changed:** normal mob groups standing close together, bunnies and other invisible helpers.
 - **Status:** untested in game.
 - **Pick up:** run the SQL, restart `worldserver`.
 
