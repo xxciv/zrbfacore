@@ -7,6 +7,22 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet.
 
+### World: Master Shang Xi stops handing out The Master's Flame
+
+- **Found** (Four, 2026-11-16, screenshot): every quest accept or turn-in at Master Shang Xi (53566) gave The Master's
+  Flame again, long after The Lesson of the Burning Scroll (29408), and the player could end up sitting on him (he is a
+  vehicle, VehicleId 1416, also in TDB). His "on gossip hello" SmartAI row made every visitor cast Create The Master's
+  Flame (114611) with no quest check; it also shared id 0 with another row and linked to a non-link row. He also had the
+  spell-click npcflag and a click spell (Snatch Master's Flame 114746) that ran on every click. TDB 8.3.7 has npcflag 3
+  (gossip + quest giver) and no click spell.
+- **Changed** (`sql/fixes/world/2026_11_16_53_master_shang_xi_flame.sql`):
+  - npcflag 3 as in TDB; his click spell row removed. The quest doesn't need it: the flame item comes from his gossip
+    row and the first credit from his quest-accept row.
+  - The gossip row is re-added as its own row (id 13) and only fires while 29408 is in the quest log and the flame item
+    (80212) isn't in the bags (conditions on SmartAI source 22).
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Jaomin Ro stays in the fight after Hawk Diving to Earth
 
 - **Found** (Four, 2026-11-16, video): after Hawk Diving to Earth, Jaomin Ro vanished ("There is nothing to attack") and
