@@ -7,6 +7,16 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
 
+### World: second-tier zones, NPCs standing twice and the Sentinel Hill fight
+
+- **Found** (Four, 2026-11-17, screenshot): Deborah Fain stood twice in Sentinel Hill, each with her own Fizzle. The zone files only removed doubles on the exact same spot, so copies a yard or two apart stayed. Four also found nobody fighting in Sentinel Hill after `2026_11_17_37`: the guards (42407) and Riverpaw gnolls (54371-54373) only notice each other while they move, and 37 had made them stand still like TDB.
+- **Changed** (`sql/fixes/world/2026_11_17_41_second_tier_doubles.sql`):
+  - 469 creatures removed that stood within 3 yards of a copy of themselves in the same phase, where TDB has at most one there (not pooled, scripted, pathed or holiday): Ghostlands 10; Bloodmyst Isle 8; Darkshore 28; Northern Barrens 26; Silverpine Forest 57; Ruins of Gilneas 98; Loch Modan 23; Westfall 36; The Lost Isles 122; Azshara 61. Biggest: Jungle Panther 43, Goblin Zombie 32 (Lost Isles), Gilnean Warhound 27, 7th Legion Submariner 22, Worgen Rusher 20 (Ruins of Gilneas), Forsaken Trooper 21 (Silverpine), Baby Bluegill Murloc 13 (Loch Modan); Deborah Fain 215425 in Westfall.
+  - Sentinel Hill: 12 guards and 12 gnolls back to the 3-yard wander they had before 37, and the gnolls 37 added wander too. Our own call, not TDB.
+- **Not changed:** bunnies, triggers and other invisible helpers that stack on purpose.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Lost Isles Bomb-Throwing Monkeys stand instead of floating
 
 - **Found** (Four, 2026-11-17, screenshot): some Bomb-Throwing Monkeys (34699) floated in a flying pose on the ground. Seven spawns had `bytes1` 50331648 in `creature_addon` (animation tier 3 = fly); TDB has the same flag on seven of its own, but these spawns stand on the ground, not in the trees.
