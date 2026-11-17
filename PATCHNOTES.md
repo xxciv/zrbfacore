@@ -81,12 +81,31 @@ tested in game yet.
   The two type 51 value 4 rows are left alone (intent unclear).
 - **Status:** not tested in game.
 
+### DB: Ace, Gobber and Izzy ride in the Hot Rod for the rest of Kezan
+
+- **Found** (Four, 2026-11-16): at the pool party the three companions still respawn in the car
+  every time it is summoned; they should have been dropped off at the pool.
+- **Cause:** `npc_hot_rod_rolling_my_homies` casts Resummon Ace/Gobber/Izzy (66644, 66645, 66646)
+  whenever the driver has Rolling with my Homies rewarded, with no end. The pool-side copies
+  35211-35213 are separate spawns in the pirate phase 380.
+- **Changed:** `sql/fixes/world/2026_11_17_72_kezan_party_fixes.sql`: `conditions` source type 17
+  on the three spells: Life of the Party 14113 and 14153 must both be "not taken" (type 47,
+  mask 1). They ride along until Life of the Party is accepted and not after.
+- **Status:** not tested in game.
+
+### DB: party staff kill the Pirate Party Crashers (14115)
+
+- **Found** (Four, 2026-11-16, video): KTC Waiters and guests kill the pirates before the player.
+- **Cause:** in phase 380 Kezan Partygoer 35202 (70 spawns), KTC Waiter 48805 (7) and KTC Waitress
+  48806 (5) are faction 1770, hostile to the pirates 35200 (faction 2102), with `unit_flags` 32768.
+- **Changed:** same file: `unit_flags` |= 0x200 (immune to NPC) on 35202, 48805, 48806, as the
+  pool-side Ace, Gobber and Izzy already have (33280).
+- **Status:** not tested in game.
+
 ### Not changed, for the record
 
-- Rolling with my Homies (14071): the Keys to the Hot Rod staying after the turn-in, with Izzy, Ace
-  and Gobber riding along, is the retail design. The car is needed for Robbing Hoods (14121) and
-  Sassy takes the keys at Life Savings. `npc_hot_rod_rolling_my_homies` resummons the three when
-  the quest is rewarded on purpose.
+- Rolling with my Homies (14071): the Keys to the Hot Rod stay after the turn-in on purpose. The
+  car is needed for Robbing Hoods (14121) and Sassy takes the keys at Life Savings.
 - Life Savings (14126): the core `PlayerScript` `LifeSavings` plays the movie and teleports to the
   Lost Isles as soon as the quest is complete. The quest's only objective is its own provided item,
   so by the code this happens on accept and skips the ride to the yacht and Gallywix. Left as is
@@ -104,6 +123,10 @@ tested in game yet.
 
   ```
   git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_17_71_condition_object_types.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_17_72_kezan_party_fixes.sql | mysql -u root -p bfa_world
   ```
 
   Then restart worldserver.
