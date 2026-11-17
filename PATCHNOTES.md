@@ -9,12 +9,13 @@ Open in a draft PR, not merged yet.
 
 ### World: Jaomin Ro stays in the fight after Hawk Diving to Earth
 
-- **Found** (Four, 2026-11-16): after Hawk Diving to Earth, Jaomin Ro went invisible and sometimes reset the fight. His
-  script cast 108955, which summons a hawk vehicle (57750) and seats him in it; as a passenger he lost his target and
-  evaded.
-- **Changed** (`sql/fixes/world/2026_11_16_52_jaomin_ro_hawk_dive.sql`): his special now casts the dive itself, 108935
-  Hawk Diving to Earth (instant, 75% weapon damage and a short stun around him), which the hawk would have triggered.
-  No vehicle is involved, so he stays visible and in combat.
+- **Found** (Four, 2026-11-16, video): after Hawk Diving to Earth, Jaomin Ro vanished ("There is nothing to attack") and
+  sometimes reset the fight. His script cast 108955, which summons "Jaomin Ro's Vehicle" (57750, a hawk) and seats him in
+  it. The hawk flew up and dove, then the vehicle despawned and he was gone until he reset.
+- **Changed** (`sql/fixes/world/2026_11_16_52_jaomin_ro_hawk_dive.sql`): his special no longer uses a vehicle. He takes
+  the hawk form himself (model 39796, the same one the core's own Jaomin script uses), casts the dive 108935 Hawk Diving
+  to Earth one second later (instant, 75% weapon damage and a short stun around him), and turns back half a second after
+  that. He stays the same creature and keeps his target.
 - **Status:** untested in game.
 - **Pick up:** run the SQL, restart `worldserver`.
 
