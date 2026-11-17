@@ -7,6 +7,13 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
 
+### World: Lost Isles Bomb-Throwing Monkeys stand instead of floating
+
+- **Found** (Four, 2026-11-17, screenshot): some Bomb-Throwing Monkeys (34699) floated in a flying pose on the ground. Seven spawns had `bytes1` 50331648 in `creature_addon` (animation tier 3 = fly); TDB has the same flag on seven of its own, but these spawns stand on the ground, not in the trees.
+- **Changed** (`sql/fixes/world/2026_11_17_40_lost_isles_bomb_monkeys.sql`): `bytes1` 0 on guids 40000114, 40000127, 40000134, 40000136, 40000144, 40000234, 40000441, like the other 31 monkeys.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Ghostlands review
 
 - **Found:** Ghostlands was spawned unlike TDB: some mobs doubled (Ghostclaw Lynx 101, TDB 38; Phantasmal Watcher 21, TDB 5; Dreadbone Sentinel 35, TDB 13) while others were thin (Sentinel Infiltrator 10, TDB 30; Shadowpine Catlord 15, TDB 32; Mummified Headhunter 8, TDB 22). Most mobs wandered 5 or 15 yards where TDB has them standing, or the other way round. Rathis Tomber never walked his route. The rare Dr. Whitherlimb had four spawn points up at once.
