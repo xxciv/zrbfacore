@@ -143,6 +143,10 @@ git apply ../tools-repo/tools/bfa/dungeon-scale-guardians.patch
 git apply ../tools-repo/tools/bfa/dire-maul-north.patch
 git apply ../tools-repo/tools/bfa/guild-progression.patch
 git apply ../tools-repo/tools/bfa/client-ticket-poll.patch
+git apply ../tools-repo/tools/bfa/quest-gossip-options.patch
+git apply ../tools-repo/tools/bfa/weapon-attack-power.patch
+git apply ../tools-repo/tools/bfa/attack-power-debug.patch
+git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -501,6 +505,12 @@ closes the window when the NPC has nothing left to show.
 both talks and gives quests, such as the Shen'dralar Ancient in Dire Maul). After Accept the core
 sends that NPC's gossip menu again, the same menu you get by talking to it, instead of the plain
 close the client ignored.
+
+`quest-gossip-options.patch` keeps that re-sent menu usable. After Accept the client closes the quest
+conversation, and the core took that as the end of the gossip menu too, so its options (a vendor's
+"Let me browse your goods.", for example at Skorn Whitecloud) did nothing until the window was
+closed and opened again. The menu now stays valid, and it is only closed straight away when it is a
+single option the client would pick by itself (a flight master's map).
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -940,6 +950,10 @@ git apply ../tools-repo/tools/bfa/dungeon-scale-guardians.patch
 git apply ../tools-repo/tools/bfa/dire-maul-north.patch
 git apply ../tools-repo/tools/bfa/guild-progression.patch
 git apply ../tools-repo/tools/bfa/client-ticket-poll.patch
+git apply ../tools-repo/tools/bfa/quest-gossip-options.patch
+git apply ../tools-repo/tools/bfa/weapon-attack-power.patch
+git apply ../tools-repo/tools/bfa/attack-power-debug.patch
+git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

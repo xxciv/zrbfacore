@@ -83,6 +83,14 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/battle-pet-trainers.patch`](tools/bfa/battle-pet-trainers.patch): pet tamers such as
   Julia Stevens can be battled ("Let's do battle!") and the win credits their quest; a capture with
   2 or 3 pets in the team no longer adds the pet 2 or 3 times.
+- [`tools/bfa/weapon-attack-power.patch`](tools/bfa/weapon-attack-power.patch): attack power
+  includes the weapon's share (weapon DPS x 6) and flat attack power buffs, as in TrinityCore 8.3.7,
+  so melee and hunter abilities that scale with attack power hit as hard as they should.
+- [`tools/bfa/weapon-slot-attack-power.patch`](tools/bfa/weapon-slot-attack-power.patch): equipping or
+  removing armor, rings or quest items no longer resets the main hand's weapon attack power to 0.
+- [`tools/bfa/attack-power-debug.patch`](tools/bfa/attack-power-debug.patch): GM command
+  `.debug attackpower [spell]` prints your attack power fields and, with a target selected, how a
+  spell's attack power damage is computed against it.
 - [`tools/bfa/client-ticket-poll.patch`](tools/bfa/client-ticket-poll.patch): drops the WoW Circle
   client's `.ticket CU...` ticket polls instead of posting them as chat (guild, say).
 - [`tools/bfa/core-branding.patch`](tools/bfa/core-branding.patch): the startup banner reads

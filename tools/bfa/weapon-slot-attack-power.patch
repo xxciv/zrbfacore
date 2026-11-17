@@ -1,0 +1,17 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index 74e2ffd..527176a 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -8373,6 +8373,12 @@ void Player::_ApplyItemBonuses(Item* item, uint8 slot, bool apply)
+         attType = OFF_ATTACK;
+     }
+ 
++    // zrbfacore: only the weapon slots carry weapon damage and weapon attack power (TrinityCore 8.3.7
++    // uses GetAttackBySlot here). Calling this for armor, rings or a tabard set the main hand's weapon
++    // attack power back to 0, because every non-weapon slot counted as BASE_ATTACK.
++    if (slot != EQUIPMENT_SLOT_MAINHAND && slot != EQUIPMENT_SLOT_OFFHAND)
++        return;
++
+     if (CanUseAttackType(attType))
+         _ApplyWeaponDamage(slot, item, apply);
+ }
