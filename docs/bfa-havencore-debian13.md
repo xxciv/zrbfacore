@@ -763,6 +763,13 @@ To let characters learn up to 4 primary professions, set `MaxPrimaryTradeSkill =
 are known, whatever the server allows, and its Professions tab only shows 2. The addon re-enables
 **Train** and adds a `/profs` panel listing every primary profession (verified in game 2026-10-10).
 
+### Proximity nameplates (ZRProximity)
+
+[ZRProximity](../client/ZRProximity/README.md) keeps Blizzard's nameplates hidden until a unit is close
+(separate distances for aggressive, neutral and friendly units), targeted, under the mouse or fighting you, and
+puts the unit's name on every plate it shows. Copy `client/ZRProximity` into `_retail_/Interface/AddOns/`;
+`/zrp` opens its settings. Confirmed in game.
+
 ### Patched third-party addons
 
 `client/` also holds three third-party addons with fixes for the 8.3.7 client (all confirmed in game

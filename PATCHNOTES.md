@@ -3,6 +3,126 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-18 (Addon fixes: new ZRProximity addon)
+
+New client addon in `client/ZRProximity`. No server change: nothing to rebuild, no SQL, no restart.
+
+### ZRProximity 1.6: "look at it" removed (game blocks it)
+- **Reported** (Four, on 1.5): `/zrp look` printed "can't read its screen position (error:
+  Action[FrameMeasurement] failed because[Can't measure restricted regions]: attempted from:
+  <unnamed>:GetCenter().)" for every plate. On 8.3.7 nameplates, their `UnitFrame`, `healthBar` and `name`
+  are restricted regions, so no addon can tell which plate is in the middle of the screen.
+- **Decided** (Four): remove "look at it" entirely (offered instead: mouseover names that linger).
+- **Removed** from `client/ZRProximity/ZRProximity.lua`: screen measuring (`Measure`, `ScreenOffset`,
+  `LookScore`), the look reveal (`UpdateStare`, linger), `/zrp look` and its on-screen guide, and the
+  settings `stare`, `stareRadius`, `stareDelay`, `stareLinger`, `stareRange` (also cleared from saved
+  `ZRProximityDB`). `/zrp status` no longer mentions it.
+- **Removed** from `client/ZRProximity/Options.lua`: the look checkbox and its four sliders; "Fade time" and
+  the three checkboxes below moved up. Panel intro text updated.
+- **Changed:** `README.md` (addon and root), guide section and TOC notes no longer mention looking at units;
+  addon README explains why it isn't possible. `ZRProximity.toc` version 1.6.
+- **Confirmed in game** (Four, 2026-11-18, on 1.4/1.5): distances, mouseover, target, names on plates, far
+  units fully hidden. 1.6 only removes code; Lua 5.1 syntax check and stubbed smoke test pass.
+
+### ZRProximity 1.5: look check measures the plate, its unit frame or its health bar
+- **Reported** (Four, on 1.4): plate names fixed and confirmed. `/zrp look` while facing a boar 10-15 yd away
+  (`/zrp range`: 10=out, 15=in, so within 20 yd) printed "0 plates near the middle" although both boar plates
+  sat inside the look column: the addon could not read where the plates are on screen.
+- **Changed:** `client/ZRProximity/ZRProximity.lua`: `ScreenOffset` tries the nameplate, then its
+  `UnitFrame`, `healthBar` and `name` (`GetCenter` x `GetEffectiveScale`, each in `pcall`) and uses the first
+  one the client lets it measure. `/zrp look` now prints the screen size and UI scale, and for up to 8 plates
+  either the offset and which region it came from, or why none could be measured. `ZRProximity.toc` 1.5.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test. Not tested in game yet.
+
+### ZRProximity 1.4: plate names no longer depend on "Hide the names above heads"
+- **Reported** (Four, on 1.3, `/zrp names`): "name hook installed, called 7 times, names put back 0 times.
+  Hide names above heads: off." The boars' plate names were hidden with text `nil`.
+- **Cause:** `PlateName` only ran while `hideFloatingNames` was ticked. Four had unticked it and set the
+  game's NPC Names to "None" by hand, so Blizzard hid the plate names and the addon left them hidden.
+- **Changed:** `client/ZRProximity/ZRProximity.lua`: `PlateName` now runs whenever the addon is on. README
+  says so; `ZRProximity.toc` version 1.4.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test. Not tested in game yet.
+
+### ZRProximity 1.3: names re-checked every tick, `/zrp names`
+- **Reported** (Four, on 1.2): far NPCs now fully hidden (fixed), but boars within range or under the mouse
+  still show a health bar without a name (NPC Names: None).
+- **Changed:** `client/ZRProximity/ZRProximity.lua`: `PlateName` also runs every 0.1 s tick for each plate the
+  addon wants shown, in case Blizzard hides the name somewhere the `CompactUnitFrame_UpdateName` hook doesn't
+  see. New `/zrp names` prints whether the hook is installed, how often it ran and put a name back, and for up
+  to 6 plates the name's shown/visible state, text, alpha, font size and unit. `ZRProximity.toc` version 1.3.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test. Not tested in game yet.
+
+### ZRProximity 1.2: names on plates, far floating names gone
+- **Reported** (Four, on 1.1, with screenshots): with Interface > Names > NPC Names on "None" (what the addon
+  sets), plates that show have a health bar but no name, unless targeted. With "All NPCs" the names come
+  back, but units far away show names until you get close; only with "None" do far NPCs fully hide.
+- **Cause:** on 8.3.7 Blizzard's `CompactUnitFrame_UpdateName` hides a nameplate's name unless
+  `UnitShouldDisplayName` allows it, and that follows the same floating-name CVars (`UnitNameNPC`,
+  `UnitNameHostleNPC`, ...) the addon turns off. With them on, the game draws a floating name over every unit
+  that is beyond nameplate range (no plate yet), which the addon can't hide; within range the plate takes
+  over, which is why those units "followed the rules" once closer. This was the real cause of the
+  far-units report that 1.1 blamed on the look check.
+- **Changed:** `client/ZRProximity/ZRProximity.lua`: new `PlateName`, hooked after
+  `CompactUnitFrame_UpdateName` (`hooksecurefunc`) and run when a plate is added and on settings changes. While
+  the addon and `hideFloatingNames` are on, a nameplate whose name Blizzard hid gets it back:
+  `GetUnitName(unit, true)`, grey if tap-denied, otherwise `UnitSelectionColor` (Blizzard's own plate
+  colours). Skips forbidden frames, the personal resource display and non-nameplate frames. The floating-name
+  CVars stay off, so units beyond nameplate range show nothing.
+- **Changed:** `Options.lua` tooltip and `README.md` explain it; `ZRProximity.toc` version 1.2.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test (name shown on add and again after Blizzard
+  hides it; all 1.1 checks unchanged). Not tested in game yet.
+
+### ZRProximity 1.1: "look at" fixed (far units showing, near units not showing)
+- **Reported** (Four, on 1.0): units farther out showed until you got close, then followed the rules; and
+  "look at" didn't really work. Mouseover and the distances worked.
+- **Cause:** the look check was a circle of 80 UI units around the exact screen centre, with no distance
+  limit. With the third-person camera your own character sits in the centre, so a unit you face has its
+  plate above the centre (roughly 90-130 UI units up a few yards away, higher toward the horizon the farther
+  it is). Nearby units you faced were outside the circle, while far-away plates near the horizon fell inside
+  it (camera level or tilted up) and every one of them was revealed.
+- **Changed:** `client/ZRProximity/ZRProximity.lua`
+  - The look area is now a column up the middle of the screen: `stareRadius` (80) UI units each side of the
+    middle, from `stareRadius` below the centre up to 40% of the screen height above it (`LookScore`).
+  - Only one plate at a time can be looked at: the one nearest the middle of that column (sideways offset
+    counts fully, height a fifth).
+  - New setting `stareRange` (20 yd): only units within that distance can be revealed by looking.
+  - New `/zrp look`: shows the look column on screen for 10 s and prints, for each plate near the middle,
+    how far it sits across and up, whether it is in the look area and whether it is within `stareRange`.
+- **Changed:** `client/ZRProximity/Options.lua`: new slider "Look works up to" (3-40 yd), "Look area" renamed
+  "Look width". `ZRProximity.toc` version 1.1, `README.md` updated.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test: a 30 yd unit dead centre stays hidden; a
+  12 yd unit faced with its plate 110 UI units above the centre shows after 1 s, stays 2 s after looking
+  away, then hides; distance, `/zrp off` and the name CVars behave as in 1.0. Not tested in game yet.
+
+### ZRProximity 1.0: nameplates by distance, target, mouseover and look
+- **Asked** (Four): hide names and nameplates by default; show a plate when it's your target, when aggressive
+  enemies get within about 10 m, and when neutral or friendly units get within a distance the player chooses
+  (as low as 1-3 m). Optionally show names you "stare" at.
+- **Added:** `client/ZRProximity/` (`ZRProximity.toc`, `Ranges.lua`, `ZRProximity.lua`, `Options.lua`,
+  `README.md`).
+  - Keeps nameplates on (`nameplateShowAll`, `nameplateShowEnemies`, `nameplateShowEnemyMinions`,
+    `nameplateShowFriends`, `nameplateShowFriendlyNPCs` = 1) and sets each plate's `UnitFrame` alpha to 0
+    on `NAME_PLATE_UNIT_ADDED`. Every 0.1 s it decides per plate whether to show it, and fades it over
+    `fadeTime` (0.25 s). Changing alpha is allowed in combat.
+  - A plate shows when: it is the target (`showTarget`), it is under the mouse (`showMouseover`), the unit has
+    you on its threat list (`showCombat`), or the unit is within `hostileRange` (10 yd), `neutralRange`
+    (5 yd) or `friendlyRange` (4 yd). Type comes from `UnitReaction`/`UnitCanAttack`.
+  - Distance: `IsItemInRange` with LibRangeCheck-2.0's items of known range, giving steps of 3 (hostile) / 4
+    (friendly), 5, 6, 8, 10, 15, 20, 25, 30, 35, 40 yd. `CheckInteractDistance` (10/11/28 yd) is the
+    fallback. The 8.3.7 client gives no exact NPC positions, so 1 yd isn't possible.
+  - Look reveal (`stare`): a plate within `stareRadius` (80 UI units) of the screen centre for `stareDelay`
+    (0.5 s) shows, and stays for `stareLinger` (2 s).
+  - `hideFloatingNames` (on): turns off the `UnitName*` floating-name CVars and restores the old values when
+    turned off or on `/zrp off`. `hideFriendlyInInstances` (on): `nameplateShowFriends` = 0 inside
+    dungeons/raids, where Blizzard forbids addons from friendly plates. `clickThrough` (off):
+    `C_NamePlate.SetNamePlate*ClickThrough`. CVar changes wait until combat ends.
+  - Options panel under Interface > AddOns > ZRProximity; `/zrp` (`on`, `off`, `status`, `range`, `reset`).
+    Settings are saved in `ZRProximityDB`.
+- **Checked:** Lua 5.1 syntax check, and a smoke test with stubbed WoW API: plate hidden at 12 yd, shown at
+  9 yd, hidden again at 20 yd, shown after looking at it for 1 s, still shown 1 s after looking away, hidden
+  after 3 s; `/zrp off` shows it and restores the name CVars.
+- **Status:** not tested in game yet.
+
 ## 2026-11-18 (Quest fixes: Loss Reduction, Durotar)
 
 Merged to `main` with PR #81 on 2026-11-18, together with the Kezan fixes. Confirmed in game by Four on 2026-11-18.

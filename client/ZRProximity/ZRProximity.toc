@@ -1,0 +1,9 @@
+## Interface: 80300
+## Title: ZRProximity
+## Notes: Shows Blizzard nameplates only when units are close, targeted, under the mouse or fighting you (/zrp).
+## Author: zrbfacore
+## Version: 1.6
+## SavedVariables: ZRProximityDB
+Ranges.lua
+ZRProximity.lua
+Options.lua
