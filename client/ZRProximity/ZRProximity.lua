@@ -131,11 +131,31 @@ end
 
 -- Where the plate sits relative to the screen centre, in UIParent units (dx right, dy up).
 -- nil if it can't be measured.
+local lastMeasure = {}  -- [plate] = how the last measurement went, for /zrp look
+local function Measure(region)
+    if not region or not region.GetCenter then return nil, "no region" end
+    local ok, x, y = pcall(region.GetCenter, region)
+    if not ok then return nil, "error: " .. tostring(x) end
+    if not x or not y then return nil, "no position" end
+    local ok2, es = pcall(region.GetEffectiveScale, region)
+    if not ok2 or not es then return nil, "no scale" end
+    return x * es, y * es
+end
+
+-- Tries the plate, then its unit frame, then its health bar: whichever the client lets us measure.
 local function ScreenOffset(plate)
-    local ok, x, y = pcall(plate.GetCenter, plate)
-    if not ok or not x then return nil end
-    local s = plate:GetEffectiveScale() / UIParent:GetEffectiveScale()
-    return x * s - UIParent:GetWidth() / 2, y * s - UIParent:GetHeight() / 2
+    local f = plate.UnitFrame
+    local tries = { plate, f, f and f.healthBar, f and f.name }
+    local x, y, why
+    for i = 1, 4 do
+        x, y = Measure(tries[i])
+        if x then why = i break end
+        lastMeasure[plate] = y
+    end
+    if not x then return nil end
+    lastMeasure[plate] = ({ "plate", "unit frame", "health bar", "name" })[why]
+    local ues = UIParent:GetEffectiveScale()
+    return x / ues - UIParent:GetWidth() / 2, y / ues - UIParent:GetHeight() / 2
 end
 
 -- The "look" area is a column up the middle of the screen, not a circle on the centre.
@@ -357,17 +377,22 @@ function ns.LookDebug()
     guide:SetSize(db.stareRadius * 2, db.stareRadius + h * 0.4)
     guide:Show()
     C_Timer.After(10, function() guide:Hide() end)
+    Print(("screen %dx%d UI units, UI scale %.2f."):format(UIParent:GetWidth(), h, UIParent:GetEffectiveScale()))
     local n = 0
     for unit, st in pairs(plates) do
+        if n >= 8 then break end
+        n = n + 1
         local dx, dy = ScreenOffset(st.plate)
-        if dx and math.abs(dx) < 400 then
-            n = n + 1
-            Print(("%s: %+d across, %+d up, in look area %s, within %d yd %s."):format(
-                UnitName(unit) or unit, math.floor(dx + 0.5), math.floor(dy + 0.5), LookScore(dx, dy) and "yes" or "no",
-                db.stareRange, tostring(ns.IsWithin(unit, db.stareRange))))
+        if dx then
+            Print(("%s: %+d across, %+d up (from %s), in look area %s, within %d yd %s."):format(
+                UnitName(unit) or unit, math.floor(dx + 0.5), math.floor(dy + 0.5), lastMeasure[st.plate] or "?",
+                LookScore(dx, dy) and "yes" or "no", db.stareRange, tostring(ns.IsWithin(unit, db.stareRange))))
+        else
+            Print(("%s: can't read its screen position (%s)."):format(UnitName(unit) or unit,
+                tostring(lastMeasure[st.plate])))
         end
     end
-    Print(("look area shown for 10 s; %d plates near the middle."):format(n))
+    Print(("look area shown for 10 s; %d plates tracked."):format(n))
 end
 
 SLASH_ZRPROXIMITY1 = "/zrp"

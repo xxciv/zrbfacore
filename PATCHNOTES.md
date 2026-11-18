@@ -7,6 +7,16 @@ to do to pick it up (rebuild, restart, run SQL).
 
 New client addon in `client/ZRProximity`. No server change: nothing to rebuild, no SQL, no restart.
 
+### ZRProximity 1.5: look check measures the plate, its unit frame or its health bar
+- **Reported** (Four, on 1.4): plate names fixed and confirmed. `/zrp look` while facing a boar 10-15 yd away
+  (`/zrp range`: 10=out, 15=in, so within 20 yd) printed "0 plates near the middle" although both boar plates
+  sat inside the look column: the addon could not read where the plates are on screen.
+- **Changed:** `client/ZRProximity/ZRProximity.lua`: `ScreenOffset` tries the nameplate, then its
+  `UnitFrame`, `healthBar` and `name` (`GetCenter` x `GetEffectiveScale`, each in `pcall`) and uses the first
+  one the client lets it measure. `/zrp look` now prints the screen size and UI scale, and for up to 8 plates
+  either the offset and which region it came from, or why none could be measured. `ZRProximity.toc` 1.5.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test. Not tested in game yet.
+
 ### ZRProximity 1.4: plate names no longer depend on "Hide the names above heads"
 - **Reported** (Four, on 1.3, `/zrp names`): "name hook installed, called 7 times, names put back 0 times.
   Hide names above heads: off." The boars' plate names were hidden with text `nil`.
