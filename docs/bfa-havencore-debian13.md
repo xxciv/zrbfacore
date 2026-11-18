@@ -147,6 +147,7 @@ git apply ../tools-repo/tools/bfa/quest-gossip-options.patch
 git apply ../tools-repo/tools/bfa/weapon-attack-power.patch
 git apply ../tools-repo/tools/bfa/attack-power-debug.patch
 git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
+git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 ```
 
@@ -524,6 +525,13 @@ Strength). Fledgling Braves and Bristleback Invaders fight there forever because
 that player, the braves move on to other invaders, and NPC hits stop touching it. NPC hits also no
 longer heal: the old code set an invader back up to 80%, undoing the player's damage. It only touches
 `zone_mulgore.cpp`.
+
+`staged-npc-battles.patch` makes the open-world NPC battles last (Sentinel Hill, Ruins of Gilneas,
+Azshara, Silverpine, the Barrens). A creature with `flags_extra` bit `0x400` takes no damage from
+other creatures below 85% health, so both sides keep fighting instead of killing each other and then
+standing around. Players and their pets, totems and guardians deal full damage, so quest kills work as
+before. Which creatures carry the flag is set in `sql/fixes/world/2026_11_17_44_staged_battles.sql`.
+It touches `Unit::DealDamage` (`Unit.cpp`) and the flag list in `CreatureData.h`.
 
 `npc-spell-power-cost.patch` lets NPCs cast spells whose cost is a power they don't have. Creatures
 only get a power pool from their class (mana for paladin and mage), but many NPC spells list a focus,
@@ -960,6 +968,7 @@ git apply ../tools-repo/tools/bfa/quest-gossip-options.patch
 git apply ../tools-repo/tools/bfa/weapon-attack-power.patch
 git apply ../tools-repo/tools/bfa/attack-power-debug.patch
 git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
+git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
@@ -1085,6 +1094,52 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_14_32_alliance_cities_pass.sql` | Stormwind, Ironforge, Darnassus, Exodar: double spawns and objects removed, still gryphon/hippogryph riders and standing copies of walkers replaced by TDB 7.3.5 flight paths and patrols, stacked pets spread out, Midsummer, Pilgrim's Bounty and Hallow's End pieces only during their events |
 | `2026_11_16_30_foreign_object_and_npc_names.sql` | 292 objects with French or Russian names (mailboxes, ladders, Draenor and Argus props) and 45 NPCs (Genn Greymane, Gidwin Goldbraids, the mammoth and yak vendors and the Zandalar critters named "0") get their English names |
 | `2026_11_16_31_remaining_cities_pass.sql` | Stormshield, Warspear, Boralus, Dazar'alor, both Dalarans, Shattrath: doubled NPCs and stacked furniture removed, Skybreaker Marines no longer six deep, hostile Terokk summons gone from Lower City, Stormshield officers and cart horses walk, Broken Isles Dalaran's Pilgrim's Bounty and Brewfest pieces only during their events |
+| `2026_11_16_32_elwynn_forest_review.sql` | Elwynn Forest: doubled mobs trimmed to the TDB 8.3.7 count (critters and wild pets untouched), Royal Guard blobs replaced by the mounted gate-to-Eastvale patrol, doubled named NPCs removed, Goldshire Wickerman and other holiday pieces only during their events |
+| `2026_11_16_33_dun_morogh_review.sql` | Dun Morogh, Coldridge Valley, New Tinkertown: doubled mobs trimmed to the TDB 8.3.7 count (critters and wild pets untouched), missing Keg of Gnomenbrau quest objects added, Midsummer and Noblegarden pieces only during their events |
+| `2026_11_16_34_gnomeregan_convoys.sql` | New Tinkertown road: frozen Gnomeregan Recruit ammo-cart convoys and Gnome Travelers replaced by 3 recruits that hitch their carts and march toward Kharanos and a mounted traveler group riding the other way |
+| `2026_11_16_35_teldrassil_review.sql` | Teldrassil, Shadowglen: a few extra Grells and Webwood Spiders, stacked Boglings and doubled Fel Cones removed; Midsummer and Noblegarden pieces (incl. all Noblegarden Bunny Controllers) only during their events |
+| `2026_11_16_36_azuremyst_isle_review.sql` | Azuremyst Isle, Ammen Vale: doubled mobs trimmed to TDB 8.3.7, Midsummer and Noblegarden pieces only during their events |
+| `2026_11_16_37_eversong_woods_review.sql` | Eversong Woods, Sunstrider Isle: doubled mobs trimmed to TDB 8.3.7, Midsummer and Noblegarden pieces only during their events |
+| `2026_11_16_38_durotar_review.sql` | Durotar, Valley of Trials, Echo Isles: doubled mobs trimmed, Brew of the Month vendors and Hallow's End/Noblegarden pieces tied to their events |
+| `2026_11_16_39_mulgore_review.sql` | Mulgore, Camp Narache: heavy overspawn (Venture Co., Prairie Wolf Alphas, Flatland Prowlers, harpies) trimmed to TDB 8.3.7, doubled herb nodes removed |
+| `2026_11_16_40_tirisfal_glades_review.sql` | Tirisfal Glades, Deathknell: doubled mobs trimmed, Brill's Midsummer and Hallow's End pieces only during their events |
+| `2026_11_16_41_wandering_isle_review.sql` | The Wandering Isle: two doubled objects removed |
+| `2026_11_16_42_kezan_review.sql` | Kezan: one doubled citizen and three doubled fire effects removed |
+| `2026_11_16_43_gilneas_review.sql` | Gilneas: 139 loose Wolfmaw Outriders replaced by TDB's mounted Riding War Wolves, doubled watchmen and mastiffs trimmed, doubled objects removed |
+| `2026_11_16_44_northwatch_caravans.sql` | Durotar south road: frozen Northwatch supply caravans (floating crates, lugs inside them, invisible carriers) replaced by caravans that spawn and carry their crates along the road |
+| `2026_11_16_45_tirisfal_undercity_followup.sql` | Undercity: leftover green fires on the bank and at the Ruins of Lordaeron removed, Forsaken Bats hover instead of darting around; Tirisfal's Winter Veil wreaths only during Winter Veil |
+| `2026_11_16_46_orgrimmar_toy_cart.sql` | Orgrimmar, The Drag: loose Toy Cart and its bunny next to Blax Bottlerocket removed (he pulls his own) |
+| `2026_11_16_47_northwatch_caravan_riders.sql` | Durotar: Northwatch caravans now carry their lugs and supply crates (click spell the core needs before it loads vehicle passengers) |
+| `2026_11_16_48_wandering_isle_trainees.sql` | The Wandering Isle: Huojin/Tushui trainees no longer pull each other; they fight one on one and yield at 10% for The Lesson of Stifled Pride |
+| `2026_11_16_49_wandering_isle_trainee_damage.sql` | The Wandering Isle: trainees deal half melee damage and use their special attack every 5-7 s, so a level 1 player can win |
+| `2026_11_16_50_masters_flame_aura.sql` | The Wandering Isle: Master Shang Xi takes The Master's Flame back when The Lesson of the Burning Scroll is turned in |
+| `2026_11_16_51_jaomin_ro_damage.sql` | The Wandering Isle: Jaomin Ro deals half melee damage and uses his specials every 10-14 s |
+| `2026_11_16_52_jaomin_ro_hawk_dive.sql` | The Wandering Isle: Jaomin Ro's Hawk Diving to Earth no longer puts him in a hawk vehicle, so he stops vanishing and resetting |
+| `2026_11_16_53_master_shang_xi_flame.sql` | The Wandering Isle: Master Shang Xi gives The Master's Flame only during The Lesson of the Burning Scroll and can no longer be clicked onto |
+| `2026_11_16_54_lost_isles_pterrordax.sql` | The Lost Isles: Pterrordax Scavengers wander over 10 yards (TDB) instead of jittering in 3 |
+| `2026_11_17_30_ghostlands_review.sql` | Ghostlands review: overspawns trimmed and missing TDB spawns added, wander set to TDB, rares pooled, patrols on their paths, holiday spawns tied to their events |
+| `2026_11_17_31_bloodmyst_isle_review.sql` | Bloodmyst Isle review: overspawns trimmed and missing TDB spawns added, wander set to TDB, patrols on their paths, holiday spawns tied to their events |
+| `2026_11_17_32_darkshore_review.sql` | Darkshore review: overspawns trimmed and missing TDB spawns added, wander set to TDB, rares pooled, holiday spawns tied to their events |
+| `2026_11_17_33_northern_barrens_review.sql` | Northern Barrens review: overspawns trimmed and missing TDB spawns added, wander set to TDB, rares pooled, patrols on their paths |
+| `2026_11_17_34_silverpine_forest_review.sql` | Silverpine Forest review: overspawns trimmed and missing TDB spawns added, wander set to TDB, rares pooled, holiday spawns tied to their events |
+| `2026_11_17_35_ruins_of_gilneas_review.sql` | Ruins of Gilneas review: overspawns trimmed and missing TDB spawns added, wander set to TDB |
+| `2026_11_17_36_loch_modan_review.sql` | Loch Modan review: overspawns trimmed and missing TDB spawns added, wander set to TDB, rares pooled, holiday spawns tied to their events |
+| `2026_11_17_37_westfall_review.sql` | Westfall review: overspawns trimmed and missing TDB spawns added, wander set to TDB, rares pooled, holiday spawns tied to their events |
+| `2026_11_17_38_lost_isles_review.sql` | The Lost Isles review: overspawns trimmed and missing TDB spawns added, wander set to TDB |
+| `2026_11_17_39_azshara_review.sql` | Azshara review: overspawns trimmed and missing TDB spawns added, wander set to TDB, rares pooled, holiday spawns tied to their events |
+| `2026_11_17_40_lost_isles_bomb_monkeys.sql` | The Lost Isles: seven Bomb-Throwing Monkeys stand on the ground instead of floating in the fly pose |
+| `2026_11_17_41_second_tier_doubles.sql` | Second-tier zones: unique NPCs standing twice (Deborah Fain and others) and stacked copies removed, Sentinel Hill guards and gnolls fight again |
+| `2026_11_17_42_sentinel_hill_balance.sql` | Westfall: Sentinel Hill guards no longer outnumbered by added gnolls, six stray Defias removed |
+| `2026_11_17_43_second_tier_reaudit.sql` | Second-tier zones re-audit: staged fights wander again, fighters and quest-phase spawns put back, unbalanced adds removed |
+| `2026_11_17_44_staged_battles.sql` | Staged NPC battles last (needs `staged-npc-battles.patch`): flag 0x400 on the fighters in Westfall, Silverpine, Ruins of Gilneas, Azshara and the Northern Barrens; Sentinel Hill gnolls and guards 1:1 with 8.3.7; Counterattack! event leftovers removed; rowboat sea dogs and dead bodies stop wandering |
+| `2026_11_17_45_darkshore_shatterspear_pass.sql` | Darkshore, Shatterspear Pass as in 8.3.7: raiders lie dead (8.3.7 template flags), sentinels stand guard; 18 raiders and 17 sentinels at 8.3.7 spots |
+| `2026_11_17_46_staged_battles_start.sql` | Staged battle pairs that both stand still start fighting: out of combat, Sentinel Hill gnolls, Talrendis Raiders and some Ruins of Gilneas fighters attack the closest opponent within 8 yards |
+| `2026_11_18_30_shatterspear_vale_phases.sql` | Darkshore, Shatterspear Vale: living Champions (phase 308) until The Ancients' Ire is turned in, then the 8.3.7 aftermath with 41 dead Champions (phase 310); Raiders 33071 lie dead; classic Shatterspear Trolls/Drummers removed; nothing wanders |
+| `2026_11_18_31_ruins_of_gilneas_phases.sql` | Ruins of Gilneas: the Forsaken Forward Command battle (8.3.7 phase 274) until What Tomorrow Brings is turned in, then the overrun camp with the 7th Legion marching in (phase 312); stray Lorna Crowley/Lord Walden summon copies removed |
+| `2026_11_18_32_ruins_of_gilneas_battle_counts.sql` | Ruins of Gilneas: the Forward Command battle 1:1 with 8.3.7 (Worgen Rushers 110 -> 46, Rebels 55 -> 30, Vanguards to the 8.3.7 spots); the floating, unselectable Blightspreaders on the catapults removed |
+| `2026_11_18_33_ruins_of_gilneas_rushers_inside.sql` | Ruins of Gilneas: 11 Worgen Rushers back inside the Forward Command, one per defender (our own tuning); Rusher fight starter reach 5 yards, Sharpshooters added as targets |
+| `2026_11_18_34_ruins_of_gilneas_forest_pairs.sql` | Ruins of Gilneas: 29 more Worgen Rushers paired with lone Forsaken Vanguards in the forest around the Forward Command (our own tuning) |
+| `2026_11_18_35_default_phase_in_phased_zones.sql` | Darkshore and Ruins of Gilneas: always add default phase 169 next to the quest phases of 2026_11_18_30/31, so normal spawns stay visible |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills, `2026_11_09_02_profession_tier_levels.sql` gates them by expansion level, `2026_11_15_80_profession_trainer_recipes.sql` gives every crafting trainer its recipes).
 
