@@ -22,7 +22,7 @@ Client addon only, in `client/FishingBuddy`. No server change: nothing to rebuil
 - **Changed:** `client/FishingBuddy/Libs/LibOptionsFrame-1.0/LibOptionsFrame-1.0.lua`:
   `EditBox_OnTextChanged(self, userInput)` only saves when the player typed (`userInput` true).
 - **Changed:** `FishingBuddy.toc` version `1.10.10-zr3`; guide line updated.
-- **Checked:** Lua 5.1 syntax check. Not tested in game yet.
+- **Confirmed in game** (Four, 2026-11-18): the macro works without the error.
 
 ## 2026-11-18 (Quest fixes: Spiketooth's gladiators, Durotar)
 
