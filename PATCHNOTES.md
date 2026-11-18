@@ -3,6 +3,43 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-18 (Quest fixes: Spiketooth's gladiators, Durotar)
+
+Merged to `main` with PR #87 on 2026-11-18. Confirmed in game 2026-11-18.
+
+### DB: Ghislania, Griswold Hanniston and Gaur Icehorn cannot be challenged (25257, 25258, 25259)
+
+- **Found** (Four, 2026-11-18): Spiketooth's three quests ask you to fight her gladiators, but
+  talking to Ghislania 39351, Griswold Hanniston 39353 or Gaur Icehorn 39352 only shows
+  "Greetings" with no option.
+- **Cause:** their gossip menus 11229, 11230, 11231 had no `gossip_menu` row and no option. Their
+  SAI sent a menu 39590 (does not exist) on gossip hello and waited for option 1 of that menu, so
+  the fight could never start. The SAI also had two id 0 rows per NPC, and an action list 3935100
+  made them unattackable on spawn.
+- **Changed:** `sql/fixes/world/2026_11_18_74_spiketooth_gladiators.sql`: `gossip_menu` 11229 ->
+  text 15641, 11230 -> 15642, 11231 -> 15643 (the three unused texts between this area's menus,
+  matched by id order); one option per menu "Spiketooth wants to see what you're made of. Let's
+  fight!" (our wording), shown only while that NPC's quest is in progress (conditions 15, quest
+  taken). SAI of 39351/39352/39353 rewritten: option picked -> close window, faction 14, attack
+  you; they cannot drop below 5% health; at 6% or less the closest player within 40 yd gets the
+  credit (39351/39352/39353), they evade and go back to their own faction. Their own combat spells
+  kept (Static Burst 76429 + Chain Lightning 79913; Taunka Rage 76423 + emote at 30%; aggro line +
+  Flurry of Claws 76490). Action list 3935100 deleted. Objective texts "Ghislania defeated",
+  "Gaur defeated", "Griswold defeated" (were empty).
+- **Status:** confirmed in game 2026-11-18. The greeting texts are matched by id order; if one
+  reads oddly, tell Herald.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_74_spiketooth_gladiators.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver and delete the client `Cache` folder (objective texts).
+
 ## 2026-11-18 (Quest fixes: Durotar, The Wolf and The Kodo + Thunder Down Under)
 
 Merged to `main` with PR #85 on 2026-11-18. All confirmed in game 2026-11-18.
