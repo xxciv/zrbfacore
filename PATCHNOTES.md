@@ -3,6 +3,39 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-18 (Addon fixes: new ZRProximity addon)
+
+New client addon in `client/ZRProximity`. No server change: nothing to rebuild, no SQL, no restart.
+
+### ZRProximity 1.0: nameplates by distance, target, mouseover and look
+- **Asked** (Four): hide names and nameplates by default; show a plate when it's your target, when aggressive
+  enemies get within about 10 m, and when neutral or friendly units get within a distance the player chooses
+  (as low as 1-3 m). Optionally show names you "stare" at.
+- **Added:** `client/ZRProximity/` (`ZRProximity.toc`, `Ranges.lua`, `ZRProximity.lua`, `Options.lua`,
+  `README.md`).
+  - Keeps nameplates on (`nameplateShowAll`, `nameplateShowEnemies`, `nameplateShowEnemyMinions`,
+    `nameplateShowFriends`, `nameplateShowFriendlyNPCs` = 1) and sets each plate's `UnitFrame` alpha to 0
+    on `NAME_PLATE_UNIT_ADDED`. Every 0.1 s it decides per plate whether to show it, and fades it over
+    `fadeTime` (0.25 s). Changing alpha is allowed in combat.
+  - A plate shows when: it is the target (`showTarget`), it is under the mouse (`showMouseover`), the unit has
+    you on its threat list (`showCombat`), or the unit is within `hostileRange` (10 yd), `neutralRange`
+    (5 yd) or `friendlyRange` (4 yd). Type comes from `UnitReaction`/`UnitCanAttack`.
+  - Distance: `IsItemInRange` with LibRangeCheck-2.0's items of known range, giving steps of 3 (hostile) / 4
+    (friendly), 5, 6, 8, 10, 15, 20, 25, 30, 35, 40 yd. `CheckInteractDistance` (10/11/28 yd) is the
+    fallback. The 8.3.7 client gives no exact NPC positions, so 1 yd isn't possible.
+  - Look reveal (`stare`): a plate within `stareRadius` (80 UI units) of the screen centre for `stareDelay`
+    (0.5 s) shows, and stays for `stareLinger` (2 s).
+  - `hideFloatingNames` (on): turns off the `UnitName*` floating-name CVars and restores the old values when
+    turned off or on `/zrp off`. `hideFriendlyInInstances` (on): `nameplateShowFriends` = 0 inside
+    dungeons/raids, where Blizzard forbids addons from friendly plates. `clickThrough` (off):
+    `C_NamePlate.SetNamePlate*ClickThrough`. CVar changes wait until combat ends.
+  - Options panel under Interface > AddOns > ZRProximity; `/zrp` (`on`, `off`, `status`, `range`, `reset`).
+    Settings are saved in `ZRProximityDB`.
+- **Checked:** Lua 5.1 syntax check, and a smoke test with stubbed WoW API: plate hidden at 12 yd, shown at
+  9 yd, hidden again at 20 yd, shown after looking at it for 1 s, still shown 1 s after looking away, hidden
+  after 3 s; `/zrp off` shows it and restores the name CVars.
+- **Status:** not tested in game yet.
+
 ## 2026-11-18 (Quest fixes: Loss Reduction, Durotar)
 
 Merged to `main` with PR #81 on 2026-11-18, together with the Kezan fixes. Confirmed in game by Four on 2026-11-18.
