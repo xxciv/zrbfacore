@@ -132,6 +132,36 @@ Merged to `main` with PR #85 on 2026-11-18. All confirmed in game 2026-11-18.
 
 ## 2026-11-18 (pet battles)
 
+### Pet battles: Brewfest pets stand around all year
+
+- **Found** (Four, 2026-11-18, screenshots): a Wolpertinger and a Pint-Sized Pink Pachyderm stand in
+  the open in Durotar outside Brewfest. Both are Brewfest companions (Wolpertinger 22943 = species 153,
+  Pink Pachyderm 24753 = species 166, neither capturable), not wild battle pets.
+- **Cause:** 6 display spawns of these pets have no `game_event_creature` row, so they never despawn.
+  The Wild Wolpertingers and Brewfest decorations around them are already in event 24 (Brewfest).
+
+  | guid | Pet | Where |
+  |---|---|---|
+  | 10647404 | Wolpertinger | Durotar 1159.73 -4140.95 |
+  | 10647405 | Pink Pachyderm | Durotar 1180.88 -4098.65 |
+  | 10646514 | Wolpertinger | Dun Morogh Brewfest grounds -5175.68 -566.15 |
+  | 10646515 | Pink Pachyderm | Dun Morogh Brewfest grounds -5175.68 -615.13 |
+  | 10652003 | Pink Pachyderm | Orgrimmar, next to Ray'ma (Brew of the Month Club) |
+  | 10651977 | Pink Pachyderm | Ironforge, next to Larkin Thunderbrew (Brew of the Month Club) |
+
+- **Changed:** `sql/fixes/world/2026_11_18_51_brewfest_display_pets.sql` adds the 6 guids to
+  `game_event_creature` event 24 (Brewfest), so they only spawn while Brewfest runs. Docs: Pet battles section.
+- **Status:** not tested in game yet. Expected output: `6 Brewfest pet spawns linked to event 24`.
+- **Pick up:**
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo pull
+  mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_18_51_brewfest_display_pets.sql
+  ```
+
+  Then restart `worldserver`.
+
 ### Pet battles: Sack of Pet Supplies opens empty
 
 - **Found** (Four, 2026-11-18): the Sack of Pet Supplies (item 89125) from Zunta, The Pet Tamer
