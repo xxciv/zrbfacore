@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-18 (Quest fixes: Spiketooth's gladiators, Durotar)
 
-Draft PR, not merged yet. Not tested in game yet.
+Merged to `main` with PR #87 on 2026-11-18. Confirmed in game 2026-11-18.
 
 ### DB: Ghislania, Griswold Hanniston and Gaur Icehorn cannot be challenged (25257, 25258, 25259)
 
@@ -26,8 +26,8 @@ Draft PR, not merged yet. Not tested in game yet.
   kept (Static Burst 76429 + Chain Lightning 79913; Taunka Rage 76423 + emote at 30%; aggro line +
   Flurry of Claws 76490). Action list 3935100 deleted. Objective texts "Ghislania defeated",
   "Gaur defeated", "Griswold defeated" (were empty).
-- **Status:** not tested in game. The greeting texts are matched by id order; if one reads oddly,
-  tell Herald.
+- **Status:** confirmed in game 2026-11-18. The greeting texts are matched by id order; if one
+  reads oddly, tell Herald.
 - **Pick up:** SQL only:
 
   ```
