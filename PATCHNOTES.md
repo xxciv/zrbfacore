@@ -28,7 +28,7 @@ to do to pick it up (rebuild, restart, run SQL).
   | Porcupette 89587 (battle pet) | 1% | 1 |
 
   Sacks already in your bags use the new table when opened. Docs: Pet battles section.
-- **Status:** not tested in game yet. Expected output: `13 Sack of Pet Supplies loot rows`.
+- **Status:** confirmed in game by Four (2026-11-18): a new sack from `.additem 89125` opens with loot. SQL output: `13 Sack of Pet Supplies loot rows`.
 - **Pick up:**
 
   ```
