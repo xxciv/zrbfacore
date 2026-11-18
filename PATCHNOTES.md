@@ -3,6 +3,35 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-18 (Quest fixes: Fizzled, Durotar)
+
+Draft PR, not merged yet. Not tested in game yet.
+
+### DB: Fizzle's Orb stays in the bags after turning in Fizzled (25260)
+
+- **Found** (Four, 2026-11-18): after turning in Fizzled, Fizzle's Orb 52580 was still in the bags
+  and had to be deleted by hand.
+- **Cause:** Fizzle Darkclaw 3203 gave out more than one orb. Every right-click (gossip hello) made
+  the player cast 74024 "Remove Fizzle's Hand", which creates 52580, and picking "<Attempt to remove
+  the orb.>" cast it again and also added another 52580 by script. The quest asks for 1 orb and
+  takes only 1 at turn-in, so the extras stayed.
+- **Changed:** `sql/fixes/world/2026_11_18_75_fizzled_orb.sql`: SAI 3203 rewritten: only the option
+  gives the orb (close window, the player casts 74024 once); the gossip hello row and the extra
+  add-item row are gone. Conditions on menu 11240 option 0: quest 25260 in progress and no 52580 in
+  bags or bank.
+- **Status:** not tested in game.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_75_fizzled_orb.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-18 (Quest fixes: Spiketooth's gladiators, Durotar)
 
 Merged to `main` with PR #87 on 2026-11-18. Confirmed in game 2026-11-18.
