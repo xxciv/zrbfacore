@@ -7,6 +7,13 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time and reports what is off.
 
+### World: Durotar, the Northwatch Marines' Ticking Time Bomb explodes
+
+- **Found** (Four, 2026-11-18, video: "ticking time bomb, brief graphical element, no functionality, doesn't do damage"): Northwatch Marine 39267 casts Ticking Time Bomb 79726, which throws a Ticking Time Bomb 42776 at your feet. The bomb's script (same as TDB 8.3.7) cast Explosion 79728 (Fire damage to enemies within 4 yards) at the very moment it appeared, while it was still being added to the world, then despawned. The explosion never landed. The ability's own text says "Explodes after a few seconds, inflicting Fire damage. Tick-tock."
+- **Changed** (`sql/fixes/world/2026_11_18_43_ticking_time_bomb_fuse.sql`): the bomb now ticks for 3 seconds (our own value for "a few seconds"), then explodes (triggered cast) and disappears a second later. Step out of it to avoid the damage. The same bomb is thrown by Sergeant Curtis 5809, Nethergarde Engineer 5997 and Chief Prospector Hondo 41173.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: the other all-in-one profession trainers (Train-a-Trons, Whittler Dewei, Profession Liaisons)
 
 - **Found** (Four, 2026-11-18: "can you do a pass of all profession trainers of this kind?"; Four chose to keep all of them): five more NPCs teach several professions, all where no other trainer stands. KTC Train-a-Tron Deluxe 45286 (Lost Isles, 4 spawns) had the fishing trainers' menu 17157 (Fishing only) and Whittler Dewei 57620 (Wandering Isle) a HavenCore menu 15125 with no "Train me in" options; 8.3.7 gives both menu 12180, like Runda. KTC Train-a-Tron Deluxe 49885 (Azshara) uses menu 12002: its two training options were trainer options themselves, so they never opened the primary/secondary lists 12045/12046; those 14 professions were gossip options that closed the menu; its trainer rows sat on menus 12006/12007 that don't exist; and "Access profession vending machine" did nothing. The Profession Liaisons Leedan Gustaf 142564 (Boralus) and Ozgrom Ragefang 142552 (Dazar'alor): "I would like to buy from you." did nothing (134 items each).
