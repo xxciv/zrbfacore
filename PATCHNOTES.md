@@ -3,6 +3,45 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-18 (Quest fixes: Crossroads Caravan Pickup, Northern Barrens)
+
+Draft PR, not merged yet. Not tested in game yet.
+
+### DB: the caravan stops, an invisible raider kills the kodo, no way to fight back (13949)
+
+- **Found** (Four, 2026-11-18): riding the caravan, it stopped at random, the kodo took damage with
+  no combat shown and died; back at the start an invisible Razormane Raider (seen with `.gm`) was
+  hitting the player. It felt "on rails".
+- **Cause:** Razormane Raider 34487 used event 79 to wake up, which in this core is SCENE_TRIGGER
+  (distance-to-creature is event 75), so they never dropped Quest Invisibility 65050. Their reset
+  also put back their hostile template faction 109, so they attacked the caravan and players while
+  still invisible. Lead Caravan Kodo 34430 (your vehicle) could be attacked, so a raider pulled it
+  into combat and the escort stopped; its path was started twice; its arrival rows (credit 53613,
+  despawns) were linked to no event, so arriving could never complete the quest. The pack kodo
+  Far Watch Caravan Kodo 34432 never followed. Halga Bloodeye 34258's send-off was in Spanish and
+  was said by the kodo.
+- **How it is meant to play:** you ride the lead kodo and shoot the raiders with Halga's "Street
+  Sweeper" 46714 from your bags (its Shoot 65479 can be cast from a vehicle).
+- **Changed:** `sql/fixes/world/2026_11_18_76_crossroads_caravan_pickup.sql`: SAI 34487: invisible
+  and friendly (35) until the pack kodo comes within 20 yd (event 75), then visible, faction 109,
+  attack the pack kodo; within 90 yd of the Captured Razormane 34523 near the end they evade and
+  hide again. SAI 34430 rewritten: on summon call the pack kodo, cue Halga, become not attackable,
+  start path 34430 once; at path end credit 53613 to the rider, despawn the pack kodo and itself
+  (you are set down). SAI 34432: passive and follows the lead kodo. Halga's line now English (our
+  wording "Move out! Get those supplies to the Crossroads!") and said by Halga.
+- **Status:** not tested in game.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_76_crossroads_caravan_pickup.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-18 (Quest fixes: Fizzled, Durotar)
 
 Draft PR, not merged yet. Not tested in game yet.
