@@ -151,7 +151,7 @@ Merged to `main` with PR #85 on 2026-11-18. All confirmed in game 2026-11-18.
 
 - **Changed:** `sql/fixes/world/2026_11_18_51_brewfest_display_pets.sql` adds the 6 guids to
   `game_event_creature` event 24 (Brewfest), so they only spawn while Brewfest runs. Docs: Pet battles section.
-- **Status:** not tested in game yet. Expected output: `6 Brewfest pet spawns linked to event 24`.
+- **Status:** confirmed in game by Four (2026-11-18): the Durotar Wolpertinger and Pink Pachyderm are gone outside Brewfest. SQL output: `6 Brewfest pet spawns linked to event 24`.
 - **Pick up:**
 
   ```
