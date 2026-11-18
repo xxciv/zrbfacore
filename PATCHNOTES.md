@@ -7,6 +7,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time and reports what is off.
 
+### World: the other all-in-one profession trainers (Train-a-Trons, Whittler Dewei, Profession Liaisons)
+
+- **Found** (Four, 2026-11-18: "can you do a pass of all profession trainers of this kind?"; Four chose to keep all of them): five more NPCs teach several professions, all where no other trainer stands. KTC Train-a-Tron Deluxe 45286 (Lost Isles, 4 spawns) had the fishing trainers' menu 17157 (Fishing only) and Whittler Dewei 57620 (Wandering Isle) a HavenCore menu 15125 with no "Train me in" options; 8.3.7 gives both menu 12180, like Runda. KTC Train-a-Tron Deluxe 49885 (Azshara) uses menu 12002: its two training options were trainer options themselves, so they never opened the primary/secondary lists 12045/12046; those 14 professions were gossip options that closed the menu; its trainer rows sat on menus 12006/12007 that don't exist; and "Access profession vending machine" did nothing. The Profession Liaisons Leedan Gustaf 142564 (Boralus) and Ozgrom Ragefang 142552 (Dazar'alor): "I would like to buy from you." did nothing (134 items each).
+- **Changed** (`sql/fixes/world/2026_11_18_42_profession_trainers_isolated.sql`):
+  - Train-a-Tron 45286 and Dewei 57620 use menu 12180 (8.3.7) and get the same 11 lists as Runda.
+  - Menu 12180 gets "Show me your wares, please." (vendor option, our own addition, not in 8.3.7), so the Train-a-Tron and Dewei can still sell. It only shows on NPCs that are vendors with goods, so Runda and the town trainers don't get it.
+  - Train-a-Tron 49885: vending opens the shop; primary and secondary training open 12045/12046 (8.3.7's links), and each profession there opens its list (the 11 above, plus Cooking 136, First Aid 880, Fishing 10).
+  - Profession Liaisons: "I would like to buy from you." opens the shop.
+  - Side effect: Acride 10296/10299 and Tinza Silvermug 45563 also point at menu 12046 and showed "Cooking / First Aid / Fishing" options that did nothing. Those are trainer options now, and since these three are not trainers, the options no longer show for them.
+- **Not changed:** trainer lists (same ids as `2026_11_18_41`), Journeyman's trainer work, the Nazjatar trainers (no trainer data, `npcflag` 0 in 8.3.7 too).
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Durotar, the 11 "Profession Trainer" NPCs teach their professions
 
 - **Found** (Four, 2026-11-18: "Runda (Profession Trainer) - is this a real in game NPC or something added by Havencore? Either way, she doesn't work"): Runda 47418 in Razor Hill is a real NPC (Cataclysm and later). So are Lien Farner, Wembil Taskwidget, Nedric Sallow, Lalum Darkmane, Iranis Shadebloom, Saren, Valn, Therisa Sallow, Jack "All-Trades" Derrington and Elder Oakpaw. All 11 use gossip menu 12180 and its "Tell me about..." sub menus 12185-12199, where every menu lists "Train me in <profession>." for the 11 professions. Most of those options were vendor options (`OptionType` 3) or gossip options with nowhere to go, so a click closed the menu. Only 26 of the 154 had a `creature_trainer` row telling the core which list to open.
