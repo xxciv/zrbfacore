@@ -778,9 +778,10 @@ from `_retail_/Interface/AddOns`, and copy the folder from `client/` there.
 
 - `client/BugTabs` (1.5.0-zr1): error catcher. Its bundled CallbackHandler-1.0 called
   `securecallfunction`, which 8.3.7 lacks; it now falls back to `xpcall`. TOC set to 80300.
-- `client/FishingBuddy` (1.10.10-zr2): its bundled CallbackHandler-1.0 is raised to minor 100 so its
-  8.3.7-safe copy wins over newer copies other addons ship, and options tabs no longer go blank after
-  switching tabs (tooltip overlays are detached on tab change).
+- `client/FishingBuddy` (1.10.10-zr3): its bundled CallbackHandler-1.0 is raised to minor 100 so its
+  8.3.7-safe copy wins over newer copies other addons ship, options tabs no longer go blank after
+  switching tabs (tooltip overlays are detached on tab change), and the fishing macro falls back to the
+  name "FishingBuddy" when its saved name is empty.
 - `client/Sorted` (1.2.4-zr3): bag addon. Bank buttons get an upgrade icon (nil error with the item level
   column on), empty slots skip `GetItemCooldown`, and items in the closed bank or another character's bags
   show a tooltip from their saved link.
@@ -895,6 +896,13 @@ empty. This adds its contents:
 
 ```sh
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_18_50_sack_of_pet_supplies_loot.sql
+```
+
+Brewfest companions (Wolpertinger, Pint-Sized Pink Pachyderm) had 6 display spawns outside the
+Brewfest event. This ties them to Brewfest:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_18_51_brewfest_display_pets.sql
 ```
 #### Legion and BFA pet tamers
 

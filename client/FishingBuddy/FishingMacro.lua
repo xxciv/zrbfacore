@@ -116,9 +116,21 @@ local function BuildFishingMacro()
     return "#showtooltip Fishing\n/fb macro\n"..action
 end
 
+-- zrbfacore: the macro name setting can end up saved as "" (the options edit box wrote every
+-- text change back, including programmatic ones), and CreateMacro("") fails with
+-- "no name specified". Fall back to the default name and store it again.
+local function GetMacroName()
+    local macro_name = FishingBuddy.GetSetting("MacroName");
+    if type(macro_name) ~= "string" or not macro_name:match("%S") then
+        macro_name = FBConstants.MACRONAME;
+        FishingBuddy.SetSetting("MacroName", macro_name);
+    end
+    return macro_name;
+end
+
 local function FishingMacro()
     local macrotext = BuildFishingMacro();
-    local macro_name = FishingBuddy.GetSetting("MacroName");
+    local macro_name = GetMacroName();
     CreateOrUpdateMacro(macro_name, "INV_Fishingpole_02", macrotext, GSB("ToonMacro"));
 end
 FishingBuddy.FishingMacro = FishingMacro;
@@ -133,7 +145,7 @@ local function SetupMacroKeyBinding()
         else
             macro_set = ACCOUNT_BINDINGS;
         end
-        local macro_name = FishingBuddy.GetSetting("MacroName");
+        local macro_name = GetMacroName();
         local command = "MACRO "..macro_name;
         if key1 then
             SetOverrideBinding(FishingBuddyFrame, true, key1, command, macro_set);
@@ -164,7 +176,7 @@ local function CreateFishingMacro()
     end
 
     if (fullup) then
-        local macro_name = FishingBuddy.GetSetting("MacroName");
+        local macro_name = GetMacroName();
         FishingBuddy.Message(fullup.."\""..macro_name.."\"", 1, 0, 0);
         return false;
     end
@@ -197,7 +209,7 @@ MacroEvents["VARIABLES_LOADED"] = function(started)
 end
 
 MacroEvents[FBConstants.OPT_UPDATE_EVT] = function()
-    local macro_name = FishingBuddy.GetSetting("MacroName");
+    local macro_name = GetMacroName();
     if GetMacroIndex(macro_name) then
         SetupMacroKeyBinding();
     end

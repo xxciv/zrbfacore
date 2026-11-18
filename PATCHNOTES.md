@@ -32,6 +32,27 @@ Draft PR, not merged yet. Not tested in game yet.
 
   Then restart worldserver.
 
+## 2026-11-18 (Addon fixes: FishingBuddy macro)
+
+Client addon only, in `client/FishingBuddy`. No server change: nothing to rebuild, no SQL, no restart.
+
+### FishingBuddy 1.10.10-zr3: "CreateMacro() failed, no name specified"
+- **Reported** (Four): pressing FishingBuddy's macro (`#showtooltip Fishing`, `/fb macro`, `/stopcasting`,
+  `/cast Fishing`) threw `FishingMacro.lua:86: CreateMacro() failed, no name specified` (from
+  `/fb macro` -> `FishingMacro` -> `CreateOrUpdateMacro`).
+- **Cause:** `/fb macro` rebuilds the macro on every press, using the saved setting `MacroName`. That setting
+  was an empty string: it passes the addon's `if name` check (Lua treats `""` as true), no macro with that
+  name exists, so it calls `CreateMacro("", ...)`, which the client rejects. The name edit box in the macro
+  options (`LibOptionsFrame-1.0` `EditBox_OnTextChanged`) wrote every text change back to the setting,
+  including text set by code, which is the likely way `""` got saved.
+- **Changed:** `client/FishingBuddy/FishingMacro.lua`: new `GetMacroName()`. If `MacroName` is not a string
+  or is blank, it uses the default `FBConstants.MACRONAME` ("FishingBuddy") and saves that back. Used by the
+  macro build, the key binding, the "macros full" message and the options update.
+- **Changed:** `client/FishingBuddy/Libs/LibOptionsFrame-1.0/LibOptionsFrame-1.0.lua`:
+  `EditBox_OnTextChanged(self, userInput)` only saves when the player typed (`userInput` true).
+- **Changed:** `FishingBuddy.toc` version `1.10.10-zr3`; guide line updated.
+- **Confirmed in game** (Four, 2026-11-18): the macro works without the error.
+
 ## 2026-11-18 (Quest fixes: Spiketooth's gladiators, Durotar)
 
 Merged to `main` with PR #87 on 2026-11-18. Confirmed in game 2026-11-18.
@@ -160,6 +181,36 @@ Merged to `main` with PR #85 on 2026-11-18. All confirmed in game 2026-11-18.
   Then restart worldserver.
 
 ## 2026-11-18 (pet battles)
+
+### Pet battles: Brewfest pets stand around all year
+
+- **Found** (Four, 2026-11-18, screenshots): a Wolpertinger and a Pint-Sized Pink Pachyderm stand in
+  the open in Durotar outside Brewfest. Both are Brewfest companions (Wolpertinger 22943 = species 153,
+  Pink Pachyderm 24753 = species 166, neither capturable), not wild battle pets.
+- **Cause:** 6 display spawns of these pets have no `game_event_creature` row, so they never despawn.
+  The Wild Wolpertingers and Brewfest decorations around them are already in event 24 (Brewfest).
+
+  | guid | Pet | Where |
+  |---|---|---|
+  | 10647404 | Wolpertinger | Durotar 1159.73 -4140.95 |
+  | 10647405 | Pink Pachyderm | Durotar 1180.88 -4098.65 |
+  | 10646514 | Wolpertinger | Dun Morogh Brewfest grounds -5175.68 -566.15 |
+  | 10646515 | Pink Pachyderm | Dun Morogh Brewfest grounds -5175.68 -615.13 |
+  | 10652003 | Pink Pachyderm | Orgrimmar, next to Ray'ma (Brew of the Month Club) |
+  | 10651977 | Pink Pachyderm | Ironforge, next to Larkin Thunderbrew (Brew of the Month Club) |
+
+- **Changed:** `sql/fixes/world/2026_11_18_51_brewfest_display_pets.sql` adds the 6 guids to
+  `game_event_creature` event 24 (Brewfest), so they only spawn while Brewfest runs. Docs: Pet battles section.
+- **Status:** confirmed in game by Four (2026-11-18): the Durotar Wolpertinger and Pink Pachyderm are gone outside Brewfest. SQL output: `6 Brewfest pet spawns linked to event 24`.
+- **Pick up:**
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo pull
+  mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_18_51_brewfest_display_pets.sql
+  ```
+
+  Then restart `worldserver`.
 
 ### Pet battles: Sack of Pet Supplies opens empty
 
