@@ -7,6 +7,13 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
 
+### World: staged battle pairs that stand still start fighting
+
+- **Found** (Four, 2026-11-18, Westfall "a lot better"): Sentinel Hill Guard 735401039 and Riverpaw Brute 735401030 (both added by `2026_11_17_44` at 8.3.7 spots) stand 3 yards apart and never fight. Creatures only notice each other when one of them moves, so a pair where both stand still never starts. With the flagged battle creatures, 8 such still pairs at Sentinel Hill, 16 Talrendis Raiders at the Orgrimmar gate in Azshara and 6 pairs in the Ruins of Gilneas.
+- **Changed** (`sql/fixes/world/2026_11_17_46_staged_battles_start.sql`, our own tuning): out of combat, every 2-4 seconds, one side attacks the closest living opponent within 8 yards (`smart_scripts` event 1, action 49 attack, target 19 closest creature): Riverpaw Bandit 54371, Riverpaw Brute 54372, Riverpaw Herbalist 54373 attack Sentinel Hill Guard 42407 (id 10); Talrendis Raider 35177 attacks Orgrimmar Gatekeeper 35190 (id 10); Worgen Rusher 45375 attacks Forsaken Vanguard 45532 (id 10) and Forsaken Catapult 45533 (id 11); Worgen Rusher 45535 attacks Forsaken Vanguard 45280 (id 10); Forsaken Vanguard 45532 attacks 7th Legion Submariner 45539 (id 10). With `staged-npc-battles.patch` nobody dies, so the pair keeps fighting.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Darkshore, Shatterspear Pass shows the aftermath of the battle
 
 - **Found** (Four, 2026-11-17: "no one is fighting"; Four chose the 8.3.7 aftermath over a live battle): in the 8.3.7 data (retail-sniffed template) the Shatterspear Raiders 34309 at the pass play dead (`unit_flags2` 0x1), are stunned and immune, and the Lor'danel Sentinels 32969 stand still among them. Our template had the raiders alive but immune to NPCs, and the dump scripted both sides to attack each other on reset, so 6 raiders just stood there. Most of our dead raiders and some sentinels there carry aura 65181 (phase 170), which nobody sees in Darkshore. Of our 10 visible sentinels only 3 stand on 8.3.7 spots; 4 of the others were stacked on one spot (7415, -1298).
