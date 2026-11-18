@@ -93,7 +93,10 @@ local function EditBox_OnShow(self)
     end
 end
 
-local function EditBox_OnTextChanged(self)
+local function EditBox_OnTextChanged(self, userInput)
+    -- zrbfacore: only save what the player typed. Text set by code (SetText on load/show)
+    -- used to be written back too, which could store an empty macro name.
+    if not userInput then return end
     local what = self:GetText();
     self.info.setter(self.info.setting, what);
     if (self.info.action) then
