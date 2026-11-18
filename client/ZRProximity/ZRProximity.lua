@@ -190,6 +190,30 @@ end
 -- ---------------------------------------------------------------------------
 -- Plate bookkeeping
 -- ---------------------------------------------------------------------------
+-- Plate names. On 8.3.7 Blizzard's CompactUnitFrame_UpdateName hides a plate's name unless
+-- UnitShouldDisplayName says so, and that follows the same "NPC Names" / floating-name CVars
+-- as the names above heads. With those off (hideFloatingNames) the plates showed only a bare
+-- health bar, and with them on the game drew floating names for every unit too far away to
+-- have a plate. So the CVars stay off and we put the name back on the plates ourselves.
+local function PlateName(frame)
+    if not db or not db.enabled or not db.hideFloatingNames then return end
+    if not frame or (frame.IsForbidden and frame:IsForbidden()) then return end
+    local unit, name = frame.unit, frame.name
+    if not name or type(unit) ~= "string" or not unit:match("^nameplate%d") then return end
+    if UnitIsUnit(unit, "player") or name:IsShown() then return end
+    name:SetText(GetUnitName(unit, true))
+    if UnitIsTapDenied(unit) then
+        name:SetVertexColor(0.5, 0.5, 0.5)
+    else
+        name:SetVertexColor(UnitSelectionColor(unit, true))
+    end
+    name:Show()
+end
+ns.PlateName = PlateName
+if CompactUnitFrame_UpdateName then
+    hooksecurefunc("CompactUnitFrame_UpdateName", PlateName)
+end
+
 local function AddPlate(unit)
     if UnitIsUnit(unit, "player") then return end -- personal resource display: leave alone
     -- Returns nil for plates Blizzard forbids to addons (friendly plates in instances).
@@ -200,6 +224,7 @@ local function AddPlate(unit)
     st.want = Wanted(unit, st, GetTime())
     st.cur = db.enabled and st.want or 1
     st.frame:SetAlpha(st.cur)
+    PlateName(st.frame)
 end
 
 local function RemovePlate(unit)
@@ -216,6 +241,7 @@ function ns.RefreshAll()
             st.cur = 1
             st.frame:SetAlpha(1)
         end
+        PlateName(st.frame)
     end
 end
 

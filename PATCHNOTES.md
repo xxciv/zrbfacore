@@ -7,6 +7,26 @@ to do to pick it up (rebuild, restart, run SQL).
 
 New client addon in `client/ZRProximity`. No server change: nothing to rebuild, no SQL, no restart.
 
+### ZRProximity 1.2: names on plates, far floating names gone
+- **Reported** (Four, on 1.1, with screenshots): with Interface > Names > NPC Names on "None" (what the addon
+  sets), plates that show have a health bar but no name, unless targeted. With "All NPCs" the names come
+  back, but units far away show names until you get close; only with "None" do far NPCs fully hide.
+- **Cause:** on 8.3.7 Blizzard's `CompactUnitFrame_UpdateName` hides a nameplate's name unless
+  `UnitShouldDisplayName` allows it, and that follows the same floating-name CVars (`UnitNameNPC`,
+  `UnitNameHostleNPC`, ...) the addon turns off. With them on, the game draws a floating name over every unit
+  that is beyond nameplate range (no plate yet), which the addon can't hide; within range the plate takes
+  over, which is why those units "followed the rules" once closer. This was the real cause of the
+  far-units report that 1.1 blamed on the look check.
+- **Changed:** `client/ZRProximity/ZRProximity.lua`: new `PlateName`, hooked after
+  `CompactUnitFrame_UpdateName` (`hooksecurefunc`) and run when a plate is added and on settings changes. While
+  the addon and `hideFloatingNames` are on, a nameplate whose name Blizzard hid gets it back:
+  `GetUnitName(unit, true)`, grey if tap-denied, otherwise `UnitSelectionColor` (Blizzard's own plate
+  colours). Skips forbidden frames, the personal resource display and non-nameplate frames. The floating-name
+  CVars stay off, so units beyond nameplate range show nothing.
+- **Changed:** `Options.lua` tooltip and `README.md` explain it; `ZRProximity.toc` version 1.2.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test (name shown on add and again after Blizzard
+  hides it; all 1.1 checks unchanged). Not tested in game yet.
+
 ### ZRProximity 1.1: "look at" fixed (far units showing, near units not showing)
 - **Reported** (Four, on 1.0): units farther out showed until you got close, then followed the rules; and
   "look at" didn't really work. Mouseover and the distances worked.

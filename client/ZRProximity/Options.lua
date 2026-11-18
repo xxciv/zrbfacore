@@ -106,7 +106,8 @@ function ns.CreateOptions()
     NewSlider(panel, "stareRange", "Look works up to", 3, 40, 1, 320, -370, Yards(false))
 
     NewCheck(panel, "hideFloatingNames", "Hide the names above heads",
-        "Turns off the game's floating unit names so names only come from nameplates. " ..
+        "Turns off the game's floating unit names (and Interface > Names > NPC Names) so names only come " ..
+        "from the nameplates this addon shows; it puts the names back on those plates itself. " ..
         "Your old settings come back when you untick this.", 16, -470, true)
     NewCheck(panel, "hideFriendlyInInstances", "Hide friendly plates in dungeons and raids",
         "Blizzard blocks addons from friendly plates inside instances, so there it is all or nothing.", 16, -496, true)
