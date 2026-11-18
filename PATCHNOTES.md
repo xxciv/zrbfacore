@@ -3,6 +3,27 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-18 (Addon fixes: FishingBuddy macro)
+
+Client addon only, in `client/FishingBuddy`. No server change: nothing to rebuild, no SQL, no restart.
+
+### FishingBuddy 1.10.10-zr3: "CreateMacro() failed, no name specified"
+- **Reported** (Four): pressing FishingBuddy's macro (`#showtooltip Fishing`, `/fb macro`, `/stopcasting`,
+  `/cast Fishing`) threw `FishingMacro.lua:86: CreateMacro() failed, no name specified` (from
+  `/fb macro` -> `FishingMacro` -> `CreateOrUpdateMacro`).
+- **Cause:** `/fb macro` rebuilds the macro on every press, using the saved setting `MacroName`. That setting
+  was an empty string: it passes the addon's `if name` check (Lua treats `""` as true), no macro with that
+  name exists, so it calls `CreateMacro("", ...)`, which the client rejects. The name edit box in the macro
+  options (`LibOptionsFrame-1.0` `EditBox_OnTextChanged`) wrote every text change back to the setting,
+  including text set by code, which is the likely way `""` got saved.
+- **Changed:** `client/FishingBuddy/FishingMacro.lua`: new `GetMacroName()`. If `MacroName` is not a string
+  or is blank, it uses the default `FBConstants.MACRONAME` ("FishingBuddy") and saves that back. Used by the
+  macro build, the key binding, the "macros full" message and the options update.
+- **Changed:** `client/FishingBuddy/Libs/LibOptionsFrame-1.0/LibOptionsFrame-1.0.lua`:
+  `EditBox_OnTextChanged(self, userInput)` only saves when the player typed (`userInput` true).
+- **Changed:** `FishingBuddy.toc` version `1.10.10-zr3`; guide line updated.
+- **Checked:** Lua 5.1 syntax check. Not tested in game yet.
+
 ## 2026-11-18 (Quest fixes: Spiketooth's gladiators, Durotar)
 
 Merged to `main` with PR #87 on 2026-11-18. Confirmed in game 2026-11-18.
