@@ -889,6 +889,13 @@ This lowers it to 10 silver (9s 50c at Friendly):
 ```sh
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_14_50_battle_pet_training_cost.sql
 ```
+
+The Sack of Pet Supplies that 42 pet tamer quests give has no loot table in the dump, so it opens
+empty. This adds its contents:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_18_50_sack_of_pet_supplies_loot.sql
+```
 #### Legion and BFA pet tamers
 
 Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest
