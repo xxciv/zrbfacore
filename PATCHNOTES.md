@@ -42,6 +42,32 @@ Draft PR, not merged yet. Not tested in game yet.
 
   Then restart worldserver.
 
+### Core: the caravan kodo stops as soon as a raider attacks (13949)
+
+- **Found** (Four, 2026-11-18, after the SQL above): the raiders now appear, but the kodo stops the
+  moment one comes out of stealth to attack.
+- **Cause:** threat on a vehicle's rider goes to the vehicle (`ThreatManager::AddThreat`), so the
+  Lead Caravan Kodo 34430 enters combat when a raider attacks you, even though it cannot be attacked
+  itself. `SmartAI::JustEngagedWith` then cancelled its point movement, and a passive creature in
+  combat never picks its path up again. If the fight ended, `EnterEvadeMode` sent it walking back to
+  where its path started.
+- **Changed:** `tools/bfa/smartai-passive-escort.patch` (new, after `lost-isles-zapnozzle.patch`),
+  `SmartAI.cpp` only: a passive creature on a SmartAI waypoint path keeps its movement when it enters
+  combat, and when it evades it carries on to its current waypoint instead of returning. Aggressive
+  escorts behave as before. Guide chain + description updated.
+- **Status:** compiles; not tested in game.
+- **Pick up:** core rebuild (one file in the game library, so a short build), then the SQL above if
+  not run yet:
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/smartai-passive-escort.patch | git apply
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-18 (Quest fixes: Fizzled, Durotar)
 
 Draft PR, not merged yet. Not tested in game yet.

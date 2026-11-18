@@ -1,0 +1,40 @@
+diff --git a/src/server/game/AI/SmartScripts/SmartAI.cpp b/src/server/game/AI/SmartScripts/SmartAI.cpp
+index 1b110a1..a6d14d6 100644
+--- a/src/server/game/AI/SmartScripts/SmartAI.cpp
++++ b/src/server/game/AI/SmartScripts/SmartAI.cpp
+@@ -493,8 +493,19 @@ void SmartAI::EnterEvadeMode(EvadeReason /*why*/)
+     SetRun(mRun);
+     if (HasEscortState(SMART_ESCORT_ESCORTING))
+     {
+-        AddEscortState(SMART_ESCORT_RETURNING);
+-        ReturnToLastOOCPos();
++        // zrbfacore: a passive escort never left its path for the fight (see JustEngagedWith), so it
++        // just carries on to its current waypoint instead of walking back to where the path started.
++        if (me->HasReactState(REACT_PASSIVE))
++        {
++            me->ClearUnitState(UNIT_STATE_EVADE);
++            if (!HasEscortState(SMART_ESCORT_PAUSED))
++                ResumePath();
++        }
++        else
++        {
++            AddEscortState(SMART_ESCORT_RETURNING);
++            ReturnToLastOOCPos();
++        }
+     }
+     else if (Unit* target = !mFollowGuid.IsEmpty() ? ObjectAccessor::GetUnit(*me, mFollowGuid) : nullptr)
+     {
+@@ -617,6 +628,13 @@ void SmartAI::JustEngagedWith(Unit* enemy)
+ 
+     if (!IsAIControlled())
+         return;
++
++    // zrbfacore: a passive escort (e.g. a caravan kodo carrying the player) keeps walking its path
++    // when it is pulled into combat. Threat on a vehicle passenger goes to the vehicle, so without
++    // this the vehicle stopped dead as soon as anything attacked its rider.
++    if (HasEscortState(SMART_ESCORT_ESCORTING) && me->HasReactState(REACT_PASSIVE))
++        return;
++
+     mLastOOCPos = me->GetPosition();
+     SetRun(mRun);
+     if (me->GetMotionMaster()->GetMotionSlotType(MOTION_SLOT_ACTIVE) == POINT_MOTION_TYPE)
