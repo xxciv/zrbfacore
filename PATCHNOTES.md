@@ -7,6 +7,25 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time and reports what is off.
 
+### World: Brew of the Month Club sells one brew a month again
+
+- **Found** (Four, 2026-11-18: "Vendor sells all brews all year. They should be in a cycle i believe, 1 type per month?", Brew Vendor 89830 in Orgrimmar): 89830 sold all 12 brews (37488-37499) all year; TDB 8.3.7 gives it no wares of its own. The club events 34-45 ("Brew of the Month January" to "December") ended on 2020-12-31, so the monthly Brew Vendors 27806-27820 outside Orgrimmar and in Ironforge never appeared. Ironforge had only the February vendor, up all year.
+- **Changed** (`sql/fixes/world/2026_11_18_47_brew_of_the_month.sql`, run after `2026_11_18_46`):
+  - 89830 sells only the current month's brew (`game_event_npc_vendor`, one row per month).
+  - Events 34-45 run every year again until the end of 2030. Start dates moved to the first of each month this year (our own dates; the event repeats every 365 days, so from March 2028 each month starts one day early).
+  - Ironforge gets the other 11 monthly vendors at 8.3.7's spot (guids 735401187-735401197); the February one only shows in February.
+- Brew of the Year still takes a year: each brew is sold only in its month.
+- **Status:** untested in game.
+- **Pick up:** run `2026_11_18_46` first, then this SQL, restart `worldserver`.
+
+### World: holiday spawns appear in the right holiday
+
+- **Found** (while fixing the Brew of the Month Club): many holiday spawns were linked to the wrong game event compared with TDB 8.3.7. Pilgrim's Bounty (26) held Brewfest decorations, kegs, mugs and revelers, plus 39 Darkmoon Faire banners and 7 Stormwind Gypsy Wagons; its own feast tables, chairs, hostesses, pilgrims, pumpkins, haystacks and cooking fires were on Brew of the Month May (41). Isle of Conquest emissaries and banners were on Brew of the Month June (42), and the six Isle of Conquest Battlemasters only showed in June. Strand of the Ancients emissaries were on Edge of Madness, Wushoolay (30). The L70ETC band and stage were on Brew of the Month October (34). Smaller mix-ups: Midsummer banners in Winter Veil, Love is in the Air giants in Winter Veil, Lunar Festival fireworks in Midsummer, Hallow's End bonfires on an event that doesn't exist (46), Elder Clearwater of the Kalu'ak derby on Brew of the Month September, holiday commoners also on 32/40/41. Broken Isles Dalaran's Brewfest decorations had been put on Pilgrim's Bounty by `2026_11_16_31`.
+- **Changed** (`sql/fixes/world/2026_11_18_46_holiday_spawn_events.sql`): 3,439 spawns relinked. Each event-linked spawn was matched to the 8.3.7 spawn of the same entry within 2 yards and given that spawn's events. Without a match, a spawn moved only when all 8.3.7 spawns of its entry sit on one event and ours was one of the mixed-up events. Leftovers on the Brew of the Month events went with their set (Pilgrim's Bounty, L70ETC); the Isle of Conquest Battlemasters are always there, as in 8.3.7. Brewfest-named decorations on Pilgrim's Bounty went to Brewfest. Pilgrim's Bounty (starting next week) now shows its feast tables and no Brewfest decor.
+- **Not changed:** Darkmoon Faire spawns already on event 3 (Almanac's audit), every spawn an earlier fix set by hand (city and zone passes, love boats), critters and wild battle pets, Day of the Dead (8.3.7 puts its candles on an arena season event), spawns 8.3.7 doesn't have (such as the Orgrimmar signs and fires on 26), and all event dates.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Maplewood and Runestone Treasure Chests always hold loot again
 
 - **Found** (Four, 2026-11-18: "Is the Maplewood Treasure Chest on the top floor supposed to have any loot?", Tiragarde Keep): 11 treasure chest templates shared one loot table 207520 that TDB 8.3.7 doesn't have: 206 items rolled one by one at 0.1-2% each, so about 2 chests in 5 opened empty, and every chest drew from the same list whatever its level.
