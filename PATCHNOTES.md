@@ -7,6 +7,23 @@ to do to pick it up (rebuild, restart, run SQL).
 
 New client addon in `client/ZRProximity`. No server change: nothing to rebuild, no SQL, no restart.
 
+### ZRProximity 1.6: "look at it" removed (game blocks it)
+- **Reported** (Four, on 1.5): `/zrp look` printed "can't read its screen position (error:
+  Action[FrameMeasurement] failed because[Can't measure restricted regions]: attempted from:
+  <unnamed>:GetCenter().)" for every plate. On 8.3.7 nameplates, their `UnitFrame`, `healthBar` and `name`
+  are restricted regions, so no addon can tell which plate is in the middle of the screen.
+- **Decided** (Four): remove "look at it" entirely (offered instead: mouseover names that linger).
+- **Removed** from `client/ZRProximity/ZRProximity.lua`: screen measuring (`Measure`, `ScreenOffset`,
+  `LookScore`), the look reveal (`UpdateStare`, linger), `/zrp look` and its on-screen guide, and the
+  settings `stare`, `stareRadius`, `stareDelay`, `stareLinger`, `stareRange` (also cleared from saved
+  `ZRProximityDB`). `/zrp status` no longer mentions it.
+- **Removed** from `client/ZRProximity/Options.lua`: the look checkbox and its four sliders; "Fade time" and
+  the three checkboxes below moved up. Panel intro text updated.
+- **Changed:** `README.md` (addon and root), guide section and TOC notes no longer mention looking at units;
+  addon README explains why it isn't possible. `ZRProximity.toc` version 1.6.
+- **Confirmed in game** (Four, 2026-11-18, on 1.4/1.5): distances, mouseover, target, names on plates, far
+  units fully hidden. 1.6 only removes code; Lua 5.1 syntax check and stubbed smoke test pass.
+
 ### ZRProximity 1.5: look check measures the plate, its unit frame or its health bar
 - **Reported** (Four, on 1.4): plate names fixed and confirmed. `/zrp look` while facing a boar 10-15 yd away
   (`/zrp range`: 10=out, 15=in, so within 20 yd) printed "0 plates near the middle" although both boar plates

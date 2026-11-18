@@ -84,8 +84,8 @@ function ns.CreateOptions()
     sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
     sub:SetWidth(580)
     sub:SetJustifyH("LEFT")
-    sub:SetText("Nameplates stay hidden until a unit is close, targeted, under the mouse, fighting you, " ..
-        "or you look at it. Distances work in steps (3, 4, 5, 6, 8, 10, 15 ... 40 yards).")
+    sub:SetText("Nameplates stay hidden until a unit is close, targeted, under the mouse or fighting you. " ..
+        "Distances work in steps (3, 4, 5, 6, 8, 10, 15 ... 40 yards).")
 
     NewCheck(panel, "enabled", "Enable ZRProximity", "Off shows every nameplate normally.", 16, -64, true)
 
@@ -97,22 +97,16 @@ function ns.CreateOptions()
     NewCheck(panel, "showMouseover", "Show the unit under the mouse", nil, 320, -136)
     NewCheck(panel, "showCombat", "Show enemies fighting me", "Any unit that has you on its threat list.", 320, -162)
 
-    NewCheck(panel, "stare", "Show a name when I look at it",
-        "Shows the plate of the unit you face once it stays in the middle of the screen for the delay below (one unit at a time, within the \"Look works up to\" distance). /zrp look shows the area.", 16, -270)
-    NewSlider(panel, "stareDelay", "Look delay", 0, 3, 0.1, 24, -320, function(v) return ("%.1f s"):format(v) end)
-    NewSlider(panel, "stareLinger", "Stays visible after", 0, 10, 0.5, 24, -370, function(v) return ("%.1f s"):format(v) end)
-    NewSlider(panel, "stareRadius", "Look width", 20, 300, 10, 24, -420, function(v) return ("%d"):format(v) end)
-    NewSlider(panel, "fadeTime", "Fade time", 0, 1, 0.05, 320, -320, function(v) return ("%.2f s"):format(v) end)
-    NewSlider(panel, "stareRange", "Look works up to", 3, 40, 1, 320, -370, Yards(false))
+    NewSlider(panel, "fadeTime", "Fade time", 0, 1, 0.05, 24, -280, function(v) return ("%.2f s"):format(v) end)
 
     NewCheck(panel, "hideFloatingNames", "Hide the names above heads",
         "Turns off the game's floating unit names (and Interface > Names > NPC Names) so names only come " ..
         "from the nameplates this addon shows; it puts the names back on those plates itself. " ..
-        "Your old settings come back when you untick this.", 16, -470, true)
+        "Your old settings come back when you untick this.", 16, -330, true)
     NewCheck(panel, "hideFriendlyInInstances", "Hide friendly plates in dungeons and raids",
-        "Blizzard blocks addons from friendly plates inside instances, so there it is all or nothing.", 16, -496, true)
+        "Blizzard blocks addons from friendly plates inside instances, so there it is all or nothing.", 16, -356, true)
     NewCheck(panel, "clickThrough", "Click-through nameplates",
-        "Hidden plates can still be clicked. This makes all plates click-through (changes outside combat).", 16, -522, true)
+        "Hidden plates can still be clicked. This makes all plates click-through (changes outside combat).", 16, -382, true)
 
     panel.refresh = ns.RefreshOptions
     panel:SetScript("OnShow", ns.RefreshOptions)

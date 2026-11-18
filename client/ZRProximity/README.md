@@ -5,12 +5,12 @@ Cuts screen clutter by keeping Blizzard's nameplates hidden until they matter. A
 - the unit is your **target** or under the **mouse**,
 - the unit is **fighting you** (you are on its threat list),
 - the unit is within the **distance** set for its type: aggressive enemies (default 10 yd), neutral units
-  (5 yd) and friendly NPCs and players (4 yd),
-- you **look at it**: you face it with the camera so its plate stays in the middle of the screen for a short
-  delay (default 0.5 s). It then stays visible for a while after you look away (default 2 s). Only one unit
-  at a time, and only within 20 yards ("Look works up to").
+  (5 yd) and friendly NPCs and players (4 yd).
 
-Status: new, not tested in game yet.
+Shown plates always carry the unit's name, and units too far away to have a plate show nothing at all.
+
+Status: tested in game by Four on 2026-11-18 (distances, mouseover, target, names on plates, far units
+hidden).
 
 ## Install
 
@@ -20,13 +20,13 @@ or `/reload`.
 ## Settings
 
 `/zrp` opens **Interface > AddOns > ZRProximity**. There you set the three distances, the target, mouseover
-and combat toggles, the look delay, width and distance, and the fade time. You can also choose to:
+and combat toggles, and the fade time. You can also choose to:
 
 - **Hide the names above heads** (on by default). The game's floating unit names are one global setting, not
   per unit, so the addon switches them off and names come only from the nameplates. On 8.3.7 the plates'
   own names follow the same setting (with "NPC Names: None" a plate is only a health bar), so the addon puts
-  the name back on every plate itself (whether or not this box is ticked). Leave Interface > Names > NPC Names as the addon sets it: with
-  "All NPCs" the game draws a floating name over every unit too far away to have a plate. Unticking it, or
+  the name back on every plate itself (whether or not this box is ticked). Leave Interface > Names > NPC
+  Names as the addon sets it: with "All NPCs" the game draws a floating name over every unit too far away to have a plate. Unticking it, or
   `/zrp off`, puts your old settings back.
 - **Hide friendly plates in dungeons and raids** (on by default). Blizzard blocks addons from touching
   friendly nameplates inside instances, so there they can only be all on or all off. Enemy plates follow the
@@ -34,15 +34,14 @@ and combat toggles, the look delay, width and distance, and the fade time. You c
 - **Click-through nameplates** (off by default). Hidden plates can still be clicked. This makes every plate
   click-through, and it only changes outside combat.
 
-Commands: `/zrp on`, `/zrp off`, `/zrp status`, `/zrp range`, `/zrp look`, `/zrp names`, `/zrp reset`.
+Commands: `/zrp on`, `/zrp off`, `/zrp status`, `/zrp range`, `/zrp names`, `/zrp reset`.
 
-## How "look at" works
+## Why there is no "look at it"
 
-Your own character stands in the middle of the screen, so a unit you face has its plate a bit above the
-centre, and higher (toward the horizon) the farther away it is. The look area is therefore a column up the
-middle of the screen, "Look width" UI units to each side. The plate nearest the middle of that column, of a
-unit within "Look works up to" yards, is the one you are looking at. `/zrp look` shows the column for 10
-seconds and prints where the nearby plates sit, which helps if the width needs changing.
+The first versions could also show a unit's name when you faced it (its plate near the middle of the
+screen). On 8.3.7 nameplates are restricted regions: the game refuses to tell an addon where a plate is on
+screen ("Can't measure restricted regions"), so that feature was removed in 1.6. The mouse is the pointer to
+use instead.
 
 ## How distance works
 
