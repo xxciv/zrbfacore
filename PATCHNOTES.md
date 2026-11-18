@@ -3,7 +3,6 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-<<<<<<< HEAD
 ## 2026-11-18 (Quest fixes: Loss Reduction, Durotar)
 
 Merged to `main` with PR #81 on 2026-11-18, together with the Kezan fixes. Confirmed in game by Four on 2026-11-18.
@@ -201,7 +200,6 @@ Merged to `main` with PR #81 on 2026-11-18. All items below confirmed in game by
   ```
 
   Then restart worldserver.
-=======
 ## 2026-11-18 (Addon fixes: FishingBuddy options tabs)
 
 Client addon only, in `client/FishingBuddy`. No server change: nothing to rebuild, no SQL, no restart.
@@ -228,7 +226,6 @@ Client addon only, in `client/FishingBuddy`. No server change: nothing to rebuil
   - `FishingBuddy.toc`: version `1.10.10-zr2`.
 - **Status:** confirmed in game by Four on 2026-11-18 (1.10.10-zr2: tabs stay filled, no errors).
 
->>>>>>> origin/main
 ## 2026-11-17 (World fixes: second-tier zones review)
 
 Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
