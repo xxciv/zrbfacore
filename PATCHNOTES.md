@@ -7,6 +7,15 @@ to do to pick it up (rebuild, restart, run SQL).
 
 New client addon in `client/ZRProximity`. No server change: nothing to rebuild, no SQL, no restart.
 
+### ZRProximity 1.4: plate names no longer depend on "Hide the names above heads"
+- **Reported** (Four, on 1.3, `/zrp names`): "name hook installed, called 7 times, names put back 0 times.
+  Hide names above heads: off." The boars' plate names were hidden with text `nil`.
+- **Cause:** `PlateName` only ran while `hideFloatingNames` was ticked. Four had unticked it and set the
+  game's NPC Names to "None" by hand, so Blizzard hid the plate names and the addon left them hidden.
+- **Changed:** `client/ZRProximity/ZRProximity.lua`: `PlateName` now runs whenever the addon is on. README
+  says so; `ZRProximity.toc` version 1.4.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test. Not tested in game yet.
+
 ### ZRProximity 1.3: names re-checked every tick, `/zrp names`
 - **Reported** (Four, on 1.2): far NPCs now fully hidden (fixed), but boars within range or under the mouse
   still show a health bar without a name (NPC Names: None).

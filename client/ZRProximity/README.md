@@ -25,7 +25,7 @@ and combat toggles, the look delay, width and distance, and the fade time. You c
 - **Hide the names above heads** (on by default). The game's floating unit names are one global setting, not
   per unit, so the addon switches them off and names come only from the nameplates. On 8.3.7 the plates'
   own names follow the same setting (with "NPC Names: None" a plate is only a health bar), so the addon puts
-  the name back on every plate itself. Leave Interface > Names > NPC Names as the addon sets it: with
+  the name back on every plate itself (whether or not this box is ticked). Leave Interface > Names > NPC Names as the addon sets it: with
   "All NPCs" the game draws a floating name over every unit too far away to have a plate. Unticking it, or
   `/zrp off`, puts your old settings back.
 - **Hide friendly plates in dungeons and raids** (on by default). Blizzard blocks addons from touching

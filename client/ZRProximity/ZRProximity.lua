@@ -194,10 +194,12 @@ end
 -- UnitShouldDisplayName says so, and that follows the same "NPC Names" / floating-name CVars
 -- as the names above heads. With those off (hideFloatingNames) the plates showed only a bare
 -- health bar, and with them on the game drew floating names for every unit too far away to
--- have a plate. So the CVars stay off and we put the name back on the plates ourselves.
+-- have a plate. So the CVars stay off and we put the name back on the plates ourselves. This
+-- runs whenever the addon is on, even with hideFloatingNames unticked, because the game's
+-- NPC Names option may be on "None" anyway.
 local nameStats = { hooked = 0, shown = 0 }
 local function PlateName(frame)
-    if not db or not db.enabled or not db.hideFloatingNames then return end
+    if not db or not db.enabled then return end
     if not frame or (frame.IsForbidden and frame:IsForbidden()) then return end
     local unit, name = frame.unit, frame.name
     if not name or type(unit) ~= "string" or not unit:match("^nameplate%d") then return end
