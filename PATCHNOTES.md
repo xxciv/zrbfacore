@@ -7,6 +7,20 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
 
+### World: Darkshore, Shatterspear Vale alive for its quest, then the 8.3.7 aftermath
+
+- **Found** (Four, 2026-11-18, screenshots of the troll village: grey trolls walking that should be dead, Champions in battle stances or wandering, a crowd of trolls standing in the middle, some standing in the water): in 8.3.7 every Shatterspear Champion 32858 and Raider 33071 lies dead (same template flags as the pass). But The Ancients' Ire (13514, Kerlonian Evershade: kill 30 Shatterspear Champions, burn 6 huts) needs living Champions. Raider 33071 is immune to everyone and no quest uses it. The 18 Shatterspear Trolls 10919 and 3 Shatterspear Drummers 11196 in the middle of the village are classic residents that 8.3.7 doesn't have. Champions, Priestesses, Raiders and hut fire bunnies had the dump's wander (`2026_11_17_43` had restored it on them as "fighters", but they are immune and never fight).
+- **Changed** (`sql/fixes/world/2026_11_18_30_shatterspear_vale_phases.sql`, phasing is our own, the aftermath layout is 8.3.7's):
+  - The 21 classic trolls and drummers removed.
+  - Shatterspear Raider 33071 template takes the 8.3.7 flags (lies dead, stunned, immune): `unit_flags` 537166592, `unit_flags2` 2049, `unit_flags3` 8192; all 34 stand still, no emote.
+  - The 29 living Champions move to phase 308 and stand still; the 7 already lying dead (aura 29266) stay in every phase.
+  - 41 dead Champions at the 8.3.7 spots in phase 310 (spawn flags dead, stunned, immune; the template stays alive). Guids 735401069-735401109.
+  - Phase 308 shows in Darkshore until The Ancients' Ire is turned in, phase 310 after (`phase_area` 148 + `conditions` type 26, quest rewarded / not rewarded). Both are free normal phases in Phase.db2.
+  - Priestesses and hut fire bunnies stand still (8.3.7).
+- **Not changed:** the dancing Champions and Priestesses (emote 10 in our data; 8.3.7 has no living trolls to compare); the Shatterspear Laborers at the war camp (quest 13504 needs them alive).
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`, delete the client's `Cache` folder (Raider template changed).
+
 ### World: staged battle pairs that stand still start fighting
 
 - **Found** (Four, 2026-11-18, Westfall "a lot better"): Sentinel Hill Guard 735401039 and Riverpaw Brute 735401030 (both added by `2026_11_17_44` at 8.3.7 spots) stand 3 yards apart and never fight. Creatures only notice each other when one of them moves, so a pair where both stand still never starts. With the flagged battle creatures, 8 such still pairs at Sentinel Hill, 16 Talrendis Raiders at the Orgrimmar gate in Azshara and 6 pairs in the Ruins of Gilneas.
