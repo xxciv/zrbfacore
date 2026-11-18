@@ -27,3 +27,7 @@ INSERT INTO `smart_scripts` (`entryorguid`,`source_type`,`id`,`link`,`event_type
 
 -- Objective text (was NULL, so the log read "Drowned Thunder Lizard slain").
 UPDATE `quest_objectives` SET `Description`='Drowned Thunder Lizard removed' WHERE `ID`=265482;
+
+-- They stood around alive; lie them down dead (stand state 7, as other clickable corpses use).
+INSERT INTO `creature_template_addon` (`entry`,`bytes1`) VALUES (39464,7)
+ON DUPLICATE KEY UPDATE `bytes1`=7;

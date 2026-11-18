@@ -48,8 +48,9 @@ Draft PR, not merged yet. Not tested in game yet.
   id 2 removes the click flag on click (one credit per lizard, it already despawns after 5 s);
   laborer 39465 SAI despawns it 8 s after it is summoned (the summon has no duration); the 7
   lizard spawns respawn in 60 s instead of 300 s (8 are needed); objective 265482 text "Drowned Thunder Lizard removed" (was empty, so it read
-  "slain").
-- **Status:** not tested in game.
+  "slain"); `creature_template_addon` 39464 `bytes1` 7 so the lizards lie dead (they stood
+  around in full health).
+- **Status:** credit confirmed in game 2026-11-18; lying dead not tested yet.
 - **Pick up:** SQL only:
 
   ```
