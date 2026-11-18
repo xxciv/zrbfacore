@@ -3,6 +3,38 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-18 (Quest fixes: The Wolf and The Kodo, Durotar)
+
+Draft PR, not merged yet. Not tested in game yet.
+
+### DB: Shin Stonepillar has no gossip (25205)
+
+- **Found** (Four, 2026-11-18): the quest says to hear Shin Stonepillar's story, but right-clicking
+  him does nothing.
+- **Cause:** `creature_template.gossip_menu_id` of Shin Stonepillar 39380 was 0. His fable option
+  already exists (menu 11209, "Can you tell me your fable, Shin?") and his SAI already casts Summon
+  The Wolf 73840 when it is picked (you ride The Wolf 39364, a vehicle, to the kodos 39365, which
+  act out the fable and give the credit). The menu was simply never attached, and it had no
+  `gossip_menu` text row.
+- **Changed:** `sql/fixes/world/2026_11_18_71_wolf_and_the_kodo.sql`: 39380 `gossip_menu_id`
+  0 -> 11209; `gossip_menu` (11209, text 15612, the unused text between the neighbouring menus
+  11206 and 11211 of this quest batch); SAI 39380 also closes the window before the wolf is
+  summoned; condition so the option only shows while 25205 is in progress; objective text
+  "Listen to the shaman's fable" (was "The Kodo slain").
+- **Status:** not tested in game. The greeting text 15612 is matched by id order, not by a sniff;
+  if Shin shows an odd greeting, tell Herald.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_71_wolf_and_the_kodo.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver and delete the client `Cache` folder (objective text).
+
 ## 2026-11-18 (Addon fixes: new ZRProximity addon)
 
 New client addon in `client/ZRProximity`. No server change: nothing to rebuild, no SQL, no restart.
