@@ -7,6 +7,15 @@ to do to pick it up (rebuild, restart, run SQL).
 
 New client addon in `client/ZRProximity`. No server change: nothing to rebuild, no SQL, no restart.
 
+### ZRProximity 1.3: names re-checked every tick, `/zrp names`
+- **Reported** (Four, on 1.2): far NPCs now fully hidden (fixed), but boars within range or under the mouse
+  still show a health bar without a name (NPC Names: None).
+- **Changed:** `client/ZRProximity/ZRProximity.lua`: `PlateName` also runs every 0.1 s tick for each plate the
+  addon wants shown, in case Blizzard hides the name somewhere the `CompactUnitFrame_UpdateName` hook doesn't
+  see. New `/zrp names` prints whether the hook is installed, how often it ran and put a name back, and for up
+  to 6 plates the name's shown/visible state, text, alpha, font size and unit. `ZRProximity.toc` version 1.3.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test. Not tested in game yet.
+
 ### ZRProximity 1.2: names on plates, far floating names gone
 - **Reported** (Four, on 1.1, with screenshots): with Interface > Names > NPC Names on "None" (what the addon
   sets), plates that show have a health bar but no name, unless targeted. With "All NPCs" the names come

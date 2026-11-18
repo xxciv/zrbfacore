@@ -195,6 +195,7 @@ end
 -- as the names above heads. With those off (hideFloatingNames) the plates showed only a bare
 -- health bar, and with them on the game drew floating names for every unit too far away to
 -- have a plate. So the CVars stay off and we put the name back on the plates ourselves.
+local nameStats = { hooked = 0, shown = 0 }
 local function PlateName(frame)
     if not db or not db.enabled or not db.hideFloatingNames then return end
     if not frame or (frame.IsForbidden and frame:IsForbidden()) then return end
@@ -208,10 +209,37 @@ local function PlateName(frame)
         name:SetVertexColor(UnitSelectionColor(unit, true))
     end
     name:Show()
+    nameStats.shown = nameStats.shown + 1
 end
 ns.PlateName = PlateName
 if CompactUnitFrame_UpdateName then
-    hooksecurefunc("CompactUnitFrame_UpdateName", PlateName)
+    hooksecurefunc("CompactUnitFrame_UpdateName", function(frame)
+        nameStats.hooked = nameStats.hooked + 1
+        PlateName(frame)
+    end)
+end
+
+-- /zrp names: what each plate's name looks like right now (for when names go missing).
+function ns.NameDebug()
+    Print(("name hook %s, called %d times, names put back %d times. Hide names above heads: %s."):format(
+        CompactUnitFrame_UpdateName and "installed" or "MISSING", nameStats.hooked, nameStats.shown,
+        db.hideFloatingNames and "on" or "off"))
+    local n = 0
+    for unit, st in pairs(plates) do
+        if n >= 6 then break end
+        n = n + 1
+        local f, name = st.frame, st.frame.name
+        if not name then
+            Print(("%s %s: plate has no name field (%s)."):format(unit, UnitName(unit) or "?",
+                tostring(f:GetName())))
+        else
+            local font, size = name:GetFont()
+            Print(("%s %s: shown %s, visible %s, text '%s', alpha %.2f, plate alpha %.2f, size %s, unit %s."):format(
+                unit, UnitName(unit) or "?", tostring(name:IsShown()), tostring(name:IsVisible()),
+                tostring(name:GetText()), name:GetAlpha(), f:GetAlpha(), tostring(size), tostring(f.unit)))
+        end
+    end
+    if n == 0 then Print("no plates tracked right now; stand near some units.") end
 end
 
 local function AddPlate(unit)
@@ -255,6 +283,8 @@ driver:SetScript("OnUpdate", function(_, elapsed)
         UpdateStare(now, sinceTick)
         for unit, st in pairs(plates) do
             st.want = Wanted(unit, st, now)
+            -- Also catches names hidden by Blizzard code that doesn't go through the hook.
+            if st.want > 0 then PlateName(st.frame) end
         end
         sinceTick = 0
     end
@@ -351,6 +381,8 @@ SlashCmdList.ZRPROXIMITY = function(msg)
         ns.PrintRangeDebug()
     elseif msg == "look" then
         ns.LookDebug()
+    elseif msg == "names" then
+        ns.NameDebug()
     elseif msg == "status" then
         local n = 0
         for _ in pairs(plates) do n = n + 1 end
@@ -370,6 +402,6 @@ SlashCmdList.ZRPROXIMITY = function(msg)
         Print("settings reset to defaults.")
     else
         if ns.OpenOptions then ns.OpenOptions() end
-        Print("/zrp on | off | status | range | look | reset")
+        Print("/zrp on | off | status | range | look | names | reset")
     end
 end

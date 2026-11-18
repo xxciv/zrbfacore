@@ -34,7 +34,7 @@ and combat toggles, the look delay, width and distance, and the fade time. You c
 - **Click-through nameplates** (off by default). Hidden plates can still be clicked. This makes every plate
   click-through, and it only changes outside combat.
 
-Commands: `/zrp on`, `/zrp off`, `/zrp status`, `/zrp range`, `/zrp look`, `/zrp reset`.
+Commands: `/zrp on`, `/zrp off`, `/zrp status`, `/zrp range`, `/zrp look`, `/zrp names`, `/zrp reset`.
 
 ## How "look at" works
 
