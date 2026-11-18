@@ -7,6 +7,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
 
+### World: Ruins of Gilneas, the Forward Command battle at the 8.3.7 numbers, no floating catapult crews
+
+- **Found** (Four, 2026-11-18, two screenshots in the battle phase: Worgen Rushers piled up in one spot on the Vanguards and on a catapult; undead stacked on top of others that can't be selected): the battle set still had our dump's numbers. There were 110 Worgen Rushers 45375 where 8.3.7 has 46, and 55 Worgen Rebels 45292 where 8.3.7 has 30. The first review skipped them because 8.3.7 keeps them in a quest phase. With the fight starters from `2026_11_17_46`, every Rusher within 8 yards ran to the same Vanguard or catapult. The unselectable undead are Forsaken Blightspreaders 45374 (battle) and 51192 (overrun camp): not selectable, standing 2 yards up on top of the Forsaken Catapults, where a passenger would sit. 8.3.7 has no Blightspreaders and no catapult passengers.
+- **Changed** (`sql/fixes/world/2026_11_18_32_ruins_of_gilneas_battle_counts.sql`), 1:1 with 8.3.7 phase 274. Each 8.3.7 spawn keeps its nearest match within 12 yards, moved to the 8.3.7 spot with the 8.3.7 wander; the rest of ours are removed, and 8.3.7 spots with no match are added (guids 735401110-735401146):
+  - Worgen Rusher 45375: 43 kept, 67 removed, 3 added, all standing still. In 8.3.7 they stand in packs 25+ yards from the nearest Vanguard, so the fight starter no longer pulls them in.
+  - Worgen Rebel 45292: 19 kept, 36 removed, 11 added (wander 10).
+  - Forsaken Vanguard 45280: 79 kept, 19 removed, 23 added. The 35 at Tempest's Reach are not in the battle phase and stay.
+  - All 13 + 12 Blightspreaders removed.
+  - Catapults 45282 and Sharpshooters 45376 stand still (8.3.7; dump wander 3).
+- **Not changed:** the overrun camp's numbers (8.3.7 has no overrun camp to compare with).
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Ruins of Gilneas, the Forward Command battle until What Tomorrow Brings, the overrun camp after
 
 - **Found** (Four, 2026-11-18, screenshots: "I'm not even sure if the player ever visits this? Or is it a fly over battle"): players do visit it; it is the end of the Horde Silverpine story (To Forsaken Forward Command, Losing Ground, Break in Communications, Vengeance for Our Soldiers, What Tomorrow Brings, Fall Back!, A Man Named Godfrey, Resistance is Futile, The Great Escape). Our dump has two full copies of Forsaken Forward Command standing on the exact same spots: the battle (Forsaken Vanguard 45280, Worgen Rusher 45375, Worgen Rebel 45292, Catapults 45282, Blightspreaders 45374, Sharpshooters 45376, Onslaught 45315, Belmont, Arthura, Deathstalkers, Angelus, Doomair, Korok 45301) and the overrun camp (Forsaken Vanguard 45532, 14 of them dead, Worgen Rusher 45535, Catapults 45533, Blightspreaders 51192, 7th Legion Submariners 45539 marching in rows, Onslaught 45534, Korok 46657). Both showed at once. 8.3.7 has only the battle set, all in phase 274. The quest text matches the second set: What Tomorrow Brings (27401) ends with the Alliance fleet landing, and Fall Back! starts on its own because "the worgen have overrun Forsaken Forward Command". Two Belmonts also stood side by side at the Forward Command. Lorna Crowley 46027 and Lord Walden 46029 at the Silverpine edge are copies of Sylvanas's Forsaken Front scene summons.
