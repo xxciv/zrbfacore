@@ -7,6 +7,15 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
 
+### World: Ruins of Gilneas, worgen back inside the Forward Command
+
+- **Found** (Four, 2026-11-18, after `2026_11_18_32`: "unfortunately, i think that got rid of all the worgen"; the Forsaken themselves look right now): in 8.3.7 all 46 Worgen Rushers stand in one pack northwest of the camp (around -1290, 1775), with none inside the Forward Command, so the camp went quiet.
+- **Changed** (`sql/fixes/world/2026_11_18_33_ruins_of_gilneas_rushers_inside.sql`; our own tuning, not 8.3.7):
+  - 11 Rushers are back on the dump spots that stood next to a defender. Each is within 5 yards of its own Forsaken Vanguard, Catapult or Sharpshooter (one Rusher per defender), faces it and stands still. Guids 735401147-735401157. The dump's other Rushers were piled on the same few defenders and stay removed.
+  - The Rusher fight starter (`smart_scripts` 45375 ids 10 and 11) now looks only 5 yards out instead of 8, so each Rusher fights its own defender. New id 12 makes Rushers attack Sharpshooters 45376 too.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Ruins of Gilneas, the Forward Command battle at the 8.3.7 numbers, no floating catapult crews
 
 - **Found** (Four, 2026-11-18, two screenshots in the battle phase: Worgen Rushers piled up in one spot on the Vanguards and on a catapult; undead stacked on top of others that can't be selected): the battle set still had our dump's numbers. There were 110 Worgen Rushers 45375 where 8.3.7 has 46, and 55 Worgen Rebels 45292 where 8.3.7 has 30. The first review skipped them because 8.3.7 keeps them in a quest phase. With the fight starters from `2026_11_17_46`, every Rusher within 8 yards ran to the same Vanguard or catapult. The unselectable undead are Forsaken Blightspreaders 45374 (battle) and 51192 (overrun camp): not selectable, standing 2 yards up on top of the Forsaken Catapults, where a passenger would sit. 8.3.7 has no Blightspreaders and no catapult passengers.
