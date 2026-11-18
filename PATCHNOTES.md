@@ -3,6 +3,96 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-18 (Quest fixes: Durotar, The Wolf and The Kodo + Thunder Down Under)
+
+Merged to `main` with PR #85 on 2026-11-18. All confirmed in game 2026-11-18.
+
+### DB: Shin Stonepillar has no gossip (25205)
+
+- **Found** (Four, 2026-11-18): the quest says to hear Shin Stonepillar's story, but right-clicking
+  him does nothing.
+- **Cause:** `creature_template.gossip_menu_id` of Shin Stonepillar 39380 was 0. His fable option
+  already exists (menu 11209, "Can you tell me your fable, Shin?") and his SAI already casts Summon
+  The Wolf 73840 when it is picked (you ride The Wolf 39364, a vehicle, to the kodos 39365, which
+  act out the fable and give the credit). The menu was simply never attached, and it had no
+  `gossip_menu` text row.
+- **Changed:** `sql/fixes/world/2026_11_18_71_wolf_and_the_kodo.sql`: 39380 `gossip_menu_id`
+  0 -> 11209; `gossip_menu` (11209, text 15612, the unused text between the neighbouring menus
+  11206 and 11211 of this quest batch); SAI 39380 also closes the window before the wolf is
+  summoned; condition so the option only shows while 25205 is in progress; objective text
+  "Listen to the shaman's fable" (was "The Kodo slain").
+- **Status:** confirmed in game 2026-11-18 (option shows, wolf is summoned). The greeting text 15612 is matched by id order, not by a sniff;
+  if Shin shows an odd greeting, tell Herald.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_71_wolf_and_the_kodo.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver and delete the client `Cache` folder (objective text).
+
+### DB: Drowned Thunder Lizards give no credit (Thunder Down Under 25236)
+
+- **Found** (Four, 2026-11-18): "0/8 Drowned Thunder Lizard Slain". The lizards show the
+  "operate" cursor, but clicking them gives no credit.
+- **Cause:** the quest is to attach a Mageweave Tether to 8 Drowned Thunder Lizards 39464 (they
+  are not killed). Their spellclick cast 80948 "Razgar's Fillet Knife", an unrelated spell (dummy
+  + create item 58958). The real spell is 73945 "Attach Tether": kill credit 39464 to the clicker
+  and summons a Hulking Orcish Laborer 39465 to haul the carcass out.
+- **Changed:** `sql/fixes/world/2026_11_18_73_thunder_down_under.sql`: `npc_spellclick_spells`
+  39464 80948 -> 73945; spellclick condition (18, 39464, 73945) quest 25236 in progress; SAI 39464
+  id 2 removes the click flag on click (one credit per lizard, it already despawns after 5 s);
+  laborer 39465 SAI despawns it 8 s after it is summoned (the summon has no duration); the 7
+  lizard spawns respawn in 60 s instead of 300 s (8 are needed); objective 265482 text "Drowned Thunder Lizard removed" (was empty, so it read
+  "slain"); `creature_template_addon` 39464 `bytes1` 7 so the lizards lie dead (they stood
+  around in full health).
+- **Status:** confirmed in game 2026-11-18.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_73_thunder_down_under.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver and delete the client `Cache` folder (objective text).
+
+### DB: the fable never plays out at the kodos (25205)
+
+- **Found** (Four, 2026-11-18): after Shin turns you into The Wolf, nothing happens; running over
+  to the kodos (two friendly ones per spot) does nothing and they cannot be killed.
+- **Cause:** the kodos are not meant to be killed; the credit "The Kodo" comes from a script when
+  The Wolf reaches them. That script (The Kodo 39365) started with event 79, which in this core is
+  SCENE_TRIGGER (distance-to-creature is event 75), so it never fired. The Wolf 39364 and The Kodo
+  had no `creature_text` at all, so the whole story chain (each line starts the next) had nothing
+  to say. The old script also ran on all six kodos and made a sniffed guid (146730816) play dead
+  that does not exist here.
+- **Changed:** `sql/fixes/world/2026_11_18_72_wolf_and_the_kodo_story.sql`: 13 `creature_text`
+  rows (9 for The Wolf, said one by one as you ride; 4 for The Kodo), the in-game fable lines,
+  shown as on-screen emotes. Entry SAI of 39365 deleted; per-spawn SAI on one kodo of each pair
+  (303086, 303091, 303093): when The Wolf is within 15 yd it tells the ending, its partner
+  (303087, 303092, 303094) plays dead (29266), then the rider gets the 39365 credit, is
+  teleported back to Shin Stonepillar (1289.54, -4337.85, 34.03) and The Wolf despawns. The
+  trigger rests 60 s after each run.
+- **Status:** confirmed in game 2026-11-18 (fable plays, credit, back at Shin).
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_72_wolf_and_the_kodo_story.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-18 (pet battles)
 
 ### Pet battles: Sack of Pet Supplies opens empty
