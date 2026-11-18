@@ -7,6 +7,28 @@ to do to pick it up (rebuild, restart, run SQL).
 
 New client addon in `client/ZRProximity`. No server change: nothing to rebuild, no SQL, no restart.
 
+### ZRProximity 1.1: "look at" fixed (far units showing, near units not showing)
+- **Reported** (Four, on 1.0): units farther out showed until you got close, then followed the rules; and
+  "look at" didn't really work. Mouseover and the distances worked.
+- **Cause:** the look check was a circle of 80 UI units around the exact screen centre, with no distance
+  limit. With the third-person camera your own character sits in the centre, so a unit you face has its
+  plate above the centre (roughly 90-130 UI units up a few yards away, higher toward the horizon the farther
+  it is). Nearby units you faced were outside the circle, while far-away plates near the horizon fell inside
+  it (camera level or tilted up) and every one of them was revealed.
+- **Changed:** `client/ZRProximity/ZRProximity.lua`
+  - The look area is now a column up the middle of the screen: `stareRadius` (80) UI units each side of the
+    middle, from `stareRadius` below the centre up to 40% of the screen height above it (`LookScore`).
+  - Only one plate at a time can be looked at: the one nearest the middle of that column (sideways offset
+    counts fully, height a fifth).
+  - New setting `stareRange` (20 yd): only units within that distance can be revealed by looking.
+  - New `/zrp look`: shows the look column on screen for 10 s and prints, for each plate near the middle,
+    how far it sits across and up, whether it is in the look area and whether it is within `stareRange`.
+- **Changed:** `client/ZRProximity/Options.lua`: new slider "Look works up to" (3-40 yd), "Look area" renamed
+  "Look width". `ZRProximity.toc` version 1.1, `README.md` updated.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test: a 30 yd unit dead centre stays hidden; a
+  12 yd unit faced with its plate 110 UI units above the centre shows after 1 s, stays 2 s after looking
+  away, then hides; distance, `/zrp off` and the name CVars behave as in 1.0. Not tested in game yet.
+
 ### ZRProximity 1.0: nameplates by distance, target, mouseover and look
 - **Asked** (Four): hide names and nameplates by default; show a plate when it's your target, when aggressive
   enemies get within about 10 m, and when neutral or friendly units get within a distance the player chooses

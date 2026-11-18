@@ -6,8 +6,9 @@ Cuts screen clutter by keeping Blizzard's nameplates hidden until they matter. A
 - the unit is **fighting you** (you are on its threat list),
 - the unit is within the **distance** set for its type: aggressive enemies (default 10 yd), neutral units
   (5 yd) and friendly NPCs and players (4 yd),
-- you **look at it**: its plate stays near the centre of the screen for a short delay (default 0.5 s). It
-  then stays visible for a while after you look away (default 2 s).
+- you **look at it**: you face it with the camera so its plate stays in the middle of the screen for a short
+  delay (default 0.5 s). It then stays visible for a while after you look away (default 2 s). Only one unit
+  at a time, and only within 20 yards ("Look works up to").
 
 Status: new, not tested in game yet.
 
@@ -19,7 +20,7 @@ or `/reload`.
 ## Settings
 
 `/zrp` opens **Interface > AddOns > ZRProximity**. There you set the three distances, the target, mouseover
-and combat toggles, the look delay and area, and the fade time. You can also choose to:
+and combat toggles, the look delay, width and distance, and the fade time. You can also choose to:
 
 - **Hide the names above heads** (on by default). The game's floating unit names are one global setting, not
   per unit, so the addon switches them off and names come only from the nameplates. Unticking it, or
@@ -30,7 +31,15 @@ and combat toggles, the look delay and area, and the fade time. You can also cho
 - **Click-through nameplates** (off by default). Hidden plates can still be clicked. This makes every plate
   click-through, and it only changes outside combat.
 
-Commands: `/zrp on`, `/zrp off`, `/zrp status`, `/zrp range`, `/zrp reset`.
+Commands: `/zrp on`, `/zrp off`, `/zrp status`, `/zrp range`, `/zrp look`, `/zrp reset`.
+
+## How "look at" works
+
+Your own character stands in the middle of the screen, so a unit you face has its plate a bit above the
+centre, and higher (toward the horizon) the farther away it is. The look area is therefore a column up the
+middle of the screen, "Look width" UI units to each side. The plate nearest the middle of that column, of a
+unit within "Look works up to" yards, is the one you are looking at. `/zrp look` shows the column for 10
+seconds and prints where the nearby plates sit, which helps if the width needs changing.
 
 ## How distance works
 

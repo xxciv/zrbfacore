@@ -767,7 +767,7 @@ are known, whatever the server allows, and its Professions tab only shows 2. The
 
 [ZRProximity](../client/ZRProximity/README.md) keeps Blizzard's nameplates hidden until a unit is close
 (separate distances for aggressive, neutral and friendly units), targeted, under the mouse, fighting you, or
-near the centre of the screen for a moment. Copy `client/ZRProximity` into `_retail_/Interface/AddOns/`;
+looked at (faced with the camera for a moment, within 20 yards by default). Copy `client/ZRProximity` into `_retail_/Interface/AddOns/`;
 `/zrp` opens its settings. Not tested in game yet.
 
 ### Patched third-party addons

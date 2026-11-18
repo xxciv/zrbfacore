@@ -3,7 +3,7 @@
 --   * it is your target or under the mouse,
 --   * the unit is fighting you,
 --   * the unit is within the distance set for its type (hostile / neutral / friendly),
---   * you "stare" at it: its plate stays near the centre of the screen for a moment.
+--   * you look at it: its plate stays in the middle of the screen for a moment.
 -- Visibility is done with SetAlpha on each plate's UnitFrame, which addons may do in combat.
 local ADDON, ns = ...
 
@@ -16,9 +16,10 @@ local DEFAULTS = {
     showMouseover = true,
     showCombat = true,      -- enemies that have you on their threat list
     stare = true,
-    stareRadius = 80,       -- UI units around the screen centre
+    stareRadius = 80,       -- UI units each side of the screen's middle (the look column)
     stareDelay = 0.5,       -- seconds the plate must stay there
     stareLinger = 2.0,      -- seconds it stays visible after you look away
+    stareRange = 20,        -- yards: only units this close can be revealed by looking at them
     fadeTime = 0.25,
     hideFriendlyInInstances = true, -- Blizzard blocks addons from friendly plates in dungeons/raids
     hideFloatingNames = true,       -- the names above heads (one global setting, not per unit)
@@ -128,15 +129,25 @@ local function RangeFor(kind)
     return db.friendlyRange
 end
 
--- Screen-centre check for the "stare" reveal. Returns nil if the plate can't be measured.
-local function NearScreenCentre(plate)
+-- Where the plate sits relative to the screen centre, in UIParent units (dx right, dy up).
+-- nil if it can't be measured.
+local function ScreenOffset(plate)
     local ok, x, y = pcall(plate.GetCenter, plate)
     if not ok or not x then return nil end
     local s = plate:GetEffectiveScale() / UIParent:GetEffectiveScale()
-    x, y = x * s, y * s
-    local cx, cy = UIParent:GetWidth() / 2, UIParent:GetHeight() / 2
-    local dx, dy = x - cx, y - cy
-    return (dx * dx + dy * dy) <= (db.stareRadius * db.stareRadius)
+    return x * s - UIParent:GetWidth() / 2, y * s - UIParent:GetHeight() / 2
+end
+
+-- The "look" area is a column up the middle of the screen, not a circle on the centre.
+-- With the third-person camera your own character sits in the centre, so a unit you face
+-- has its plate ABOVE the centre: a few yards away it is roughly 90-130 UI units up, and
+-- the farther away it is the closer it gets to the horizon. What tells you are facing it
+-- is the sideways offset, so the column is stareRadius wide on each side, starts a little
+-- below the centre and reaches 40% of the screen height above it.
+local function LookScore(dx, dy)
+    if math.abs(dx) > db.stareRadius then return nil end
+    if dy < -db.stareRadius or dy > UIParent:GetHeight() * 0.4 then return nil end
+    return math.abs(dx) + math.abs(dy) * 0.2
 end
 
 local function Wanted(unit, st, now)
@@ -150,19 +161,29 @@ local function Wanted(unit, st, now)
     return 0
 end
 
-local function UpdateStare(st, now, elapsed)
-    if not db.stare then
-        st.stareTime = 0
-        return
-    end
-    local near = NearScreenCentre(st.plate)
-    if near then
-        st.stareTime = st.stareTime + elapsed
-        if st.stareTime >= db.stareDelay then
-            st.lingerUntil = now + db.stareLinger
+-- Only one plate can be "looked at": the one nearest the middle of the look column whose
+-- unit is within stareRange. Far-away plates bunch up around the horizon, so without the
+-- range limit they all popped up at once.
+local function UpdateStare(now, elapsed)
+    local best, bestScore
+    if db.stare then
+        for unit, st in pairs(plates) do
+            local dx, dy = ScreenOffset(st.plate)
+            local score = dx and LookScore(dx, dy)
+            if score and (not bestScore or score < bestScore) and ns.IsWithin(unit, db.stareRange) then
+                best, bestScore = st, score
+            end
         end
-    else
-        st.stareTime = 0
+    end
+    for _, st in pairs(plates) do
+        if st == best then
+            st.stareTime = st.stareTime + elapsed
+            if st.stareTime >= db.stareDelay then
+                st.lingerUntil = now + db.stareLinger
+            end
+        else
+            st.stareTime = 0
+        end
     end
 end
 
@@ -205,8 +226,8 @@ driver:SetScript("OnUpdate", function(_, elapsed)
     sinceTick = sinceTick + elapsed
     local tick = sinceTick >= TICK
     if tick then
+        UpdateStare(now, sinceTick)
         for unit, st in pairs(plates) do
-            UpdateStare(st, now, sinceTick)
             st.want = Wanted(unit, st, now)
         end
         sinceTick = 0
@@ -262,6 +283,35 @@ end)
 -- ---------------------------------------------------------------------------
 -- Slash commands
 -- ---------------------------------------------------------------------------
+-- /zrp look: shows the look column for 10 seconds and prints where each plate sits.
+local guide
+function ns.LookDebug()
+    if not guide then
+        guide = CreateFrame("Frame", nil, UIParent)
+        guide:SetFrameStrata("BACKGROUND")
+        local t = guide:CreateTexture(nil, "BACKGROUND")
+        t:SetAllPoints()
+        t:SetColorTexture(0.2, 1, 0.6, 0.12)
+    end
+    local h = UIParent:GetHeight()
+    guide:ClearAllPoints()
+    guide:SetPoint("BOTTOM", UIParent, "CENTER", 0, -db.stareRadius)
+    guide:SetSize(db.stareRadius * 2, db.stareRadius + h * 0.4)
+    guide:Show()
+    C_Timer.After(10, function() guide:Hide() end)
+    local n = 0
+    for unit, st in pairs(plates) do
+        local dx, dy = ScreenOffset(st.plate)
+        if dx and math.abs(dx) < 400 then
+            n = n + 1
+            Print(("%s: %+d across, %+d up, in look area %s, within %d yd %s."):format(
+                UnitName(unit) or unit, math.floor(dx + 0.5), math.floor(dy + 0.5), LookScore(dx, dy) and "yes" or "no",
+                db.stareRange, tostring(ns.IsWithin(unit, db.stareRange))))
+        end
+    end
+    Print(("look area shown for 10 s; %d plates near the middle."):format(n))
+end
+
 SLASH_ZRPROXIMITY1 = "/zrp"
 SLASH_ZRPROXIMITY2 = "/zrproximity"
 SlashCmdList.ZRPROXIMITY = function(msg)
@@ -273,6 +323,8 @@ SlashCmdList.ZRPROXIMITY = function(msg)
         Print(db.enabled and "on." or "off: every nameplate shows normally.")
     elseif msg == "range" then
         ns.PrintRangeDebug()
+    elseif msg == "look" then
+        ns.LookDebug()
     elseif msg == "status" then
         local n = 0
         for _ in pairs(plates) do n = n + 1 end
@@ -292,6 +344,6 @@ SlashCmdList.ZRPROXIMITY = function(msg)
         Print("settings reset to defaults.")
     else
         if ns.OpenOptions then ns.OpenOptions() end
-        Print("/zrp on | off | status | range | reset")
+        Print("/zrp on | off | status | range | look | reset")
     end
 end

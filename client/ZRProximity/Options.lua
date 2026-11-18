@@ -98,11 +98,12 @@ function ns.CreateOptions()
     NewCheck(panel, "showCombat", "Show enemies fighting me", "Any unit that has you on its threat list.", 320, -162)
 
     NewCheck(panel, "stare", "Show a name when I look at it",
-        "Shows a plate once it stays near the centre of the screen for the delay below.", 16, -270)
+        "Shows the plate of the unit you face once it stays in the middle of the screen for the delay below (one unit at a time, within the \"Look works up to\" distance). /zrp look shows the area.", 16, -270)
     NewSlider(panel, "stareDelay", "Look delay", 0, 3, 0.1, 24, -320, function(v) return ("%.1f s"):format(v) end)
     NewSlider(panel, "stareLinger", "Stays visible after", 0, 10, 0.5, 24, -370, function(v) return ("%.1f s"):format(v) end)
-    NewSlider(panel, "stareRadius", "Look area", 20, 300, 10, 24, -420, function(v) return ("%d"):format(v) end)
+    NewSlider(panel, "stareRadius", "Look width", 20, 300, 10, 24, -420, function(v) return ("%d"):format(v) end)
     NewSlider(panel, "fadeTime", "Fade time", 0, 1, 0.05, 320, -320, function(v) return ("%.2f s"):format(v) end)
+    NewSlider(panel, "stareRange", "Look works up to", 3, 40, 1, 320, -370, Yards(false))
 
     NewCheck(panel, "hideFloatingNames", "Hide the names above heads",
         "Turns off the game's floating unit names so names only come from nameplates. " ..
