@@ -3,6 +3,38 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-18 (Quest fixes: Loss Reduction, Durotar)
+
+On draft PR #81 together with the Kezan fixes. Not tested in game yet.
+
+### DB: Injured Razor Hill Grunts give no credit (25179)
+
+- **Found** (Four, 2026-11-18): the grunts show the speak cursor instead of attack.
+- **Not a bug:** the objective is "Rescue 4 Injured Razor Hill Grunts". You click the grunt
+  (spellclick 73705), it gets up and follows you for a while, then leaves. Nothing is slain.
+- **Cause of the real fault:** the grunt's SAI (39270) linked the kill credit behind the "add quest"
+  row, whose conditions only pass while the quest is not taken. With the quest from Gar'Thok in the
+  log, a rescue gave no credit. It also called actionlist 3927000, which does not exist, and linked
+  from rows that are not link events.
+- **Changed:** `sql/fixes/world/2026_11_18_70_loss_reduction.sql`: SAI for 39270 rewritten (on
+  click: add the quest if not taken, remove feign death, kill credit 39270, remove the spellclick
+  flag, say a thank-you line, follow for 20-25 s, say goodbye and despawn; it respawns after 120 s
+  lying down again). Feign death 29266 now comes from `creature_template_addon.auras`. SAI
+  conditions rebuilt (calls for help only while lying down; quest added only if not taken). The
+  Razor Hill Grunt directions file on PR #82 does not touch this entry.
+- **Status:** not tested in game.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_70_loss_reduction.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-17 (Quest fixes: Kezan)
 
 Draft PR, not merged yet. Checked against the DB and the core scripts only; nothing here has been
