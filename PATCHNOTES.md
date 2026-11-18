@@ -7,6 +7,13 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time and reports what is off.
 
+### World: Durotar, only one Sergeant Curtis in Tiragarde Keep
+
+- **Found** (Four, 2026-11-18: "I killed one on the bottom floor, and now I see another on the top floor."): the rare Sergeant Curtis 5809 had two spawn points in our dump, one per floor of the keep (guid 252648 ground floor, 49456 top floor), both up at once. TDB 8.3.7 has no Curtis spawn at all, so there is no reference to copy.
+- **Changed** (`sql/fixes/world/2026_11_18_44_sergeant_curtis_one_spawn.sql`): both spawn points join pool 5100635 (max 1), so one Curtis is up at a time, at either spot. Nothing deleted.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Durotar, the Northwatch Marines' Ticking Time Bomb explodes
 
 - **Found** (Four, 2026-11-18, video: "ticking time bomb, brief graphical element, no functionality, doesn't do damage"): Northwatch Marine 39267 casts Ticking Time Bomb 79726, which throws a Ticking Time Bomb 42776 at your feet. The bomb's script (same as TDB 8.3.7) cast Explosion 79728 (Fire damage to enemies within 4 yards) at the very moment it appeared, while it was still being added to the world, then despawned. The explosion never landed. The ability's own text says "Explodes after a few seconds, inflicting Fire damage. Tick-tock."
