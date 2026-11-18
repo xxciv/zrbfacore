@@ -3,6 +3,285 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-17 (World fixes: second-tier zones review)
+
+Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
+
+### World: Darkshore and the Ruins of Gilneas keep their normal spawns next to the new quest phases
+
+- **Found** (Four, 2026-11-18: "i think you got rid of mobs everywhere". The Blackwood camp, the shore and the Ruins of Auberdine in Darkshore were empty; so were the Ruins of Gilneas apart from the Forward Command battle): `2026_11_18_30` and `2026_11_18_31` give a quest phase (Darkshore 308/310, Ruins of Gilneas 274/312) to the whole zone. A player in a quest phase who isn't also in the default phase 169 only sees that quest phase's spawns, so every normal spawn in both zones disappeared. Four's location readout showed "Phases: 274" only.
+- **Changed** (`sql/fixes/world/2026_11_18_35_default_phase_in_phased_zones.sql`): both zones always add phase 169 too (`phase_area` 148/169 and 4706/169), the same way Westfall, the Lost Isles, Kezan and Vashj'ir already do. Nothing was deleted; the spawns were only hidden.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Ruins of Gilneas, more worgen in the forest around the Forward Command
+
+- **Found** (Four, 2026-11-18, screenshot of empty forest near the camp: "i would add more pairs, if you get further into the forest, its pretty empty").
+- **Changed** (`sql/fixes/world/2026_11_18_34_ruins_of_gilneas_forest_pairs.sql`; our own tuning, not 8.3.7):
+  - Every Forsaken Vanguard of the battle (phase 274) in the Forward Command and the forest around it with no worgen within 15 yards gets one Worgen Rusher. That makes 29 Rushers (guids 735401158-735401186).
+  - Each Rusher stands 2.5 yards from its Vanguard, on the side the nearest worgen come from, faces it and stands still. The 5-yard Rusher fight starter makes each pair fight.
+  - The five Vanguards guarding the north road (around -995, 2000) are left alone.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Ruins of Gilneas, worgen back inside the Forward Command
+
+- **Found** (Four, 2026-11-18, after `2026_11_18_32`: "unfortunately, i think that got rid of all the worgen"; the Forsaken themselves look right now): in 8.3.7 all 46 Worgen Rushers stand in one pack northwest of the camp (around -1290, 1775), with none inside the Forward Command, so the camp went quiet.
+- **Changed** (`sql/fixes/world/2026_11_18_33_ruins_of_gilneas_rushers_inside.sql`; our own tuning, not 8.3.7):
+  - 11 Rushers are back on the dump spots that stood next to a defender. Each is within 5 yards of its own Forsaken Vanguard, Catapult or Sharpshooter (one Rusher per defender), faces it and stands still. Guids 735401147-735401157. The dump's other Rushers were piled on the same few defenders and stay removed.
+  - The Rusher fight starter (`smart_scripts` 45375 ids 10 and 11) now looks only 5 yards out instead of 8, so each Rusher fights its own defender. New id 12 makes Rushers attack Sharpshooters 45376 too.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Ruins of Gilneas, the Forward Command battle at the 8.3.7 numbers, no floating catapult crews
+
+- **Found** (Four, 2026-11-18, two screenshots in the battle phase: Worgen Rushers piled up in one spot on the Vanguards and on a catapult; undead stacked on top of others that can't be selected): the battle set still had our dump's numbers. There were 110 Worgen Rushers 45375 where 8.3.7 has 46, and 55 Worgen Rebels 45292 where 8.3.7 has 30. The first review skipped them because 8.3.7 keeps them in a quest phase. With the fight starters from `2026_11_17_46`, every Rusher within 8 yards ran to the same Vanguard or catapult. The unselectable undead are Forsaken Blightspreaders 45374 (battle) and 51192 (overrun camp): not selectable, standing 2 yards up on top of the Forsaken Catapults, where a passenger would sit. 8.3.7 has no Blightspreaders and no catapult passengers.
+- **Changed** (`sql/fixes/world/2026_11_18_32_ruins_of_gilneas_battle_counts.sql`), 1:1 with 8.3.7 phase 274. Each 8.3.7 spawn keeps its nearest match within 12 yards, moved to the 8.3.7 spot with the 8.3.7 wander; the rest of ours are removed, and 8.3.7 spots with no match are added (guids 735401110-735401146):
+  - Worgen Rusher 45375: 43 kept, 67 removed, 3 added, all standing still. In 8.3.7 they stand in packs 25+ yards from the nearest Vanguard, so the fight starter no longer pulls them in.
+  - Worgen Rebel 45292: 19 kept, 36 removed, 11 added (wander 10).
+  - Forsaken Vanguard 45280: 79 kept, 19 removed, 23 added. The 35 at Tempest's Reach are not in the battle phase and stay.
+  - All 13 + 12 Blightspreaders removed.
+  - Catapults 45282 and Sharpshooters 45376 stand still (8.3.7; dump wander 3).
+- **Not changed:** the overrun camp's numbers (8.3.7 has no overrun camp to compare with).
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Ruins of Gilneas, the Forward Command battle until What Tomorrow Brings, the overrun camp after
+
+- **Found** (Four, 2026-11-18, screenshots: "I'm not even sure if the player ever visits this? Or is it a fly over battle"): players do visit it; it is the end of the Horde Silverpine story (To Forsaken Forward Command, Losing Ground, Break in Communications, Vengeance for Our Soldiers, What Tomorrow Brings, Fall Back!, A Man Named Godfrey, Resistance is Futile, The Great Escape). Our dump has two full copies of Forsaken Forward Command standing on the exact same spots: the battle (Forsaken Vanguard 45280, Worgen Rusher 45375, Worgen Rebel 45292, Catapults 45282, Blightspreaders 45374, Sharpshooters 45376, Onslaught 45315, Belmont, Arthura, Deathstalkers, Angelus, Doomair, Korok 45301) and the overrun camp (Forsaken Vanguard 45532, 14 of them dead, Worgen Rusher 45535, Catapults 45533, Blightspreaders 51192, 7th Legion Submariners 45539 marching in rows, Onslaught 45534, Korok 46657). Both showed at once. 8.3.7 has only the battle set, all in phase 274. The quest text matches the second set: What Tomorrow Brings (27401) ends with the Alliance fleet landing, and Fall Back! starts on its own because "the worgen have overrun Forsaken Forward Command". Two Belmonts also stood side by side at the Forward Command. Lorna Crowley 46027 and Lord Walden 46029 at the Silverpine edge are copies of Sylvanas's Forsaken Front scene summons.
+- **Changed** (`sql/fixes/world/2026_11_18_31_ruins_of_gilneas_phases.sql`; phase 274 and the battle set are 8.3.7's, the switch on What Tomorrow Brings is our own reading of the quest text):
+  - The battle set (322 spawns, plus Belmont and Arthura at the Forward Command) moves to phase 274, seen in the Ruins of Gilneas until What Tomorrow Brings is turned in.
+  - The overrun set (130 spawns, plus Belmont and Arthura at Emberstone Village and the second Belmont 45474 at the Forward Command) moves to phase 312, seen after What Tomorrow Brings is turned in.
+  - Lorna Crowley 373753 and Lord Walden 373754 removed (Sylvanas summons them herself).
+  - The fight starters from `2026_11_17_46` now pair each set with itself: Worgen Rusher 45375 attacks Forsaken Vanguard 45280 (id 10) and Catapult 45282 (id 11); Worgen Rusher 45535 attacks Forsaken Vanguard 45532 (id 10).
+  - `phase_area` 4706 + `conditions` type 26 (quest 27401 rewarded / not rewarded). Both phases are in Phase.db2 and used nowhere else here.
+- **Not changed** (no 8.3.7 data to go by): the coast Submariners 45403 (Vengeance for Our Soldiers), Captain Rutsak, the worgen and the 35 Forsaken Vanguards fighting at Tempest's Reach (Resistance is Futile), the Abominations 45345, the telescope scene with Halford Wyrmbane, and Belmont and Arthura on the shore (The Great Escape).
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Darkshore, Shatterspear Vale alive for its quest, then the 8.3.7 aftermath
+
+- **Found** (Four, 2026-11-18, screenshots of the troll village: grey trolls walking that should be dead, Champions in battle stances or wandering, a crowd of trolls standing in the middle, some standing in the water): in 8.3.7 every Shatterspear Champion 32858 and Raider 33071 lies dead (same template flags as the pass). But The Ancients' Ire (13514, Kerlonian Evershade: kill 30 Shatterspear Champions, burn 6 huts) needs living Champions. Raider 33071 is immune to everyone and no quest uses it. The 18 Shatterspear Trolls 10919 and 3 Shatterspear Drummers 11196 in the middle of the village are classic residents that 8.3.7 doesn't have. Champions, Priestesses, Raiders and hut fire bunnies had the dump's wander (`2026_11_17_43` had restored it on them as "fighters", but they are immune and never fight).
+- **Changed** (`sql/fixes/world/2026_11_18_30_shatterspear_vale_phases.sql`, phasing is our own, the aftermath layout is 8.3.7's):
+  - The 21 classic trolls and drummers removed.
+  - Shatterspear Raider 33071 template takes the 8.3.7 flags (lies dead, stunned, immune): `unit_flags` 537166592, `unit_flags2` 2049, `unit_flags3` 8192; all 34 stand still, no emote.
+  - The 29 living Champions move to phase 308 and stand still; the 7 already lying dead (aura 29266) stay in every phase.
+  - 41 dead Champions at the 8.3.7 spots in phase 310 (spawn flags dead, stunned, immune; the template stays alive). Guids 735401069-735401109.
+  - Phase 308 shows in Darkshore until The Ancients' Ire is turned in, phase 310 after (`phase_area` 148 + `conditions` type 26, quest rewarded / not rewarded). Both are free normal phases in Phase.db2.
+  - Priestesses and hut fire bunnies stand still (8.3.7).
+- **Not changed:** the dancing Champions and Priestesses (emote 10 in our data; 8.3.7 has no living trolls to compare); the Shatterspear Laborers at the war camp (quest 13504 needs them alive).
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`, delete the client's `Cache` folder (Raider template changed).
+
+### World: staged battle pairs that stand still start fighting
+
+- **Found** (Four, 2026-11-18, Westfall "a lot better"): Sentinel Hill Guard 735401039 and Riverpaw Brute 735401030 (both added by `2026_11_17_44` at 8.3.7 spots) stand 3 yards apart and never fight. Creatures only notice each other when one of them moves, so a pair where both stand still never starts. With the flagged battle creatures, 8 such still pairs at Sentinel Hill, 16 Talrendis Raiders at the Orgrimmar gate in Azshara and 6 pairs in the Ruins of Gilneas.
+- **Changed** (`sql/fixes/world/2026_11_17_46_staged_battles_start.sql`, our own tuning): out of combat, every 2-4 seconds, one side attacks the closest living opponent within 8 yards (`smart_scripts` event 1, action 49 attack, target 19 closest creature): Riverpaw Bandit 54371, Riverpaw Brute 54372, Riverpaw Herbalist 54373 attack Sentinel Hill Guard 42407 (id 10); Talrendis Raider 35177 attacks Orgrimmar Gatekeeper 35190 (id 10); Worgen Rusher 45375 attacks Forsaken Vanguard 45532 (id 10) and Forsaken Catapult 45533 (id 11); Worgen Rusher 45535 attacks Forsaken Vanguard 45280 (id 10); Forsaken Vanguard 45532 attacks 7th Legion Submariner 45539 (id 10). With `staged-npc-battles.patch` nobody dies, so the pair keeps fighting.
+- **Status:** Sentinel Hill confirmed in game by Four (2026-11-18); the other zones untested.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Darkshore, Shatterspear Pass shows the aftermath of the battle
+
+- **Found** (Four, 2026-11-17: "no one is fighting"; Four chose the 8.3.7 aftermath over a live battle): in the 8.3.7 data (retail-sniffed template) the Shatterspear Raiders 34309 at the pass play dead (`unit_flags2` 0x1), are stunned and immune, and the Lor'danel Sentinels 32969 stand still among them. Our template had the raiders alive but immune to NPCs, and the dump scripted both sides to attack each other on reset, so 6 raiders just stood there. Most of our dead raiders and some sentinels there carry aura 65181 (phase 170), which nobody sees in Darkshore. Of our 10 visible sentinels only 3 stand on 8.3.7 spots; 4 of the others were stacked on one spot (7415, -1298).
+- **Changed** (`sql/fixes/world/2026_11_17_45_darkshore_shatterspear_pass.sql`):
+  - Shatterspear Raider 34309 template takes the 8.3.7 flags: `unit_flags` 537166592, `unit_flags2` 2049, `unit_flags3` 8192.
+  - Our 6 visible raiders (all on 8.3.7 spots) stand still without the combat-ready emote; the 3 sentinels on 8.3.7 spots stand still without emote.
+  - The 7 other visible sentinels removed: 245754, 246906, 246850, 245755 (stacked), 247284, 247290, 247673.
+  - The dump's "on reset, attack" rows removed: `smart_scripts` 32969 id 20 and 34309 id 22 (8.3.7 has neither).
+  - Added the 12 raiders and 14 sentinels of 8.3.7 we lacked, at 8.3.7 positions, standing still (guids 735401043-735401068). The pass now has 18 raiders and 17 sentinels, as in 8.3.7.
+- **Not changed:** the phase-170 copies (aura 65181); they stay hidden.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`, delete the client's `Cache` folder (the raider template changed).
+
+### World: staged NPC battles last instead of dying out
+
+- **Found** (Four, 2026-11-17, after `2026_11_17_43`): the open-world battles start, then one side kills the other and the survivors stand around. Westfall's gnolls still outnumbered the guards, the Ruins of Gilneas looked like an old battlefield, Azshara was half fighting and half standing, the Barrens sea dogs swam off and the Kolkar fight died out. Nothing in the data keeps these fights going: TDB 8.3.7 scripts them the same way, so creatures simply kill each other. The Camp Narache battle in Mulgore lasts only because of our own C++ script (`mulgore-bristleback-fight.patch`: NPC hits stop at 80% health).
+  - Sentinel Hill had 43 gnolls where 8.3.7 has 26: our dump has the old Riverpaw entries (Bandit 452, Brute 124, Herbalist 501) on the same spots as the Sentinel Hill ones (54371-54373). It also lacked 10 of 8.3.7's guards, several of them standing next to a gnoll.
+  - Northern Barrens: the Kolkar Invaders, Horde Defenders, Horde Axe Throwers and Warlord Krom'zar at Regthar Deathgate's camp are what his quest Counterattack! (4021) summons. Our dump also had 17 of them as static spawns, so a battle nobody started ran down at the camp and Krom'zar stood there all the time. Classic data (AzerothCore) has only Regthar there. `2026_11_17_43` had put 7 of the invaders back as "fighters"; that was wrong.
+  - The 12 Rageroar Sea Dogs at the three rowboats off the Northern Barrens coast had the dump's 3-yard wander, so they swam away from their boats (8.3.7: standing still).
+  - 80 dead bodies (permanent feign death auras 29266, 31261, 84386) had the dump's wander and slid around on the ground: Darkshore: Shatterspear Raider 14, Lor'danel Sentinel 6, Shatterspear Champion 6, Shatterspear Laborer 4, Shatterspear Overseer 1; Ruins of Gilneas: Forsaken Vanguard 14, Forsaken Catapult 4; Silverpine Forest: Worgen Warbringer 10, 7th Legion Submariner 6, Worgen Commando 5, 7th Legion Scout 4, Orc Demolisher 2, Dwarven Infantry 2, Bartolo Ginsetti 1; The Lost Isles: Bomb-Throwing Monkey 1.
+- **Changed:**
+  - New core patch `tools/bfa/staged-npc-battles.patch` (our own mechanism, the same idea as the Camp Narache battle): `creature_template.flags_extra` bit `0x400` (`CREATURE_FLAG_EXTRA_NO_NPC_DAMAGE_BELOW_85PCT`). A creature with it takes no damage from other creatures below 85% health. Players and their pets, totems and guardians deal full damage, so quest kills work as before. Code in `Unit::DealDamage` (`Unit.cpp`), flag in `CreatureData.h` (and allowed in the DB flag mask). Compiles against the current patch chain.
+  - `sql/fixes/world/2026_11_17_44_staged_battles.sql`:
+    - Flag `0x400` on 32 entries. Westfall: Sentinel Hill Guard 42407, Riverpaw Bandit 54371, Riverpaw Brute 54372, Riverpaw Herbalist 54373. Silverpine Forest: Worgen Renegade 44793, Forsaken Trooper 44791 and 44792, Hillsbrad Worgen 45254, 45255, 46063, 46064, Orc Sea Dog 45196 and 46057. Ruins of Gilneas: Forsaken Vanguard 45280 and 45532, Worgen Rebel 45292, Worgen Rusher 45375 and 45535, Forsaken Sharpshooter 45376, Forsaken Catapult 45533, Forsaken Blightspreader 51192, 7th Legion Submariner 45539. Azshara: Talrendis Saboteur 35312, Mountainfoot Grunt 36936, Valormok Grunt 36815, Talrendis Defender 36816, Talrendis Raider 35177, Orgrimmar Gatekeeper 35190. Northern Barrens: Rageroar Sea Dog 38661, Blackpool Crewman 38664, Razormane Pillager 34503, Grol'dom Grunt 34504. The flag is per entry, so these creatures also stop at 85% when other NPCs hit them elsewhere.
+    - Sentinel Hill gnolls 1:1 with 8.3.7: 16 of ours matched to an 8.3.7 spot take its Sentinel Hill entry, 24 second copies removed, 7 missing 8.3.7 gnolls added (26 gnolls).
+    - 10 missing 8.3.7 Sentinel Hill Guards added (34 guards against 26 gnolls; 8.3.7 has 31). Added guids 735401026-735401042, 8.3.7 positions and wander.
+    - Counterattack! leftovers removed at Regthar Deathgate's camp: Warlord Krom'zar 1, Horde Defender 5, Horde Axe Thrower 3, Kolkar Invader 8. Regthar's quest still summons all of them.
+    - The 12 rowboat Rageroar Sea Dogs and the 80 dead bodies above set to stand still.
+- **Not changed:** Darkshore's Shatterspear Pass is waiting on Four's choice (in the 8.3.7 data the raiders there lie dead and the sentinels stand guard; our dump scripts them to fight but leaves the raiders immune to NPCs). The Ruins of Gilneas counts stay as they are: the 8.3.7 data has that battle in phase 274 with no rule that shows it, so it is no help for numbers. With the flag nobody dies, so the side with more creatures no longer wins.
+- **Status:** Sentinel Hill confirmed in game by Four (2026-11-18); the other zones untested.
+- **Pick up:** apply the new patch and rebuild, run the SQL, restart `worldserver`.
+
+### World: second-tier zones re-audit (staged fights, phases, resting NPCs)
+
+- **Found** (re-audit asked by Four, 2026-11-17, after the Sentinel Hill fight stopped): every change of `2026_11_17_30..39` was checked again against the original data. Three kinds of damage beyond Sentinel Hill:
+  - Staged fights frozen: setting spawns to stand still like TDB stopped NPCs that fight each other, because they only start while they move. Hit Darkshore (Lor'danel Sentinels vs Shatterspear trolls), Silverpine (Forsaken Troopers vs Worgen Renegades), Ruins of Gilneas (the Forsaken vs worgen battle), Azshara (Talrendis vs Mountainfoot and Valormok grunts), Northern Barrens (Rageroar vs Blackpool sailors), Loch Modan and Ghostlands.
+  - The overspawn trim removed some fighters and, on the Lost Isles, spawns in quest phases (it compared counts without looking at phases).
+  - A few sitting or emoting NPCs had been told to wander, and a few TDB spawns were added into fights without TDB's opponents.
+- **Changed** (`sql/fixes/world/2026_11_17_43_second_tier_reaudit.sql`):
+  - 36 creatures put back (`INSERT IGNORE`, original rows): Northern Barrens: Kolkar Invader 7; Ruins of Gilneas: Worgen Rebel 3, Forsaken Vanguard 2; Loch Modan: Forest Lurker 5, Black Bear 1; Westfall: Riverpaw Bandit 1; The Lost Isles: Oomlot Warrior 8, Ravenous Lurker 8, Daggertooth Shark 1, Goblin Zombie 1; Azshara: Greystone Basilisk 2.
+  - Wander back to the original value on 440 staged fighters (anything with a hostile NPC within 15 yards): Ghostlands: Ghostlands Guardian 4; Loch Modan: Bluegill Representative 3, Mountaineer Swarth 1, Mountaineer Cragg 1, Mountaineer Harn 1, Mountaineer Bludd 1, Forest Lurker 1, Mosshide Representative 1; Silverpine Forest: Worgen Renegade 28, Forsaken Trooper 27, Hillsbrad Worgen 17, Hillsbrad Refugee 16, Elemental Servitor 6, Orc Demolisher 2, Horde Engineer 1; Westfall: Riverpaw Herbalist 12, Riverpaw Bandit 8, Riverpaw Brute 7, Westfall Brigade Guard 1; Azshara: Mountainfoot Grunt 27, Talrendis Saboteur 21, Talrendis Defender 14, Valormok Grunt 12, Bilgewater Soldier 6, Greystone Basilisk 3, Azshara Bombing Bunny 2, Spitelash Siren 2, Talrendis Scout 2, Spitelash Warrior 1, Enslaved Son of Arkkoroc 1, Lorekeeper Amberwind 1, Thunderhead Hippogryph 1, Apprentice Illuminator 1; Darkshore: Lor'danel Sentinel 43, Shatterspear Raider 16, Shatterspear Champion 14, Shatterspear Hut Fire Bunny 13, Shatterspear Priestess 6, Vile Spray 6, Shatterspear Laborer 4, Blackwood Furbolg 3, Generic Trigger LAB - OLD 3, Twilight Worker 2, Foreman Balsoth 1, Vigilant Protector 1, Shatterspear Supplies Credit Bunny 1, Shatterspear Overseer 1, Rit'ko 1, Lady Janira 1, Vile Terror 1; Northern Barrens: Rageroar Sea Dog 6, Blackpool Crewman 5, Grol'dom Grunt 2, Chain Origin 2, Horde Defender 2, Peon 1, Horde Guard 1, Crossroads Caravan Kodo 1, Burning Blade Bruiser 1; Ruins of Gilneas: Forsaken Vanguard 30, Worgen Rusher 18, Forsaken Sharpshooter 11, Forsaken Catapult 8, Deathstalker 3.
+  - 4 sitting/emoting NPCs back to standing still: Bloodmyst Isle: Sunhawk Spy 1; Ruins of Gilneas: Worgen Rebel 2; The Lost Isles: Alliance Paratrooper 1.
+  - 12 added spawns removed again: Bloodmyst Isle: Void Critter 4, Blacksilt Warrior 2; Silverpine Forest: Forsaken Trooper 6.
+- **Checked and fine:** no event, pool, formation, scripted or pathed spawn was removed; added spawns only use phases we already use; holiday links and rare pools are additions only.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Sentinel Hill guards no longer outnumbered, stray Defias removed
+
+- **Found** (Four, 2026-11-17, screenshots): after `2026_11_17_41` the Sentinel Hill fight was back but the guards were outnumbered and died almost at once. `2026_11_17_37` had added 19 Riverpaw gnolls at TDB spots; TDB pairs those with guards we do not spawn. A Defias Knuckleduster (308243) stood alone near the hill: it and five other Defias are leftovers of the Defias attack on Sentinel Hill, which TDB keeps in quest phase 226 (we have no such phase).
+- **Changed** (`sql/fixes/world/2026_11_17_42_sentinel_hill_balance.sql`): the 19 added gnolls removed (back to our 13), and Defias 308180, 308184, 308237, 308239, 308242, 308243 removed.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: second-tier zones, NPCs standing twice and the Sentinel Hill fight
+
+- **Found** (Four, 2026-11-17, screenshot): Deborah Fain stood twice in Sentinel Hill, each with her own Fizzle. The zone files only removed doubles on the exact same spot that TDB did not explain, so a second copy a yard or two away stayed. Four also found nobody fighting in Sentinel Hill after `2026_11_17_37`: the guards (42407) and Riverpaw gnolls (54371-54373) only notice each other while they move, and 37 had made them stand still like TDB.
+- **Changed** (`sql/fixes/world/2026_11_17_41_second_tier_doubles.sql`):
+  - The first version of this file removed 469 creatures that stood within 3 yards of their own kind. That rule was too loose: it took out normal mob groups (Four, 2026-11-17). Section 1 puts all 469 back (`INSERT IGNORE`, so it does nothing if the first version was never run) with the wander the zone files gave them.
+  - 23 removed: a second copy of a unique named NPC next to the first (Deborah Fain 215425, Foreman Silixiz, Cap'n Garvey, Taskmaster Fizzule, Karu, Mountaineer Morran, Warlord Krogg, Teresa Spireleaf), or a copy stacked within half a yard of another in the same phase (Lost Isles: Oomlot Warrior 5, Jungle Panther 4, Goblin Zombie 2, Spiny Raptor 2, Orc Battlesworn 1; Azshara: Spitelash Myrmidon 1).
+  - Sentinel Hill: 12 guards and 12 gnolls back to the 3-yard wander they had before 37, and the gnolls 37 added wander too. Our own call, not TDB.
+- **Not changed:** normal mob groups standing close together, bunnies and other invisible helpers.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Lost Isles Bomb-Throwing Monkeys stand instead of floating
+
+- **Found** (Four, 2026-11-17, screenshot): some Bomb-Throwing Monkeys (34699) floated in a flying pose on the ground. Seven spawns had `bytes1` 50331648 in `creature_addon` (animation tier 3 = fly); TDB has the same flag on seven of its own, but these spawns stand on the ground, not in the trees.
+- **Changed** (`sql/fixes/world/2026_11_17_40_lost_isles_bomb_monkeys.sql`): `bytes1` 0 on guids 40000114, 40000127, 40000134, 40000136, 40000144, 40000234, 40000441, like the other 31 monkeys.
+- **Status:** confirmed in game by Four (2026-11-17).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Ghostlands review
+
+- **Found:** Ghostlands was spawned unlike TDB: some mobs doubled (Ghostclaw Lynx 101, TDB 38; Phantasmal Watcher 21, TDB 5; Dreadbone Sentinel 35, TDB 13) while others were thin (Sentinel Infiltrator 10, TDB 30; Shadowpine Catlord 15, TDB 32; Mummified Headhunter 8, TDB 22). Most mobs wandered 5 or 15 yards where TDB has them standing, or the other way round. Rathis Tomber never walked his route. The rare Dr. Whitherlimb had four spawn points up at once.
+- **Changed** (`sql/fixes/world/2026_11_17_30_ghostlands_review.sql`):
+  - 274 creatures removed: Ghostclaw Lynx 63, Spindleweb Lurker 29, Mistbat 25, Dreadbone Sentinel 22, Spindleweb Spider 17, Phantasmal Watcher 16, Gangled Cannibal 12, Mana Shifter 12, Shadowpine Oracle 11, Quel'dorei Wraith 10, Shadowpine Hexxer 9, Risen Creeper 9, Arcane Devourer 8, Risen Hungerer 7, Vengeful Apparition 6, Fallen Ranger 5, Deatholme Acolyte 5, Quel'dorei Ghost 5, Deatholme Darkmage 3.
+  - 186 TDB spawns added (guids 735400213-735400398, only where none of ours stands within 30 yards): Shadowpine Catlord 17, Eye of Dar'Khan 14, Greater Spindleweb 14, Ghostclaw Ravager 14, Shadowpine Shadowcaster 13, Lesser Scourgebat 12, Nerubis Guard 12, Stonewing Slayer 10, Mummified Headhunter 10, Shadowpine Witch 9, Sentinel Spy 8, Sentinel Infiltrator 8, Blackpaw Scavenger 7, Blackpaw Gnoll 6, Blackpaw Shaman 6, Stonewing Tracker 5, Nerubis Centurion 5, Shadowpine Ripper 5, Shadowpine Headhunter 4, Whitetail Frenzy 3, Darnassian Druid 2, Phantasmal Seeker 2.
+  - Wander set to TDB on 318 spawns (most: Shadowpine Hexxer 24, Risen Stalker 23, Nerubis Centurion 19, Wailer 18, Risen Hungerer 18, Shadowpine Catlord 15, Dreadbone Sentinel 13, Phantasmal Seeker 12).
+  - Rares pooled so only one spawn point is up at a time (pool 5100600): Dr. Whitherlimb (4 spots).
+  - Patrols put on the TDB waypoint paths already in our database: Rathis Tomber 67932 (path 817200).
+  - Holiday spawns tied to their events: creatures 352635 to Midsummer (1).
+- **Not changed:** Zul'Aman Exterior InvisMen, campfires and the burning troll huts (not in TDB) stay. Harvest nodes exist (copper, tin, silver, herbs) and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Bloodmyst Isle review
+
+- **Found:** Bloodmyst Isle had the same mix: Corrupted Stomper, Blacksilt Scout and Sunhawk Spy doubled, while Enraged Ravager (34, TDB 69), Blacksilt Tidecaller (1, TDB 12) and Thistle Lasher (65, TDB 87) were thin and the Barbed Crawlers were missing. Eight Nazzivus satyrs, the Myst Spinner, the Void Anomaly and a Bloodcursed Naga had waypoint paths in the database but never used them. A ribbon pole target and a bonfire bunny showed all year.
+- **Changed** (`sql/fixes/world/2026_11_17_31_bloodmyst_isle_review.sql`):
+  - 87 creatures removed: Corrupted Stomper 14, Blacksilt Scout 11, Bristlelimb Warrior 9, Sunhawk Spy 9, Sunhawk Agent 8, Corrupted Treant 7, Mutated Tangler 7, Void Anomaly 5, Wrathscale Screamer 5, Axxarien Hellcaller 4, Axxarien Trickster 4, Contaminated Wildkin 4.
+  - 156 TDB spawns added (guids 735400399-735400554, only where none of ours stands within 30 yards): Enraged Ravager 35, Thistle Lasher 22, Veridian Whelp 12, Blacksilt Tidecaller 11, Void Critter 10, Grizzled Brown Bear 10, Blacksilt Warrior 10, Sunhawk Reclaimer 9, Mutated Constrictor 8, Blacksilt Forager 6, Veridian Broodling 6, Barbed Crawler 5, Elder Brown Bear 5, Sunhawk Pyromancer 4, Nazzivus Felsworn 3.
+  - Wander set to TDB on 182 spawns (most: Enraged Ravager 30, Bloodcursed Voyager 20, Wrathscale Sorceress 17, Void Critter 11, Blacksilt Forager 11, Blacksilt Scout 10, Mutated Tangler 9, Wrathscale Shorestalker 8).
+  - Patrols put on the TDB waypoint paths already in our database: Void Anomaly 56327 (path 631500), Myst Spinner 66196 (path 630220), Nazzivus Satyr 66556 (path 623610), Nazzivus Rogue 66566 (path 623840), Nazzivus Satyr 66569 (path 623630), Nazzivus Rogue 66572 (path 623740), Bloodcursed Naga 68554 (path 634860), Nazzivus Felsworn 68667 (path 623980).
+  - Holiday spawns tied to their events: creatures 353197, 353194 to Midsummer (1).
+- **Not changed:** Harvest nodes exist and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Darkshore review
+
+- **Found:** Darkshore had almost every mob, guard and even the Buried Treasure Bunnies shuffling in a 3-yard circle (1,605 spawns); TDB has most of them standing, the rest wandering 5 to 20 yards. Nine rares (Flagglemurk, Carnivous, Lady Vespira, Shadowclaw and others) had two to four spawn points up at once. Vile Spray and Twilight Zealots were thin.
+- **Changed** (`sql/fixes/world/2026_11_17_32_darkshore_review.sql`):
+  - 4 creatures removed: Greymist Refugee 4.
+  - 1 object(s) standing twice removed: Cat Figurine 1.
+  - 29 TDB spawns added (guids 735400555-735400583, only where none of ours stands within 30 yards): Vile Spray 14, Twilight Zealot 6, Thistle Bear Cub 4, Corrupted Thistle Bear Matriarch 3, Greymist Oracle 2.
+  - Wander set to TDB on 1605 spawns (most: Greymist Warrior 108, Greymist Tidehunter 92, Buried Treasure Bunny 90, Shatterspear Laborer 77, Lor'danel Sentinel 73, Shatterspear Raider 65, Corrupted Tide Crawler 64, Encrusted Tide Crawler 55).
+  - Rares pooled so only one spawn point is up at a time (pools 5100601-5100609): Flagglemurk the Cruel (4 spots), Carnivous the Breaker (4 spots), Lady Vespira (3 spots), Shadowclaw (2 spots), Lord Sinslayer (2 spots), Licillin (2 spots), Lady Moongazer (2 spots), Firecaller Radison (2 spots), Strider Clutchmother (2 spots).
+  - Holiday spawns tied to their events: creatures 353122 to Midsummer (1).
+- **Not changed:** Darkshore's spawns otherwise match TDB closely (only 4 extra Greymist Refugees). TDB's 58 Deer are ambient animals and were not added. Harvest nodes exist and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Northern Barrens review
+
+- **Found:** Northern Barrens was the most overspawned: Ornery Plainstrider 72 (TDB 28), Venture Co. Drudger 72 (32), Razormane Thornweaver 28 (5), Burning Blade Attacker 17 (1), Kolkar Invader 11 (1). Nearly every animal shuffled 3 yards where TDB has them standing or roaming 15. Five rares had two or three copies up at once. King Reaperclaw and Trok were set to walk a path but had none assigned; a Razormane Defender never patrolled.
+- **Changed** (`sql/fixes/world/2026_11_17_33_northern_barrens_review.sql`):
+  - 479 creatures removed: Ornery Plainstrider 44, Venture Co. Drudger 40, Zhevra Runner 38, Sunscale Screecher 37, Barrens Vulture 35, Razormane Thornweaver 23, Savannah Prowler 19, Razormane Defender 17, Venture Co. Enforcer 17, Burning Blade Attacker 16, Venture Co. Mercenary 16, Venture Co. Overseer 14, Deviate Slayer 13, Lost Barrens Kodo 13, Razormane Plunderer 11, Kolkar Invader 10, Kolkar Wrangler 10, Deviate Stinglash 8, Razormane Hunter 8, Deviate Creeper 8, Savannah Matriarch 7, Dreadmaw Crocolisk 7, Sunscale Raptor 7, Barrens Boar 6, Razormane Frenzy 6, Kolkar Bloodcharger 6, Kolkar Packhound 6, Witchwing Harpy 5, Sunscale Lashtail 5, Razormane Geomancer 4, Kolkar Pack Runner 4, Slimeshell Makrura 4, Zhevra Charger 3, Venture Co. Drone 3, Venture Co. Lookout 3, Deviate Lurker 3, Kreenig Snarlsnout 3.
+  - 31 TDB spawns added (guids 735400584-735400618, only where none of ours stands within 30 yards): Ashenvale Skirmisher 11, Hecklefang Hyena 10, Burning Blade Acolyte 5, Burning Blade Bruiser 4, Ashenvale Bowman 1.
+  - Wander set to TDB on 1858 spawns (most: Fleeting Plainstrider 155, Zhevra Runner 147, Sunscale Screecher 120, Savannah Huntress 98, Barrens Vulture 78, Savannah Prowler 70, Sunscale Scytheclaw 60, Barrens Giraffe 58).
+  - Rares pooled so only one spawn point is up at a time (pools 5100610-5100614): Stonearm (3 spots), Trigore the Lasher (3 spots), Sister Rathtalon (2 spots), Elder Mystic Razorsnout (2 spots), Boahn (3 spots).
+  - Patrols put on the TDB waypoint paths already in our database: King Reaperclaw 303909 (path 3039090), Trok 303759 (path 3037590), Razormane Defender 262497 (path 3040270).
+- **Not changed:** TDB's Caravan Kodos were not added (caravan quests spawn their own). Harvest nodes exist and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Silverpine Forest review
+
+- **Found:** Silverpine Forest: Vile Fin Tidehunters 152 (TDB 72), Vile Fin Oracles 155 (96) and Inconspicuous Bears 69 (29). Almost everything shuffled 3 yards (TDB: standing). Old Vicejaw had 11 copies up at once and Gorefang 6. Reef Frenzies were nearly missing (6, TDB 39). Two Winter Veil decorations at the Sepulcher and a ribbon pole target showed all year.
+- **Changed** (`sql/fixes/world/2026_11_17_34_silverpine_forest_review.sql`):
+  - 190 creatures removed: Vile Fin Tidehunter 80, Vile Fin Oracle 60, Inconspicuous Bear 40, Skitterweb Striker 8, Hillsbrad Worgen 1, Catapult Target 1.
+  - 1 object(s) standing twice removed: Ambermill Strongbox 1.
+  - 69 TDB spawns added (guids 735400619-735400687, only where none of ours stands within 30 yards): Reef Frenzy 33, Forsaken Trooper 16, Skitterweb Lurker 9, Bloodfang Scavenger 8, Horde Engineer 3.
+  - Wander set to TDB on 997 spawns (most: Giant Rabid Bear 101, Vile Fin Oracle 100, Rabid Worg 94, Forsaken Trooper 83, Vile Fin Tidehunter 81, North Tide's Invisible Stalker 52, Hillsbrad Worgen 47, Elemental Servitor 43).
+  - Rares pooled so only one spawn point is up at a time (pools 5100615-5100618): Gorefang (6 spots), Rot Hide Bruiser (2 spots), Krethis the Shadowspinner (2 spots), Old Vicejaw (11 spots).
+  - Holiday spawns tied to their events: creatures 352539 to Midsummer (1); 2 Winter Veil decorations to Winter Veil (2).
+- **Not changed:** The Forsaken and worgen battle NPCs that TDB lacks stay. Harvest nodes exist and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Ruins of Gilneas review
+
+- **Found:** Ruins of Gilneas: most of the Forsaken and worgen fighters shuffled 3 yards (TDB: standing), a few stood twice on the same spot, and the zone had only 5 Gilnean Hounds and 3 Highlands Foxes (TDB 43 and 42).
+- **Changed** (`sql/fixes/world/2026_11_17_35_ruins_of_gilneas_review.sql`):
+  - 7 creatures removed: Worgen Rebel 3, Forsaken Vanguard 2, Worgen Rusher 2.
+  - 56 TDB spawns added (guids 735400688-735400743, only where none of ours stands within 30 yards): Gilnean Hound 28, Highlands Fox 28.
+  - Wander set to TDB on 201 spawns (most: Forsaken Vanguard 81, Worgen Rebel 52, Forsaken Sharpshooter 20, Worgen Rusher 20, Forsaken Catapult 11, General Purpose Bunny JMF x2 size 5, Gilnean Hound 5, Highlands Fox 3).
+- **Not changed:** The Forsaken vs Gilneas battle (Bloodfang Scouts, 7th Legion Submariners, Gilnean Warhounds and others, not in TDB) stays. TDB's quest-phase copies of the hounds and foxes were not added. Neither TDB nor our database has harvest nodes in Ruins of Gilneas, so none were added.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Loch Modan review
+
+- **Found:** Loch Modan: animals and Stonesplinter troggs a third over TDB (Black Bear 65, TDB 40; Bluegill Wanderer 69, TDB 43), all shuffling 3 yards where TDB has them standing or roaming 20. Five rares (Magosh, Gosh-Haldir, Kubb, Shanda, Boss Galgosh) had two or three copies up at once. A ribbon pole target and bonfire bunny showed all year.
+- **Changed** (`sql/fixes/world/2026_11_17_36_loch_modan_review.sql`):
+  - 225 creatures removed: Bluegill Wanderer 26, Black Bear 25, Forest Lurker 21, Bobcat 19, Mudbelly Boar 19, Loch Buzzard 17, Loch Crocolisk 16, Golden Eagle 14, Stonesplinter Geomancer 14, Stonesplinter Digger 13, Marsh Wasp 11, Tunnel Rat Forager 10, Hill Fox 8, Tunnel Rat Surveyor 6, Scarred Crag Boar 3, Bluegill Mudskipper 3.
+  - 1 object(s) standing twice removed: Silverleaf 1.
+  - Wander set to TDB on 764 spawns (most: Bluegill Wanderer 42, Black Bear 39, Mudbelly Boar 38, Hill Grizzly 37, Forest Lurker 37, Marsh Wasp 36, Bobcat 32, Twilight Encroacher 30).
+  - Rares pooled so only one spawn point is up at a time (pools 5100619-5100623): Magosh (2 spots), Gosh-Haldir (2 spots), Kubb (2 spots), Shanda the Spinner (2 spots), Boss Galgosh (3 spots).
+  - Holiday spawns tied to their events: creatures 352648, 352647 to Midsummer (1).
+- **Not changed:** Harvest nodes exist and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Westfall review
+
+- **Found:** Westfall: 1,200 mobs shuffled 3 yards (TDB: standing). Sea Crawlers, Small-Time Hustlers and West Plains Drifters were thin, Sand Crawlers and Coyotes a little doubled, and six Hobo Goods bags stood twice. Brainwashed Noble and Slark had two copies each. A ribbon pole target and bonfire bunny showed all year.
+- **Changed** (`sql/fixes/world/2026_11_17_37_westfall_review.sql`):
+  - 107 creatures removed: Sand Crawler 21, Coyote 17, Riverpaw Bandit 15, Riverpaw Mongrel 14, Riverpaw Brute 13, Young Fleshripper 7, Hobo Goods (Bag) 6, Riverpaw Gnoll 6, Unbound Cyclone 5, Murloc Coastrunner 3.
+  - 2 object(s) standing twice removed: Sack of Oats 2.
+  - 153 TDB spawns added (guids 735400744-735400896, only where none of ours stands within 30 yards): Sea Crawler 89, Small-Time Hustler 11, Chasm Slime 10, Murloc Tidehunter 9, West Plains Drifter 9, Riverpaw Bandit 7, Energized Harvest Reaper 6, Riverpaw Herbalist 6, Riverpaw Brute 6.
+  - Wander set to TDB on 1200 spawns (most: Sea Crawler 179, Goretusk 92, Coyote 56, Riverpaw Herbalist 54, Sand Crawler 46, Young Goretusk 43, Hulking Goretusk 39, Riverpaw Mongrel 38).
+  - Rares pooled so only one spawn point is up at a time (pools 5100624-5100625): Brainwashed Noble (2 spots), Slark (2 spots).
+  - Holiday spawns tied to their events: creatures 352749, 352754 to Midsummer (1).
+- **Not changed:** Westfall keeps our own quest phasing (170/171): TDB phases the Defias and the homeless NPCs differently, so its Defias copies and the Thugs were not added. Harvest nodes exist and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: The Lost Isles review
+
+- **Found:** The Lost Isles: Jungle Panthers and Goblin Zombies wandered where TDB has them standing (and the reverse), Daggertooth Sharks and Ravenous Lurkers a little doubled, and Pterrordax Scavengers, Spiny Raptors, Venom Spitters and Iceeyas were thin.
+- **Changed** (`sql/fixes/world/2026_11_17_38_lost_isles_review.sql`):
+  - 23 creatures removed: Daggertooth Shark 13, Ravenous Lurker 9, Goblin Zombie 1.
+  - 106 TDB spawns added (guids 735400897-735401002, only where none of ours stands within 30 yards): Pterrordax Scavenger 35, Spiny Raptor 13, Venom Spitter 9, Iceeya 8, Naga Hatchling 8, Alliance Sailor 7, Steamwheedle Shark 6, Vashj'elan Warrior 5, Smart Mining Monkey 5, Frightened Miner 5, Oostan Headhunter 2, Vashj'elan Siren 2, Bomb-Throwing Monkey 1.
+  - Wander set to TDB on 389 spawns (most: Jungle Panther 109, Goblin Zombie 65, Spiny Raptor 31, Oomlot Warrior 27, Alliance Sailor 25, Daggertooth Shark 17, Child of Volcanoth 14, Naga Hatchling 12).
+- **Not changed:** The Lost Isles keep our own quest phasing: 1,222 spawns sit in a different phase than in TDB, and TDB's extra per-phase copies were not added where one of ours already stands. Harvest nodes exist and were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Azshara review
+
+- **Found:** Azshara: Mosshoof Coursers 123 (TDB 68), Weakened Mosshoof Stags 98 (47), Thunderhead Hippogryphs 116 (66), Restless Spirits, Greystone Basilisks and the Blackmaw furbolgs about doubled. 2,266 mobs shuffled 3 yards (TDB: standing or roaming 20). Nine rares had two to five copies up at once. 59 Winter Veil decorations stood all year.
+- **Changed** (`sql/fixes/world/2026_11_17_39_azshara_review.sql`):
+  - 445 creatures removed: Mosshoof Courser 55, Weakened Mosshoof Stag 51, Thunderhead Hippogryph 50, Spitelash Myrmidon 33, Restless Spirit 32, Greystone Basilisk 31, Vile Splash 21, Mistwing Ravager 19, Blackmaw Pathfinder 17, Spitelash Enchantress 17, Blackmaw Warrior 17, Spitelash Battlemaster 16, Blackmaw Shaman 16, Makrinni Snapclaw 14, Spitelash Invader 12, Thunderhead Stagwing 12, Sable Drake 9, Legashi Rogue 8, Legashi Satyr 7, Skychaser Hippogryph 4, Warsong Assault Wind Rider 3, Goblin Cocktail 1.
+  - 23 TDB spawns added (guids 735401003-735401025, only where none of ours stands within 30 yards): Mistwing Cliffdweller 17, Yellowfin Shark 3, Azshara Bombardier 3.
+  - Wander set to TDB on 2266 spawns (most: Coralshell Lurker 235, Bilgewater Seal 193, Makrinni Scrabbler 108, Makrinni Razorclaw 92, Vile Splash 84, Thunderhead Hippogryph 66, Mosshoof Courser 63, Static-Charged Hippogryph 60).
+  - Rares pooled so only one spawn point is up at a time (pools 5100626-5100634): Master Feardred (2 spots), The Evalcharr (4 spots), Antilos (5 spots), Varo'then's Ghost (5 spots), Scalebeard (2 spots), Monnos the Elder (2 spots), Gatekeeper Rageroar (2 spots), Lady Sesspira (2 spots), General Fangferror (2 spots).
+  - Holiday spawns tied to their events: 59 Winter Veil decorations to Winter Veil (2).
+- **Not changed:** Land mines and the old high-level harvest nodes (not in TDB) were not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-16 (Quest fixes: The Lesson of the Burning Scroll)
 
 Merged to `main` with PR #78 on 2026-11-16.
@@ -234,6 +513,315 @@ git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_16_70_mulgore_qu
 ```
 
 Restart worldserver and delete the client's `Cache` folder.
+## 2026-11-16 (World fixes: starter zones review)
+
+Open in a draft PR, not merged yet.
+
+### World: Lost Isles Pterrordax Scavengers glide instead of jittering
+
+- **Found** (Four, 2026-11-16, video): the Pterrordax Scavengers (36719) on the Lost Isles darted back and forth like the
+  Undercity bats did. All 70 wandered in a 3-yard radius at their template walk speed of 4.4. TDB 8.3.7 has the same
+  speed but a 10-yard radius (86 spawns) or none (30).
+- **Changed** (`sql/fixes/world/2026_11_16_54_lost_isles_pterrordax.sql`): wander radius 10 yards, as in TDB.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Master Shang Xi stops handing out The Master's Flame
+
+- **Found** (Four, 2026-11-16, screenshot): every quest accept or turn-in at Master Shang Xi (53566) gave The Master's
+  Flame again, long after The Lesson of the Burning Scroll (29408), and the player could end up sitting on him (he is a
+  vehicle, VehicleId 1416, also in TDB). His "on gossip hello" SmartAI row made every visitor cast Create The Master's
+  Flame (114611) with no quest check; it also shared id 0 with another row and linked to a non-link row. He also had the
+  spell-click npcflag and a click spell (Snatch Master's Flame 114746) that ran on every click. TDB 8.3.7 has npcflag 3
+  (gossip + quest giver) and no click spell.
+- **Changed** (`sql/fixes/world/2026_11_16_53_master_shang_xi_flame.sql`):
+  - npcflag 3 as in TDB; his click spell row removed. The quest doesn't need it: the flame item comes from his gossip
+    row and the first credit from his quest-accept row.
+  - The gossip row is re-added as its own row (id 13) and only fires while 29408 is in the quest log and the flame item
+    (80212) isn't in the bags (conditions on SmartAI source 22).
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Jaomin Ro stays in the fight after Hawk Diving to Earth
+
+- **Found** (Four, 2026-11-16, video): after Hawk Diving to Earth, Jaomin Ro vanished ("There is nothing to attack") and
+  sometimes reset the fight. His script cast 108955, which summons "Jaomin Ro's Vehicle" (57750, a hawk) and seats him in
+  it. The hawk flew up and dove, then the vehicle despawned and he was gone until he reset.
+- **Changed** (`sql/fixes/world/2026_11_16_52_jaomin_ro_hawk_dive.sql`): his special no longer uses a vehicle. He takes
+  the hawk form himself (model 39796, the same one the core's own Jaomin script uses), casts the dive 108935 Hawk Diving
+  to Earth one second later (instant, 75% weapon damage and a short stun around him), and turns back half a second after
+  that. He stays the same creature and keeps his target.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Jaomin Ro hits softer
+
+- **Found** (Four, with the Main core changes thread, 2026-11-16): Jaomin Ro (54611, The Disciple's Challenge) is level 3
+  with 160 health and hit a level 1-2 monk (72 health) for 4-8 per swing, crits up to 22, plus Baby Elephant Takes a Bath
+  (about 14) or Hawk Diving to Earth (5-6) every 6 to 10 seconds. His level, health and damage modifiers match TDB 8.3.7.
+  TDB gives him no script (melee only); our SmartAI adds the two specials. The player-side damage problem is a core bug
+  handled in the Main core changes thread (PR #80).
+- **Changed** (`sql/fixes/world/2026_11_16_51_jaomin_ro_damage.sql`), our own tuning rather than TDB's: half melee damage
+  (`DamageModifier` 0.5), first special after 6-8 seconds, then every 10 to 14 seconds.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: The Master's Flame no longer stays on the player
+
+- **Found** (Four, 2026-11-16): after The Lesson of the Burning Scroll (29408) the buff "The Master's Flame" stayed on
+  the character, through relogs and later quests. The quest puts The Master's Flame (114610, infinite duration, a dummy
+  aura that gives the quest credit) on the player, and nothing took it off again.
+- **Changed** (`sql/fixes/world/2026_11_16_50_masters_flame_aura.sql`): Master Shang Xi 53566 removes The Master's Flame
+  (114610), its cosmetic version (114613) and Snatch Master's Flame (114746) from the player when 29408 is turned in.
+  A character already past that quest can clear it with `.unaura 114610`.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Wandering Isle trainees hit softer
+
+- **Found** (Four, 2026-11-16, video): after 2026_11_16_48 the trainees fought one at a time, but a single trainee still
+  killed a level 1 monk (72 health). They hit for 6-7 with melee every 2 seconds and cast Blackout Kick or Jab every
+  2 seconds (TDB 8.3.7's timer), with double health. Their level, health and damage values match TDB 8.3.7, and the
+  core's energy regeneration matches TrinityCore 8.3.7 (Tiger Palm costs 50 of 100 energy, so a level 1 monk gets one
+  about every 5 seconds).
+- **Changed** (`sql/fixes/world/2026_11_16_49_wandering_isle_trainee_damage.sql`), our own tuning rather than TDB's:
+  - Melee damage halved (`DamageModifier` 0.5) for the four trainee entries 54586, 54587, 65470, 65471.
+  - Blackout Kick and Jab every 5 to 7 seconds instead of every 2.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Wandering Isle trainees fight one at a time
+
+- **Found** (Four, 2026-11-16): during The Lesson of Stifled Pride (29524), hitting one Huojin or Tushui Trainee pulled the
+  ones around it, and the group killed the player. Our four trainee templates (54586, 54587, 65470, 65471) used a monster
+  faction (58) without TDB's civilian flag, so nearby trainees joined in. Their SmartAI mixed two script versions:
+  duplicate event ids, a missing actionlist, and a 15-second faction reset on the Tushui trainees, which also had a core
+  script on top.
+- **Changed** (`sql/fixes/world/2026_11_16_48_wandering_isle_trainees.sql`):
+  - TDB 8.3.7 template values for all four entries: Huojin faction 2263, Tushui faction 2101, civilian, no core script.
+  - TDB 8.3.7's trainee SmartAI for all four: one-on-one fight, and at 10% health the trainee yields, gives the quest
+    credit, says a line and leaves after 4 seconds. TDB gives the Huojin trainees no script (players had to kill them),
+    so here they get the same yield script, casting Jab instead of Blackout Kick.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Northwatch caravans carry their lugs and crates
+
+- **Found** (Four, 2026-11-16, screenshots): after 2026_11_16_44 the caravan carriers walked the road (visible in GM mode),
+  but no lugs or crates rode with them. The core only loads `vehicle_template_accessory` rows for a vehicle that also has
+  an `npc_spellclick_spells` row; the three caravans had none, so their passengers were dropped at startup.
+- **Changed** (`sql/fixes/world/2026_11_16_47_northwatch_caravan_riders.sql`): Northwatch Caravan A/B/C (39244/39318/39319)
+  get the standard Ride Vehicle Hardcoded 46598 click spell. The caravans have no spellclick npcflag, so players still
+  can't click them.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: stray toy cart in Orgrimmar
+
+- **Found** (Four, 2026-11-16, screenshot and `.gps` at The Drag 1805.9 -4531.8): a Toy Cart stood on its own next to
+  Blax Bottlerocket, who already pulls his own. The loose Toy Cart 52812 (guid 299102) and its Toy Cart Bunny 52810
+  (guid 299103) are leftovers: Blax's cart comes from his vehicle passengers (cart on Blax, bunny on the cart), and TDB 8.3.7
+  spawns only Blax.
+- **Changed** (`sql/fixes/world/2026_11_16_46_orgrimmar_toy_cart.sql`): the loose cart and bunny removed.
+- **Not changed:** three stacks of fire elementals (Surging Elemental, Searing Fire Elemental, Agitated Fire Spirit and two
+  others) at the same spot belong to the Elemental Invasion event (48) and only show while it runs.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Tirisfal Glades and Undercity follow-up
+
+- **Found** (Four, 2026-11-16, screenshots and video):
+  - Green fires burned on top of the Undercity bank. They are "Undercity - Forsaken - Fire Small" 193413, 13 in Undercity
+    and 5 at the Ruins of Lordaeron, left over from Wrath's Battle for the Undercity. TDB 8.3.7 to 12.1.0 spawn none of them.
+    The skulls' glowing eyes are part of the building and are not affected.
+  - Two Forsaken Bats 51384 over Undercity's central area darted around. All 11 wandered 5 yards at the template's walk speed
+    of 4.8 (12 yards a second). TDB has them hovering in place.
+  - A Winter Veil wreath decoration ("Tall/Thin Medium - Xmas" 187234) hung at Calston Estate all year, with 6 more in Tirisfal
+    and Deathknell. TrinityCore also spawns them all year, but they are Winter Veil models.
+- **Changed** (`sql/fixes/world/2026_11_16_45_tirisfal_undercity_followup.sql`): the 18 fire effects removed; Forsaken Bats
+  hover in place (MovementType 0); the 7 Tirisfal and Deathknell 187234 decorations tied to Winter Veil (event 2).
+- **Not changed:** the same decoration stands all year in other zones (Elwynn, Dun Morogh, Westfall, Hillsbrad, Silverpine and others);
+  those are left for those zones' reviews.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Northwatch supply caravans (Durotar)
+
+- **Found** (Four, 2026-11-16, screenshots): on Durotar's south road Northwatch Supply Crates hung in the air with Northwatch
+  Lugs standing inside and beside them, and "Northwatch Caravan A" men were only visible in GM mode. These are snapshots of
+  moving caravans: an invisible carrier (Northwatch Caravan A/B/C 39244/39318/39319) whose vehicle seats hold the lugs and the
+  crate they carry overhead (the crate seat sits higher, which is why the crates looked like they were floating). TDB 8.3.7
+  has the same frozen crates and lugs (13 and 26) without the carriers. Our database already had the caravan script (start
+  path 39244, make the passengers despawn at the end), but the path, the seat passengers and the spawners' script were missing.
+- **Changed** (`sql/fixes/world/2026_11_16_44_northwatch_caravans.sql`):
+  - The 67 frozen pieces removed: 17 carriers, 17 crates, 33 lugs.
+  - Vehicle passengers (seats from VehicleSeat.db2): Caravan A = 3 lugs + crate, Caravan B = 1 lug + crate, Caravan C = 2 lugs + crate.
+  - SAI path 39244: 9 points along the road from the spawners north, taken from where the frozen caravans stood. The
+    caravan's end-of-path event now fires at point 9 instead of 10.
+  - The three Northwatch Caravan Spawners 251643-251645 stand still and each send out a caravan (B, A, C) every 2 to
+    2.5 minutes, staggered.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Gilneas review
+
+- **Found:** Gilneas and Gilneas City compared with TDB 8.3.7. 139 Wolfmaw Outriders 37938 ran loose around the Battle for Gilneas lines (phase 189), where TDB has 35 Riding War Wolves 37939 carrying them plus 3 on foot. Tempest's Reach Watchmen (40, TDB 20), Attack Mastiffs (22, TDB 9) and Mountain Mastiffs (12, TDB 6) were doubled. 5 creatures and 15 objects stood twice on the same spot.
+- **Changed** (`sql/fixes/world/2026_11_16_43_gilneas_review.sql`):
+  - 183 creatures removed: Wolfmaw Outrider 139, Tempest's Reach Watchman 20, Attack Mastiff 13, Mountain Mastiff 6, Orc Raider 3, Forsaken Invader 2.
+  - 35 Riding War Wolves and 3 Wolfmaw Outriders added at TDB's positions (guids 735400175-735400212, phase 189); each wolf brings its rider through the existing vehicle accessory row.
+  - 15 doubled objects removed: Old Journal Page 6, Disturbed Soil 5, Moonleaf 2, Linen-Wrapped Book 1, Dustfall 1.
+- **Not changed:** Gilneas has fewer battle NPCs than TDB in several phases (TDB has 123 Forsaken Infantry, 116 Worgen Warriors and 84 Gilnean Militia that we don't have at all). Adding them is a bigger job and would need your call. The Hippogryphs and a few Gilneas City NPCs standing close together are phase scenes, so they were left.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Kezan review
+
+- **Found:** Kezan matches TDB 8.3.7 closely; ours has slightly fewer party NPCs, not more. One Kezan Citizen and 3 fire effects (phase 7) stood twice.
+- **Changed** (`sql/fixes/world/2026_11_16_42_kezan_review.sql`):
+  - Removed: Kezan Citizen 1, Kezan Small Fire - Phase 7 2, Kezan Large Fire - Phase 7 1.
+- **Not changed:** Kezan's party fireworks and fires belong to the zone's own phases and stay.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: The Wandering Isle review
+
+- **Found:** The Wandering Isle matches TDB 8.3.7 closely and has no extra creatures (TDB has more in some phases, e.g. Deepscale Ravagers in the turtle's wound). Two objects stood twice.
+- **Changed** (`sql/fixes/world/2026_11_16_41_wandering_isle_review.sql`):
+  - Removed: Kun-pai Ritual Charm 1, Explosive Bundle 1.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Tirisfal Glades review
+
+- **Found:** Tirisfal Glades and Deathknell compared with TDB 8.3.7: several mobs doubled, e.g. Wretched Ghoul 67 (TDB 47), Wailing Ancestor 32 (15), Scarlet Zealot 38 (22), Tirisfal Farmer 21 (11). Brill's Midsummer torch-tossing bunnies, the Spirit of Summer and two ribbon pole targets showed all year, as did Brill's Hallow's End props (Wickermen, decorations, candy bucket, lamps) and the cauldrons and campfire TDB ties to Hallow's End.
+- **Changed** (`sql/fixes/world/2026_11_16_40_tirisfal_glades_review.sql`):
+  - 116 creatures removed: Wretched Ghoul 20, Wailing Ancestor 17, Decrepit Darkhound 16, Scarlet Zealot 16, Rotting Ancestor 12, Tirisfal Farmer 10, Rot Hide Mongrel 8, Scarlet Disciple 6, Rotbrain Magus 5, Scarlet Sentry 5, Scarlet Missionary 1.
+  - Midsummer (1): Spirit of Summer 10651846, ribbon pole targets 352573 352544, torch bunnies 370240 370241 370253 370254 370308 370309 370242.
+  - Hallow's End (12): objects 162730 162527 162533 162534 (TDB), 20358958-61 decorations, candy bucket 20361246, lamps 20359152-53, Alliance Wickerman 20363057, Horde Wickerman 20363435.
+- **Not changed:** a door TDB also ties to Hallow's End (158047) stays permanent.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Mulgore review
+
+- **Found:** Mulgore and Camp Narache were the most overspawned so far: Venture Co. Worker 105 (TDB 29), Venture Co. Supervisor 63 (6), Flatland Prowler 72 (4), Prairie Wolf Alpha 71 (7), Windfury Sorceress 44 (9), Windfury Matriarch 42 (13), Taloned Swoop 21 (2). TDB 8.3.7 through TC 12.1.0 all agree on the lower numbers. 12 herb nodes stood twice on the same spot.
+- **Changed** (`sql/fixes/world/2026_11_16_39_mulgore_review.sql`):
+  - 418 creatures removed: Venture Co. Worker 76, Flatland Prowler 68, Prairie Wolf Alpha 64, Venture Co. Supervisor 57, Windfury Sorceress 35, Elder Plainstrider 35, Windfury Matriarch 29, Taloned Swoop 19, Wiry Swoop 13, Palemane Skinner 8, Palemane Poacher 8, Palemane Tanner 6.
+  - 12 doubled nodes removed: Ambercorn 6, Peacebloom 2, Silverleaf 2, Earthroot 2.
+  - Spring Rabbit 10649757 tied to Noblegarden (9).
+- **Not changed:** Bristleback Interlopers, Grimtotem Defenders and Vandals and Ghost Howl are not in TDB here but stay (TDB has none to compare with).
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Durotar review
+
+- **Found:** Durotar, Valley of Trials and Echo Isles: a few mobs doubled, e.g. Encrusted Surf Crawler 43 (TDB 22), Dustwind Harpy 32 (17), Razormane Quilboar 29 (15), Burning Blade Fanatic 25 (13). The twelve Brew of the Month vendors at the Brewfest grounds stood all year, as did a Headless Horseman fire, a Hallow's End cauldron and a Spring Rabbit.
+- **Changed** (`sql/fixes/world/2026_11_16_38_durotar_review.sql`):
+  - 103 creatures removed: Encrusted Surf Crawler 21, Dustwind Harpy 15, Burning Blade Fanatic 14, Wildmane Cat 14, Docile Island Boar 14, Razormane Quilboar 14, Burning Blade Apprentice 6, Dustwind Storm Witch 4, Pygmy Surf Crawler 1.
+  - Brew vendors 27806-27820 tied to their Brew of the Month events (34-45) as in TDB; fire 20500905 and cauldron 172811 to Hallow's End (12); Spring Rabbit 10647406 to Noblegarden (9).
+- **Not changed:** The Kodo (6, not in TDB) and the Dranosh'ar Fishermen (match TDB) stay.
+- **Status:** confirmed in game by Four (2026-11-16), apart from the Northwatch caravans (own entry).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Eversong Woods review
+
+- **Found:** Eversong Woods and Sunstrider Isle: many mobs doubled, e.g. Springpaw Cub 68 (TDB 30), Darkwraith 35 (11), Arcane Patroller 38 (17), Rotlimb Marauder 69 (40), Mana Wyrm 80 (52). A ribbon pole target and a Spring Rabbit showed all year.
+- **Changed** (`sql/fixes/world/2026_11_16_37_eversong_woods_review.sql`):
+  - 228 creatures removed: Springpaw Cub 38, Rotlimb Marauder 29, Mana Wyrm 28, Darkwraith 23, Arcane Patroller 21, Angershade 13, Rotlimb Cannibal 12, Withered Green Keeper 12, Ether Fiend 12, Amani Shadowpriest 12, Amani Axe Thrower 11, Arcane Wraith 7, Wretched Thug 6, Tainted Arcane Wraith 4.
+  - Ribbon pole target 353254 tied to Midsummer (1), Spring Rabbit 10652209 to Noblegarden (9).
+- **Not changed:** Enraged Wraiths, Lake Snappers and the Blood Elf Revelers (not in TDB) stay.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Azuremyst Isle review
+
+- **Found:** Azuremyst Isle and Ammen Vale: Timberstrider Fledgling 76 (TDB 30), Root Thresher 128 (97), Venture Co. Saboteur 16 (6), Venture Co. Gemologist 9 (3), owlbeasts and elemental spirits a little doubled. Spirit of Summer, a ribbon pole target, a bonfire bunny and a Spring Rabbit showed all year.
+- **Changed** (`sql/fixes/world/2026_11_16_36_azuremyst_isle_review.sql`):
+  - 112 creatures removed: Timberstrider Fledgling 46, Root Thresher 31, Venture Co. Saboteur 10, Deranged Owlbeast 7, Venture Co. Gemologist 6, Raving Owlbeast 5, Spirit of Water 4, Spirit of Fire 3.
+  - Midsummer (1): Spirit of Summer 10653172, ribbon pole target 353211, bonfire bunny 353222; Spring Rabbit 10652904 to Noblegarden (9).
+- **Not changed:** Angry Murlocs (not in TDB) stay.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Teldrassil review
+
+- **Found** (Four, 2026-11-16, starter zones). Teldrassil and Shadowglen compared with TDB 8.3.7: close to TDB, with only
+  a few extra Vicious Grells (12, TDB 7) and Giant Webwood Spiders (8, TDB 5), three Boglings stacked on one spot, and 6 Fel
+  Cone quest objects standing twice. A Midsummer bonfire bunny and a Spring Rabbit showed all year, and none of the
+  world's 194 Noblegarden Bunny Controllers were tied to Noblegarden.
+- **Changed** (`sql/fixes/world/2026_11_16_35_teldrassil_review.sql`): 5 Vicious Grells, 3 Giant Webwood Spiders and 2 of
+  the 3 Boglings removed; the 6 doubled Fel Cones removed; bonfire bunny 353124 linked to Midsummer (1), Spring Rabbit
+  10649606 to Noblegarden (9); every Noblegarden Bunny Controller 32784 linked to Noblegarden (9).
+- **Not changed:** critters and wild pets; herbs (as in Elwynn); the 63 large Fel Cone props 208046 sitting on the quest cones (decoration only).
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Gnomeregan convoys and Gnome Travelers march
+
+- **Found** (Four, 2026-11-16): on the road between New Tinkertown and Kharanos, 18 Gnomeregan Recruits, each stacked with
+  an Ammo Cart and a cart helper, and 6 Gnome Travelers on mechastriders stood frozen. They are snapshots of groups that
+  move in retail. No TrinityCore dump (6.0.4 to 12.1.0) scripts them. Our database had half a script (the recruit
+  summons its cart and hitches it), but it was attached to spawn ids that no longer exist, and its 4-minute cart timer was
+  shorter than the walk.
+- **Changed** (`sql/fixes/world/2026_11_16_34_gnomeregan_convoys.sql`):
+  - The 54 frozen convoy NPCs and 6 travelers are removed.
+  - 3 Gnomeregan Recruits (guids 735400169-171) start at three points of the road. Each summons and hitches its own
+    Ammo Cart (actionlist 4327601, cart lasts 15 minutes), walks from New Tinkertown toward Kharanos (SAI waypoints
+    7354164-7354166, using the server's pathfinding), despawns the cart and itself at the end and respawns after 60 seconds.
+  - 3 mounted Gnome Travelers (guids 735400172-174, formation led by 735400172) ride the same road the other way (path
+    7354167) and despawn together at New Tinkertown.
+  - The route points are the frozen snapshots' own positions, so the stretches between them follow pathfinding, not a sniff.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Dun Morogh review
+
+- **Found** (Four, 2026-11-15, starter zones). Dun Morogh, Coldridge Valley and New Tinkertown compared with TDB 8.3.7.
+  Unlike Elwynn the zone is close to TDB overall; only some mobs were doubled: Crazed Leper Gnome 77 (TDB 40), Target
+  Acquisition Device 46 (15), Young Snow Leopard 76 (50), Rockjaw Invader 27 (11), Living Contamination 32 (19), Dark Iron
+  Spy 28 (16), Winter Wolf 48 (37), Snow Leopard Cub 26 (16). A Dark Iron Golem, a Rockjaw Backbreaker and a Wendigo stood
+  twice. Only 1 of TDB's 4 Keg of Gnomenbrau quest objects was spawned. A ribbon pole target and bonfire bunny (Midsummer)
+  and a Spring Rabbit (Noblegarden) showed all year.
+- **Changed** (`sql/fixes/world/2026_11_16_33_dun_morogh_review.sql`):
+  - 190 extra creatures removed, same matching as Elwynn: Crazed Leper Gnome 42, Target Acquisition Device 31, Young Snow
+    Leopard 26, Living Contamination 18, Rockjaw Invader 16, Dark Iron Spy 12, Winter Wolf 11, Snow Leopard Cub 10, Rockjaw
+    Skullthumper 9, Dark Iron Pyromancer 5, Crushcog Sentry-Bot 4, Rockjaw Scavenger 3, and the three doubles.
+  - Critters and wild battle pets untouched. Warstrider Prototypes, launchers, Sanitron 500 and the S.A.F.E. Operatives
+    look doubled but match TDB, so they stay. The Dark Iron Invaders at the airfield (71, not in TDB) stay too.
+  - 3 Keg of Gnomenbrau objects added from TDB (guids 735400102-104).
+  - Event links: ribbon pole target 352654 and bonfire bunny 352653 to Midsummer (1), Spring Rabbit 10646516 to Noblegarden (9).
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Elwynn Forest review
+
+- **Found** (Four, 2026-11-15: zone review, starter zones first). Compared against TrinityCore TDB 8.3.7 (the full world
+  DB for this client build; TC 9.2.7 to 12.1.0 have the same Elwynn spawns):
+  - Most Elwynn mobs were spawned about twice: two overlapping spawn sets, often a few yards apart. Mangy Wolf 170 (TDB 85),
+    Prowler 140 (74), Murloc Forager 124 (62), Stonetusk Boar 101 (47), Murloc Lurker 94 (43), Rockhide Boar 148 (87).
+  - Stormwind Royal Guard 42218: 15 guards stood in two blobs on the road south of Goldshire (8 and 5) plus singles. They are
+    snapshots of TDB's mounted 9-guard patrol from the Stormwind gate to Eastvale.
+  - Morgaine the Sly, Bradford and Ashley Bridenbecker and an Expeditionary Priest stood twice; 3 Stormwind Guards and 2
+    Eastvale Peasants stood inside each other.
+  - Holiday pieces shown all year: the Goldshire Wickerman's torch points and crowd bunnies, the Alliance Wickerman object
+    and 10 Hallow's End decorations (Hallow's End), a ribbon pole target (Midsummer), a Spring Rabbit (Noblegarden) and a
+    moonlight object at the Stormwind gate (Lunar Festival).
+- **Changed** (`sql/fixes/world/2026_11_16_32_elwynn_forest_review.sql`):
+  - 634 extra creatures removed. Each TDB spawn keeps its nearest match of ours and the unmatched extras go, down to the TDB
+    count: Mangy Wolf 86, Prowler 66, Murloc Forager 62, Rockhide Boar 61, Stonetusk Boar 54, Murloc Lurker 51, Cow 37,
+    Riverpaw Outrunner 32, Gray Forest Wolf 28, Cutpurse 25, Young Forest Bear 24, Bandit 23, Kobold Tunneler 16,
+    Forest Spider 15, Riverpaw Runt 9, Young Wolf 7, Dockworker 5, Murloc Streamrunner 5, Longsnout 4, plus the doubles above.
+  - Never touched: critters and wild battle pets (the pet battles thread owns those), rares and elites, NPCs with a menu,
+    friendly NPCs, fireworks, holiday spawns, and anything pathed, pooled, linked or scripted.
+  - Royal Guards: the 15 static guards (and the old one-way path 178448) replaced by TDB's patrol, guids 735400160-168,
+    path 735400163, formation led by 735400160, which despawns the escort at Eastvale and respawns at the gate after 2 minutes.
+  - Morgaine the Sly 177291 stands still (TDB).
+  - Event links: 13 Wickerman creatures and 11 Wickerman/decoration objects to Hallow's End (12), ribbon pole target 352657
+    to Midsummer (1), Spring Rabbit 10647297 to Noblegarden (9), moonlight object 19728596 to Lunar Festival (7).
+- **Not changed:** herb and ore nodes (Silverleaf 109 vs TDB 28, Copper Vein 110 vs 37); they rarely overlap, so they stay
+  unless you want them trimmed.
+- **Status:** confirmed in game by Four (2026-11-16).
+- **Pick up:** run the SQL, restart `worldserver`.
 
 ## 2026-11-16 (World fixes: the remaining cities pass)
 
