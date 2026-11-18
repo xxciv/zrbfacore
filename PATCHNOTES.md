@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-18 (Quest fixes: Durotar, The Wolf and The Kodo + Thunder Down Under)
 
-Draft PR, not merged yet. Not tested in game yet.
+Draft PR, not merged yet. All confirmed in game 2026-11-18.
 
 ### DB: Shin Stonepillar has no gossip (25205)
 
@@ -50,7 +50,7 @@ Draft PR, not merged yet. Not tested in game yet.
   lizard spawns respawn in 60 s instead of 300 s (8 are needed); objective 265482 text "Drowned Thunder Lizard removed" (was empty, so it read
   "slain"); `creature_template_addon` 39464 `bytes1` 7 so the lizards lie dead (they stood
   around in full health).
-- **Status:** credit confirmed in game 2026-11-18; lying dead not tested yet.
+- **Status:** confirmed in game 2026-11-18.
 - **Pick up:** SQL only:
 
   ```
@@ -80,7 +80,7 @@ Draft PR, not merged yet. Not tested in game yet.
   (303087, 303092, 303094) plays dead (29266), then the rider gets the 39365 credit, is
   teleported back to Shin Stonepillar (1289.54, -4337.85, 34.03) and The Wolf despawns. The
   trigger rests 60 s after each run.
-- **Status:** not tested in game.
+- **Status:** confirmed in game 2026-11-18 (fable plays, credit, back at Shin).
 - **Pick up:** SQL only:
 
   ```
