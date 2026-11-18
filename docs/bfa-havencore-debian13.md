@@ -771,8 +771,9 @@ from `_retail_/Interface/AddOns`, and copy the folder from `client/` there.
 
 - `client/BugTabs` (1.5.0-zr1): error catcher. Its bundled CallbackHandler-1.0 called
   `securecallfunction`, which 8.3.7 lacks; it now falls back to `xpcall`. TOC set to 80300.
-- `client/FishingBuddy` (1.10.10-zr1): its bundled CallbackHandler-1.0 is raised to minor 100 so its
-  8.3.7-safe copy wins over newer copies other addons ship.
+- `client/FishingBuddy` (1.10.10-zr2): its bundled CallbackHandler-1.0 is raised to minor 100 so its
+  8.3.7-safe copy wins over newer copies other addons ship, and options tabs no longer go blank after
+  switching tabs (tooltip overlays are detached on tab change).
 - `client/Sorted` (1.2.4-zr3): bag addon. Bank buttons get an upgrade icon (nil error with the item level
   column on), empty slots skip `GetItemCooldown`, and items in the closed bank or another character's bags
   show a tooltip from their saved link.
