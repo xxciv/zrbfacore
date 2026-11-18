@@ -24,8 +24,8 @@ Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time 
 ### World: Durotar, the Northwatch Marines' Ticking Time Bomb explodes
 
 - **Found** (Four, 2026-11-18, video: "ticking time bomb, brief graphical element, no functionality, doesn't do damage"): Northwatch Marine 39267 casts Ticking Time Bomb 79726, which throws a Ticking Time Bomb 42776 at your feet. The bomb's script (same as TDB 8.3.7) cast Explosion 79728 (Fire damage to enemies within 4 yards) at the very moment it appeared, while it was still being added to the world, then despawned. The explosion never landed. The ability's own text says "Explodes after a few seconds, inflicting Fire damage. Tick-tock."
-- **Changed** (`sql/fixes/world/2026_11_18_43_ticking_time_bomb_fuse.sql`): the bomb now ticks for 3 seconds (our own value for "a few seconds"), then explodes (triggered cast) and disappears a second later. Step out of it to avoid the damage. The same bomb is thrown by Sergeant Curtis 5809, Nethergarde Engineer 5997 and Chief Prospector Hondo 41173.
-- **Status:** untested in game.
+- **Changed** (`sql/fixes/world/2026_11_18_43_ticking_time_bomb_fuse.sql`, run it again after the second round): the bomb now ticks for 3 seconds (our own value for "a few seconds"), then explodes (triggered cast) and disappears a second later. Step out of it to avoid the damage. Second round (Four, video: "The bomb explosion worked, but it's still 'disappearing' from the world early."): the bomb is summoned as the Marine's guardian, and guardians are aggressive, so it ran after Four's imp and out of sight before exploding. It now turns passive and rooted as it lands. The same bomb is thrown by Sergeant Curtis 5809, Nethergarde Engineer 5997 and Chief Prospector Hondo 41173.
+- **Status:** explosion confirmed in game (Four, 2026-11-18); the bomb staying put is untested.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: the other all-in-one profession trainers (Train-a-Trons, Whittler Dewei, Profession Liaisons)
