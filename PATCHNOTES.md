@@ -27,7 +27,7 @@ Client addon only, in `client/FishingBuddy`. No server change: nothing to rebuil
   - `CheckBox_Able`: a disabled option's overlay anchors to `button.label or button` (checkboxes have no
     `label`, so it used to anchor to the options frame's corner).
   - `FishingBuddy.toc`: version `1.10.10-zr2`.
-- **Status:** cause confirmed in game with the `/run` above; the patched addon is not tested yet.
+- **Status:** confirmed in game by Four on 2026-11-18 (1.10.10-zr2: tabs stay filled, no errors).
 
 ## 2026-11-17 (World fixes: second-tier zones review)
 
