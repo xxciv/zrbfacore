@@ -3,7 +3,7 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-18 (Quest fixes: The Wolf and The Kodo, Durotar)
+## 2026-11-18 (Quest fixes: Durotar, The Wolf and The Kodo + Thunder Down Under)
 
 Draft PR, not merged yet. Not tested in game yet.
 
@@ -34,6 +34,33 @@ Draft PR, not merged yet. Not tested in game yet.
   ```
 
   Then restart worldserver and delete the client `Cache` folder (objective text).
+
+### DB: Drowned Thunder Lizards give no credit (Thunder Down Under 25236)
+
+- **Found** (Four, 2026-11-18): "0/8 Drowned Thunder Lizard Slain". The lizards show the
+  "operate" cursor, but clicking them gives no credit.
+- **Cause:** the quest is to attach a Mageweave Tether to 8 Drowned Thunder Lizards 39464 (they
+  are not killed). Their spellclick cast 80948 "Razgar's Fillet Knife", an unrelated spell (dummy
+  + create item 58958). The real spell is 73945 "Attach Tether": kill credit 39464 to the clicker
+  and summons a Hulking Orcish Laborer 39465 to haul the carcass out.
+- **Changed:** `sql/fixes/world/2026_11_18_73_thunder_down_under.sql`: `npc_spellclick_spells`
+  39464 80948 -> 73945; spellclick condition (18, 39464, 73945) quest 25236 in progress; SAI 39464
+  id 2 removes the click flag on click (one credit per lizard, it already despawns after 5 s);
+  laborer 39465 SAI despawns it 8 s after it is summoned (the summon has no duration); the 7
+  lizard spawns respawn in 60 s instead of 300 s (8 are needed).
+- **Status:** not tested in game. The objective may still read "Slain" in the log; the credit
+  counts either way.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_73_thunder_down_under.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
 
 ### DB: the fable never plays out at the kodos (25205)
 
