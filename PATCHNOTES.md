@@ -3,6 +3,203 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-18 (Quest fixes: Loss Reduction, Durotar)
+
+Merged to `main` with PR #81 on 2026-11-18, together with the Kezan fixes. Confirmed in game by Four on 2026-11-18.
+
+### DB: Injured Razor Hill Grunts give no credit (25179)
+
+- **Found** (Four, 2026-11-18): the grunts show the speak cursor instead of attack.
+- **Not a bug:** the objective is "Rescue 4 Injured Razor Hill Grunts". You click the grunt
+  (spellclick 73705), it gets up and follows you for a while, then leaves. Nothing is slain.
+- **Cause of the real fault:** the grunt's SAI (39270) linked the kill credit behind the "add quest"
+  row, whose conditions only pass while the quest is not taken. With the quest from Gar'Thok in the
+  log, a rescue gave no credit. It also called actionlist 3927000, which does not exist, and linked
+  from rows that are not link events.
+- **Changed:** `sql/fixes/world/2026_11_18_70_loss_reduction.sql`: SAI for 39270 rewritten (on
+  click: add the quest if not taken, remove feign death, kill credit 39270, remove the spellclick
+  flag, say a thank-you line, follow for 20-25 s, say goodbye and despawn; it respawns after 120 s
+  lying down again). Feign death 29266 now comes from `creature_template_addon.auras`. SAI
+  conditions rebuilt (calls for help only while lying down; quest added only if not taken). The
+  Razor Hill Grunt directions file on PR #82 does not touch this entry.
+- **Status:** confirmed in game by Four on 2026-11-18.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_70_loss_reduction.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+## 2026-11-17 (Quest fixes: Kezan)
+
+Merged to `main` with PR #81 on 2026-11-18. All items below confirmed in game by Four on 2026-11-18.
+
+### DB: Necessary Roughness (24502) has no shredder and only one objective
+
+- **Found** (Four, 2026-11-16): after The Replacements the next quest Necessary Roughness is
+  accepted, but no Bilgewater Buccaneer appears, and the tracker reads `0/1 "Necessary Roughness"
+  Kill Credit slain` while the quest text asks for 8 Steamwheedle Sharks.
+- **Cause:** four separate data faults.
+  1. Coach Crosscheck's script (`npc_coach_crosscheck`) casts 70015 (Summon Bilgewater Buccaneer)
+     on accept. The spell places the shredder on the parked Bilgewater Buccaneer 48526, and the
+     `conditions` row naming that target was type 31 (legacy type ids) with value 5. In legacy ids
+     5 is a gameobject, so the core looked for gameobject 48526 (a "Dwarven Campfire") and the cast
+     failed every time.
+  2. The parked shredder carries invisibility aura 90366 and is only seen with detection 90161.
+     `spell_area` gave 90161 only in Kajaro Field (area 4822); the coach stands in Bilgewater Port
+     (4767). At the coach the shredder was invisible, and an invisible unit cannot be an implicit
+     spell target either.
+  3. `quest_objectives` only had row 266618 (kill credit 48271, the boarding credit, no text). Row
+     266619 (8 x Steamwheedle Shark 37114) was missing; retail lists "Bilgewater Buccaneer (1)" and
+     "Steamwheedle Shark Footbombed (8)".
+  4. The parked shredder had `npcflag` 0, so its spellclick row (70015) could not be used to get
+     back in after leaving the shredder.
+- **Changed:** `sql/fixes/world/2026_11_17_70_kezan_quest_fixes.sql`:
+  - `conditions` (13, 1, 70015): type 31 -> 51 (unit 48526).
+  - `spell_area` 90161: area 4822 -> zone 4737 (all of Kezan).
+  - `creature_template` 48526: `npcflag` |= 16777216 (spellclick), with a `conditions` row
+    (18, 48526, 70015) so it only works while 24502 is in progress.
+  - `quest_objectives`: 266618 text "Bilgewater Buccaneer"; new row 266619 (24502, kill credit
+    37114, amount 8, "Steamwheedle Shark Footbombed").
+  - Leftovers removed: `creature_queststarter` (37114, 24502); Coach Crosscheck `smart_scripts`
+    ids 1 and 2 (two extra shark summons, the core script summons the 8 sharks); the hand-placed
+    permanent shark spawn guid 3530203330003155.
+- **Status:** confirmed in game by Four on 2026-11-18.
+
+### DB: Fourth and Goal (28414) never seats the player
+
+- **Cause:** the quest script summons a second shredder, entry 37213, and the creature script
+  `npc_boucanier_gob` seats the player in it. `creature_template.ScriptName` for 37213 was empty.
+- **Changed:** same file: `ScriptName` 'npc_boucanier_gob' on 37213.
+- **Status:** confirmed in game by Four on 2026-11-18. Known leftover: the Deathwing fly-by (spell 66322) targets a bunny
+  that only exists in the headquarters phase, so it will probably not show.
+
+### DB: 447 (14125) completes without the Gasbot
+
+- **Cause:** `quest_objectives` had the three objects (generator, stove, bed) but not the fourth
+  retail objective "KTC Headquarters Set Ablaze with Gasbot!" (kill credit 37598, given by the
+  core script `npc_kezan_gasbot`). The Gasbot Control Panel 201736 stood in phase 169, which the
+  player leaves when The Uninvited Guest is rewarded, so it could not be seen at that point. The
+  Claims Adjuster 37602 (second turn-in) was in 169 as well.
+- **Changed:** same file: new row 266734 (14125, kill credit 37598, amount 1) plus texts for
+  266731-266733; panel `PhaseId` 169 -> 382; Claims Adjuster `phaseId` 169 -> 384 (shown once 447
+  is complete).
+- **Status:** confirmed in game by Four on 2026-11-18.
+
+### DB: objective texts
+
+- Do it Yourself (14070): "<name> beaten down" for 265427-265430. Life of the Party (14113, 14153):
+  "Partygoer entertained". Same file.
+
+### DB: 177 conditions used the wrong object type id
+
+- **Cause:** found through fault 1 above. The core has condition 31 (legacy type ids: 3 unit,
+  4 player, 5 gameobject) and condition 51 (current ids: 5 unit, 6 player, 8 gameobject). 154 rows
+  were type 31 with value 5 while meaning a creature (145 name a creature entry, 9 are "require
+  unit" rows with no entry), so the core read them as gameobjects and the spell, spellclick or
+  script they guard never found its target. 23 rows were type 51 with the legacy unit id 3 (read
+  as an Azerite item). Examples: Dragonflayer installations (43986, 43990, 44213, 44214), Legion
+  transporters and antennas in Netherstorm (33644, 33655, 33744), taming spells (19692-19700),
+  Shade of Akama, vehicle spellclicks 46598 on 28312/32627/34776/35069/35431/35433, Wandering Isle
+  summons (105333, 106623, 126040, 126043, 126059), Siege of Orgrimmar spells.
+- **Changed:** `sql/fixes/world/2026_11_17_71_condition_object_types.sql`: type 31 value 5 ->
+  type 51 value 5 (one row that already had a correct twin is deleted); type 51 value 3 -> value 5.
+  The two type 51 value 4 rows are left alone (intent unclear).
+- **Status:** confirmed in game by Four on 2026-11-18.
+
+### DB: Ace, Gobber and Izzy ride in the Hot Rod for the rest of Kezan
+
+- **Found** (Four, 2026-11-16): at the pool party the three companions still respawn in the car
+  every time it is summoned; they should have been dropped off at the pool.
+- **Cause:** `npc_hot_rod_rolling_my_homies` casts Resummon Ace/Gobber/Izzy (66644, 66645, 66646)
+  whenever the driver has Rolling with my Homies rewarded, with no end. The pool-side copies
+  35211-35213 are separate spawns in the pirate phase 380.
+- **Changed:** `sql/fixes/world/2026_11_17_72_kezan_party_fixes.sql`: `conditions` source type 17
+  on the three spells: Life of the Party 14113 and 14153 must both be "not taken" (type 47,
+  mask 1). They ride along until Life of the Party is accepted and not after.
+- **Status:** confirmed in game by Four on 2026-11-18.
+
+### DB: party staff kill the Pirate Party Crashers (14115)
+
+- **Found** (Four, 2026-11-16, video): KTC Waiters and guests kill the pirates before the player.
+- **Cause:** in phase 380 Kezan Partygoer 35202 (70 spawns), KTC Waiter 48805 (7) and KTC Waitress
+  48806 (5) are faction 1770, hostile to the pirates 35200 (faction 2102), with `unit_flags` 32768.
+- **Changed:** same file: `unit_flags` |= 0x200 (immune to NPC) on 35202, 48805, 48806, as the
+  pool-side Ace, Gobber and Izzy already have (33280).
+- **Status:** confirmed in game by Four on 2026-11-18.
+
+### DB: too many pirates at the pool party (14115)
+
+- **Found** (Four, 2026-11-16, screenshot): the pool area is packed with pirates; thin by half.
+- **Cause:** 34 Pirate Party Crashers 35200 in phase 380 for a 12-kill quest. Separately, Kezan
+  Partygoer 35202 (70 spawns, phase 380) and 35235 (4, phase 381) use the invisible-stalker display
+  21342: hidden anchors that the pirates fought, shown as "invisible attackers" with name plates.
+- **Changed:** `sql/fixes/world/2026_11_17_73_kezan_pool_party_pirates.sql`: 17 of the 34 pirates
+  deleted (kept 17 spread over the whole area, guids in the file); 35202 and 35235
+  `unit_flags` |= 0x02000200 (not selectable, immune to NPCs).
+- **Left:** the sleeping Pirate Party Crasher 35237 (guid 21015340, phase 381) is a deliberate
+  knocked-out decoration (template aura 87259 Permanent Feign Death (Drowned), unattackable
+  faction 14); the kill target is 35200.
+- **Status:** confirmed in game by Four on 2026-11-18.
+
+### Core: Doc Zapnozzle says "$n" (Don't Go Into the Light!, 14239, Lost Isles)
+
+- **Found** (Four, 2026-11-16): `Doc Zapnozzle says: You made the right choice. We all owe you a
+  great deal, $n.`
+- **Cause:** on retail spell 69018 summons a personal Doc for each player; here he is a fixed spawn
+  (guid 280009397, phase 0) and nothing casts 69018. `npc_zapnozzle` (lost_isles.cpp) talks to
+  `GetSummoner()`, which is empty for a fixed spawn, so the chat packet had no target and the
+  client could not fill in the name.
+- **Changed:** new `tools/bfa/lost-isles-zapnozzle.patch` (lost_isles.cpp only, last in the chain
+  after weapon-slot-attack-power.patch): `sQuestReward` remembers the player who turned in 14239,
+  and `GetSummoner()` falls back to the nearest player within 40 yards. Compile-checked.
+- **Status:** confirmed in game by Four on 2026-11-18.
+
+### Not changed, for the record
+
+- Rolling with my Homies (14071): the Keys to the Hot Rod stay after the turn-in on purpose. The
+  car is needed for Robbing Hoods (14121) and Sassy takes the keys at Life Savings.
+- Life Savings (14126): the core `PlayerScript` `LifeSavings` plays the movie and teleports to the
+  Lost Isles as soon as the quest is complete. The quest's only objective is its own provided item,
+  so by the code this happens on accept and skips the ride to the yacht and Gallywix. Left as is
+  until Four reaches it and reports what happens; fixing it needs a core patch.
+
+- **Pick up:** SQL plus one scripts-only patch. Delete the client `Cache` folder afterwards (objective texts).
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_17_70_kezan_quest_fixes.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_17_71_condition_object_types.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_17_72_kezan_party_fixes.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_17_73_kezan_pool_party_pirates.sql | mysql -u root -p bfa_world
+  ```
+
+  For the Doc Zapnozzle patch (scripts only, short build):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/lost-isles-zapnozzle.patch | git apply
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  Then restart worldserver.
 ## 2026-11-18 (Addon fixes: FishingBuddy options tabs)
 
 Client addon only, in `client/FishingBuddy`. No server change: nothing to rebuild, no SQL, no restart.
