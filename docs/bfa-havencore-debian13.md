@@ -896,6 +896,13 @@ empty. This adds its contents:
 ```sh
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_18_50_sack_of_pet_supplies_loot.sql
 ```
+
+Brewfest companions (Wolpertinger, Pint-Sized Pink Pachyderm) had 6 display spawns outside the
+Brewfest event. This ties them to Brewfest:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_18_51_brewfest_display_pets.sql
+```
 #### Legion and BFA pet tamers
 
 Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest
