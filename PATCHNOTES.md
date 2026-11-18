@@ -3,6 +3,42 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-18 (pet battles)
+
+### Pet battles: Sack of Pet Supplies opens empty
+
+- **Found** (Four, 2026-11-18): the Sack of Pet Supplies (item 89125) from Zunta, The Pet Tamer
+  (quest 31812) had nothing in it.
+- **Cause:** `item_loot_template` has no rows for 89125. The sack is the reward of 42 pet tamer quests
+  (Julia 31316, Zunta 31812, Old MacDonald 31724, Lindsay 31725, Eric Davidson 31726, Bill Buckler 31728,
+  Steven Lisbane 31729, Dagra the Fierce 31813, Analynn 31814, Zonya the Sadist 31815, Merda Stronghoof
+  31817, Cassandra Kaboom 31870, the "Battle Pet Tamers: <continent>" quests and the Grand Master
+  tamers), so every one of them gave an empty sack.
+- **Changed:** `sql/fixes/world/2026_11_18_50_sack_of_pet_supplies_loot.sql` adds 13 rows for 89125.
+  Contents from the item's wiki page; chances copied from the dump's sniffed table for the same items
+  in Darkmoon Pet Supplies (91086).
+
+  | Item | Chance | Count |
+  |---|---|---|
+  | One of: Rusty Pet Cage 90043, Tattered Collar 90044, Sack of Expired Pet Food 90047, Hair Ball 90057, Well-Loved Toy 90058 (GroupId 1) | 20% each, always one | 1 |
+  | Battle Pet Bandage 86143 | 47% | 2-4 |
+  | Happy Pet Snack 43626, Pet Grooming Kit 43352, Magical Pet Biscuit 71153, Magical Mini-Treat 89906 | 11% each | 2-4 |
+  | Fetch Ball 37431 | 8% | 1 |
+  | Exquisite Murloc Leash 90048 | 1% | 1 |
+  | Porcupette 89587 (battle pet) | 1% | 1 |
+
+  Sacks already in your bags use the new table when opened. Docs: Pet battles section.
+- **Status:** confirmed in game by Four (2026-11-18): a new sack from `.additem 89125` opens with loot. SQL output: `13 Sack of Pet Supplies loot rows`.
+- **Pick up:**
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo pull
+  mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_18_50_sack_of_pet_supplies_loot.sql
+  ```
+
+  Then restart `worldserver`.
+
 ## 2026-11-18 (Addon fixes: new ZRProximity addon)
 
 New client addon in `client/ZRProximity`. No server change: nothing to rebuild, no SQL, no restart.
