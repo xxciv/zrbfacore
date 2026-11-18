@@ -15,7 +15,7 @@ Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time 
   - Events 34-45 run every year again until the end of 2030. Start dates moved to the first of each month this year (our own dates; the event repeats every 365 days, so from March 2028 each month starts one day early).
   - Ironforge gets the other 11 monthly vendors at 8.3.7's spot (guids 735401187-735401197); the February one only shows in February.
 - Brew of the Year still takes a year: each brew is sold only in its month.
-- **Status:** untested in game.
+- **Status:** Orgrimmar vendor confirmed in game (Four, 2026-11-18: only this month's brew); Ironforge vendors untested.
 - **Pick up:** run `2026_11_18_46` first, then this SQL, restart `worldserver`.
 
 ### World: holiday spawns appear in the right holiday
