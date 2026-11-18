@@ -7,6 +7,16 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
 
+### World: Ruins of Gilneas, more worgen in the forest around the Forward Command
+
+- **Found** (Four, 2026-11-18, screenshot of empty forest near the camp: "i would add more pairs, if you get further into the forest, its pretty empty").
+- **Changed** (`sql/fixes/world/2026_11_18_34_ruins_of_gilneas_forest_pairs.sql`; our own tuning, not 8.3.7):
+  - Every Forsaken Vanguard of the battle (phase 274) in the Forward Command and the forest around it with no worgen within 15 yards gets one Worgen Rusher. That makes 29 Rushers (guids 735401158-735401186).
+  - Each Rusher stands 2.5 yards from its Vanguard, on the side the nearest worgen come from, faces it and stands still. The 5-yard Rusher fight starter makes each pair fight.
+  - The five Vanguards guarding the north road (around -995, 2000) are left alone.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Ruins of Gilneas, worgen back inside the Forward Command
 
 - **Found** (Four, 2026-11-18, after `2026_11_18_32`: "unfortunately, i think that got rid of all the worgen"; the Forsaken themselves look right now): in 8.3.7 all 46 Worgen Rushers stand in one pack northwest of the camp (around -1290, 1775), with none inside the Forward Command, so the camp went quiet.
