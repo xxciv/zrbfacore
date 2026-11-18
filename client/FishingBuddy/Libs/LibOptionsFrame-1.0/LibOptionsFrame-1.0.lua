@@ -176,7 +176,7 @@ local function CheckBox_Able(button, value)
         end
         if (button.overlay) then
             button.overlay:ClearAllPoints();
-            button.overlay:SetPoint("TOPLEFT", button.label, "TOPLEFT");
+            button.overlay:SetPoint("TOPLEFT", button.label or button, "TOPLEFT");
             button.overlay:SetSize(button:GetWidth(), button:GetHeight());
             button.overlay:SetFrameLevel(button:GetFrameLevel()+2);
             button.overlay:Show();
@@ -486,6 +486,11 @@ local function CleanupButton(button)
     button.controlled = nil;
     if (button.overlay) then
         button.overlay:Hide();
+        -- zrbfacore fix (2026-11-18): detach the overlay too. A hidden overlay kept its
+        -- anchor to this button, and on the 8.3.7 client that left the button tied to a
+        -- restricted anchor family, so the next tab's SetPoint failed ("anchor family
+        -- connection") and the options page stayed empty.
+        button.overlay:ClearAllPoints();
         button.overlay = nil;
     end
     CheckBox_Able(button, 0);
@@ -545,6 +550,9 @@ function OptionsLib:ResetButtons()
     end
     for idx=1,#self.overlaybuttons do
         self.overlaybuttons[idx]:Hide()
+        -- zrbfacore fix (2026-11-18): see CleanupButton; never leave a reused
+        -- overlay anchored to a button from the previous tab.
+        self.overlaybuttons[idx]:ClearAllPoints()
     end
 
     self.optionmap = {};

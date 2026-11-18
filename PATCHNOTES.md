@@ -3,6 +3,32 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-18 (Addon fixes: FishingBuddy options tabs)
+
+Client addon only, in `client/FishingBuddy`. No server change: nothing to rebuild, no SQL, no restart.
+
+### FishingBuddy: options tab empty after switching tabs
+- **Found** (reported by Four, with a video): after opening the About tab, the next options tab
+  (Fishing Fun in the video) stayed empty, with `LibOptionsFrame-1.0.lua:421/454/723: Action[SetPoint]
+  failed because[SetPoint would result in anchor family connection]: attempted from:
+  FishingOptionsFrameOpt2:SetPoint` (also `Opt7`).
+- **Cause:** LibOptionsFrame puts an invisible tooltip "overlay" button over options that have a
+  disabled-state tooltip (`tooltipd`, for example "Use rafts"). When the tab changes, `ResetButtons` and
+  `CleanupButton` only hid the overlays, so each one stayed anchored to a checkbox from the previous tab. In
+  game the client marked such an overlay as a restricted region ("Can't measure restricted regions"), which
+  put the checkbox it was anchored to (`Opt2`) into a restricted anchor family. After that, even a cleared
+  `Opt2` couldn't be anchored to `FishingBuddyFrameInset`. The SetPoint error aborted `LayoutOptions` before
+  `ShowButtons`, so the whole page stayed empty. Confirmed in game: an unnamed Button was still anchored to
+  `Opt2`, and `/run for _,o in ipairs(FishingOptionsFrame.overlaybuttons) do o:ClearAllPoints() o:Hide() end`
+  brought the options back.
+- **Changed:** `client/FishingBuddy/Libs/LibOptionsFrame-1.0/LibOptionsFrame-1.0.lua`:
+  - `ResetButtons`: every overlay is now `ClearAllPoints()`'d as well as hidden.
+  - `CleanupButton`: the button's overlay is `ClearAllPoints()`'d before the link is dropped.
+  - `CheckBox_Able`: a disabled option's overlay anchors to `button.label or button` (checkboxes have no
+    `label`, so it used to anchor to the options frame's corner).
+  - `FishingBuddy.toc`: version `1.10.10-zr2`.
+- **Status:** cause confirmed in game with the `/run` above; the patched addon is not tested yet.
+
 ## 2026-11-17 (World fixes: second-tier zones review)
 
 Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
