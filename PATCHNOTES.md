@@ -21,7 +21,7 @@ Draft PR, not merged yet. Not tested in game yet.
   11206 and 11211 of this quest batch); SAI 39380 also closes the window before the wolf is
   summoned; condition so the option only shows while 25205 is in progress; objective text
   "Listen to the shaman's fable" (was "The Kodo slain").
-- **Status:** not tested in game. The greeting text 15612 is matched by id order, not by a sniff;
+- **Status:** confirmed in game 2026-11-18 (option shows, wolf is summoned). The greeting text 15612 is matched by id order, not by a sniff;
   if Shin shows an odd greeting, tell Herald.
 - **Pick up:** SQL only:
 
@@ -34,6 +34,36 @@ Draft PR, not merged yet. Not tested in game yet.
   ```
 
   Then restart worldserver and delete the client `Cache` folder (objective text).
+
+### DB: the fable never plays out at the kodos (25205)
+
+- **Found** (Four, 2026-11-18): after Shin turns you into The Wolf, nothing happens; running over
+  to the kodos (two friendly ones per spot) does nothing and they cannot be killed.
+- **Cause:** the kodos are not meant to be killed; the credit "The Kodo" comes from a script when
+  The Wolf reaches them. That script (The Kodo 39365) started with event 79, which in this core is
+  SCENE_TRIGGER (distance-to-creature is event 75), so it never fired. The Wolf 39364 and The Kodo
+  had no `creature_text` at all, so the whole story chain (each line starts the next) had nothing
+  to say. The old script also ran on all six kodos and made a sniffed guid (146730816) play dead
+  that does not exist here.
+- **Changed:** `sql/fixes/world/2026_11_18_72_wolf_and_the_kodo_story.sql`: 13 `creature_text`
+  rows (9 for The Wolf, said one by one as you ride; 4 for The Kodo), the in-game fable lines,
+  shown as on-screen emotes. Entry SAI of 39365 deleted; per-spawn SAI on one kodo of each pair
+  (303086, 303091, 303093): when The Wolf is within 15 yd it tells the ending, its partner
+  (303087, 303092, 303094) plays dead (29266), then the rider gets the 39365 credit, is
+  teleported back to Shin Stonepillar (1289.54, -4337.85, 34.03) and The Wolf despawns. The
+  trigger rests 60 s after each run.
+- **Status:** not tested in game.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_72_wolf_and_the_kodo_story.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
 
 ## 2026-11-18 (Addon fixes: new ZRProximity addon)
 
