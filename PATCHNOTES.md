@@ -7,6 +7,13 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
 
+### World: Darkshore and the Ruins of Gilneas keep their normal spawns next to the new quest phases
+
+- **Found** (Four, 2026-11-18: "i think you got rid of mobs everywhere". The Blackwood camp, the shore and the Ruins of Auberdine in Darkshore were empty; so were the Ruins of Gilneas apart from the Forward Command battle): `2026_11_18_30` and `2026_11_18_31` give a quest phase (Darkshore 308/310, Ruins of Gilneas 274/312) to the whole zone. A player in a quest phase who isn't also in the default phase 169 only sees that quest phase's spawns, so every normal spawn in both zones disappeared. Four's location readout showed "Phases: 274" only.
+- **Changed** (`sql/fixes/world/2026_11_18_35_default_phase_in_phased_zones.sql`): both zones always add phase 169 too (`phase_area` 148/169 and 4706/169), the same way Westfall, the Lost Isles, Kezan and Vashj'ir already do. Nothing was deleted; the spawns were only hidden.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Ruins of Gilneas, more worgen in the forest around the Forward Command
 
 - **Found** (Four, 2026-11-18, screenshot of empty forest near the camp: "i would add more pairs, if you get further into the forest, its pretty empty").
