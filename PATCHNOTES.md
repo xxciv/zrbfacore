@@ -11,7 +11,7 @@ Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 
 
 - **Found** (Four, 2026-11-18, Westfall "a lot better"): Sentinel Hill Guard 735401039 and Riverpaw Brute 735401030 (both added by `2026_11_17_44` at 8.3.7 spots) stand 3 yards apart and never fight. Creatures only notice each other when one of them moves, so a pair where both stand still never starts. With the flagged battle creatures, 8 such still pairs at Sentinel Hill, 16 Talrendis Raiders at the Orgrimmar gate in Azshara and 6 pairs in the Ruins of Gilneas.
 - **Changed** (`sql/fixes/world/2026_11_17_46_staged_battles_start.sql`, our own tuning): out of combat, every 2-4 seconds, one side attacks the closest living opponent within 8 yards (`smart_scripts` event 1, action 49 attack, target 19 closest creature): Riverpaw Bandit 54371, Riverpaw Brute 54372, Riverpaw Herbalist 54373 attack Sentinel Hill Guard 42407 (id 10); Talrendis Raider 35177 attacks Orgrimmar Gatekeeper 35190 (id 10); Worgen Rusher 45375 attacks Forsaken Vanguard 45532 (id 10) and Forsaken Catapult 45533 (id 11); Worgen Rusher 45535 attacks Forsaken Vanguard 45280 (id 10); Forsaken Vanguard 45532 attacks 7th Legion Submariner 45539 (id 10). With `staged-npc-battles.patch` nobody dies, so the pair keeps fighting.
-- **Status:** untested in game.
+- **Status:** Sentinel Hill confirmed in game by Four (2026-11-18); the other zones untested.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Darkshore, Shatterspear Pass shows the aftermath of the battle
@@ -43,7 +43,7 @@ Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 
     - Counterattack! leftovers removed at Regthar Deathgate's camp: Warlord Krom'zar 1, Horde Defender 5, Horde Axe Thrower 3, Kolkar Invader 8. Regthar's quest still summons all of them.
     - The 12 rowboat Rageroar Sea Dogs and the 80 dead bodies above set to stand still.
 - **Not changed:** Darkshore's Shatterspear Pass is waiting on Four's choice (in the 8.3.7 data the raiders there lie dead and the sentinels stand guard; our dump scripts them to fight but leaves the raiders immune to NPCs). The Ruins of Gilneas counts stay as they are: the 8.3.7 data has that battle in phase 274 with no rule that shows it, so it is no help for numbers. With the flag nobody dies, so the side with more creatures no longer wins.
-- **Status:** untested in game.
+- **Status:** Sentinel Hill confirmed in game by Four (2026-11-18); the other zones untested.
 - **Pick up:** apply the new patch and rebuild, run the SQL, restart `worldserver`.
 
 ### World: second-tier zones re-audit (staged fights, phases, resting NPCs)
