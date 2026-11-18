@@ -47,9 +47,9 @@ Draft PR, not merged yet. Not tested in game yet.
   39464 80948 -> 73945; spellclick condition (18, 39464, 73945) quest 25236 in progress; SAI 39464
   id 2 removes the click flag on click (one credit per lizard, it already despawns after 5 s);
   laborer 39465 SAI despawns it 8 s after it is summoned (the summon has no duration); the 7
-  lizard spawns respawn in 60 s instead of 300 s (8 are needed).
-- **Status:** not tested in game. The objective may still read "Slain" in the log; the credit
-  counts either way.
+  lizard spawns respawn in 60 s instead of 300 s (8 are needed); objective 265482 text "Drowned Thunder Lizard removed" (was empty, so it read
+  "slain").
+- **Status:** not tested in game.
 - **Pick up:** SQL only:
 
   ```
@@ -60,7 +60,7 @@ Draft PR, not merged yet. Not tested in game yet.
   git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_73_thunder_down_under.sql | mysql -u root -p bfa_world
   ```
 
-  Then restart worldserver.
+  Then restart worldserver and delete the client `Cache` folder (objective text).
 
 ### DB: the fable never plays out at the kodos (25205)
 
