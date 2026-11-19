@@ -60,14 +60,14 @@ Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time 
 
 - **Found** (Four, 2026-11-18: "Is the Maplewood Treasure Chest on the top floor supposed to have any loot?", Tiragarde Keep): 11 treasure chest templates shared one loot table 207520 that TDB 8.3.7 doesn't have: 206 items rolled one by one at 0.1-2% each, so about 2 chests in 5 opened empty, and every chest drew from the same list whatever its level.
 - **Changed** (`sql/fixes/world/2026_11_18_45_treasure_chest_loot.sql`): each chest gets its 8.3.7 table back (39334-39344, already in our DB): 207520 → 39334, 207521 → 39335, 207522/207534 → 39336, 207523/207535 → 39337, 207524 → 39338, 207528/207540 → 39342, 207529 → 39343, 207542 → 39344. Those tables always drop 1-2 gems or potions plus one item of the chest's level. The chests stand in Tiragarde Keep (Durotar), Darkshore, Ashenvale, Stonetalon, Desolace, Feralas, Thousand Needles, Howling Fjord, Borean Tundra, Grizzly Hills, Icecrown and Abyssal Depths.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-18, Tiragarde Keep).
 - **Pick up:** run the SQL, restart `worldserver`. A chest already opened empty refills on its next respawn.
 
 ### World: Durotar, only one Sergeant Curtis in Tiragarde Keep
 
 - **Found** (Four, 2026-11-18: "I killed one on the bottom floor, and now I see another on the top floor."): the rare Sergeant Curtis 5809 had two spawn points in our dump, one per floor of the keep (guid 252648 ground floor, 49456 top floor), both up at once. TDB 8.3.7 has no Curtis spawn at all, so there is no reference to copy.
 - **Changed** (`sql/fixes/world/2026_11_18_44_sergeant_curtis_one_spawn.sql`): both spawn points join pool 5100635 (max 1), so one Curtis is up at a time, at either spot. Nothing deleted.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-18).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Durotar, the Northwatch Marines' Ticking Time Bomb explodes
