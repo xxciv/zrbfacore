@@ -10,7 +10,7 @@ Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time 
 ### World: monthly Brew Vendors list their brew once
 - **Found** (Four, 2026-11-18, Ironforge Brew Vendor): "offering 2 of the same item, instead of one inventory space". The monthly Brew Vendors 27806, 27810-27820 (Ironforge, and outside the Orgrimmar gate) each listed their brew twice: the 37488-37499 item and its same-named copy 37898-37909. 8.3.7 lists one item per vendor.
 - **Changed** (`sql/fixes/world/2026_11_18_50_brew_vendor_single_item.sql`): the copies are removed, so the lists now match 8.3.7: 37488-37499, except Izzard's Ever Flavor at 27810, which keeps 37899 as in 8.3.7.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-18).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Ray'ma and the Orgrimmar Brew Vendor check like the Alliance side
@@ -26,7 +26,7 @@ Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time 
 - **Found** (Four, 2026-11-18, Ironforge Brew Vendor: "our brews are exclusive to members of the Brew of the Month Club"; "how do you join the club?"): the Ironforge vendors only sell to characters with the achievement Brew of the Month (2796), as in 8.3.7. You get it by joining: buy the membership form from Larkin Thunderbrew 27478 in Ironforge or Ray'ma 27489 in Orgrimmar and turn in Brew of the Month Club (12420 Alliance, 12421 Horde) to them. In 8.3.7 both stand there all year; ours only appeared during Brewfest, so the club couldn't be joined the rest of the year. Each also had a second Brewfest-only copy that 8.3.7 doesn't have.
 - **Changed** (`sql/fixes/world/2026_11_18_48_brew_club_recruiters_all_year.sql`): Larkin 180703 and Ray'ma 194753 (the 8.3.7 spots) are no longer tied to Brewfest. The extra copies are removed: Larkin 92779 (4.6 yards from the other) and Ray'ma 92780 (in Durotar outside the Orgrimmar gate).
 - **Not changed:** the Orgrimmar Brew Vendor 89830 still sells to everyone (no membership check in 8.3.7 either).
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-18).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Brew of the Month Club sells one brew a month again
@@ -37,7 +37,7 @@ Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time 
   - Events 34-45 run every year again until the end of 2030. Start dates moved to the first of each month this year (our own dates; the event repeats every 365 days, so from March 2028 each month starts one day early).
   - Ironforge gets the other 11 monthly vendors at 8.3.7's spot (guids 735401187-735401197); the February one only shows in February.
 - Brew of the Year still takes a year: each brew is sold only in its month.
-- **Status:** Orgrimmar vendor confirmed in game (Four, 2026-11-18: only this month's brew); Ironforge vendors untested.
+- **Status:** confirmed in game by Four (2026-11-18): Orgrimmar and Ironforge vendors sell only this month's brew.
 - **Pick up:** run `2026_11_18_46` first, then this SQL, restart `worldserver`.
 
 ### World: holiday spawns appear in the right holiday
@@ -79,7 +79,7 @@ Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time 
   - Profession Liaisons: "I would like to buy from you." opens the shop.
   - Side effect: Acride 10296/10299 and Tinza Silvermug 45563 also point at menu 12046 and showed "Cooking / First Aid / Fishing" options that did nothing. Those are trainer options now, and since these three are not trainers, the options no longer show for them.
 - **Not changed:** trainer lists (same ids as `2026_11_18_41`), Journeyman's trainer work, the Nazjatar trainers (no trainer data, `npcflag` 0 in 8.3.7 too).
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-18): Train-a-Trons, Whittler Dewei, and both Profession Liaisons (their single shop option opens the shop straight away, the client does that by itself for a lone vendor option).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Durotar, the 11 "Profession Trainer" NPCs teach their professions
