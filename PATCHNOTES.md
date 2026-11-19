@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-18 (Quest fixes: Crossroads Caravan Pickup, Northern Barrens)
 
-Draft PR, not merged yet. Confirmed in game 2026-11-18.
+Merged to `main` with PR #90 on 2026-11-18. Confirmed in game 2026-11-18.
 
 ### DB: the caravan stops, an invisible raider kills the kodo, no way to fight back (13949)
 
@@ -70,7 +70,7 @@ Draft PR, not merged yet. Confirmed in game 2026-11-18.
 
 ## 2026-11-18 (Quest fixes: Fizzled, Durotar)
 
-Draft PR, not merged yet. Confirmed in game 2026-11-18.
+Merged to `main` with PR #90 on 2026-11-18. Confirmed in game 2026-11-18.
 
 ### DB: Fizzle's Orb stays in the bags after turning in Fizzled (25260)
 
