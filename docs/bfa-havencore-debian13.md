@@ -149,6 +149,7 @@ git apply ../tools-repo/tools/bfa/attack-power-debug.patch
 git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
 git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
+git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -518,6 +519,13 @@ single option the client would pick by itself (a flight master's map).
 Light!) someone to talk to. He is a fixed spawn here instead of being summoned for you, so his lines
 had no target and the client printed "$n" instead of your name. He now talks to the player who turned
 the quest in, or else the nearest player.
+
+`smartai-passive-escort.patch` keeps passive escorts walking when they are pulled into a fight. The
+caravan kodo you ride in Crossroads Caravan Pickup stopped dead as soon as a raider attacked you,
+because threat on a vehicle's rider goes to the vehicle, and the SmartAI cancelled its movement when it
+entered combat. A passive creature on a waypoint path now keeps going, and when the fight ends it
+carries on to its next waypoint instead of walking back to where the path started. It only touches
+`SmartAI.cpp`.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -993,6 +1001,7 @@ git apply ../tools-repo/tools/bfa/attack-power-debug.patch
 git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
 git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
+git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

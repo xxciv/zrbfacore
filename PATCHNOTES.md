@@ -3,6 +3,100 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-18 (Quest fixes: Crossroads Caravan Pickup, Northern Barrens)
+
+Merged to `main` with PR #90 on 2026-11-18. Confirmed in game 2026-11-18.
+
+### DB: the caravan stops, an invisible raider kills the kodo, no way to fight back (13949)
+
+- **Found** (Four, 2026-11-18): riding the caravan, it stopped at random, the kodo took damage with
+  no combat shown and died; back at the start an invisible Razormane Raider (seen with `.gm`) was
+  hitting the player. It felt "on rails".
+- **Cause:** Razormane Raider 34487 used event 79 to wake up, which in this core is SCENE_TRIGGER
+  (distance-to-creature is event 75), so they never dropped Quest Invisibility 65050. Their reset
+  also put back their hostile template faction 109, so they attacked the caravan and players while
+  still invisible. Lead Caravan Kodo 34430 (your vehicle) could be attacked, so a raider pulled it
+  into combat and the escort stopped; its path was started twice; its arrival rows (credit 53613,
+  despawns) were linked to no event, so arriving could never complete the quest. The pack kodo
+  Far Watch Caravan Kodo 34432 never followed. Halga Bloodeye 34258's send-off was in Spanish and
+  was said by the kodo.
+- **How it is meant to play:** you ride the lead kodo and shoot the raiders with Halga's "Street
+  Sweeper" 46714 from your bags (its Shoot 65479 can be cast from a vehicle).
+- **Changed:** `sql/fixes/world/2026_11_18_76_crossroads_caravan_pickup.sql`: SAI 34487: invisible
+  and friendly (35) until the pack kodo comes within 20 yd (event 75), then visible, faction 109,
+  attack the pack kodo; within 90 yd of the Captured Razormane 34523 near the end they evade and
+  hide again. SAI 34430 rewritten: on summon call the pack kodo, cue Halga, become not attackable,
+  start path 34430 once; at path end credit 53613 to the rider, despawn the pack kodo and itself
+  (you are set down). SAI 34432: passive and follows the lead kodo. Halga's line now English (our
+  wording "Move out! Get those supplies to the Crossroads!") and said by Halga.
+- **Status:** confirmed in game 2026-11-18.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_76_crossroads_caravan_pickup.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+### Core: the caravan kodo stops as soon as a raider attacks (13949)
+
+- **Found** (Four, 2026-11-18, after the SQL above): the raiders now appear, but the kodo stops the
+  moment one comes out of stealth to attack.
+- **Cause:** threat on a vehicle's rider goes to the vehicle (`ThreatManager::AddThreat`), so the
+  Lead Caravan Kodo 34430 enters combat when a raider attacks you, even though it cannot be attacked
+  itself. `SmartAI::JustEngagedWith` then cancelled its point movement, and a passive creature in
+  combat never picks its path up again. If the fight ended, `EnterEvadeMode` sent it walking back to
+  where its path started.
+- **Changed:** `tools/bfa/smartai-passive-escort.patch` (new, after `lost-isles-zapnozzle.patch`),
+  `SmartAI.cpp` only: a passive creature on a SmartAI waypoint path keeps its movement when it enters
+  combat, and when it evades it carries on to its current waypoint instead of returning. Aggressive
+  escorts behave as before. Guide chain + description updated.
+- **Status:** confirmed in game 2026-11-18 (the kodo reached the end with the credit; the pack kodo can still die, which does not fail the quest).
+- **Pick up:** core rebuild (one file in the game library, so a short build), then the SQL above if
+  not run yet:
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/smartai-passive-escort.patch | git apply
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  Then restart worldserver.
+
+## 2026-11-18 (Quest fixes: Fizzled, Durotar)
+
+Merged to `main` with PR #90 on 2026-11-18. Confirmed in game 2026-11-18.
+
+### DB: Fizzle's Orb stays in the bags after turning in Fizzled (25260)
+
+- **Found** (Four, 2026-11-18): after turning in Fizzled, Fizzle's Orb 52580 was still in the bags
+  and had to be deleted by hand.
+- **Cause:** Fizzle Darkclaw 3203 gave out more than one orb. Every right-click (gossip hello) made
+  the player cast 74024 "Remove Fizzle's Hand", which creates 52580, and picking "<Attempt to remove
+  the orb.>" cast it again and also added another 52580 by script. The quest asks for 1 orb and
+  takes only 1 at turn-in, so the extras stayed.
+- **Changed:** `sql/fixes/world/2026_11_18_75_fizzled_orb.sql`: SAI 3203 rewritten: only the option
+  gives the orb (close window, the player casts 74024 once); the gossip hello row and the extra
+  add-item row are gone. Conditions on menu 11240 option 0: quest 25260 in progress and no 52580 in
+  bags or bank.
+- **Status:** confirmed in game 2026-11-18.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_75_fizzled_orb.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-18 (Addon fixes: FishingBuddy macro)
 
 Client addon only, in `client/FishingBuddy`. No server change: nothing to rebuild, no SQL, no restart.
