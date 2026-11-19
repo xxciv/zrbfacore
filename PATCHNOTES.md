@@ -49,8 +49,8 @@ Draft PR, not merged yet. Not tested in game yet.
   speaks, you cast 79845, 2 s later you cast 79834 and ride the hatchling. SAI 42840: 4 s after you
   board it summons Mandokir (79838); when Mandokir is done it gives you the 42840 credit, casts 82399
   on you and despawns with Mandokir; if you leave the hatchling early it also sends you back. SAI
-  42842: faces the hatchling and says three lines, then tells it he is done. Texts for 44017 and
-  42842 are our own wording (no original text in the data).
+  42842: faces the hatchling and says four lines, then tells it he is done. Mandokir's lines are the
+  original ones as quoted on warcraft.wiki.gg (See Raptor); Thaalia's line is our own wording.
 - **Status:** not tested in game.
 - **Pick up:** SQL only:
 
