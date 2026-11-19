@@ -23,8 +23,7 @@ Draft PR, not merged yet. Not tested in game yet.
   window, the player casts 82504 "Explorer's League Digsite: Taxi Flight" (taxi path 2240, Fort
   Livingston -> Explorers' League Digsite, no charge). Conditions on 11785: option 0 (Mind Vision)
   only while See Raptor 26773 is in progress, option 1 (Mind Control) only while Be Raptor 26775 is.
-- **Status:** not tested in game. The rituals themselves (what happens after picking an option) are
-  not scripted yet.
+- **Status:** not tested in game. The rituals themselves are scripted in the entries below.
 - **Pick up:** SQL only:
 
   ```
@@ -33,6 +32,34 @@ Draft PR, not merged yet. Not tested in game yet.
 
   ```
   git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_19_70_stranglethorn_quest_fixes.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+### DB: See Raptor, the Mind Vision ritual does nothing (26773)
+
+- **Found** (Four, 2026-11-19): picking "I am ready for the Mind Vision ritual, Thaalia." does nothing.
+- **Cause:** the ritual was never scripted: no SAI on Priestess Thaalia 44017, the Captured Lashtail
+  Hatchling 42840 or Bloodlord Mandokir 42842, and no texts. The spells exist in the game data:
+  79845 See Raptor: Teleport In (into Zul'Gurub), 79834 See Raptor: Summon Raptor (42840, vehicle 926
+  with a hidden, unselectable passenger), 79838 See Raptor: Summon Mandokir, 82399 See Raptor:
+  Teleport Out A (back to Thaalia). 79834 had no `spell_target_position` row.
+- **Changed:** `sql/fixes/world/2026_11_19_71_see_raptor.sql`: `spell_target_position` 79834 at the
+  79845 spot (-12161.7, -1818.5, 94.0). SAI 44017: Mind Vision option -> close window, Thaalia
+  speaks, you cast 79845, 2 s later you cast 79834 and ride the hatchling. SAI 42840: 4 s after you
+  board it summons Mandokir (79838); when Mandokir is done it gives you the 42840 credit, casts 82399
+  on you and despawns with Mandokir; if you leave the hatchling early it also sends you back. SAI
+  42842: faces the hatchling and says three lines, then tells it he is done. Texts for 44017 and
+  42842 are our own wording (no original text in the data).
+- **Status:** not tested in game.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_19_71_see_raptor.sql | mysql -u root -p bfa_world
   ```
 
   Then restart worldserver.
