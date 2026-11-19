@@ -11,6 +11,11 @@
 -- The bomb is summoned as a guardian of the Marine, and guardians are aggressive: it ran after Four's imp and
 -- dropped out of sight, then exploded wherever it had got to. A bomb doesn't walk, so it now turns passive and
 -- rooted as soon as it lands.
+-- Four (2026-11-18, screenshot): "the bomb is not visible, and its health bar is in the air". The bomb creature
+-- uses an invisible trigger model (display 15294, scaled 2.25, so its health bar floats high). The bomb you see
+-- is the 5-second area effect Ticking Time Bomb 79727, which nothing cast (TDB 8.3.7 only casts the explosion):
+-- the bomb now casts it on itself as it lands (row id 4). Our own tuning: the invisible creature can't be
+-- selected (unit_flags |= 0x02000000), so its floating name and health bar don't show.
 -- The same bomb is thrown by Sergeant Curtis 5809, Nethergarde Engineer 5997 and Chief Prospector Hondo 41173.
 -- Safe to run twice.
 
@@ -19,4 +24,6 @@ INSERT INTO `smart_scripts` (`entryorguid`,`source_type`,`id`,`link`,`event_type
 (42776,0,0,1,60,0,100,1,3000,3000,0,0,0,'',11,79728,2,0,0,0,0,1,0,0,0,0,0,0,0,'Ticking Time Bomb - 3 seconds after spawn - Cast Explosion (triggered)'),
 (42776,0,1,0,61,0,100,1,0,0,0,0,0,'',41,1000,0,0,0,0,0,1,0,0,0,0,0,0,0,'Ticking Time Bomb - Linked - Despawn in 1 second'),
 (42776,0,2,3,60,0,100,1,100,100,0,0,0,'',8,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Ticking Time Bomb - On landing - Set react state passive'),
-(42776,0,3,0,61,0,100,1,0,0,0,0,0,'',103,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Ticking Time Bomb - Linked - Root');
+(42776,0,3,4,61,0,100,1,0,0,0,0,0,'',103,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Ticking Time Bomb - Linked - Root'),
+(42776,0,4,0,61,0,100,1,0,0,0,0,0,'',11,79727,2,0,0,0,0,1,0,0,0,0,0,0,0,'Ticking Time Bomb - Linked - Cast Ticking Time Bomb (visible bomb, triggered)');
+UPDATE `creature_template` SET `unit_flags`=`unit_flags`|0x02000000 WHERE `entry`=42776;

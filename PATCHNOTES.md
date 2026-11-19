@@ -3,13 +3,36 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-19 (World fixes: Northern Stranglethorn walk)
+
+Open in the same draft PR as the 2026-11-18 feedback below. Four walks Northern Stranglethorn and reports what is off.
+
+### World: stealthed creatures creep instead of floating
+- **Found** (Four, 2026-11-19): "Kurzen Commandos are floating while in stealth. I think this affects most stealthed units". Their addon rows have `bytes1` 0x02000000: byte 3 is the animation tier, and 2 means hover, so the client draws them hovering. The value belongs one byte lower: byte 2 = 0x02 is the "creep" stand flag, the crouched stealth walk. AzerothCore (WotLK) has these creatures at 131072 (0x00020000, creep); TDB 8.3.7 has the shifted value too.
+- **Changed** (`sql/fixes/world/2026_11_19_31_stealthers_creep_not_hover.sql`): byte 3 cleared and creep set on stealthed creatures only (they cast a stealth spell from SmartAI or their aura list, or AzerothCore gives them creep). 16 `creature_template_addon` rows: Defias Night Runner 215, Shadowhide Assassin 579, Shadow Panther 768, Kurzen Commando 938, Fen Creeper 1040, Elder Shadowmaw Panther 1713, Fallenroot Shadowstalker 4798, Theramore Infiltrator 4834, Stonevault Cave Lurker 4850, Razorfen Stalker 6035, Onin MacHammar 6886, Putridus Shadowstalker 11792, Coldmist Stalker 16170, Stonescythe Ambusher 16928, Fenissa the Assassin 22060, Shadowsword Assassin 25484. 14 `creature_addon` rows: Coldmist Stalker 6, Stonescythe Ambusher 4, Daggerfen Assassin 3, Expedition Druid 1.
+- **Not changed:** the other ~170 creatures with the hover value (Val'kyr, Shadow Orbs, proto-drakes, elementals and the like), which are meant to hover.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Northern Stranglethorn, first notes
+- **Found** (Four, 2026-11-19):
+  - Kurzen Medicine Man guid 183538 "walks through house": all 9 Kurzen Medicine Men 940 in Kurzen's Compound had the dump's 3-yard random wander (no path). TDB 8.3.7 has every one standing still.
+  - "Krazek is double spawned": Krazek 773 (guid 182899, quest giver at Nesingwary's Expedition) is the 8.3.7 spawn; guid 302753 is a second Krazek (entry 52297, no gossip or quests) 2.5 yards away, which 8.3.7 doesn't have.
+  - Chillwind Lieutenant guid 373403 "spawning outside of Midsummer Fire Festival": Ahune's lieutenants had no game event.
+- **Changed** (`sql/fixes/world/2026_11_19_30_northern_stranglethorn_spots.sql`):
+  - The 9 Kurzen Medicine Men stand still (`MovementType` 0, as in 8.3.7).
+  - Krazek 302753 (entry 52297) removed.
+  - Chillwind Lieutenant 26204 (373403, Stranglethorn), Frigid Lieutenant 26214 (373404, Searing Gorge), Frostwave Lieutenant 26116 (370754, Ashenvale) and Glacial Lieutenant 26215 (373405, Silithus) only appear during the Midsummer Fire Festival (event 1). TDB 8.3.7 has no spawns of them; ours keep their spots.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-18 (World fixes: feedback on the reviewed zones)
 
 Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time and reports what is off.
 
 ### World: Durotar, the Ticking Time Bomb can be seen
 - **Found** (Four, 2026-11-18, screenshot): "the bomb is not visible, and its health bar is in the air". The bomb creature 42776 uses an invisible trigger model (display 15294, scaled 2.25, so its health bar floats high). The bomb itself is the 5-second area effect Ticking Time Bomb 79727, which nothing cast: TDB 8.3.7 only casts Explosion 79728.
-- **Changed** (`sql/fixes/world/2026_11_18_51_ticking_time_bomb_visual.sql`, run after `2026_11_18_43`):
+- **Changed** (added to `sql/fixes/world/2026_11_18_43_ticking_time_bomb_fuse.sql`; first shipped as `2026_11_18_51_ticking_time_bomb_visual.sql`, folded into 43 because the pet thread also has a `2026_11_18_51` file):
   - As it lands, the bomb casts 79727 on itself (new `smart_scripts` row id 4, linked from the landing row id 3). The effect goes away with the bomb, 1 second after the explosion.
   - Our own tuning: the invisible bomb creature can't be selected (`unit_flags` |= 0x02000000), so its floating name and health bar no longer show.
 - **Status:** confirmed in game by Four (2026-11-18): the bomb shows on the ground, no floating health bar.
@@ -17,7 +40,7 @@ Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time 
 
 ### World: monthly Brew Vendors list their brew once
 - **Found** (Four, 2026-11-18, Ironforge Brew Vendor): "offering 2 of the same item, instead of one inventory space". The monthly Brew Vendors 27806, 27810-27820 (Ironforge, and outside the Orgrimmar gate) each listed their brew twice: the 37488-37499 item and its same-named copy 37898-37909. 8.3.7 lists one item per vendor.
-- **Changed** (`sql/fixes/world/2026_11_18_50_brew_vendor_single_item.sql`): the copies are removed, so the lists now match 8.3.7: 37488-37499, except Izzard's Ever Flavor at 27810, which keeps 37899 as in 8.3.7.
+- **Changed** (`sql/fixes/world/2026_11_18_36_brew_vendor_single_item.sql`, first shipped as `2026_11_18_50_brew_vendor_single_item.sql`; renamed because the pet thread also has a `2026_11_18_50` file): the copies are removed, so the lists now match 8.3.7: 37488-37499, except Izzard's Ever Flavor at 27810, which keeps 37899 as in 8.3.7.
 - **Status:** confirmed in game by Four (2026-11-18).
 - **Pick up:** run the SQL, restart `worldserver`.
 
@@ -74,7 +97,7 @@ Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time 
 
 - **Found** (Four, 2026-11-18, video: "ticking time bomb, brief graphical element, no functionality, doesn't do damage"): Northwatch Marine 39267 casts Ticking Time Bomb 79726, which throws a Ticking Time Bomb 42776 at your feet. The bomb's script (same as TDB 8.3.7) cast Explosion 79728 (Fire damage to enemies within 4 yards) at the very moment it appeared, while it was still being added to the world, then despawned. The explosion never landed. The ability's own text says "Explodes after a few seconds, inflicting Fire damage. Tick-tock."
 - **Changed** (`sql/fixes/world/2026_11_18_43_ticking_time_bomb_fuse.sql`, run it again after the second round): the bomb now ticks for 3 seconds (our own value for "a few seconds"), then explodes (triggered cast) and disappears a second later. Step out of it to avoid the damage. Second round (Four, video: "The bomb explosion worked, but it's still 'disappearing' from the world early."): the bomb is summoned as the Marine's guardian, and guardians are aggressive, so it ran after Four's imp and out of sight before exploding. It now turns passive and rooted as it lands. The same bomb is thrown by Sergeant Curtis 5809, Nethergarde Engineer 5997 and Chief Prospector Hondo 41173.
-- **Status:** confirmed in game by Four (2026-11-18), together with `2026_11_18_51`.
+- **Status:** confirmed in game by Four (2026-11-18), together with the visual fix in the entry above.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: the other all-in-one profession trainers (Train-a-Trons, Whittler Dewei, Profession Liaisons)
