@@ -7,6 +7,13 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time and reports what is off.
 
+### World: the Brew of the Month Club can be joined all year
+- **Found** (Four, 2026-11-18, Ironforge Brew Vendor: "our brews are exclusive to members of the Brew of the Month Club"; "how do you join the club?"): the Ironforge vendors only sell to characters with the achievement Brew of the Month (2796), as in 8.3.7. You get it by joining: buy the membership form from Larkin Thunderbrew 27478 in Ironforge or Ray'ma 27489 in Orgrimmar and turn in Brew of the Month Club (12420 Alliance, 12421 Horde) to them. In 8.3.7 both stand there all year; ours only appeared during Brewfest, so the club couldn't be joined the rest of the year. Each also had a second Brewfest-only copy that 8.3.7 doesn't have.
+- **Changed** (`sql/fixes/world/2026_11_18_48_brew_club_recruiters_all_year.sql`): Larkin 180703 and Ray'ma 194753 (the 8.3.7 spots) are no longer tied to Brewfest. The extra copies are removed: Larkin 92779 (4.6 yards from the other) and Ray'ma 92780 (in Durotar outside the Orgrimmar gate).
+- **Not changed:** the Orgrimmar Brew Vendor 89830 still sells to everyone (no membership check in 8.3.7 either).
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Brew of the Month Club sells one brew a month again
 
 - **Found** (Four, 2026-11-18: "Vendor sells all brews all year. They should be in a cycle i believe, 1 type per month?", Brew Vendor 89830 in Orgrimmar): 89830 sold all 12 brews (37488-37499) all year; TDB 8.3.7 gives it no wares of its own. The club events 34-45 ("Brew of the Month January" to "December") ended on 2020-12-31, so the monthly Brew Vendors 27806-27820 outside Orgrimmar and in Ironforge never appeared. Ironforge had only the February vendor, up all year.
