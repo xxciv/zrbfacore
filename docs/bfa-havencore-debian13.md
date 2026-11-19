@@ -912,6 +912,14 @@ Brewfest event. This ties them to Brewfest:
 ```sh
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_18_51_brewfest_display_pets.sql
 ```
+
+Many pet cards name zones where the world DB never spawns that pet (the Mouse card lists Westfall,
+Wetlands, Mulgore and more; only Duskwood and Dustwallow Marsh had Mice). This adds 139 zone rows,
+converts local critters where they exist and spawns the rest next to existing critters:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_19_50_wild_battle_pet_card_zones.sql
+```
 #### Legion and BFA pet tamers
 
 Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest
