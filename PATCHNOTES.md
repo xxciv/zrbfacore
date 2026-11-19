@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-18 (Quest fixes: Crossroads Caravan Pickup, Northern Barrens)
 
-Draft PR, not merged yet. Not tested in game yet.
+Draft PR, not merged yet. Confirmed in game 2026-11-18.
 
 ### DB: the caravan stops, an invisible raider kills the kodo, no way to fight back (13949)
 
@@ -29,7 +29,7 @@ Draft PR, not merged yet. Not tested in game yet.
   start path 34430 once; at path end credit 53613 to the rider, despawn the pack kodo and itself
   (you are set down). SAI 34432: passive and follows the lead kodo. Halga's line now English (our
   wording "Move out! Get those supplies to the Crossroads!") and said by Halga.
-- **Status:** not tested in game.
+- **Status:** confirmed in game 2026-11-18.
 - **Pick up:** SQL only:
 
   ```
@@ -55,7 +55,7 @@ Draft PR, not merged yet. Not tested in game yet.
   `SmartAI.cpp` only: a passive creature on a SmartAI waypoint path keeps its movement when it enters
   combat, and when it evades it carries on to its current waypoint instead of returning. Aggressive
   escorts behave as before. Guide chain + description updated.
-- **Status:** compiles; not tested in game.
+- **Status:** confirmed in game 2026-11-18 (the kodo reached the end with the credit; the pack kodo can still die, which does not fail the quest).
 - **Pick up:** core rebuild (one file in the game library, so a short build), then the SQL above if
   not run yet:
 
@@ -70,7 +70,7 @@ Draft PR, not merged yet. Not tested in game yet.
 
 ## 2026-11-18 (Quest fixes: Fizzled, Durotar)
 
-Draft PR, not merged yet. Not tested in game yet.
+Draft PR, not merged yet. Confirmed in game 2026-11-18.
 
 ### DB: Fizzle's Orb stays in the bags after turning in Fizzled (25260)
 
@@ -84,7 +84,7 @@ Draft PR, not merged yet. Not tested in game yet.
   gives the orb (close window, the player casts 74024 once); the gossip hello row and the extra
   add-item row are gone. Conditions on menu 11240 option 0: quest 25260 in progress and no 52580 in
   bags or bank.
-- **Status:** not tested in game.
+- **Status:** confirmed in game 2026-11-18.
 - **Pick up:** SQL only:
 
   ```
