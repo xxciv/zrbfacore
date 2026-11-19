@@ -107,6 +107,657 @@ Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time 
 - **Status:** confirmed in game by Four (2026-11-18).
 - **Pick up:** run the SQL, restart `worldserver`.
 
+## 2026-11-18 (Quest fixes: Crossroads Caravan Pickup, Northern Barrens)
+
+Merged to `main` with PR #90 on 2026-11-18. Confirmed in game 2026-11-18.
+
+### DB: the caravan stops, an invisible raider kills the kodo, no way to fight back (13949)
+
+- **Found** (Four, 2026-11-18): riding the caravan, it stopped at random, the kodo took damage with
+  no combat shown and died; back at the start an invisible Razormane Raider (seen with `.gm`) was
+  hitting the player. It felt "on rails".
+- **Cause:** Razormane Raider 34487 used event 79 to wake up, which in this core is SCENE_TRIGGER
+  (distance-to-creature is event 75), so they never dropped Quest Invisibility 65050. Their reset
+  also put back their hostile template faction 109, so they attacked the caravan and players while
+  still invisible. Lead Caravan Kodo 34430 (your vehicle) could be attacked, so a raider pulled it
+  into combat and the escort stopped; its path was started twice; its arrival rows (credit 53613,
+  despawns) were linked to no event, so arriving could never complete the quest. The pack kodo
+  Far Watch Caravan Kodo 34432 never followed. Halga Bloodeye 34258's send-off was in Spanish and
+  was said by the kodo.
+- **How it is meant to play:** you ride the lead kodo and shoot the raiders with Halga's "Street
+  Sweeper" 46714 from your bags (its Shoot 65479 can be cast from a vehicle).
+- **Changed:** `sql/fixes/world/2026_11_18_76_crossroads_caravan_pickup.sql`: SAI 34487: invisible
+  and friendly (35) until the pack kodo comes within 20 yd (event 75), then visible, faction 109,
+  attack the pack kodo; within 90 yd of the Captured Razormane 34523 near the end they evade and
+  hide again. SAI 34430 rewritten: on summon call the pack kodo, cue Halga, become not attackable,
+  start path 34430 once; at path end credit 53613 to the rider, despawn the pack kodo and itself
+  (you are set down). SAI 34432: passive and follows the lead kodo. Halga's line now English (our
+  wording "Move out! Get those supplies to the Crossroads!") and said by Halga.
+- **Status:** confirmed in game 2026-11-18.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_76_crossroads_caravan_pickup.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+### Core: the caravan kodo stops as soon as a raider attacks (13949)
+
+- **Found** (Four, 2026-11-18, after the SQL above): the raiders now appear, but the kodo stops the
+  moment one comes out of stealth to attack.
+- **Cause:** threat on a vehicle's rider goes to the vehicle (`ThreatManager::AddThreat`), so the
+  Lead Caravan Kodo 34430 enters combat when a raider attacks you, even though it cannot be attacked
+  itself. `SmartAI::JustEngagedWith` then cancelled its point movement, and a passive creature in
+  combat never picks its path up again. If the fight ended, `EnterEvadeMode` sent it walking back to
+  where its path started.
+- **Changed:** `tools/bfa/smartai-passive-escort.patch` (new, after `lost-isles-zapnozzle.patch`),
+  `SmartAI.cpp` only: a passive creature on a SmartAI waypoint path keeps its movement when it enters
+  combat, and when it evades it carries on to its current waypoint instead of returning. Aggressive
+  escorts behave as before. Guide chain + description updated.
+- **Status:** confirmed in game 2026-11-18 (the kodo reached the end with the credit; the pack kodo can still die, which does not fail the quest).
+- **Pick up:** core rebuild (one file in the game library, so a short build), then the SQL above if
+  not run yet:
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8ftb1c
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/smartai-passive-escort.patch | git apply
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  Then restart worldserver.
+
+## 2026-11-18 (Quest fixes: Fizzled, Durotar)
+
+Merged to `main` with PR #90 on 2026-11-18. Confirmed in game 2026-11-18.
+
+### DB: Fizzle's Orb stays in the bags after turning in Fizzled (25260)
+
+- **Found** (Four, 2026-11-18): after turning in Fizzled, Fizzle's Orb 52580 was still in the bags
+  and had to be deleted by hand.
+- **Cause:** Fizzle Darkclaw 3203 gave out more than one orb. Every right-click (gossip hello) made
+  the player cast 74024 "Remove Fizzle's Hand", which creates 52580, and picking "<Attempt to remove
+  the orb.>" cast it again and also added another 52580 by script. The quest asks for 1 orb and
+  takes only 1 at turn-in, so the extras stayed.
+- **Changed:** `sql/fixes/world/2026_11_18_75_fizzled_orb.sql`: SAI 3203 rewritten: only the option
+  gives the orb (close window, the player casts 74024 once); the gossip hello row and the extra
+  add-item row are gone. Conditions on menu 11240 option 0: quest 25260 in progress and no 52580 in
+  bags or bank.
+- **Status:** confirmed in game 2026-11-18.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_75_fizzled_orb.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+## 2026-11-18 (Addon fixes: FishingBuddy macro)
+
+Client addon only, in `client/FishingBuddy`. No server change: nothing to rebuild, no SQL, no restart.
+
+### FishingBuddy 1.10.10-zr3: "CreateMacro() failed, no name specified"
+- **Reported** (Four): pressing FishingBuddy's macro (`#showtooltip Fishing`, `/fb macro`, `/stopcasting`,
+  `/cast Fishing`) threw `FishingMacro.lua:86: CreateMacro() failed, no name specified` (from
+  `/fb macro` -> `FishingMacro` -> `CreateOrUpdateMacro`).
+- **Cause:** `/fb macro` rebuilds the macro on every press, using the saved setting `MacroName`. That setting
+  was an empty string: it passes the addon's `if name` check (Lua treats `""` as true), no macro with that
+  name exists, so it calls `CreateMacro("", ...)`, which the client rejects. The name edit box in the macro
+  options (`LibOptionsFrame-1.0` `EditBox_OnTextChanged`) wrote every text change back to the setting,
+  including text set by code, which is the likely way `""` got saved.
+- **Changed:** `client/FishingBuddy/FishingMacro.lua`: new `GetMacroName()`. If `MacroName` is not a string
+  or is blank, it uses the default `FBConstants.MACRONAME` ("FishingBuddy") and saves that back. Used by the
+  macro build, the key binding, the "macros full" message and the options update.
+- **Changed:** `client/FishingBuddy/Libs/LibOptionsFrame-1.0/LibOptionsFrame-1.0.lua`:
+  `EditBox_OnTextChanged(self, userInput)` only saves when the player typed (`userInput` true).
+- **Changed:** `FishingBuddy.toc` version `1.10.10-zr3`; guide line updated.
+- **Confirmed in game** (Four, 2026-11-18): the macro works without the error.
+
+## 2026-11-18 (Quest fixes: Spiketooth's gladiators, Durotar)
+
+Merged to `main` with PR #87 on 2026-11-18. Confirmed in game 2026-11-18.
+
+### DB: Ghislania, Griswold Hanniston and Gaur Icehorn cannot be challenged (25257, 25258, 25259)
+
+- **Found** (Four, 2026-11-18): Spiketooth's three quests ask you to fight her gladiators, but
+  talking to Ghislania 39351, Griswold Hanniston 39353 or Gaur Icehorn 39352 only shows
+  "Greetings" with no option.
+- **Cause:** their gossip menus 11229, 11230, 11231 had no `gossip_menu` row and no option. Their
+  SAI sent a menu 39590 (does not exist) on gossip hello and waited for option 1 of that menu, so
+  the fight could never start. The SAI also had two id 0 rows per NPC, and an action list 3935100
+  made them unattackable on spawn.
+- **Changed:** `sql/fixes/world/2026_11_18_74_spiketooth_gladiators.sql`: `gossip_menu` 11229 ->
+  text 15641, 11230 -> 15642, 11231 -> 15643 (the three unused texts between this area's menus,
+  matched by id order); one option per menu "Spiketooth wants to see what you're made of. Let's
+  fight!" (our wording), shown only while that NPC's quest is in progress (conditions 15, quest
+  taken). SAI of 39351/39352/39353 rewritten: option picked -> close window, faction 14, attack
+  you; they cannot drop below 5% health; at 6% or less the closest player within 40 yd gets the
+  credit (39351/39352/39353), they evade and go back to their own faction. Their own combat spells
+  kept (Static Burst 76429 + Chain Lightning 79913; Taunka Rage 76423 + emote at 30%; aggro line +
+  Flurry of Claws 76490). Action list 3935100 deleted. Objective texts "Ghislania defeated",
+  "Gaur defeated", "Griswold defeated" (were empty).
+- **Status:** confirmed in game 2026-11-18. The greeting texts are matched by id order; if one
+  reads oddly, tell Herald.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_74_spiketooth_gladiators.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver and delete the client `Cache` folder (objective texts).
+
+## 2026-11-18 (Quest fixes: Durotar, The Wolf and The Kodo + Thunder Down Under)
+
+Merged to `main` with PR #85 on 2026-11-18. All confirmed in game 2026-11-18.
+
+### DB: Shin Stonepillar has no gossip (25205)
+
+- **Found** (Four, 2026-11-18): the quest says to hear Shin Stonepillar's story, but right-clicking
+  him does nothing.
+- **Cause:** `creature_template.gossip_menu_id` of Shin Stonepillar 39380 was 0. His fable option
+  already exists (menu 11209, "Can you tell me your fable, Shin?") and his SAI already casts Summon
+  The Wolf 73840 when it is picked (you ride The Wolf 39364, a vehicle, to the kodos 39365, which
+  act out the fable and give the credit). The menu was simply never attached, and it had no
+  `gossip_menu` text row.
+- **Changed:** `sql/fixes/world/2026_11_18_71_wolf_and_the_kodo.sql`: 39380 `gossip_menu_id`
+  0 -> 11209; `gossip_menu` (11209, text 15612, the unused text between the neighbouring menus
+  11206 and 11211 of this quest batch); SAI 39380 also closes the window before the wolf is
+  summoned; condition so the option only shows while 25205 is in progress; objective text
+  "Listen to the shaman's fable" (was "The Kodo slain").
+- **Status:** confirmed in game 2026-11-18 (option shows, wolf is summoned). The greeting text 15612 is matched by id order, not by a sniff;
+  if Shin shows an odd greeting, tell Herald.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_71_wolf_and_the_kodo.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver and delete the client `Cache` folder (objective text).
+
+### DB: Drowned Thunder Lizards give no credit (Thunder Down Under 25236)
+
+- **Found** (Four, 2026-11-18): "0/8 Drowned Thunder Lizard Slain". The lizards show the
+  "operate" cursor, but clicking them gives no credit.
+- **Cause:** the quest is to attach a Mageweave Tether to 8 Drowned Thunder Lizards 39464 (they
+  are not killed). Their spellclick cast 80948 "Razgar's Fillet Knife", an unrelated spell (dummy
+  + create item 58958). The real spell is 73945 "Attach Tether": kill credit 39464 to the clicker
+  and summons a Hulking Orcish Laborer 39465 to haul the carcass out.
+- **Changed:** `sql/fixes/world/2026_11_18_73_thunder_down_under.sql`: `npc_spellclick_spells`
+  39464 80948 -> 73945; spellclick condition (18, 39464, 73945) quest 25236 in progress; SAI 39464
+  id 2 removes the click flag on click (one credit per lizard, it already despawns after 5 s);
+  laborer 39465 SAI despawns it 8 s after it is summoned (the summon has no duration); the 7
+  lizard spawns respawn in 60 s instead of 300 s (8 are needed); objective 265482 text "Drowned Thunder Lizard removed" (was empty, so it read
+  "slain"); `creature_template_addon` 39464 `bytes1` 7 so the lizards lie dead (they stood
+  around in full health).
+- **Status:** confirmed in game 2026-11-18.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_73_thunder_down_under.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver and delete the client `Cache` folder (objective text).
+
+### DB: the fable never plays out at the kodos (25205)
+
+- **Found** (Four, 2026-11-18): after Shin turns you into The Wolf, nothing happens; running over
+  to the kodos (two friendly ones per spot) does nothing and they cannot be killed.
+- **Cause:** the kodos are not meant to be killed; the credit "The Kodo" comes from a script when
+  The Wolf reaches them. That script (The Kodo 39365) started with event 79, which in this core is
+  SCENE_TRIGGER (distance-to-creature is event 75), so it never fired. The Wolf 39364 and The Kodo
+  had no `creature_text` at all, so the whole story chain (each line starts the next) had nothing
+  to say. The old script also ran on all six kodos and made a sniffed guid (146730816) play dead
+  that does not exist here.
+- **Changed:** `sql/fixes/world/2026_11_18_72_wolf_and_the_kodo_story.sql`: 13 `creature_text`
+  rows (9 for The Wolf, said one by one as you ride; 4 for The Kodo), the in-game fable lines,
+  shown as on-screen emotes. Entry SAI of 39365 deleted; per-spawn SAI on one kodo of each pair
+  (303086, 303091, 303093): when The Wolf is within 15 yd it tells the ending, its partner
+  (303087, 303092, 303094) plays dead (29266), then the rider gets the 39365 credit, is
+  teleported back to Shin Stonepillar (1289.54, -4337.85, 34.03) and The Wolf despawns. The
+  trigger rests 60 s after each run.
+- **Status:** confirmed in game 2026-11-18 (fable plays, credit, back at Shin).
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_72_wolf_and_the_kodo_story.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+## 2026-11-18 (pet battles)
+
+### Pet battles: Brewfest pets stand around all year
+
+- **Found** (Four, 2026-11-18, screenshots): a Wolpertinger and a Pint-Sized Pink Pachyderm stand in
+  the open in Durotar outside Brewfest. Both are Brewfest companions (Wolpertinger 22943 = species 153,
+  Pink Pachyderm 24753 = species 166, neither capturable), not wild battle pets.
+- **Cause:** 6 display spawns of these pets have no `game_event_creature` row, so they never despawn.
+  The Wild Wolpertingers and Brewfest decorations around them are already in event 24 (Brewfest).
+
+  | guid | Pet | Where |
+  |---|---|---|
+  | 10647404 | Wolpertinger | Durotar 1159.73 -4140.95 |
+  | 10647405 | Pink Pachyderm | Durotar 1180.88 -4098.65 |
+  | 10646514 | Wolpertinger | Dun Morogh Brewfest grounds -5175.68 -566.15 |
+  | 10646515 | Pink Pachyderm | Dun Morogh Brewfest grounds -5175.68 -615.13 |
+  | 10652003 | Pink Pachyderm | Orgrimmar, next to Ray'ma (Brew of the Month Club) |
+  | 10651977 | Pink Pachyderm | Ironforge, next to Larkin Thunderbrew (Brew of the Month Club) |
+
+- **Changed:** `sql/fixes/world/2026_11_18_51_brewfest_display_pets.sql` adds the 6 guids to
+  `game_event_creature` event 24 (Brewfest), so they only spawn while Brewfest runs. Docs: Pet battles section.
+- **Status:** confirmed in game by Four (2026-11-18): the Durotar Wolpertinger and Pink Pachyderm are gone outside Brewfest. SQL output: `6 Brewfest pet spawns linked to event 24`.
+- **Pick up:**
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo pull
+  mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_18_51_brewfest_display_pets.sql
+  ```
+
+  Then restart `worldserver`.
+
+### Pet battles: Sack of Pet Supplies opens empty
+
+- **Found** (Four, 2026-11-18): the Sack of Pet Supplies (item 89125) from Zunta, The Pet Tamer
+  (quest 31812) had nothing in it.
+- **Cause:** `item_loot_template` has no rows for 89125. The sack is the reward of 42 pet tamer quests
+  (Julia 31316, Zunta 31812, Old MacDonald 31724, Lindsay 31725, Eric Davidson 31726, Bill Buckler 31728,
+  Steven Lisbane 31729, Dagra the Fierce 31813, Analynn 31814, Zonya the Sadist 31815, Merda Stronghoof
+  31817, Cassandra Kaboom 31870, the "Battle Pet Tamers: <continent>" quests and the Grand Master
+  tamers), so every one of them gave an empty sack.
+- **Changed:** `sql/fixes/world/2026_11_18_50_sack_of_pet_supplies_loot.sql` adds 13 rows for 89125.
+  Contents from the item's wiki page; chances copied from the dump's sniffed table for the same items
+  in Darkmoon Pet Supplies (91086).
+
+  | Item | Chance | Count |
+  |---|---|---|
+  | One of: Rusty Pet Cage 90043, Tattered Collar 90044, Sack of Expired Pet Food 90047, Hair Ball 90057, Well-Loved Toy 90058 (GroupId 1) | 20% each, always one | 1 |
+  | Battle Pet Bandage 86143 | 47% | 2-4 |
+  | Happy Pet Snack 43626, Pet Grooming Kit 43352, Magical Pet Biscuit 71153, Magical Mini-Treat 89906 | 11% each | 2-4 |
+  | Fetch Ball 37431 | 8% | 1 |
+  | Exquisite Murloc Leash 90048 | 1% | 1 |
+  | Porcupette 89587 (battle pet) | 1% | 1 |
+
+  Sacks already in your bags use the new table when opened. Docs: Pet battles section.
+- **Status:** confirmed in game by Four (2026-11-18): a new sack from `.additem 89125` opens with loot. SQL output: `13 Sack of Pet Supplies loot rows`.
+- **Pick up:**
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo pull
+  mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_18_50_sack_of_pet_supplies_loot.sql
+  ```
+
+  Then restart `worldserver`.
+
+## 2026-11-18 (Addon fixes: new ZRProximity addon)
+
+New client addon in `client/ZRProximity`. No server change: nothing to rebuild, no SQL, no restart.
+
+### ZRProximity 1.6: "look at it" removed (game blocks it)
+- **Reported** (Four, on 1.5): `/zrp look` printed "can't read its screen position (error:
+  Action[FrameMeasurement] failed because[Can't measure restricted regions]: attempted from:
+  <unnamed>:GetCenter().)" for every plate. On 8.3.7 nameplates, their `UnitFrame`, `healthBar` and `name`
+  are restricted regions, so no addon can tell which plate is in the middle of the screen.
+- **Decided** (Four): remove "look at it" entirely (offered instead: mouseover names that linger).
+- **Removed** from `client/ZRProximity/ZRProximity.lua`: screen measuring (`Measure`, `ScreenOffset`,
+  `LookScore`), the look reveal (`UpdateStare`, linger), `/zrp look` and its on-screen guide, and the
+  settings `stare`, `stareRadius`, `stareDelay`, `stareLinger`, `stareRange` (also cleared from saved
+  `ZRProximityDB`). `/zrp status` no longer mentions it.
+- **Removed** from `client/ZRProximity/Options.lua`: the look checkbox and its four sliders; "Fade time" and
+  the three checkboxes below moved up. Panel intro text updated.
+- **Changed:** `README.md` (addon and root), guide section and TOC notes no longer mention looking at units;
+  addon README explains why it isn't possible. `ZRProximity.toc` version 1.6.
+- **Confirmed in game** (Four, 2026-11-18, on 1.4/1.5): distances, mouseover, target, names on plates, far
+  units fully hidden. 1.6 only removes code; Lua 5.1 syntax check and stubbed smoke test pass.
+
+### ZRProximity 1.5: look check measures the plate, its unit frame or its health bar
+- **Reported** (Four, on 1.4): plate names fixed and confirmed. `/zrp look` while facing a boar 10-15 yd away
+  (`/zrp range`: 10=out, 15=in, so within 20 yd) printed "0 plates near the middle" although both boar plates
+  sat inside the look column: the addon could not read where the plates are on screen.
+- **Changed:** `client/ZRProximity/ZRProximity.lua`: `ScreenOffset` tries the nameplate, then its
+  `UnitFrame`, `healthBar` and `name` (`GetCenter` x `GetEffectiveScale`, each in `pcall`) and uses the first
+  one the client lets it measure. `/zrp look` now prints the screen size and UI scale, and for up to 8 plates
+  either the offset and which region it came from, or why none could be measured. `ZRProximity.toc` 1.5.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test. Not tested in game yet.
+
+### ZRProximity 1.4: plate names no longer depend on "Hide the names above heads"
+- **Reported** (Four, on 1.3, `/zrp names`): "name hook installed, called 7 times, names put back 0 times.
+  Hide names above heads: off." The boars' plate names were hidden with text `nil`.
+- **Cause:** `PlateName` only ran while `hideFloatingNames` was ticked. Four had unticked it and set the
+  game's NPC Names to "None" by hand, so Blizzard hid the plate names and the addon left them hidden.
+- **Changed:** `client/ZRProximity/ZRProximity.lua`: `PlateName` now runs whenever the addon is on. README
+  says so; `ZRProximity.toc` version 1.4.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test. Not tested in game yet.
+
+### ZRProximity 1.3: names re-checked every tick, `/zrp names`
+- **Reported** (Four, on 1.2): far NPCs now fully hidden (fixed), but boars within range or under the mouse
+  still show a health bar without a name (NPC Names: None).
+- **Changed:** `client/ZRProximity/ZRProximity.lua`: `PlateName` also runs every 0.1 s tick for each plate the
+  addon wants shown, in case Blizzard hides the name somewhere the `CompactUnitFrame_UpdateName` hook doesn't
+  see. New `/zrp names` prints whether the hook is installed, how often it ran and put a name back, and for up
+  to 6 plates the name's shown/visible state, text, alpha, font size and unit. `ZRProximity.toc` version 1.3.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test. Not tested in game yet.
+
+### ZRProximity 1.2: names on plates, far floating names gone
+- **Reported** (Four, on 1.1, with screenshots): with Interface > Names > NPC Names on "None" (what the addon
+  sets), plates that show have a health bar but no name, unless targeted. With "All NPCs" the names come
+  back, but units far away show names until you get close; only with "None" do far NPCs fully hide.
+- **Cause:** on 8.3.7 Blizzard's `CompactUnitFrame_UpdateName` hides a nameplate's name unless
+  `UnitShouldDisplayName` allows it, and that follows the same floating-name CVars (`UnitNameNPC`,
+  `UnitNameHostleNPC`, ...) the addon turns off. With them on, the game draws a floating name over every unit
+  that is beyond nameplate range (no plate yet), which the addon can't hide; within range the plate takes
+  over, which is why those units "followed the rules" once closer. This was the real cause of the
+  far-units report that 1.1 blamed on the look check.
+- **Changed:** `client/ZRProximity/ZRProximity.lua`: new `PlateName`, hooked after
+  `CompactUnitFrame_UpdateName` (`hooksecurefunc`) and run when a plate is added and on settings changes. While
+  the addon and `hideFloatingNames` are on, a nameplate whose name Blizzard hid gets it back:
+  `GetUnitName(unit, true)`, grey if tap-denied, otherwise `UnitSelectionColor` (Blizzard's own plate
+  colours). Skips forbidden frames, the personal resource display and non-nameplate frames. The floating-name
+  CVars stay off, so units beyond nameplate range show nothing.
+- **Changed:** `Options.lua` tooltip and `README.md` explain it; `ZRProximity.toc` version 1.2.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test (name shown on add and again after Blizzard
+  hides it; all 1.1 checks unchanged). Not tested in game yet.
+
+### ZRProximity 1.1: "look at" fixed (far units showing, near units not showing)
+- **Reported** (Four, on 1.0): units farther out showed until you got close, then followed the rules; and
+  "look at" didn't really work. Mouseover and the distances worked.
+- **Cause:** the look check was a circle of 80 UI units around the exact screen centre, with no distance
+  limit. With the third-person camera your own character sits in the centre, so a unit you face has its
+  plate above the centre (roughly 90-130 UI units up a few yards away, higher toward the horizon the farther
+  it is). Nearby units you faced were outside the circle, while far-away plates near the horizon fell inside
+  it (camera level or tilted up) and every one of them was revealed.
+- **Changed:** `client/ZRProximity/ZRProximity.lua`
+  - The look area is now a column up the middle of the screen: `stareRadius` (80) UI units each side of the
+    middle, from `stareRadius` below the centre up to 40% of the screen height above it (`LookScore`).
+  - Only one plate at a time can be looked at: the one nearest the middle of that column (sideways offset
+    counts fully, height a fifth).
+  - New setting `stareRange` (20 yd): only units within that distance can be revealed by looking.
+  - New `/zrp look`: shows the look column on screen for 10 s and prints, for each plate near the middle,
+    how far it sits across and up, whether it is in the look area and whether it is within `stareRange`.
+- **Changed:** `client/ZRProximity/Options.lua`: new slider "Look works up to" (3-40 yd), "Look area" renamed
+  "Look width". `ZRProximity.toc` version 1.1, `README.md` updated.
+- **Checked:** Lua 5.1 syntax check and the stubbed smoke test: a 30 yd unit dead centre stays hidden; a
+  12 yd unit faced with its plate 110 UI units above the centre shows after 1 s, stays 2 s after looking
+  away, then hides; distance, `/zrp off` and the name CVars behave as in 1.0. Not tested in game yet.
+
+### ZRProximity 1.0: nameplates by distance, target, mouseover and look
+- **Asked** (Four): hide names and nameplates by default; show a plate when it's your target, when aggressive
+  enemies get within about 10 m, and when neutral or friendly units get within a distance the player chooses
+  (as low as 1-3 m). Optionally show names you "stare" at.
+- **Added:** `client/ZRProximity/` (`ZRProximity.toc`, `Ranges.lua`, `ZRProximity.lua`, `Options.lua`,
+  `README.md`).
+  - Keeps nameplates on (`nameplateShowAll`, `nameplateShowEnemies`, `nameplateShowEnemyMinions`,
+    `nameplateShowFriends`, `nameplateShowFriendlyNPCs` = 1) and sets each plate's `UnitFrame` alpha to 0
+    on `NAME_PLATE_UNIT_ADDED`. Every 0.1 s it decides per plate whether to show it, and fades it over
+    `fadeTime` (0.25 s). Changing alpha is allowed in combat.
+  - A plate shows when: it is the target (`showTarget`), it is under the mouse (`showMouseover`), the unit has
+    you on its threat list (`showCombat`), or the unit is within `hostileRange` (10 yd), `neutralRange`
+    (5 yd) or `friendlyRange` (4 yd). Type comes from `UnitReaction`/`UnitCanAttack`.
+  - Distance: `IsItemInRange` with LibRangeCheck-2.0's items of known range, giving steps of 3 (hostile) / 4
+    (friendly), 5, 6, 8, 10, 15, 20, 25, 30, 35, 40 yd. `CheckInteractDistance` (10/11/28 yd) is the
+    fallback. The 8.3.7 client gives no exact NPC positions, so 1 yd isn't possible.
+  - Look reveal (`stare`): a plate within `stareRadius` (80 UI units) of the screen centre for `stareDelay`
+    (0.5 s) shows, and stays for `stareLinger` (2 s).
+  - `hideFloatingNames` (on): turns off the `UnitName*` floating-name CVars and restores the old values when
+    turned off or on `/zrp off`. `hideFriendlyInInstances` (on): `nameplateShowFriends` = 0 inside
+    dungeons/raids, where Blizzard forbids addons from friendly plates. `clickThrough` (off):
+    `C_NamePlate.SetNamePlate*ClickThrough`. CVar changes wait until combat ends.
+  - Options panel under Interface > AddOns > ZRProximity; `/zrp` (`on`, `off`, `status`, `range`, `reset`).
+    Settings are saved in `ZRProximityDB`.
+- **Checked:** Lua 5.1 syntax check, and a smoke test with stubbed WoW API: plate hidden at 12 yd, shown at
+  9 yd, hidden again at 20 yd, shown after looking at it for 1 s, still shown 1 s after looking away, hidden
+  after 3 s; `/zrp off` shows it and restores the name CVars.
+- **Status:** not tested in game yet.
+
+## 2026-11-18 (Quest fixes: Loss Reduction, Durotar)
+
+Merged to `main` with PR #81 on 2026-11-18, together with the Kezan fixes. Confirmed in game by Four on 2026-11-18.
+
+### DB: Injured Razor Hill Grunts give no credit (25179)
+
+- **Found** (Four, 2026-11-18): the grunts show the speak cursor instead of attack.
+- **Not a bug:** the objective is "Rescue 4 Injured Razor Hill Grunts". You click the grunt
+  (spellclick 73705), it gets up and follows you for a while, then leaves. Nothing is slain.
+- **Cause of the real fault:** the grunt's SAI (39270) linked the kill credit behind the "add quest"
+  row, whose conditions only pass while the quest is not taken. With the quest from Gar'Thok in the
+  log, a rescue gave no credit. It also called actionlist 3927000, which does not exist, and linked
+  from rows that are not link events.
+- **Changed:** `sql/fixes/world/2026_11_18_70_loss_reduction.sql`: SAI for 39270 rewritten (on
+  click: add the quest if not taken, remove feign death, kill credit 39270, remove the spellclick
+  flag, say a thank-you line, follow for 20-25 s, say goodbye and despawn; it respawns after 120 s
+  lying down again). Feign death 29266 now comes from `creature_template_addon.auras`. SAI
+  conditions rebuilt (calls for help only while lying down; quest added only if not taken). The
+  Razor Hill Grunt directions file on PR #82 does not touch this entry.
+- **Status:** confirmed in game by Four on 2026-11-18.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_18_70_loss_reduction.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+## 2026-11-17 (Quest fixes: Kezan)
+
+Merged to `main` with PR #81 on 2026-11-18. All items below confirmed in game by Four on 2026-11-18.
+
+### DB: Necessary Roughness (24502) has no shredder and only one objective
+
+- **Found** (Four, 2026-11-16): after The Replacements the next quest Necessary Roughness is
+  accepted, but no Bilgewater Buccaneer appears, and the tracker reads `0/1 "Necessary Roughness"
+  Kill Credit slain` while the quest text asks for 8 Steamwheedle Sharks.
+- **Cause:** four separate data faults.
+  1. Coach Crosscheck's script (`npc_coach_crosscheck`) casts 70015 (Summon Bilgewater Buccaneer)
+     on accept. The spell places the shredder on the parked Bilgewater Buccaneer 48526, and the
+     `conditions` row naming that target was type 31 (legacy type ids) with value 5. In legacy ids
+     5 is a gameobject, so the core looked for gameobject 48526 (a "Dwarven Campfire") and the cast
+     failed every time.
+  2. The parked shredder carries invisibility aura 90366 and is only seen with detection 90161.
+     `spell_area` gave 90161 only in Kajaro Field (area 4822); the coach stands in Bilgewater Port
+     (4767). At the coach the shredder was invisible, and an invisible unit cannot be an implicit
+     spell target either.
+  3. `quest_objectives` only had row 266618 (kill credit 48271, the boarding credit, no text). Row
+     266619 (8 x Steamwheedle Shark 37114) was missing; retail lists "Bilgewater Buccaneer (1)" and
+     "Steamwheedle Shark Footbombed (8)".
+  4. The parked shredder had `npcflag` 0, so its spellclick row (70015) could not be used to get
+     back in after leaving the shredder.
+- **Changed:** `sql/fixes/world/2026_11_17_70_kezan_quest_fixes.sql`:
+  - `conditions` (13, 1, 70015): type 31 -> 51 (unit 48526).
+  - `spell_area` 90161: area 4822 -> zone 4737 (all of Kezan).
+  - `creature_template` 48526: `npcflag` |= 16777216 (spellclick), with a `conditions` row
+    (18, 48526, 70015) so it only works while 24502 is in progress.
+  - `quest_objectives`: 266618 text "Bilgewater Buccaneer"; new row 266619 (24502, kill credit
+    37114, amount 8, "Steamwheedle Shark Footbombed").
+  - Leftovers removed: `creature_queststarter` (37114, 24502); Coach Crosscheck `smart_scripts`
+    ids 1 and 2 (two extra shark summons, the core script summons the 8 sharks); the hand-placed
+    permanent shark spawn guid 3530203330003155.
+- **Status:** confirmed in game by Four on 2026-11-18.
+
+### DB: Fourth and Goal (28414) never seats the player
+
+- **Cause:** the quest script summons a second shredder, entry 37213, and the creature script
+  `npc_boucanier_gob` seats the player in it. `creature_template.ScriptName` for 37213 was empty.
+- **Changed:** same file: `ScriptName` 'npc_boucanier_gob' on 37213.
+- **Status:** confirmed in game by Four on 2026-11-18. Known leftover: the Deathwing fly-by (spell 66322) targets a bunny
+  that only exists in the headquarters phase, so it will probably not show.
+
+### DB: 447 (14125) completes without the Gasbot
+
+- **Cause:** `quest_objectives` had the three objects (generator, stove, bed) but not the fourth
+  retail objective "KTC Headquarters Set Ablaze with Gasbot!" (kill credit 37598, given by the
+  core script `npc_kezan_gasbot`). The Gasbot Control Panel 201736 stood in phase 169, which the
+  player leaves when The Uninvited Guest is rewarded, so it could not be seen at that point. The
+  Claims Adjuster 37602 (second turn-in) was in 169 as well.
+- **Changed:** same file: new row 266734 (14125, kill credit 37598, amount 1) plus texts for
+  266731-266733; panel `PhaseId` 169 -> 382; Claims Adjuster `phaseId` 169 -> 384 (shown once 447
+  is complete).
+- **Status:** confirmed in game by Four on 2026-11-18.
+
+### DB: objective texts
+
+- Do it Yourself (14070): "<name> beaten down" for 265427-265430. Life of the Party (14113, 14153):
+  "Partygoer entertained". Same file.
+
+### DB: 177 conditions used the wrong object type id
+
+- **Cause:** found through fault 1 above. The core has condition 31 (legacy type ids: 3 unit,
+  4 player, 5 gameobject) and condition 51 (current ids: 5 unit, 6 player, 8 gameobject). 154 rows
+  were type 31 with value 5 while meaning a creature (145 name a creature entry, 9 are "require
+  unit" rows with no entry), so the core read them as gameobjects and the spell, spellclick or
+  script they guard never found its target. 23 rows were type 51 with the legacy unit id 3 (read
+  as an Azerite item). Examples: Dragonflayer installations (43986, 43990, 44213, 44214), Legion
+  transporters and antennas in Netherstorm (33644, 33655, 33744), taming spells (19692-19700),
+  Shade of Akama, vehicle spellclicks 46598 on 28312/32627/34776/35069/35431/35433, Wandering Isle
+  summons (105333, 106623, 126040, 126043, 126059), Siege of Orgrimmar spells.
+- **Changed:** `sql/fixes/world/2026_11_17_71_condition_object_types.sql`: type 31 value 5 ->
+  type 51 value 5 (one row that already had a correct twin is deleted); type 51 value 3 -> value 5.
+  The two type 51 value 4 rows are left alone (intent unclear).
+- **Status:** confirmed in game by Four on 2026-11-18.
+
+### DB: Ace, Gobber and Izzy ride in the Hot Rod for the rest of Kezan
+
+- **Found** (Four, 2026-11-16): at the pool party the three companions still respawn in the car
+  every time it is summoned; they should have been dropped off at the pool.
+- **Cause:** `npc_hot_rod_rolling_my_homies` casts Resummon Ace/Gobber/Izzy (66644, 66645, 66646)
+  whenever the driver has Rolling with my Homies rewarded, with no end. The pool-side copies
+  35211-35213 are separate spawns in the pirate phase 380.
+- **Changed:** `sql/fixes/world/2026_11_17_72_kezan_party_fixes.sql`: `conditions` source type 17
+  on the three spells: Life of the Party 14113 and 14153 must both be "not taken" (type 47,
+  mask 1). They ride along until Life of the Party is accepted and not after.
+- **Status:** confirmed in game by Four on 2026-11-18.
+
+### DB: party staff kill the Pirate Party Crashers (14115)
+
+- **Found** (Four, 2026-11-16, video): KTC Waiters and guests kill the pirates before the player.
+- **Cause:** in phase 380 Kezan Partygoer 35202 (70 spawns), KTC Waiter 48805 (7) and KTC Waitress
+  48806 (5) are faction 1770, hostile to the pirates 35200 (faction 2102), with `unit_flags` 32768.
+- **Changed:** same file: `unit_flags` |= 0x200 (immune to NPC) on 35202, 48805, 48806, as the
+  pool-side Ace, Gobber and Izzy already have (33280).
+- **Status:** confirmed in game by Four on 2026-11-18.
+
+### DB: too many pirates at the pool party (14115)
+
+- **Found** (Four, 2026-11-16, screenshot): the pool area is packed with pirates; thin by half.
+- **Cause:** 34 Pirate Party Crashers 35200 in phase 380 for a 12-kill quest. Separately, Kezan
+  Partygoer 35202 (70 spawns, phase 380) and 35235 (4, phase 381) use the invisible-stalker display
+  21342: hidden anchors that the pirates fought, shown as "invisible attackers" with name plates.
+- **Changed:** `sql/fixes/world/2026_11_17_73_kezan_pool_party_pirates.sql`: 17 of the 34 pirates
+  deleted (kept 17 spread over the whole area, guids in the file); 35202 and 35235
+  `unit_flags` |= 0x02000200 (not selectable, immune to NPCs).
+- **Left:** the sleeping Pirate Party Crasher 35237 (guid 21015340, phase 381) is a deliberate
+  knocked-out decoration (template aura 87259 Permanent Feign Death (Drowned), unattackable
+  faction 14); the kill target is 35200.
+- **Status:** confirmed in game by Four on 2026-11-18.
+
+### Core: Doc Zapnozzle says "$n" (Don't Go Into the Light!, 14239, Lost Isles)
+
+- **Found** (Four, 2026-11-16): `Doc Zapnozzle says: You made the right choice. We all owe you a
+  great deal, $n.`
+- **Cause:** on retail spell 69018 summons a personal Doc for each player; here he is a fixed spawn
+  (guid 280009397, phase 0) and nothing casts 69018. `npc_zapnozzle` (lost_isles.cpp) talks to
+  `GetSummoner()`, which is empty for a fixed spawn, so the chat packet had no target and the
+  client could not fill in the name.
+- **Changed:** new `tools/bfa/lost-isles-zapnozzle.patch` (lost_isles.cpp only, last in the chain
+  after weapon-slot-attack-power.patch): `sQuestReward` remembers the player who turned in 14239,
+  and `GetSummoner()` falls back to the nearest player within 40 yards. Compile-checked.
+- **Status:** confirmed in game by Four on 2026-11-18.
+
+### Not changed, for the record
+
+- Rolling with my Homies (14071): the Keys to the Hot Rod stay after the turn-in on purpose. The
+  car is needed for Robbing Hoods (14121) and Sassy takes the keys at Life Savings.
+- Life Savings (14126): the core `PlayerScript` `LifeSavings` plays the movie and teleports to the
+  Lost Isles as soon as the quest is complete. The quest's only objective is its own provided item,
+  so by the code this happens on accept and skips the ride to the yacht and Gallywix. Left as is
+  until Four reaches it and reports what happens; fixing it needs a core patch.
+
+- **Pick up:** SQL plus one scripts-only patch. Delete the client `Cache` folder afterwards (objective texts).
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_17_70_kezan_quest_fixes.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_17_71_condition_object_types.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_17_72_kezan_party_fixes.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_17_73_kezan_pool_party_pirates.sql | mysql -u root -p bfa_world
+  ```
+
+  For the Doc Zapnozzle patch (scripts only, short build):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/lost-isles-zapnozzle.patch | git apply
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  Then restart worldserver.
+## 2026-11-18 (Addon fixes: FishingBuddy options tabs)
+
+Client addon only, in `client/FishingBuddy`. No server change: nothing to rebuild, no SQL, no restart.
+
+### FishingBuddy: options tab empty after switching tabs
+- **Found** (reported by Four, with a video): after opening the About tab, the next options tab
+  (Fishing Fun in the video) stayed empty, with `LibOptionsFrame-1.0.lua:421/454/723: Action[SetPoint]
+  failed because[SetPoint would result in anchor family connection]: attempted from:
+  FishingOptionsFrameOpt2:SetPoint` (also `Opt7`).
+- **Cause:** LibOptionsFrame puts an invisible tooltip "overlay" button over options that have a
+  disabled-state tooltip (`tooltipd`, for example "Use rafts"). When the tab changes, `ResetButtons` and
+  `CleanupButton` only hid the overlays, so each one stayed anchored to a checkbox from the previous tab. In
+  game the client marked such an overlay as a restricted region ("Can't measure restricted regions"), which
+  put the checkbox it was anchored to (`Opt2`) into a restricted anchor family. After that, even a cleared
+  `Opt2` couldn't be anchored to `FishingBuddyFrameInset`. The SetPoint error aborted `LayoutOptions` before
+  `ShowButtons`, so the whole page stayed empty. Confirmed in game: an unnamed Button was still anchored to
+  `Opt2`, and `/run for _,o in ipairs(FishingOptionsFrame.overlaybuttons) do o:ClearAllPoints() o:Hide() end`
+  brought the options back.
+- **Changed:** `client/FishingBuddy/Libs/LibOptionsFrame-1.0/LibOptionsFrame-1.0.lua`:
+  - `ResetButtons`: every overlay is now `ClearAllPoints()`'d as well as hidden.
+  - `CleanupButton`: the button's overlay is `ClearAllPoints()`'d before the link is dropped.
+  - `CheckBox_Able`: a disabled option's overlay anchors to `button.label or button` (checkboxes have no
+    `label`, so it used to anchor to the options frame's corner).
+  - `FishingBuddy.toc`: version `1.10.10-zr2`.
+- **Status:** confirmed in game by Four on 2026-11-18 (1.10.10-zr2: tabs stay filled, no errors).
+
 ## 2026-11-17 (World fixes: second-tier zones review)
 
 Merged to main (PR #76, 2026-11-18). Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.

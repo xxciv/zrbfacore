@@ -148,6 +148,8 @@ git apply ../tools-repo/tools/bfa/weapon-attack-power.patch
 git apply ../tools-repo/tools/bfa/attack-power-debug.patch
 git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
 git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
+git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
+git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -513,6 +515,18 @@ conversation, and the core took that as the end of the gossip menu too, so its o
 closed and opened again. The menu now stays valid, and it is only closed straight away when it is a
 single option the client would pick by itself (a flight master's map).
 
+`lost-isles-zapnozzle.patch` gives Doc Zapnozzle (start of the Lost Isles, Don't Go Into the
+Light!) someone to talk to. He is a fixed spawn here instead of being summoned for you, so his lines
+had no target and the client printed "$n" instead of your name. He now talks to the player who turned
+the quest in, or else the nearest player.
+
+`smartai-passive-escort.patch` keeps passive escorts walking when they are pulled into a fight. The
+caravan kodo you ride in Crossroads Caravan Pickup stopped dead as soon as a raider attacked you,
+because threat on a vehicle's rider goes to the vehicle, and the SmartAI cancelled its movement when it
+entered combat. A passive creature on a waypoint path now keeps going, and when the fight ends it
+carries on to its next waypoint instead of walking back to where the path started. It only touches
+`SmartAI.cpp`.
+
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
 80% health. When a player or a pet hits an invader, the invader drops the braves and fights only
@@ -757,6 +771,13 @@ To let characters learn up to 4 primary professions, set `MaxPrimaryTradeSkill =
 are known, whatever the server allows, and its Professions tab only shows 2. The addon re-enables
 **Train** and adds a `/profs` panel listing every primary profession (verified in game 2026-10-10).
 
+### Proximity nameplates (ZRProximity)
+
+[ZRProximity](../client/ZRProximity/README.md) keeps Blizzard's nameplates hidden until a unit is close
+(separate distances for aggressive, neutral and friendly units), targeted, under the mouse or fighting you, and
+puts the unit's name on every plate it shows. Copy `client/ZRProximity` into `_retail_/Interface/AddOns/`;
+`/zrp` opens its settings. Confirmed in game.
+
 ### Patched third-party addons
 
 `client/` also holds three third-party addons with fixes for the 8.3.7 client (all confirmed in game
@@ -765,8 +786,10 @@ from `_retail_/Interface/AddOns`, and copy the folder from `client/` there.
 
 - `client/BugTabs` (1.5.0-zr1): error catcher. Its bundled CallbackHandler-1.0 called
   `securecallfunction`, which 8.3.7 lacks; it now falls back to `xpcall`. TOC set to 80300.
-- `client/FishingBuddy` (1.10.10-zr1): its bundled CallbackHandler-1.0 is raised to minor 100 so its
-  8.3.7-safe copy wins over newer copies other addons ship.
+- `client/FishingBuddy` (1.10.10-zr3): its bundled CallbackHandler-1.0 is raised to minor 100 so its
+  8.3.7-safe copy wins over newer copies other addons ship, options tabs no longer go blank after
+  switching tabs (tooltip overlays are detached on tab change), and the fishing macro falls back to the
+  name "FishingBuddy" when its saved name is empty.
 - `client/Sorted` (1.2.4-zr3): bag addon. Bank buttons get an upgrade icon (nil error with the item level
   column on), empty slots skip `GetItemCooldown`, and items in the closed bank or another character's bags
   show a tooltip from their saved link.
@@ -875,6 +898,20 @@ This lowers it to 10 silver (9s 50c at Friendly):
 ```sh
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_14_50_battle_pet_training_cost.sql
 ```
+
+The Sack of Pet Supplies that 42 pet tamer quests give has no loot table in the dump, so it opens
+empty. This adds its contents:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_18_50_sack_of_pet_supplies_loot.sql
+```
+
+Brewfest companions (Wolpertinger, Pint-Sized Pink Pachyderm) had 6 display spawns outside the
+Brewfest event. This ties them to Brewfest:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_18_51_brewfest_display_pets.sql
+```
 #### Legion and BFA pet tamers
 
 Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest
@@ -963,6 +1000,8 @@ git apply ../tools-repo/tools/bfa/weapon-attack-power.patch
 git apply ../tools-repo/tools/bfa/attack-power-debug.patch
 git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
 git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
+git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
+git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
