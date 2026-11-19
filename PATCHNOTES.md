@@ -7,6 +7,15 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time and reports what is off.
 
+### World: Ray'ma and the Orgrimmar Brew Vendor check like the Alliance side
+- **Found** (Four, 2026-11-18): Larkin Thunderbrew only opens his shop with a Brewfest Prize Token and the Ironforge Brew Vendors only sell to club members, but Ray'ma's shop and the Orgrimmar Brew Vendor 89830 were open to anyone. "rayma should have a lockout too", "as should the brew vendor next to them", "just like alliance". 8.3.7 has the checks only on the Alliance side.
+- **Changed** (`sql/fixes/world/2026_11_18_49_brew_club_lockouts.sql`, our own change):
+  - Ray'ma 27489 (menu 9554): "What do you have for me?" and her greeting "I see ya got some Brewfest tokens" (text 12968) need at least 1 Brewfest Prize Token 37829, the same check as Larkin's menu 9548. Without one she uses her other greeting (text 12869) and shows no shop.
+  - Brew Vendor 89830 gets gossip menu 9549, the Ironforge Brew Vendors' menu: "I'd like to buy this month's brew." only shows with the achievement Brew of the Month (2796); without it the vendor says the brews are for club members only.
+- **Not changed:** what they sell, and the monthly brew rotation from `2026_11_18_47`.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`. Test with a Brewfest Prize Token in the bags (`.additem 37829`) and with the club achievement (`.achievement add 2796`).
+
 ### World: the Brew of the Month Club can be joined all year
 - **Found** (Four, 2026-11-18, Ironforge Brew Vendor: "our brews are exclusive to members of the Brew of the Month Club"; "how do you join the club?"): the Ironforge vendors only sell to characters with the achievement Brew of the Month (2796), as in 8.3.7. You get it by joining: buy the membership form from Larkin Thunderbrew 27478 in Ironforge or Ray'ma 27489 in Orgrimmar and turn in Brew of the Month Club (12420 Alliance, 12421 Horde) to them. In 8.3.7 both stand there all year; ours only appeared during Brewfest, so the club couldn't be joined the rest of the year. Each also had a second Brewfest-only copy that 8.3.7 doesn't have.
 - **Changed** (`sql/fixes/world/2026_11_18_48_brew_club_recruiters_all_year.sql`): Larkin 180703 and Ray'ma 194753 (the 8.3.7 spots) are no longer tied to Brewfest. The extra copies are removed: Larkin 92779 (4.6 yards from the other) and Ray'ma 92780 (in Durotar outside the Orgrimmar gate).
