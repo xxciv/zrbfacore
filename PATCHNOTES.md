@@ -46,12 +46,20 @@ Draft PR, not merged yet. Not tested in game yet.
   Teleport Out A (back to Thaalia). 79834 had no `spell_target_position` row.
 - **Changed:** `sql/fixes/world/2026_11_19_71_see_raptor.sql`: `spell_target_position` 79834 at the
   79845 spot (-12161.7, -1818.5, 94.0). SAI 44017: Mind Vision option -> close window, Thaalia
-  speaks, you cast 79845, 2 s later you cast 79834 and ride the hatchling. SAI 42840: 4 s after you
-  board it summons Mandokir (79838); when Mandokir is done it gives you the 42840 credit, casts 82399
-  on you and despawns with Mandokir; if you leave the hatchling early it also sends you back. SAI
-  42842: faces the hatchling and says four lines, then tells it he is done. Mandokir's lines are the
-  original ones as quoted on warcraft.wiki.gg (See Raptor); Thaalia's line is our own wording.
-- **Status:** not tested in game.
+  speaks, you get unit flag 0x200 (immune to NPCs), Thaalia becomes an active object, you cast
+  79845, 2.5 s later you cast 79834 and ride the hatchling, and Thaalia stops being active. SAI
+  42840: when you board it sets itself to faction 35 and unit flag 0x200 (the summon gave it your
+  faction, which the Gurubashi attack), and 4 s later summons Mandokir (79838); when Mandokir is done
+  it gives you the 42840 credit, casts 82399 on you and despawns with Mandokir. When you leave the
+  hatchling (sent home, or early) it clears your 0x200 flag and sends you back. SAI 42842: faces the
+  hatchling and says four lines, then tells it he is done. Mandokir's lines are the original ones as
+  quoted on warcraft.wiki.gg (See Raptor); Thaalia's line is our own wording.
+- **Fix after first test** (Four, 2026-11-19: "She sent me to ZG, but I am me", then killed by the
+  Gurubashi): the 2 s timed event on Thaalia never ran. Once you are teleported 1,400 yards away no
+  player is near her, her grid cell stops updating (`Map::Update` only visits cells around players
+  and active objects), so she never made you cast 79834. Fixed by making her active for the ritual
+  (SAI action 48) and by the NPC immunity above for the moments before the hatchling arrives.
+- **Status:** teleport in confirmed; the hatchling part not tested yet.
 - **Pick up:** SQL only:
 
   ```

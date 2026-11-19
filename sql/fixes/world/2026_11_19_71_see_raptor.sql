@@ -23,24 +23,36 @@ INSERT INTO `creature_text` (`CreatureID`,`GroupID`,`ID`,`Text`,`Type`,`Language
 (42842,3,0,'Here we are. Get ready for your training, little one. I recommend you forget about that worthless $r $c...',12,0,100,0,0,0,0,0,'Bloodlord Mandokir - See Raptor 3');
 
 -- Thaalia: Mind Vision option -> close, speak, send the player in, then put them in the hatchling.
+-- She is made an active object for the ritual: once the player is teleported away nobody is near her,
+-- her grid cell stops updating and the timed event never fired (first test: player left standing in
+-- Zul'Gurub as themselves). The player is also made immune to NPCs (0x200) for the short wait, so the
+-- Gurubashi leave them alone before the hatchling arrives; the hatchling clears it again.
 DELETE FROM `smart_scripts` WHERE `entryorguid`=44017 AND `source_type`=0 AND `id` BETWEEN 0 AND 9;
 INSERT INTO `smart_scripts` (`entryorguid`,`source_type`,`id`,`link`,`event_type`,`event_phase_mask`,`event_chance`,`event_flags`,`event_param1`,`event_param2`,`event_param3`,`event_param4`,`event_param_string`,`action_type`,`action_param1`,`action_param2`,`action_param3`,`action_param4`,`action_param5`,`action_param6`,`target_type`,`target_param1`,`target_param2`,`target_param3`,`target_x`,`target_y`,`target_z`,`target_o`,`comment`) VALUES
 (44017,0,0,1,62,0,100,0,11785,0,0,0,'',72,0,0,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Mind Vision option - Close gossip'),
 (44017,0,1,2,61,0,100,0,0,0,0,0,'',1,0,0,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - Say ritual line'),
-(44017,0,2,3,61,0,100,0,0,0,0,0,'',85,79845,2,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - Player casts See Raptor: Teleport In'),
-(44017,0,3,0,61,0,100,0,0,0,0,0,'',67,1,2000,2000,0,0,100,1,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - In 2 s, put the player in the hatchling'),
-(44017,0,4,0,59,0,100,0,1,0,0,0,'',85,79834,2,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Timed 1 - Player casts See Raptor: Summon Raptor (rides it)');
+(44017,0,2,3,61,0,100,0,0,0,0,0,'',18,512,0,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - Player immune to NPCs until the hatchling has them'),
+(44017,0,3,4,61,0,100,0,0,0,0,0,'',48,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - Stay active while the player is away'),
+(44017,0,4,5,61,0,100,0,0,0,0,0,'',85,79845,2,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - Player casts See Raptor: Teleport In'),
+(44017,0,5,0,61,0,100,0,0,0,0,0,'',67,1,2500,2500,0,0,100,1,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - In 2.5 s, put the player in the hatchling'),
+(44017,0,6,7,59,0,100,0,1,0,0,0,'',85,79834,2,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Timed 1 - Player casts See Raptor: Summon Raptor (rides it)'),
+(44017,0,7,0,61,0,100,0,0,0,0,0,'',48,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - No longer active');
 
 -- Hatchling 42840: Mandokir arrives; when he is done, credit and send the player home.
+-- The summon gives it the player's faction, which the Gurubashi attack; it goes back to its own
+-- friendly faction 35 and is immune to NPCs for the scene.
 DELETE FROM `smart_scripts` WHERE `entryorguid`=42840 AND `source_type`=0;
 INSERT INTO `smart_scripts` (`entryorguid`,`source_type`,`id`,`link`,`event_type`,`event_phase_mask`,`event_chance`,`event_flags`,`event_param1`,`event_param2`,`event_param3`,`event_param4`,`event_param_string`,`action_type`,`action_param1`,`action_param2`,`action_param3`,`action_param4`,`action_param5`,`action_param6`,`target_type`,`target_param1`,`target_param2`,`target_param3`,`target_x`,`target_y`,`target_z`,`target_o`,`comment`) VALUES
-(42840,0,0,0,27,0,100,0,0,0,0,0,'',67,1,4000,4000,0,0,100,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling - Player boarded - Mandokir in 4 s'),
+(42840,0,0,9,27,0,100,0,0,0,0,0,'',67,1,4000,4000,0,0,100,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling - Player boarded - Mandokir in 4 s'),
+(42840,0,9,10,61,0,100,0,0,0,0,0,'',2,35,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling - Linked - Friendly faction'),
+(42840,0,10,0,61,0,100,0,0,0,0,0,'',18,512,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling - Linked - Immune to NPCs'),
 (42840,0,1,0,59,0,100,0,1,0,0,0,'',11,79838,2,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling - Timed 1 - Summon Bloodlord Mandokir'),
 (42840,0,2,3,38,0,100,0,1,1,0,0,'',33,42840,0,0,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling - Mandokir done - See Raptor credit to the player'),
 (42840,0,3,4,61,0,100,0,0,0,0,0,'',11,82399,2,0,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling - Linked - Send the player back to Thaalia'),
 (42840,0,4,5,61,0,100,0,0,0,0,0,'',41,1000,0,0,0,0,0,11,42842,60,0,0,0,0,0,'Captured Lashtail Hatchling - Linked - Despawn Mandokir'),
 (42840,0,5,0,61,0,100,0,0,0,0,0,'',41,1000,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling - Linked - Despawn'),
-(42840,0,6,7,28,0,100,0,0,0,0,0,'',11,82399,2,0,0,0,0,7,0,0,0,0,0,0,0,'Captured Lashtail Hatchling - Player left early - Send them back to Thaalia'),
+(42840,0,6,11,28,0,100,0,0,0,0,0,'',19,512,0,0,0,0,0,7,0,0,0,0,0,0,0,'Captured Lashtail Hatchling - Player left - Clear their NPC immunity'),
+(42840,0,11,7,61,0,100,0,0,0,0,0,'',11,82399,2,0,0,0,0,7,0,0,0,0,0,0,0,'Captured Lashtail Hatchling - Linked - Send them back to Thaalia'),
 (42840,0,7,8,61,0,100,0,0,0,0,0,'',41,1000,0,0,0,0,0,11,42842,60,0,0,0,0,0,'Captured Lashtail Hatchling - Linked - Despawn Mandokir'),
 (42840,0,8,0,61,0,100,0,0,0,0,0,'',41,1000,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling - Linked - Despawn');
 UPDATE `creature_template` SET `AIName`='SmartAI' WHERE `entry` IN (42840,42842,44017);
