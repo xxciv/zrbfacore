@@ -3,6 +3,40 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-19 (Quest fixes: Stranglethorn)
+
+Draft PR, not merged yet. Not tested in game yet.
+
+### DB: The Mosh'Ogg Bounty offered twice, Robert Rhodes' free flight, Priestess Thaalia's options
+
+- **Found** (Four, 2026-11-19): Wulfred Harrys offers both 26782 and 26783 "The Mosh'Ogg Bounty".
+  Robert Rhodes always shows "Wulfred says that he paid for my trip..." and it should only show on
+  To the Cape! 26805 and fly you to the Explorers' League Digsite for free. Priestess Thaalia's two
+  ritual options always show, and the Mind Vision one does nothing.
+- **Cause:** 26782 and 26783 are the same quest (same giver, ender, objective Mosh'Ogg Bounty 58205,
+  text differs by one word) and both were in `creature_queststarter`. Robert Rhodes 43042's option
+  (menu 11791 option 1) had no condition, and his SAI listened for a menu 43042 that does not exist
+  and then ran a teleport with no destination. Thaalia's menu 11785 options had no conditions.
+- **Changed:** `sql/fixes/world/2026_11_19_70_stranglethorn_quest_fixes.sql`: 26783 no longer
+  offered by 44018 (still turned in there), 26782/26783 exclusive group 26782. Condition on 11791
+  option 1: 26805 in progress or complete (47, mask 10). SAI 43042 rewritten: option 1 -> close
+  window, the player casts 82504 "Explorer's League Digsite: Taxi Flight" (taxi path 2240, Fort
+  Livingston -> Explorers' League Digsite, no charge). Conditions on 11785: option 0 (Mind Vision)
+  only while See Raptor 26773 is in progress, option 1 (Mind Control) only while Be Raptor 26775 is.
+- **Status:** not tested in game. The rituals themselves (what happens after picking an option) are
+  not scripted yet.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_19_70_stranglethorn_quest_fixes.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-18 (Quest fixes: Crossroads Caravan Pickup, Northern Barrens)
 
 Merged to `main` with PR #90 on 2026-11-18. Confirmed in game 2026-11-18.
