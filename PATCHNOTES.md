@@ -7,13 +7,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time and reports what is off.
 
+### World: monthly Brew Vendors list their brew once
+- **Found** (Four, 2026-11-18, Ironforge Brew Vendor): "offering 2 of the same item, instead of one inventory space". The monthly Brew Vendors 27806, 27810-27820 (Ironforge, and outside the Orgrimmar gate) each listed their brew twice: the 37488-37499 item and its same-named copy 37898-37909. 8.3.7 lists one item per vendor.
+- **Changed** (`sql/fixes/world/2026_11_18_50_brew_vendor_single_item.sql`): the copies are removed, so the lists now match 8.3.7: 37488-37499, except Izzard's Ever Flavor at 27810, which keeps 37899 as in 8.3.7.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Ray'ma and the Orgrimmar Brew Vendor check like the Alliance side
 - **Found** (Four, 2026-11-18): Larkin Thunderbrew only opens his shop with a Brewfest Prize Token and the Ironforge Brew Vendors only sell to club members, but Ray'ma's shop and the Orgrimmar Brew Vendor 89830 were open to anyone. "rayma should have a lockout too", "as should the brew vendor next to them", "just like alliance". 8.3.7 has the checks only on the Alliance side.
 - **Changed** (`sql/fixes/world/2026_11_18_49_brew_club_lockouts.sql`, our own change):
   - Ray'ma 27489 (menu 9554): "What do you have for me?" and her greeting "I see ya got some Brewfest tokens" (text 12968) need at least 1 Brewfest Prize Token 37829, the same check as Larkin's menu 9548. Without one she uses her other greeting (text 12869) and shows no shop.
   - Brew Vendor 89830 gets gossip menu 9549, the Ironforge Brew Vendors' menu: "I'd like to buy this month's brew." only shows with the achievement Brew of the Month (2796); without it the vendor says the brews are for club members only.
 - **Not changed:** what they sell, and the monthly brew rotation from `2026_11_18_47`.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-18).
 - **Pick up:** run the SQL, restart `worldserver`. Test with a Brewfest Prize Token in the bags (`.additem 37829`) and with the club achievement (`.achievement add 2796`).
 
 ### World: the Brew of the Month Club can be joined all year
