@@ -64,7 +64,7 @@ Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time 
 
 - **Found** (Four, 2026-11-18: "Runda (Profession Trainer) - is this a real in game NPC or something added by Havencore? Either way, she doesn't work"): Runda 47418 in Razor Hill is a real NPC (Cataclysm and later). So are Lien Farner, Wembil Taskwidget, Nedric Sallow, Lalum Darkmane, Iranis Shadebloom, Saren, Valn, Therisa Sallow, Jack "All-Trades" Derrington and Elder Oakpaw. All 11 use gossip menu 12180 and its "Tell me about..." sub menus 12185-12199, where every menu lists "Train me in <profession>." for the 11 professions. Most of those options were vendor options (`OptionType` 3) or gossip options with nowhere to go, so a click closed the menu. Only 26 of the 154 had a `creature_trainer` row telling the core which list to open.
 - **Changed** (`sql/fixes/world/2026_11_18_41_profession_trainer_menus.sql`): every "Train me in X." option on those 14 menus is a trainer option (`OptionType` 5, `OptionNpcFlag` 16). It opens the list the sniffed rows already used, for all 11 NPCs (1,815 `creature_trainer` rows): Alchemy 59, Blacksmithing 80, Enchanting 51, Engineering 102, Herbalism 388, Inscription 387, Jewelcrafting 48, Leatherworking 103, Mining 389, Skinning 390, Tailoring 117.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-18, Runda and the Razor Hill profession trainer).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Durotar, Razor Hill Grunts give directions again
@@ -74,7 +74,7 @@ Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time 
   - "A class trainer" restored.
   - Main menu links: bank, inn and stable master answer with their texts, and the inn and stable get map markers. The wind rider master marks Burok in Razor Hill (the old text sends you to Orgrimmar). The class and profession menus open.
   - Class menu realigned: Druid marks Jabul and Mage marks Un'Thuwa (both now in Razor Hill, new markers 54200/54201); the others keep their texts and markers.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-18).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ## 2026-11-17 (World fixes: second-tier zones review)
