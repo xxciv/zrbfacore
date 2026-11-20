@@ -8,6 +8,31 @@ to do to pick it up (rebuild, restart, run SQL).
 Draft PR, not merged yet. Digsite and camp doubles confirmed; Razorfen Downs to test; Zandalari chain and
 Tethyr to test when level appropriate.
 
+### DB: Razorfen Downs quests had no giver (correction to the audit entry below)
+- **Found** (Four, 2026-11-20): `.quest add 27024` / `.quest add 27009` showed nothing, while Loss
+  Reduction 25179 was added fine.
+- **Cause:** Partners in Crime 27024, The Coldbringer 27009, Cure the Scourge 27029, Scourge of the Downs
+  27019 and Extinguishing the Idol 27022 carry QUEST_FLAGS_UNAVAILABLE (0x4000) in 8.3.7: retired with the
+  Warlords revamp, the client hides them. The audit below wrongly counted them as lost. The live quests are
+  Blackthorn's Lieutenants 33513 (Aarux, Mordresh, Mushlump) and The Ritual 33514 (Amnennar), given by the
+  Warlords Koristrasza 74367, who is not spawned (nor in TDB 8.3.7). So the dungeon had no live quests.
+- **Changed** (`sql/fixes/world/2026_11_20_76_razorfen_downs_live_quests.sql`): the Koristrasza at the
+  entrance (44837, guid 325121) now starts and ends 33513 and 33514. Nothing removed. The kill credit
+  change in 2026_11_20_72 is harmless but only matters for the retired quests.
+- **Status:** not tested in game yet.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_76_razorfen_downs_live_quests.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver. Test: `.quest add 33513` and `.quest add 33514`, or talk to Koristrasza at
+  the entrance.
+
 ### DB: Take Down Tethyr! can't be done (Theramore, Dustwallow Marsh)
 - **Found** (Four on Wayfarer's Theramore walk, 2026-11-20): Tethyr idles at the Theramore docks and
   Take Down Tethyr! 27222 (Major Mills 23905) can't be done.
