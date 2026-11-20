@@ -142,7 +142,7 @@ Merged to `main` with PR #91 on 2026-11-20. Confirmed in game 2026-11-20.
   Braddok's brain 58225 for Mind Control 26774 drops at 100% from Braddok 42858 (was 76.8%; he is
   the only source and has one spawn).
 - **Status:** confirmed in game by Four on 2026-11-20 (Mosh'Ogg Bounty offered once, Robert Rhodes'
-  free flight, Thaalia's options shown only for the matching quest). The rituals themselves are scripted in the entries above.
+  free flight, Thaalia's options shown only for the matching quest). The rituals themselves are scripted in their own entries (See Raptor below, Be Raptor above).
 - **Pick up:** SQL only:
 
   ```
