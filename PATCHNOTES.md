@@ -45,15 +45,20 @@ Tethyr to test when level appropriate.
   - TDB's event on 27222 and our Mills (guid 255200). Accept: Mills calls 12 Theramore Marksmen and his
     lines play; Tethyr swims in from the sea to the docks. The marksmen shoot him. Each shot from one of
     the three Cove Cannons 186432 (usable while you have the quest) now takes 10% of his health (spell
-    42576; TDB only cast a 62 damage Death Blast here).
+    42576; TDB only cast a 62 damage Death Blast here). Tethyr casts 42576 on himself when a cannon
+    shot hits him: the shot comes from a level 1 invisible trigger, and 42576 cast by that trigger
+    missed him every time (Four 2026-11-20: "I dont think the cannons are taking anything off him").
   - Tethyr dies: Mills says "We did it! We've defeated Tethyr!" and completes the quest for players
     within 100 yd; the marksmen fire fireworks and leave. Five marksmen dead: the quest fails for
     players within 90 yd, the marksmen and Tethyr despawn, and you can take it again.
+  - Tethyr fights back (Four, 2026-11-20: "Tethyr just sort of sits in the water and takes it"; TDB keeps
+    him passive): at the docks he is rooted in the water and aggressive, casts Water Bolt on a random
+    enemy every 4-5 s (was 8 s) and Spout at his current target every 7 s.
   - 27222 SpecialFlags |= 2 (event). Tethyr faction 7 -> 1771 (TDB, the marksmen are 1770).
   - Removed the leftover static Tethyr (307657) and marksman (307658). Neither starts, ends or is the
     target of a quest; the quest's Tethyr is the one the event summons.
-- **Status:** Four checked 2026-11-20: Mills only offers it after Oh, It's Real (chain is fine). Event to
-  be tested when the character is level appropriate.
+- **Status:** Four tested 2026-11-20 on an admin character: event, fireworks, completion, reward and
+  achievement work. Tethyr was passive and the cannons did no damage; both fixed above, retest pending.
 - **Pick up:** SQL only:
 
   ```

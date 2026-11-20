@@ -3,9 +3,13 @@
 -- The quest has no objectives: Mills's event completes it. Ours had no script at all on Mills and Tethyr,
 -- and the event never started. TDB 8.3.7 has the event but keys it on the old quest id 11198 and on a
 -- Mills guid (31075) that does not exist. This is TDB's event on 27222 and our Mills guid 255200.
+-- Tethyr: TDB keeps him passive (he only took the hits, Four 2026-11-20); at the docks he is now rooted in
+-- the water and aggressive, bolts a random enemy every 4-5 s and Spouts whoever is in front of him.
 -- Accept: Mills calls the marksmen (12, as in TDB) and Tethyr swims in to the docks. The marksmen shoot
 -- him, the three Cove Cannons 186432 (usable with the quest, cast 42578 on Tethyr) take 10% of his health
--- per shot (42576, TDB only cast a 62 damage Death Blast here). Tethyr dies: Mills cheers and completes
+-- per shot (42576, TDB only cast a 62 damage Death Blast here). The cannon's shot comes from a level 1
+-- invisible trigger, and 42576 cast by that trigger missed a level 40 Tethyr (Four 2026-11-20: cannons did
+-- nothing), so Tethyr casts 42576 on himself: self casts never miss, and its nearby-entry target is him. Tethyr dies: Mills cheers and completes
 -- the quest for players within 100 yd, the marksmen fire fireworks and leave. Five marksmen dead: the
 -- quest fails for players within 90 yd and everything despawns.
 
@@ -52,10 +56,12 @@ INSERT INTO `smart_scripts` (`entryorguid`,`source_type`,`id`,`link`,`event_type
 (23899,0,0,0,54,0,100,0,0,0,0,0,0,'',80,2389900,2,0,0,0,0,1,0,0,0,0,0,0,0,'Tethyr - Just Summoned - Run Swim In'),
 (23899,0,1,0,54,0,100,0,0,0,0,0,0,'',48,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Tethyr - Just Summoned - Set Active'),
 (23899,0,2,3,40,0,100,0,1,23899,0,0,0,'',101,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Tethyr - On Waypoint 1 Reached - Set Home Position'),
-(23899,0,3,0,61,0,100,0,0,0,0,0,0,'',19,128,0,0,0,0,0,1,0,0,0,0,0,0,0,'Tethyr - On Waypoint 1 Reached - Remove Unit Flag Not Attackable'),
-(23899,0,4,0,0,0,100,0,3000,3000,7000,7000,0,'',11,42584,0,0,0,0,0,5,0,0,0,0,0,0,0,'Tethyr - In Combat - Cast Spout'),
-(23899,0,5,0,0,0,100,0,5000,5000,8000,8000,0,'',11,42574,0,0,0,0,0,5,0,0,0,0,0,0,0,'Tethyr - In Combat - Cast Water Bolt'),
-(23899,0,6,0,8,0,100,0,42578,0,0,0,0,'',85,42576,2,0,0,0,0,1,0,0,0,0,0,0,0,'Tethyr - On Cannon Blast Hit - Invoker Cast Cannon Blast (10% health)'),
+(23899,0,3,10,61,0,100,0,0,0,0,0,0,'',19,128,0,0,0,0,0,1,0,0,0,0,0,0,0,'Tethyr - On Waypoint 1 Reached - Remove Unit Flag Not Attackable'),
+(23899,0,10,11,61,0,100,0,0,0,0,0,0,'',103,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Tethyr - On Waypoint 1 Reached - Root (stays in the water)'),
+(23899,0,11,0,61,0,100,0,0,0,0,0,0,'',8,2,0,0,0,0,0,1,0,0,0,0,0,0,0,'Tethyr - On Waypoint 1 Reached - Set Aggressive (fights back)'),
+(23899,0,4,0,0,0,100,0,3000,3000,7000,7000,0,'',11,42584,0,0,0,0,0,2,0,0,0,0,0,0,0,'Tethyr - In Combat - Cast Spout'),
+(23899,0,5,0,0,0,100,0,2000,2000,4000,5000,0,'',11,42574,0,0,0,0,0,5,0,0,0,0,0,0,0,'Tethyr - In Combat - Cast Water Bolt'),
+(23899,0,6,0,8,0,100,0,42578,0,0,0,0,'',11,42576,2,0,0,0,0,1,0,0,0,0,0,0,0,'Tethyr - On Cannon Blast Hit - Cast Cannon Blast (10% health) on Self'),
 (23899,0,7,8,6,0,100,0,0,0,0,0,0,'',45,0,1,0,0,0,0,10,255200,23905,0,0,0,0,0,'Tethyr - On Death - Set Data 0 1 on Major Mills'),
 (23899,0,8,0,61,0,100,0,0,0,0,0,0,'',45,0,1,0,0,0,0,11,23900,80,0,0,0,0,0,'Tethyr - On Death - Set Data 0 1 on Theramore Marksmen'),
 (23899,0,9,0,23,0,100,1,52500,5,0,0,0,'',80,2389901,2,0,0,0,0,1,0,0,0,0,0,0,0,'Tethyr - On 5 Marksmen Dead - Run Fail'),
