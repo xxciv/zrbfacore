@@ -3,6 +3,44 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-20 (Quest fixes: Explorers' League Digsite, vendor options)
+
+Draft PR, not merged yet. Not tested in game yet.
+
+### DB: Doubled Dask quests, Linzi's shop closes, two Colin Swifthammers (Cape of Stranglethorn)
+- **Found** (Four, 2026-11-20): Bronwyn Hewstrike and Dask "The Flask" Gobfizzle both list two quests
+  named 'Dask "The Flask" Gobfizzle'; Linzi Hewstrike's "I would like to buy from you." just closes the
+  window; two Colin Swifthammers stand at the camp, one of them on Dask's spot.
+- **Cause:**
+  - 26825 (text names Wulfred) and 26826 (after Hero's Call 28702) are two versions of the same
+    breadcrumb, both started by Bronwyn 44082 and, wrongly, by Dask 44099 too. Nothing kept a player
+    who did both earlier quests from seeing both.
+  - Linzi's menu option (11801) had OptionType 1 (gossip, no submenu, so it closes) instead of 3
+    (vendor). 98 vendor options in the dump have the same mistake.
+  - Colin 52646 (guid 307980) is the level 85 Rise of the Zandalari version (zombie outbreak, quest
+    29152 Making Contact), sniffed in that event's phase on the spot where Dask stands. The camp's
+    gryphon master is 43043 (guid 300879).
+- **Changed** (`sql/fixes/world/2026_11_20_71_explorers_league_digsite.sql`):
+  - Dask no longer starts 26825/26826. 26825 is offered only to players who have not done 28702
+    (quest-available condition), 26826 only to those who have; both in exclusive group 26825. Too Big
+    For His Britches 26823 still follows either.
+  - Every "I would like to buy from you." / "Let me browse your goods" option with OptionType 1,
+    OptionNpcFlag 1 and no submenu now has OptionType 3, OptionNpcFlag 128 (98 options, Linzi's among
+    them, vendors from Classic to BFA).
+  - Spawn 307980 (Colin 52646) removed. Quest 29152 Making Contact has no other starter.
+- **Status:** not tested in game yet.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_71_explorers_league_digsite.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-20 (Quest fixes: Be Raptor, Stranglethorn)
 
 Merged to `main` with PR #91 on 2026-11-20. Confirmed in game 2026-11-20 (the 8-second Burning Twig hotfix
