@@ -69,7 +69,12 @@ Draft PR, not merged yet. Not tested in game yet.
   so the "new hatchling in 2.5 s" step on the old hatchling never ran. Fixed by the passive trolls,
   the net/sight checks for both hostile and friendly hatchlings, the reset through Thaalia, the player
   casting the way home, the death safety, and the thinning above.
-- **Status:** the first version was tested and failed (above); this version not tested yet. If you are
+- **Second fix** (Four, 2026-11-20: the leave-vehicle button did not send him home): the passenger's
+  own cast of 82399 runs while the core is still taking him out of the hatchling, and that teleport is
+  lost. Leaving now tells Thaalia (data 9), who makes the player cast 82399 and clears the 0x200 flag
+  half a second later.
+- **Status:** first version tested and failed (above); Tan'shang's credit and the swap to hatchling 2
+  confirmed in game 2026-11-20; the rest not tested yet. If you are
   stuck in the vision (world missing, buff "Zul'Gurub Mind Control" still on), `.unaura 79975` and a
   relog fix it.
 - **Pick up:** SQL only:
