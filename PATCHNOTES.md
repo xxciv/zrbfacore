@@ -23,6 +23,34 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Pick up:** apply the patch, rebuild and restart `worldserver`. Wild pets get their level when
   their grid loads, so after the restart a Western Plaguelands pet should be 10 or 11.
 
+## 2026-11-20 (Quest fixes: Those That Couldn't Let Go)
+
+Draft PR, not merged yet.
+
+### DB: Holy Thurible counts every time on the same Withdrawn Soul (Western Plaguelands)
+- **Found** (Four, 2026-11-20): in Those That Couldn't Let Go (27168) the Holy Thurible on a Withdrawn
+  Soul 45166 doesn't make the soul go away, so you can use it over and over on the same soul.
+- **Cause:** the soul's hit script (from our dump; TDB 8.3.7 only has its Spirit Burst row) ran credit
+  -> say line 0 -> despawn as one linked chain. The soul has no creature_text, so the say row is dropped
+  when scripts load and the despawn after it never ran. The despawn also targeted the player instead of
+  the soul, and the rows reused id 0.
+- **Changed** (`sql/fixes/world/2026_11_20_77_those_that_couldnt_let_go.sql`): Withdrawn Soul 45166
+  smart_scripts rewritten: row 0 Spirit Burst 85424 in combat (unchanged); row 1 on Holy Thurible 84375
+  hit: kill credit 45166 to the player, now with a 10 s cooldown; row 2 (linked): despawn the soul after
+  2 s (it respawns on its normal timer). The say row is gone.
+- **Status:** not tested in game yet.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_77_those_that_couldnt_let_go.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-20 (Quest fixes: Take Down Tethyr, Rise of the Zandalari, Explorers' League Digsite, vendor options, quest audit)
 
 PR #93, merged 2026-11-20. Digsite, camp doubles and Razorfen Downs confirmed; Tethyr cannon/fight-back
