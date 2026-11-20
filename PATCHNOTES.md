@@ -5,7 +5,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-20 (Quest fixes: Take Down Tethyr, Rise of the Zandalari, Explorers' League Digsite, vendor options, quest audit)
 
-Draft PR, not merged yet. Not tested in game yet.
+Draft PR, not merged yet. Digsite and camp doubles confirmed; Razorfen Downs to test; Zandalari chain and
+Tethyr to test when level appropriate.
 
 ### DB: Take Down Tethyr! can't be done (Theramore, Dustwallow Marsh)
 - **Found** (Four on Wayfarer's Theramore walk, 2026-11-20): Tethyr idles at the Theramore docks and
@@ -26,7 +27,8 @@ Draft PR, not merged yet. Not tested in game yet.
   - 27222 SpecialFlags |= 2 (event). Tethyr faction 7 -> 1771 (TDB, the marksmen are 1770).
   - Removed the leftover static Tethyr (307657) and marksman (307658). Neither starts, ends or is the
     target of a quest; the quest's Tethyr is the one the event summons.
-- **Status:** not tested in game yet. Runs clean (twice) on my copy of the DB.
+- **Status:** Four checked 2026-11-20: Mills only offers it after Oh, It's Real (chain is fine). Event to
+  be tested when the character is level appropriate.
 - **Pick up:** SQL only:
 
   ```
@@ -51,7 +53,7 @@ Draft PR, not merged yet. Not tested in game yet.
     They had no quests, shop, menu or script; the camp's own keep all quests and Jaquilina's shop.
   - Not changed: Rebel Watchmen, Nesingwary Hired Guns, Injured Hired Guns and Razzashi Serpents (no
     quest roles, the 4.1 "camp under attack" scene).
-- **Status:** not tested in game yet. Runs clean on my copy of the DB.
+- **Status:** CONFIRMED in game by Four on 2026-11-20.
 - **Pick up:** SQL only (after 2026_11_20_73):
 
   ```
@@ -116,8 +118,9 @@ Draft PR, not merged yet. Not tested in game yet.
       Direhammer's Boots 68937 while 29121 / 29232 is in progress and you don't have them.
 - **Not changed:** the digsite zombies (Wayfarer's 2026_11_20_30). The unstacked doubles at the Rebel
   Camp and Nesingwary's Expedition are the entry above.
-- **Status:** not tested in game yet. The SQL runs clean (twice) on my copy of the DB and the script
-  compiles.
+- **Status:** Vol'jin and his gossip window confirmed there by Four on 2026-11-20; the chain (level 85)
+  will be tested when a character is level appropriate. The SQL runs clean (twice) on my copy of the DB
+  and the script compiles.
 - **Pick up:** core patch (short build) plus SQL:
 
   ```
@@ -158,7 +161,7 @@ Draft PR, not merged yet. Not tested in game yet.
 - **Changed** (`sql/fixes/world/2026_11_20_72_razorfen_downs_old_boss_quests.sql`): kill credit on the
   Warlords bosses: Aarux 74412 -> 7355, Mordresh 74347 -> 7357, Mushlump 74435 -> 8567, Amnennar 74434
   -> 7358. One kill now counts for both versions.
-- **Status:** not tested in game yet.
+- **Status:** not tested in game yet (Four will test Razorfen Downs).
 - **Pick up:** SQL only:
 
   ```
@@ -193,7 +196,7 @@ Draft PR, not merged yet. Not tested in game yet.
     them, vendors from Classic to BFA).
   - Spawn 307980 (Colin 52646) removed. The camp's Colin 43043 now offers its quest 29152 Making
     Contact instead (npcflag |= 2; level 85, so lower characters never see it).
-- **Status:** not tested in game yet.
+- **Status:** CONFIRMED in game by Four on 2026-11-20.
 - **Pick up:** SQL only:
 
   ```
