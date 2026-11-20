@@ -29,7 +29,7 @@ Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four w
   - The last stage stays calm: the knocked-out Big Earl (735401314) is passive and lies down, and Keeshan with his crew (735401313) is passive.
   - The rows the first version of this file added (Big Earl ids 4-7, Keeshan id 6) are removed again.
 - **Not changed:** the crowd keeps its C++ script `npc_redridge_citizen`, which cheers, roars and points every 10-25 seconds once a citizen has a stage aura.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-20): "Fight Club is good!"
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Redridge Mountains, Lakeshire Inn basement fight club
