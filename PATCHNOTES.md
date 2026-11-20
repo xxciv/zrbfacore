@@ -273,6 +273,112 @@ Merged to `main` with PR #91 on 2026-11-20. Confirmed in game 2026-11-20.
 
   Then restart worldserver.
 
+## 2026-11-19 (pet battles)
+
+### Pet battles: wild pets missing from zones their pet card lists
+
+- **Found** (Four, 2026-11-19): the Mouse pet card says "Pet Battle: Duskwood, Dustwallow Marsh,
+  Grizzly Hills, Mulgore, Netherstorm, Westfall, Wetlands", but Mice only lived in Duskwood and
+  Dustwallow Marsh.
+- **Cause:** `battlepet_wild_zone_pool` (which zone gets which pet) has no row for many zones the pet
+  cards list. An audit of every capturable species (BattlePetSpecies flag 0x8) against the zones on its
+  card found 382 (species, zone) pairs with no pool row. Left alone:
+  - 171 Dragonflight / Shadowlands zones, species newer than 8.3.7, dungeons, raids and the Gilneas,
+    Kezan and Tol Barad instance maps;
+  - 65 pairs whose pet is already spawned directly in that zone;
+  - Young Mutant Warturtle, already spawned in the Dalaran Underbelly (its own map);
+  - 6 pairs with no usable critter spot (Lost Isles Strand Crab and Rat, Azjol-Nerub and Violet Hold
+    Spider and Rat, Great Sea Squirky).
+- **Changed:** `sql/fixes/world/2026_11_19_50_wild_battle_pet_card_zones.sql` adds 139 pool rows on
+  62 zones:
+  - 68 rows name a critter that lives in the zone. The file then converts up to Max of those critters
+    into the pet (the 2026_11_01_50 procedure, limited to the new rows; logged in
+    `zr_wild_battlepet_conversion`).
+  - 71 rows have no matching critter in the zone: 194 new spawns (guids 1000100039-1000100232), each
+    1 yard from a random unscripted, unphased critter of the zone, wandering 3 yards (as in
+    2026_11_10_52). Max = the species' usual Max elsewhere, capped at 3. These spots do not match
+    retail exactly.
+  - Levels: the zone's existing pool levels, else the AreaTable wild pet range.
+
+  | Zone | Pets added (Max, source) |
+  |---|---|
+  | Arathi Highlands | Cat (1, new spawn), Hare (3, new spawns) |
+  | Azshara | Rabbit (6, from Rabbit), Rat (5, from Rat), Squirrel (10, from Squirrel) |
+  | Azsuna | Garden Frog (1, new spawn) |
+  | Blade's Edge Mountains | Brown Marmot (3, new spawns), Rabbit (6, from Rabbit) |
+  | Blasted Lands | Adder (7, from Adder) |
+  | Bloodmyst Isle | Rat (5, from Rat) |
+  | Crystalsong Forest | Rabbit (3, new spawns), Rat (3, new spawns) |
+  | Darkshore | Rabbit (6, from Rabbit), Rat (5, from Rat), Squirrel (10, from Squirrel), Strand Crab (3, new spawns) |
+  | Dragonblight | Strand Crab (3, new spawns) |
+  | Dun Morogh | Long-tailed Mole (2, from Long-tailed Mole), Rabbit (6, from Rabbit), Rat (3, new spawns), Roach (3, new spawns), Spider (3, new spawns), Squirrel (3, new spawns), Strand Crab (3, new spawns) |
+  | Duskwood | Rabbit (6, from Rabbit) |
+  | Dustwallow Marsh | Chicken (2, from Chicken), Squirrel (10, from Squirrel) |
+  | Eastern Plaguelands | Beetle (46, from Beetle), Cockroach (25, from Cockroach), Scorpid (3, new spawns), Spider (3, from Spider) |
+  | Elwynn Forest | Spider (3, from Spider) |
+  | Eversong Woods | Cat (1, new spawn), Rabbit (6, from Rabbit) |
+  | Feralas | Rabbit (6, from Rabbit) |
+  | Frostfire Ridge | Fire-Proof Roach (3, new spawns) |
+  | Ghostlands | Rat (5, from Rat), Spider (3, from Spider) |
+  | Grizzly Hills | Mouse (1, new spawn) |
+  | Hellfire Peninsula | Flayer Youngling (3, new spawns) |
+  | Hillsbrad Foothills | Chicken (1, from Chicken), Rabbit (6, from Rabbit), Spider (3, from Spider), Squirrel (3, new spawns) |
+  | Howling Fjord | Rabbit (5, from Rabbit), Roach (8, from Roach), Spider (3, from Spider), Toad (3, new spawns) |
+  | Krasarang Wilds | Sea Gull (3, new spawns), Shore Crab (3, new spawns) |
+  | Loch Modan | Roach (3, new spawns), Small Frog (9, from Small Frog), Squirrel (10, from Squirrel) |
+  | Mechagon | Duskytooth Snooter (3, new spawns), Experimental Roach (3, new spawns), Fleeting Frog (3, new spawns), Motorized Croaker (3, new spawns), Rustbolt Clucker (3, new spawns), Rustyroot Snooter (3, new spawns), Scrapyard Tunneler (3, new spawns), Specimen 97 (3, new spawns), Yellow Junkhopper (3, new spawns) |
+  | Moonglade | Rabbit (6, from Rabbit), Silky Moth (3, new spawns), Squirrel (10, from Squirrel) |
+  | Mount Hyjal | Bat (11, from Bat), Forest Moth (3, new spawns), Rabbit (6, from Rabbit), Squirrel (3, new spawns) |
+  | Mulgore | Mouse (1, new spawn), Rabbit (6, from Rabbit) |
+  | Nagrand | Rabbit (6, from Rabbit), Rat (5, from Rat), Snake (2, from Snake) |
+  | Nazjatar | Bloodseeker (3, new spawns), Chitterspine Skitterling (3, new spawns), Deeptide Fingerling (3, new spawns), Hissing Chitterspine (3, new spawns), Sandclaw Sunshell (3, new spawns), Spireshell Snail (3, new spawns) |
+  | Nazmir | Spectral Raven (3, new spawns) |
+  | Netherstorm | Cat (1, new spawn), Mouse (1, new spawn) |
+  | Orgrimmar | Scorpid (3, new spawns), Spider (3, new spawns) |
+  | Ruins of Gilneas | Rat (3, new spawns), Spider (3, new spawns), Squirrel (3, new spawns) |
+  | Shadowmoon Valley | Forest Spiderling (3, new spawns) |
+  | Shattrath City | Rat (5, from Rat) |
+  | Sholazar Basin | Squirrel (10, from Squirrel) |
+  | Silvermoon City | Cat (1, from Cat), Rabbit (3, from Rabbit) |
+  | Silverpine Forest | Rabbit (6, from Rabbit), Rat (5, from Rat), Snake (19, from Snake), Squirrel (10, from Squirrel) |
+  | Stonetalon Mountains | Rat (5, from Rat) |
+  | Stormheim | Stormstruck Beaver (3, new spawns) |
+  | Stormsong Valley | Freshwater Crawler (3, new spawns) |
+  | Stormwind City | Rat (5, from Rat) |
+  | Swamp of Sorrows | Rat (5, from Rat), Small Frog (3, new spawns), Spider (3, from Spider) |
+  | Tanaan Jungle | Maggot (7, from Maggot) |
+  | Teldrassil | Spider (3, from Spider), Squirrel (3, new spawns), Toad (3, new spawns) |
+  | Terokkar Forest | Chicken (2, new spawns) |
+  | The Hinterlands | Spider (3, from Spider) |
+  | The Storm Peaks | Spider (3, new spawns) |
+  | Thunder Bluff | Prairie Dog (1, from Prairie Dog) |
+  | Tirisfal Glades | Chicken (2, from Chicken), Rabbit (6, from Rabbit), Roach (5, from Roach), Spider (3, from Spider), Undercity Rat (31, from Undercity Rat) |
+  | Twilight Highlands | Squirrel (3, new spawns), Toad (3, new spawns), Twilight Whelpling (3, new spawns) |
+  | Uldum | Oasis Void-Duster (3, new spawns), Void-Scarred Locust (3, new spawns) |
+  | Un'Goro Crater | Silky Moth (3, new spawns) |
+  | Val'sharah | Squirrel (7, from Squirrel) |
+  | Vale of Eternal Blossoms | Golden Chirper (3, new spawns), Voidglower (3, new spawns), Voidskimmer (3, new spawns) |
+  | Western Plaguelands | Rabbit (6, from Rabbit), Squirrel (10, from Squirrel) |
+  | Westfall | Mouse (1, new spawn), Rabbit (5, from Rabbit), Squirrel (4, from Squirrel) |
+  | Wetlands | Chicken (2, from Chicken), Mouse (1, new spawn), Rabbit (5, from Rabbit), Squirrel (10, from Squirrel) |
+  | Winterspring | Spider (3, from Spider) |
+  | Zul'Drak | Spider (3, new spawns) |
+  | Zuldazar | Baby Zandalari Raptor (3, new spawns) |
+
+- **Status:** confirmed in game by Four (2026-11-20): pets are now found in zones that had none.
+  Ran twice on a copy of the world DB with the earlier pet SQL applied (same result both times).
+  Expected output, give or take on your live DB:
+  `139 new pool rows, 194 new spawns, 664 pets now in those zones`.
+- **Pick up:**
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo pull
+  mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_19_50_wild_battle_pet_card_zones.sql
+  ```
+
+  Then restart `worldserver`.
+
 ## 2026-11-18 (Quest fixes: Crossroads Caravan Pickup, Northern Barrens)
 
 Merged to `main` with PR #90 on 2026-11-18. Confirmed in game 2026-11-18.
