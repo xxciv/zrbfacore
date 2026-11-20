@@ -7,12 +7,16 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four walks Stranglethorn, Duskwood and Redridge and reports what is off.
 
-### World: Redridge Mountains, Lakeshire Inn fight club, Big Earl hits back
-- **Found** (Four, 2026-11-20, after `2026_11_20_32`): "Dumpy vs. Big Earl. Big Earl is just taking it. Never throwing back a punch." Big Earl (faction 2101) and Keeshan/Dumpy (faction 1934) are enemies. Only Dumpy's script sets him passive, so Big Earl and Keeshan count as engaged, and their out-of-combat punch events never run. Big Earl's punches also only targeted Keeshan, who isn't in the Dumpy stage.
-- **Changed** (`sql/fixes/world/2026_11_20_33_lakeshire_fight_club_punches.sql`, run after `2026_11_20_32`). Our own tuning; TDB 8.3.7 has no script here, so these rows build on the dump script:
-  - Big Earl 43248 and John J. Keeshan 43184 turn passive on spawn, as Dumpy does (Big Earl row 4, Keeshan row 6).
-  - Big Earl also punches Dumpy (rows 5-7, the same spells and timers as his Keeshan rows).
-  - The last stage's knocked-out Big Earl (735401314) and the Keeshan standing with his crew (735401313) get their own short scripts, so they don't punch: both passive, and Big Earl stays lying down.
+### World: Redridge Mountains, Lakeshire Inn fight club, a real fight both ways
+- **Found** (Four, 2026-11-20, after `2026_11_20_32`): "Dumpy vs. Big Earl. Big Earl is just taking it. Never throwing back a punch." Then, after the first version of `2026_11_20_33`: "now no one is fighting". Both fighters showed `UNIT_FLAG_IN_COMBAT`. The fighters run core C++ scripts: `ScriptName` wins over SmartAI, so the dump SmartAI (and the first version of this fix) never ran. `npc_dumpy_and_keeshan` makes Dumpy/Keeshan start a fight with the Big Earl that has the same stage aura. But `npc_big_earl` never picks a target (its `UpdateAI` has no `UpdateVictim`), so Big Earl never swings. Neither script recovers once the attacker loses its target, so both stay flagged in combat and stand still.
+- **Changed** (`sql/fixes/world/2026_11_20_33_lakeshire_fight_club_punches.sql`, run after `2026_11_20_32`). Our own tuning; TDB 8.3.7 uses the same C++ scripts:
+  - `ScriptName` cleared on John J. Keeshan 43184, Big Earl 43248 and Dumpy 43249, so they run SmartAI.
+  - Dumpy (735401337) and the second-stage Keeshan (735401290) get their own scripts. Out of combat, every second, each one attacks the Big Earl of its own stage (735401340 / 735401291), and keeps the unarmed fighting stance.
+  - Big Earl hits back with normal SmartAI melee.
+  - All three take no damage from other creatures below 85% health (`flags_extra` 0x400 from `staged-npc-battles.patch`), so the fight never ends.
+  - The last stage stays calm: the knocked-out Big Earl (735401314) is passive and lies down, and Keeshan with his crew (735401313) is passive.
+  - The rows the first version of this file added (Big Earl ids 4-7, Keeshan id 6) are removed again.
+- **Not changed:** the crowd keeps its C++ script `npc_redridge_citizen`, which cheers, roars and points every 10-25 seconds once a citizen has a stage aura.
 - **Status:** untested in game.
 - **Pick up:** run the SQL, restart `worldserver`.
 
