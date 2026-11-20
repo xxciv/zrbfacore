@@ -150,6 +150,7 @@ git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
 git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
+git apply ../tools-repo/tools/bfa/zandalari-bwemba-spirit.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -526,6 +527,13 @@ because threat on a vehicle's rider goes to the vehicle, and the SmartAI cancell
 entered combat. A passive creature on a waypoint path now keeps going, and when the fight ends it
 carries on to its next waypoint instead of walking back to where the path started. It only touches
 `SmartAI.cpp`.
+
+`zandalari-bwemba-spirit.patch` adds a spell script for 96591 (Rise of the Zandalari, Stranglethorn):
+Bwemba's spirit follows you through the chain and gives most of its quests, but the spell only
+summons her once. While the aura is on you the script checks every 3 seconds, keeps one spirit, brings
+her back to you when she was left behind (flight, teleport) and summons her again when she is gone
+(relog, death). It only touches `zone_stranglethorn_vale.cpp` and needs the SQL
+`2026_11_20_73_rise_of_the_zandalari.sql`.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -1002,6 +1010,7 @@ git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
 git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
+git apply ../tools-repo/tools/bfa/zandalari-bwemba-spirit.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

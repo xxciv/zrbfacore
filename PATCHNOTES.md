@@ -3,9 +3,83 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-20 (Quest fixes: Explorers' League Digsite, vendor options, quest audit)
+## 2026-11-20 (Quest fixes: Rise of the Zandalari, Explorers' League Digsite, vendor options, quest audit)
 
 Draft PR, not merged yet. Not tested in game yet.
+
+### Core + DB: Rise of the Zandalari chain playable for both factions (Stranglethorn)
+- **Found** (Four, 2026-11-20, review of the whole 4.1 intro chain: Alliance The Troll Incursion 29156 to
+  A Shiny Reward 29155, Horde The Zandalari Menace 29157 to 29253):
+  - Bwemba's spirit 52234 starts or ends 26 quests of the chain but never appeared. Only Vol'jin's
+    script summoned her (spell 96591), from his gossip menu 52767, which did not exist, so Bwemba's
+    Spirit 29100 / 29219 could not be done and nothing after it either. The spell also only summons her
+    once: a flight, teleport, relog or death would have lost her for good.
+  - To the Digsite 29133 starts at James Stillair 52753 and To Hardwrench Hideaway 29236 at the 4.1
+    Thysta 53008; their rides used menu options that did not exist (52753 was not even spawned).
+  - Hemet Nesingwary Jr. 52294 (ends Nesingwary Will Know, starts Track the Tracker / The Hunter's
+    Revenge) and Jungle Serpent 52224 (Serpents and Poison) had no spawns.
+  - The Horde's Injured Bambala Headhunters 52978 could not be clicked (no spellclick).
+  - Defend the Rebel Camp 29131 / Defend Grom'gol 29235 never started (event quests with no event).
+  - Direhammer's Boots 68937 (Bury Me With Me Boots... 29121 / 29232) had no source.
+  - The dump has 4.1 copies of camp NPCs on the spot of the camp's own: two Thystas at Grom'gol (0.5 yd
+    apart), two Commander Aggro'goshes (6.6 yd), and MaNGOS puts the 4.1 James Stillair exactly on the
+    Rebel Camp's James.
+- **Changed:**
+  - New `tools/bfa/zandalari-bwemba-spirit.patch` (after `smartai-passive-escort.patch`, only
+    `src/server/scripts/EasternKingdoms/zone_stranglethorn_vale.cpp`): spell script
+    `spell_zg_event_bwemba_spirit` on 96591. Every 3 seconds while you have the aura it keeps one
+    spirit, brings her to you when she is more than 40 yd away (not while flying, on a flight path or in
+    combat) and summons a new one when she is gone. The aura (and the spirit) ends when Making Contact
+    29152 / 29250 is turned in.
+  - `sql/fixes/world/2026_11_20_73_rise_of_the_zandalari.sql`:
+    - spell_area 96591 in Northern Stranglethorn (33) and the Cape (5287) from Bwemba's Spirit
+      (complete or turned in) until Making Contact is turned in, so she comes back after a death or when
+      you return to Stranglethorn. To Fort Livingston 29102 / To Bambala 29220 (also offered by Bwemba in
+      Stormwind / Orgrimmar) now need Bwemba's Spirit first.
+    - Vol'jin 52767 (Booty Bay): gossip flag, menu 52767 with "Bwemba sent me to speak with you." while
+      29100 or 29219 is in progress: credit 52930, his scene (5276700), and the spirit if you don't have
+      her. His and Bwemba's lines in that scene have no text in the DB, so the scene is silent.
+    - The Rebel Camp's James Stillair 43045 now starts To the Digsite 29133 and has menu 12783: the flight
+      master option plus "I need to get to the Explorers' League Digsite." while 29133 is in progress
+      (credit 52762, teleport). 52753 stays unspawned.
+    - Grom'gol's Thysta 1387 now starts To Hardwrench Hideaway 29236; flight master menu 6944 gets option
+      2 "I need to get to Hardwrench Hideaway." only on Thysta 1387 while 29236 is in progress (credit,
+      teleport). The stacked 4.1 Thysta spawn (53008, guid 300919) is removed.
+    - Grom'gol's Commander Aggro'gosh 2464 now ends Warn Grom'gol 29233 and starts and ends Defend Grom'gol
+      29235; the stacked 4.1 copy (52996, guid 300945) is removed.
+    - The camp's Hemet Nesingwary Jr. 715 ends 29105 / 29223 and starts 29114 / 29226 / 29227.
+    - 56 Jungle Serpents 52224 (MaNGOS 4.3.4 spawns, same guids) around Fort Livingston and Bambala in new
+      phase 314, seen only while Serpents and Poison 29103 / 29221 is in progress. Phase 169 added to
+      Northern Stranglethorn (33) so normal spawns stay visible.
+    - Injured Bambala Headhunter 52978: spellclick flag and 99467, like the Alliance's adventurers.
+    - Defend quests: SourceSpellID 96983 (29131) / 98003 (29235). Accepting brings Mandokir and
+      Ohgan'aka and the Defender bar (dying fails the quest); Mandokir 52411 completes it for you after 3
+      minutes. There are no attack waves, the event's spawning script is not in the data.
+    - Panther Cub 52374 next to Grent 52371: gossip "Let go of Grent's boots, little one." gives
+      Direhammer's Boots 68937 while 29121 / 29232 is in progress and you don't have them.
+- **Not changed:** the digsite zombies (Wayfarer's 2026_11_20_30). Nesingwary's Expedition and the Rebel
+  Camp still have both the camp's NPCs and their 4.1 copies a few yards apart (Barnil, Ajeck, Drizzlik,
+  Jaquilina, Erlgadin, two Lieutenant Dorens 48 yd apart); they are separate spots, not stacked.
+- **Status:** not tested in game yet. The SQL runs clean (twice) on my copy of the DB and the script
+  compiles.
+- **Pick up:** core patch (short build) plus SQL:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/zandalari-bwemba-spirit.patch | git apply
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_73_rise_of_the_zandalari.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver and delete the client's Cache folder (Vol'jin, James, Thysta, the cub and the
+  headhunters changed flags).
 
 ### DB: Audit, nothing tied to a quest may be dropped; Razorfen Downs boss quests
 - **Found** (Four, 2026-11-20: "we never want to outright drop anything that is associated with a
