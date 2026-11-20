@@ -49,7 +49,11 @@ Draft PR, not merged yet. Not tested in game yet.
     soldiers 317102, 317092, 317106, 317121, 317112, 317118, 317093, 317108 and all 42927 skull bunny
     spawns deleted. Soldier patrol groups (3-4 standing copies in the dump) cut to one soldier (two per
     tiki guard group), Crusher squads of 5 cut to 2: 26 soldiers and 18 Crushers deleted (50 soldiers
-    and 22 Crushers left).
+    and 22 Crushers left). Second pass after Four's next test ("still waaaay too many"): keep a spawn
+    only if no kept spawn of its kind is closer than soldiers 28 y (tiki guards, sleepers, bridge patrols
+    always kept), Crushers 25, workers 22, behemoths and raptors 35, bat riders and batlings 40: 111
+    more deleted. Left: 32 soldiers, 10 Crushers, 19 workers, 11 behemoths, 9 raptors, 8 bat riders,
+    6 batlings (from 76/40/73/19/22/9/11).
   - Escape: hatchling 4 within 30 yards of the Shade of the Hexxer 42884 at the portal -> hatchling
     frozen (82646), Jin'do's shade and Mandokir 42941 (who walks up) play their scene, then the escape
     credit (42884) and back to Thaalia. Their lines and the soldiers' fire/slip yells are the original
