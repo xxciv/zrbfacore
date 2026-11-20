@@ -78,6 +78,11 @@ Draft PR, not merged yet. Not tested in game yet.
   check fired. Each of the six sleepers (one near -12222 -1900, two at -12246 -1944, three
   at -12186 -1958) now also gives it when clicked (the soldiers' existing spellclick 80603 now fires
   `SMART_EVENT_ON_SPELLCLICK`), once, only while Be Raptor is in progress and the player has no pouch.
+- **Fourth fix** (Four, 2026-11-20: the sleeping trolls still netted him and gave nothing): the trolls
+  that look asleep in the dump are four standing soldiers with the Zzz aura 78677 (near -12277 -1849,
+  -12341 -1945, -12364 -1854, -12383 -1818), and they still ran the normal soldier net script. They
+  now run the sleeper script (no net, food sack on approach or click). The six lying sleepers also
+  get the Zzz aura so they read as asleep.
 - **Status:** first version tested and failed (above); Tan'shang's credit and the swap to hatchling 2
   confirmed in game 2026-11-20; the rest not tested yet. If you are
   stuck in the vision (world missing, buff "Zul'Gurub Mind Control" still on), `.unaura 79975` and a

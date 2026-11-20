@@ -53,7 +53,7 @@ INSERT INTO `waypoint_data` (`id`,`point`,`position_x`,`position_y`,`position_z`
 (3171100,4,-11930.2,-1489.8,32.03,0,0,0);
 -- sleeping soldiers (food for Tenjiyu): stand state 3
 DELETE FROM `creature_addon` WHERE `guid` IN (317023,317028,316944,317022,316950,316942);
-INSERT INTO `creature_addon` (`guid`,`bytes1`) VALUES (317023,3),(317028,3),(316944,3),(317022,3),(316950,3),(316942,3);
+INSERT INTO `creature_addon` (`guid`,`bytes1`,`auras`) VALUES (317023,3,'78677'),(317028,3,'78677'),(316944,3,'78677'),(317022,3,'78677'),(316950,3,'78677'),(316942,3,'78677');
 
 -- 3. Missing teleport/summon destinations for raptor 3 (Tenjiyu).
 DELETE FROM `spell_target_position` WHERE `ID` IN (80121,80124);
@@ -93,7 +93,7 @@ INSERT INTO `creature_text` (`CreatureID`,`GroupID`,`ID`,`Text`,`Type`,`Language
 (42941,2,0,'I got a new cage built up, and we got plenty of ways to... teach her not to escape again.',12,0,100,0,0,0,0,0,'Be Raptor');
 
 -- 6. SmartAI.
-DELETE FROM `smart_scripts` WHERE `source_type`=0 AND `entryorguid` IN (42870,42930,42931,42932,42881,42882,42883,42922,42927,42884,42941,-317023,-317028,-316944,-317022,-316950,-316942);
+DELETE FROM `smart_scripts` WHERE `source_type`=0 AND `entryorguid` IN (42870,42930,42931,42932,42881,42882,42883,42922,42927,42884,42941,-317023,-317028,-316944,-317022,-316950,-316942,-316961,-316962,-317036,-317037);
 DELETE FROM `smart_scripts` WHERE `source_type`=0 AND `entryorguid`=44017 AND `id` BETWEEN 10 AND 39;
 DELETE FROM `smart_scripts` WHERE `source_type`=0 AND `entryorguid` IN (42871,42872) AND `id` >= 10;
 DELETE FROM `smart_scripts` WHERE `source_type`=0 AND `entryorguid` IN (42825,42834,42837,42838,43351) AND `id` IN (90,91);
@@ -287,6 +287,34 @@ INSERT INTO `smart_scripts` (`entryorguid`,`source_type`,`id`,`link`,`event_type
 (-316942,0,5,6,73,0,100,0,0,0,0,0,'',1,2,0,0,0,0,0,7,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Clicked - Tell the player'),
 (-316942,0,6,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,7,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
 (-316942,0,1,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
+(-316961,0,0,1,10,0,100,0,1,5,20000,20000,'',1,2,0,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Hatchling 2 sneaks up - Tell the player'),
+(-316961,0,2,1,10,0,100,0,0,5,20000,20000,'',1,2,0,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Hatchling 2 sneaks up - Tell the player'),
+(-316961,0,3,0,37,0,100,0,0,0,0,0,'',8,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - AI init - Passive (only the vision script acts)'),
+(-316961,0,4,0,25,0,100,0,0,0,0,0,'',8,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Reset - Passive'),
+(-316961,0,5,6,73,0,100,0,0,0,0,0,'',1,2,0,0,0,0,0,7,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Clicked - Tell the player'),
+(-316961,0,6,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,7,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
+(-316961,0,1,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
+(-316962,0,0,1,10,0,100,0,1,5,20000,20000,'',1,2,0,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Hatchling 2 sneaks up - Tell the player'),
+(-316962,0,2,1,10,0,100,0,0,5,20000,20000,'',1,2,0,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Hatchling 2 sneaks up - Tell the player'),
+(-316962,0,3,0,37,0,100,0,0,0,0,0,'',8,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - AI init - Passive (only the vision script acts)'),
+(-316962,0,4,0,25,0,100,0,0,0,0,0,'',8,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Reset - Passive'),
+(-316962,0,5,6,73,0,100,0,0,0,0,0,'',1,2,0,0,0,0,0,7,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Clicked - Tell the player'),
+(-316962,0,6,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,7,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
+(-316962,0,1,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
+(-317036,0,0,1,10,0,100,0,1,5,20000,20000,'',1,2,0,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Hatchling 2 sneaks up - Tell the player'),
+(-317036,0,2,1,10,0,100,0,0,5,20000,20000,'',1,2,0,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Hatchling 2 sneaks up - Tell the player'),
+(-317036,0,3,0,37,0,100,0,0,0,0,0,'',8,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - AI init - Passive (only the vision script acts)'),
+(-317036,0,4,0,25,0,100,0,0,0,0,0,'',8,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Reset - Passive'),
+(-317036,0,5,6,73,0,100,0,0,0,0,0,'',1,2,0,0,0,0,0,7,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Clicked - Tell the player'),
+(-317036,0,6,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,7,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
+(-317036,0,1,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
+(-317037,0,0,1,10,0,100,0,1,5,20000,20000,'',1,2,0,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Hatchling 2 sneaks up - Tell the player'),
+(-317037,0,2,1,10,0,100,0,0,5,20000,20000,'',1,2,0,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Hatchling 2 sneaks up - Tell the player'),
+(-317037,0,3,0,37,0,100,0,0,0,0,0,'',8,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - AI init - Passive (only the vision script acts)'),
+(-317037,0,4,0,25,0,100,0,0,0,0,0,'',8,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Reset - Passive'),
+(-317037,0,5,6,73,0,100,0,0,0,0,0,'',1,2,0,0,0,0,0,7,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Clicked - Tell the player'),
+(-317037,0,6,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,7,0,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
+(-317037,0,1,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
 (42922,0,0,0,37,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Zul''Gurub Tiki - AI init - Phase 1'),
 (42922,0,1,0,25,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Zul''Gurub Tiki - Reset - Phase 1'),
 (42922,0,2,3,38,1,100,0,1,1,0,0,'',22,2,0,0,0,0,0,1,0,0,0,0,0,0,0,'Zul''Gurub Tiki - Lit by a hatchling - Phase 2 (burning)'),
@@ -343,7 +371,7 @@ INSERT INTO `smart_scripts` (`entryorguid`,`source_type`,`id`,`link`,`event_type
 
 -- 7. Conditions.
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId`=15 AND `SourceGroup` IN (11664,11665,11666);
-DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId`=22 AND `SourceEntry` IN (-317028,-317023,-317022,-316950,-316944,-316942,42870,42871,42872,42884,42927,42930,42931,42932);
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId`=22 AND `SourceEntry` IN (-317037,-317036,-317028,-317023,-317022,-316962,-316961,-316950,-316944,-316942,42870,42871,42872,42884,42927,42930,42931,42932);
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId`=22 AND `SourceEntry`=44017 AND `SourceGroup` BETWEEN 11 AND 40;
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`,`SourceGroup`,`SourceEntry`,`SourceId`,`ElseGroup`,`ConditionTypeOrReference`,`ConditionTarget`,`ConditionValue1`,`ConditionValue2`,`ConditionValue3`,`NegativeCondition`,`ErrorType`,`ErrorTextId`,`ScriptName`,`Comment`) VALUES
 (22,11,42870,0,0,1,1,80021,0,0,0,0,0,'','Hatchling still in a Net'),
@@ -420,6 +448,22 @@ INSERT INTO `conditions` (`SourceTypeOrReferenceId`,`SourceGroup`,`SourceEntry`,
 (22,3,-316942,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
 (22,6,-316942,0,0,2,0,58249,1,0,1,0,0,'','Player has no Raptor Food Pouch yet'),
 (22,6,-316942,0,0,9,0,26775,0,0,0,0,0,'','Player is on Be Raptor'),
+(22,1,-316961,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
+(22,3,-316961,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
+(22,6,-316961,0,0,2,0,58249,1,0,1,0,0,'','Player has no Raptor Food Pouch yet'),
+(22,6,-316961,0,0,9,0,26775,0,0,0,0,0,'','Player is on Be Raptor'),
+(22,1,-316962,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
+(22,3,-316962,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
+(22,6,-316962,0,0,2,0,58249,1,0,1,0,0,'','Player has no Raptor Food Pouch yet'),
+(22,6,-316962,0,0,9,0,26775,0,0,0,0,0,'','Player is on Be Raptor'),
+(22,1,-317036,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
+(22,3,-317036,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
+(22,6,-317036,0,0,2,0,58249,1,0,1,0,0,'','Player has no Raptor Food Pouch yet'),
+(22,6,-317036,0,0,9,0,26775,0,0,0,0,0,'','Player is on Be Raptor'),
+(22,1,-317037,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
+(22,3,-317037,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
+(22,6,-317037,0,0,2,0,58249,1,0,1,0,0,'','Player has no Raptor Food Pouch yet'),
+(22,6,-317037,0,0,9,0,26775,0,0,0,0,0,'','Player is on Be Raptor'),
 (22,1,42927,0,0,51,0,5,42871,0,0,0,0,'','Invoker is a Gurubashi Soldier'),
 (22,3,42884,0,0,51,0,5,42932,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 4'),
 (22,18,42884,0,0,51,0,5,42932,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 4');
