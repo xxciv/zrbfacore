@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-20 (core: expansion XP gate)
 
-Draft PR, not merged yet. Not tested in game yet.
+Draft PR #95, not merged yet. Not tested in game yet.
 
 ### Core: no experience at the old level caps until the next expansion is started
 
