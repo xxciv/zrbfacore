@@ -1,0 +1,150 @@
+diff --git a/src/server/scripts/EasternKingdoms/zone_stranglethorn_vale.cpp b/src/server/scripts/EasternKingdoms/zone_stranglethorn_vale.cpp
+index 009d45d..879cb43 100644
+--- a/src/server/scripts/EasternKingdoms/zone_stranglethorn_vale.cpp
++++ b/src/server/scripts/EasternKingdoms/zone_stranglethorn_vale.cpp
+@@ -24,12 +24,17 @@ EndScriptData */
+ 
+ /* ContentData
+ npc_yenniku
++spell_zg_event_bwemba_spirit
+ EndContentData */
+ 
+ #include "ScriptMgr.h"
++#include "ObjectAccessor.h"
+ #include "Player.h"
+ #include "ScriptedCreature.h"
++#include "SpellAuraEffects.h"
+ #include "SpellInfo.h"
++#include "SpellScript.h"
++#include "TemporarySummon.h"
+ 
+ /*######
+ ## npc_yenniku
+@@ -133,7 +138,127 @@ public:
+     };
+ };
+ 
++/*######
++## spell_zg_event_bwemba_spirit
++## 96591 "4.1 - ZG Event Phase - Bwemba": Bwemba's spirit (52234) follows the player through the
++## Rise of the Zandalari chain and starts or ends most of its quests. The spell summons her once,
++## but nothing brings her back when she is left behind (flight path, teleport, relog). While the
++## aura is on the player this checks every 3 seconds: it keeps one spirit, brings a far one back
++## to the player and summons a new one when she is gone. The aura ends with Making Contact.
++######*/
++
++enum BwembaSpirit
++{
++    SPELL_ZG_EVENT_PHASE_BWEMBA = 96591,
++    NPC_BWEMBA_SPIRIT           = 52234,
++    QUEST_BWEMBAS_SPIRIT_A      = 29100,
++    QUEST_BWEMBAS_SPIRIT_H      = 29219,
++    QUEST_MAKING_CONTACT_A      = 29152,
++    QUEST_MAKING_CONTACT_H      = 29250
++};
++
++class spell_zg_event_bwemba_spirit : public AuraScript
++{
++    PrepareAuraScript(spell_zg_event_bwemba_spirit);
++
++    ObjectGuid _spiritGuid;
++
++    void CalcPeriodic(AuraEffect const* /*aurEff*/, bool& isPeriodic, int32& amplitude)
++    {
++        isPeriodic = true;
++        amplitude = 3 * IN_MILLISECONDS;
++    }
++
++    // Spirits of this player close by; the one we track (or the first) goes first.
++    std::list<Creature*> GetNearbySpirits(Player* player) const
++    {
++        std::list<Creature*> spirits;
++        player->GetCreatureListWithEntryInGrid(spirits, NPC_BWEMBA_SPIRIT, 100.0f);
++        spirits.remove_if([player](Creature* spirit)
++        {
++            return !spirit->IsAlive() || spirit->GetOwnerGUID() != player->GetGUID();
++        });
++        return spirits;
++    }
++
++    Position GetSpotNear(Player* player) const
++    {
++        Position pos = player->GetNearPosition(2.0f, float(M_PI) * 0.75f);
++        player->UpdateAllowedPositionZ(pos.m_positionX, pos.m_positionY, pos.m_positionZ);
++        return pos;
++    }
++
++    void HandlePeriodic(AuraEffect const* /*aurEff*/)
++    {
++        Player* player = GetTarget()->ToPlayer();
++        if (!player)
++            return;
++
++        // Chain over (or never started): let her go.
++        if (player->GetQuestRewardStatus(QUEST_MAKING_CONTACT_A) || player->GetQuestRewardStatus(QUEST_MAKING_CONTACT_H) ||
++            (player->GetQuestStatus(QUEST_BWEMBAS_SPIRIT_A) == QUEST_STATUS_NONE && player->GetQuestStatus(QUEST_BWEMBAS_SPIRIT_H) == QUEST_STATUS_NONE))
++        {
++            Remove();
++            return;
++        }
++
++        if (!player->IsAlive() || player->IsInFlight() || player->IsFlying() || player->IsInCombat())
++            return;
++
++        Creature* tracked = _spiritGuid.IsEmpty() ? nullptr : ObjectAccessor::GetCreature(*player, _spiritGuid);
++        if (tracked && !tracked->IsAlive())
++            tracked = nullptr;
++
++        // Keep a single spirit: the tracked one, else the first one close by (relog, recast).
++        for (Creature* spirit : GetNearbySpirits(player))
++        {
++            if (!tracked)
++                tracked = spirit;
++            else if (spirit != tracked)
++                spirit->DespawnOrUnsummon();
++        }
++
++        if (tracked)
++        {
++            _spiritGuid = tracked->GetGUID();
++            if (tracked->GetDistance(player) > 40.0f)
++                tracked->NearTeleportTo(GetSpotNear(player));
++            return;
++        }
++
++        if (TempSummon* spirit = player->SummonCreature(NPC_BWEMBA_SPIRIT, GetSpotNear(player), TEMPSUMMON_DEAD_DESPAWN, 0, 0, true))
++        {
++            spirit->SetOwnerGUID(player->GetGUID());
++            spirit->SetFaction(player->getFaction());
++            spirit->SetCreatedBySpell(SPELL_ZG_EVENT_PHASE_BWEMBA);
++            _spiritGuid = spirit->GetGUID();
++        }
++    }
++
++    void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
++    {
++        Player* player = GetTarget()->ToPlayer();
++        if (!player)
++            return;
++
++        if (!_spiritGuid.IsEmpty())
++            if (Creature* spirit = ObjectAccessor::GetCreature(*player, _spiritGuid))
++                spirit->DespawnOrUnsummon();
++
++        for (Creature* spirit : GetNearbySpirits(player))
++            spirit->DespawnOrUnsummon();
++    }
++
++    void Register() override
++    {
++        DoEffectCalcPeriodic += AuraEffectCalcPeriodicFn(spell_zg_event_bwemba_spirit::CalcPeriodic, EFFECT_1, SPELL_AURA_DUMMY);
++        OnEffectPeriodic += AuraEffectPeriodicFn(spell_zg_event_bwemba_spirit::HandlePeriodic, EFFECT_1, SPELL_AURA_DUMMY);
++        AfterEffectRemove += AuraEffectRemoveFn(spell_zg_event_bwemba_spirit::HandleRemove, EFFECT_1, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
++    }
++};
++
+ void AddSC_stranglethorn_vale()
+ {
+     new npc_yenniku();
++    RegisterAuraScript(spell_zg_event_bwemba_spirit);
+ }

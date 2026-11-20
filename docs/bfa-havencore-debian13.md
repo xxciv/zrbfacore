@@ -151,6 +151,7 @@ git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 git apply ../tools-repo/tools/bfa/archaeology.patch
+git apply ../tools-repo/tools/bfa/zandalari-bwemba-spirit.patch
 git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
 ```
 
@@ -541,6 +542,13 @@ is made. It also adds `.debug archaeology`. The rest of the files it touches: `S
 (Survey), `Spell.cpp` and `SpellHandler.cpp` (Solve), `Player.cpp/.h`, `UpdateField.h` (a setter for
 the project list), `MiscPackets`, `Opcodes.cpp`, `MiscHandler.cpp`, `CriteriaHandler.cpp` and
 `cs_debug.cpp`, plus `worldserver.conf.dist` (`Archaeology.DailyDigsiteRotation`, see the Archaeology section below).
+
+`zandalari-bwemba-spirit.patch` adds a spell script for 96591 (Rise of the Zandalari, Stranglethorn):
+Bwemba's spirit follows you through the chain and gives most of its quests, but the spell only
+summons her once. While the aura is on you the script checks every 3 seconds, keeps one spirit, brings
+her back to you when she was left behind (flight, teleport) and summons her again when she is gone
+(relog, death). It only touches `zone_stranglethorn_vale.cpp` and needs the SQL
+`2026_11_20_73_rise_of_the_zandalari.sql`.
 
 `wild-pet-zone-level.patch` gives wild battle pets their zone's level. The core picks a wild pet's
 level from its `battlepet_info` range, raised to the zone's `WildBattlePetLevelMin/Max` from
@@ -1063,6 +1071,7 @@ git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 git apply ../tools-repo/tools/bfa/archaeology.patch
+git apply ../tools-repo/tools/bfa/zandalari-bwemba-spirit.patch
 git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
