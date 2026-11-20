@@ -7,6 +7,15 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four walks Stranglethorn, Duskwood and Redridge and reports what is off.
 
+### World: Redridge Mountains, Lakeshire Inn fight club, Big Earl hits back
+- **Found** (Four, 2026-11-20, after `2026_11_20_32`): "Dumpy vs. Big Earl. Big Earl is just taking it. Never throwing back a punch." Big Earl (faction 2101) and Keeshan/Dumpy (faction 1934) are enemies. Only Dumpy's script sets him passive, so Big Earl and Keeshan count as engaged, and their out-of-combat punch events never run. Big Earl's punches also only targeted Keeshan, who isn't in the Dumpy stage.
+- **Changed** (`sql/fixes/world/2026_11_20_33_lakeshire_fight_club_punches.sql`, run after `2026_11_20_32`). Our own tuning; TDB 8.3.7 has no script here, so these rows build on the dump script:
+  - Big Earl 43248 and John J. Keeshan 43184 turn passive on spawn, as Dumpy does (Big Earl row 4, Keeshan row 6).
+  - Big Earl also punches Dumpy (rows 5-7, the same spells and timers as his Keeshan rows).
+  - The last stage's knocked-out Big Earl (735401314) and the Keeshan standing with his crew (735401313) get their own short scripts, so they don't punch: both passive, and Big Earl stays lying down.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Redridge Mountains, Lakeshire Inn basement fight club
 - **Found** (Four, 2026-11-20): "the two fighters are not fighting? Should the crowd not be cheering? Everyone is just standing around and the two fighters have a short wander distance." In 8.3.7 the basement is a scene staged by the Keeshan quests. Each spawn carries a "Quest Invis Zone" aura, and players get the matching detect aura from `spell_area` in Lakeshire (area 69), so each player sees the stage that fits their quests. Our DB had none of TDB's four `spell_area` rows, and one mixed set: Keeshan, Big Earl and Dumpy together, 20 citizens with no stage aura, and fighters wandering 3 yards. Dumpy's dump SmartAI also cast and then removed the detect auras on nearby players every second (rows 5-10; their conditions don't exist).
 - **Changed** (`sql/fixes/world/2026_11_20_32_lakeshire_fight_club.sql`):
@@ -17,7 +26,7 @@ Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four w
   - TDB's 4 `spell_area` rows for area 69 added (detect spells 80817, 80818, 81202, 82100).
   - Dumpy `smart_scripts` rows 5-10 removed.
 - **Not changed:** the punches between the fighters and Keeshan's cheer trigger for the crowd. Both come from the dump SmartAI; TDB has no script here. Keeshan 43184 still ends 26567/26607 and starts 26616, visible during those stages. Colonel Troteman 43221 is not touched. Once 26616 is taken the basement is empty, as in 8.3.7.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-20): Dumpy vs. Big Earl stage shows; Big Earl's punches fixed in `2026_11_20_33`.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Duskwood, doubled watchers in Darkshire
