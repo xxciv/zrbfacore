@@ -7,6 +7,31 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet. Not tested in game yet.
 
+### DB: Doubled Lieutenant Doren and Nesingwary camp NPCs (Northern Stranglethorn)
+- **Found** (Four, 2026-11-20, chose "Remove the named copies"): the dump has the 4.1 (Rise of the
+  Zandalari) copies of named camp NPCs next to the camp's own.
+- **Changed** (`sql/fixes/world/2026_11_20_74_rebel_camp_nesingwary_doubles.sql`):
+  - Rebel Camp: the camp's Lieutenant Doren 469 now ends Warn the Rebel Camp 29124 and starts and ends
+    Defend the Rebel Camp 29131; the 4.1 Doren (52410, guid 307971, 49 yd away) is removed. 469's old
+    script row that completed 29131 on accept is removed (the quest now has its 3 minute event).
+  - Nesingwary's Expedition: removed the 4.1 Ajeck Rouack 52293 (guid 302758), Sir S. J. Erlgadin 52298
+    (302727), Barnil Stonepot 52291 (302702), Drizzlik 52295 (302699) and Jaquilina Dramet 52296 (302734).
+    They had no quests, shop, menu or script; the camp's own keep all quests and Jaquilina's shop.
+  - Not changed: Rebel Watchmen, Nesingwary Hired Guns, Injured Hired Guns and Razzashi Serpents (no
+    quest roles, the 4.1 "camp under attack" scene).
+- **Status:** not tested in game yet. Runs clean on my copy of the DB.
+- **Pick up:** SQL only (after 2026_11_20_73):
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_74_rebel_camp_nesingwary_doubles.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ### Core + DB: Rise of the Zandalari chain playable for both factions (Stranglethorn)
 - **Found** (Four, 2026-11-20, review of the whole 4.1 intro chain: Alliance The Troll Incursion 29156 to
   A Shiny Reward 29155, Horde The Zandalari Menace 29157 to 29253):
@@ -57,9 +82,8 @@ Draft PR, not merged yet. Not tested in game yet.
       minutes. There are no attack waves, the event's spawning script is not in the data.
     - Panther Cub 52374 next to Grent 52371: gossip "Let go of Grent's boots, little one." gives
       Direhammer's Boots 68937 while 29121 / 29232 is in progress and you don't have them.
-- **Not changed:** the digsite zombies (Wayfarer's 2026_11_20_30). Nesingwary's Expedition and the Rebel
-  Camp still have both the camp's NPCs and their 4.1 copies a few yards apart (Barnil, Ajeck, Drizzlik,
-  Jaquilina, Erlgadin, two Lieutenant Dorens 48 yd apart); they are separate spots, not stacked.
+- **Not changed:** the digsite zombies (Wayfarer's 2026_11_20_30). The unstacked doubles at the Rebel
+  Camp and Nesingwary's Expedition are the entry above.
 - **Status:** not tested in game yet. The SQL runs clean (twice) on my copy of the DB and the script
   compiles.
 - **Pick up:** core patch (short build) plus SQL:
