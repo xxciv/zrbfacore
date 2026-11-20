@@ -35,7 +35,7 @@ Draft PR, not merged yet.
   a negative respawn time means the object stays unspawned until a script spawns it. Nothing does.
 - **Changed** (`sql/fixes/world/2026_11_20_78_uthers_blessing.sql`): guid 19147 spawntimesecs -600 -> 300.
   A spell focus object is never used up, so it now stays.
-- **Status:** not tested in game yet.
+- **Status:** CONFIRMED in game by Four 2026-11-20.
 
 ### DB: 278 more spell focus objects were never spawned (all zones)
 - **Found** (2026-11-20, while fixing Uther's Blessing): the same negative spawntimesecs is on 278
@@ -49,7 +49,7 @@ Draft PR, not merged yet.
   value for every type 8 spawn with display 0 or 299 and a negative time. Left alone: the 10 visible
   focus spawns (Bank, Witherbark Village, Preserved Threshadon Carcass, Earthbinder's Circle, First
   Burning Blade Pyre), since spawning them would add a visible model.
-- **Status:** not tested in game yet. Any quest item that said "Requires <place>" at the right spot
+- **Status:** same fix as Uther's Blessing, which Four confirmed 2026-11-20; the other markers aren't tested one by one. Any quest item that said "Requires <place>" at the right spot
   should now work.
 - **Pick up** (both entries above): SQL only:
 
