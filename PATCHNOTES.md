@@ -5,7 +5,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-20 (World fixes: Cape of Stranglethorn, Duskwood, Redridge)
 
-Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four walks Stranglethorn, Duskwood and Redridge and reports what is off.
+Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four walks Stranglethorn, Duskwood, Redridge and Ratchet and reports what is off.
+
+### World: Ratchet and Booty Bay, The Maiden's Fancy leftovers
+- **Found** (Four, 2026-11-20, screenshots at the Ratchet dock): "First Mate Masker is underwater, and there's a bunch of leftover furniture. I assume they should be on the transport between here and Booty Bay." The dump has sniff snapshots of the docked ship in world coordinates:
+  - First Mate Masker 25093 at Ratchet (guid 265581, in the water) and at Booty Bay (369219).
+  - The ship's 9 Wooden Chairs (164759-164767) floating off the Ratchet dock (175554-175562).
+  - TDB 8.3.7 has none of these. It has Masker and the chairs only on the ship (map 593).
+- **Changed** (`sql/fixes/world/2026_11_20_34_maidens_fancy_leftovers.sql`):
+  - The two static Masker copies and the 9 floating chairs removed. None of them has a quest role, and Masker keeps his gossip on the ship copy (735200074, from `2026_11_12_33`).
+  - The ship gets TDB 8.3.7's 9 deck chairs (GO guids 735400105-735400113).
+  - The ship also gets the two crewmen that the TDB 7.3.5 crew list in `2026_11_12_33` lacked: Bosun Thunderhorn 25098 (735401341) and Crewman Gearspinner 25096 (735401342). Phase 169 becomes 0, as in `2026_11_12_33`.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Redridge Mountains, Lakeshire Inn fight club, a real fight both ways
 - **Found** (Four, 2026-11-20, after `2026_11_20_32`): "Dumpy vs. Big Earl. Big Earl is just taking it. Never throwing back a punch." Then, after the first version of `2026_11_20_33`: "now no one is fighting". Both fighters showed `UNIT_FLAG_IN_COMBAT`. The fighters run core C++ scripts: `ScriptName` wins over SmartAI, so the dump SmartAI (and the first version of this fix) never ran. `npc_dumpy_and_keeshan` makes Dumpy/Keeshan start a fight with the Big Earl that has the same stage aura. But `npc_big_earl` never picks a target (its `UpdateAI` has no `UpdateVictim`), so Big Earl never swings. Neither script recovers once the attacker loses its target, so both stay flagged in combat and stand still.
