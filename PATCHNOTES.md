@@ -34,7 +34,8 @@ Draft PR #94, not merged yet. Not tested in game yet.
     - Survey (`SPELL_EFFECT_SURVEY`): only inside one of your sites (else the client's "You can't use that here" error, SPELL_FAILED_NOT_HERE). The
       find is rolled inside the site's outline, within 120 yards of you, on dry loaded ground when it
       can. Further than 8 yards: survey tool pointing at it, red (85+ yards), yellow (35-85), green
-      (under 35). Within 8 yards: the race's find object appears (keystone loot as before), 5-9
+      (under 35). Within 8 yards: the race's find object appears for 15 seconds (only to look at:
+      its loot, the race's keystone at about 7%, is rolled and given straight away), 5-9
       fragments (Dwarves +1), skill as before (only under 50), and the progress bar updates
       (`SMSG_ARCHAEOLOGY_SURVERY_CAST`: total finds, finds done, branch, success). After 3 finds (6 on
       Pandaria, Draenor and the Broken Isles) the site moves elsewhere on the continent.
