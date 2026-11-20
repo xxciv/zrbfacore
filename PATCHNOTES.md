@@ -25,7 +25,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-20 (Quest fixes: Those That Couldn't Let Go, Uther's Blessing, spell focus objects)
 
-Draft PR, not merged yet.
+PR #97, merged 2026-11-20. Both quests confirmed in game.
 
 ### DB: Uther's Blessing says "Requires Uther's Tomb Statue" inside the tomb (Western Plaguelands)
 - **Found** (Four, 2026-11-20): using the item for Uther's Blessing (27169) anywhere in Uther's Tomb,
