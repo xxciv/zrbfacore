@@ -3,6 +3,242 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-20 (Quest fixes: Take Down Tethyr, Rise of the Zandalari, Explorers' League Digsite, vendor options, quest audit)
+
+PR #93, merged 2026-11-20. Digsite, camp doubles and Razorfen Downs confirmed; Tethyr cannon/fight-back
+retest pending; Zandalari chain to test when level appropriate.
+
+### DB: Razorfen Downs quests had no giver (correction to the audit entry below)
+- **Found** (Four, 2026-11-20): `.quest add 27024` / `.quest add 27009` showed nothing, while Loss
+  Reduction 25179 was added fine.
+- **Cause:** Partners in Crime 27024, The Coldbringer 27009, Cure the Scourge 27029, Scourge of the Downs
+  27019 and Extinguishing the Idol 27022 carry QUEST_FLAGS_UNAVAILABLE (0x4000) in 8.3.7: retired with the
+  Warlords revamp, the client hides them. The audit below wrongly counted them as lost. The live quests are
+  Blackthorn's Lieutenants 33513 (Aarux, Mordresh, Mushlump) and The Ritual 33514 (Amnennar), given by the
+  Warlords Koristrasza 74367, who is not spawned (nor in TDB 8.3.7). So the dungeon had no live quests.
+- **Changed** (`sql/fixes/world/2026_11_20_76_razorfen_downs_live_quests.sql`): the Koristrasza at the
+  entrance (44837, guid 325121) now starts and ends 33513 and 33514. Nothing removed. The kill credit
+  change in 2026_11_20_72 is harmless but only matters for the retired quests.
+- **Status:** CONFIRMED in game by Four 2026-11-20 (all Razorfen Downs quests).
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_76_razorfen_downs_live_quests.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver. Test: `.quest add 33513` and `.quest add 33514`, or talk to Koristrasza at
+  the entrance.
+
+### DB: Take Down Tethyr! can't be done (Theramore, Dustwallow Marsh)
+- **Found** (Four on Wayfarer's Theramore walk, 2026-11-20): Tethyr idles at the Theramore docks and
+  Take Down Tethyr! 27222 (Major Mills 23905) can't be done.
+- **Cause:** the quest has no objectives; an event completes it. Major Mills 23905 and Tethyr 23899 had
+  no script at all. TDB 8.3.7 has the event but keys it on the old quest id 11198 and on a Mills guid
+  that doesn't exist. Without SpecialFlags 2 a quest with no objectives also completes the moment it's
+  accepted. The Tethyr at the docks (guid 307657) and a wandering marksman (guid 307658) are leftover
+  summons from a sniff; TDB has neither.
+- **Changed** (`sql/fixes/world/2026_11_20_75_take_down_tethyr.sql`):
+  - TDB's event on 27222 and our Mills (guid 255200). Accept: Mills calls 12 Theramore Marksmen and his
+    lines play; Tethyr swims in from the sea to the docks. The marksmen shoot him. Each shot from one of
+    the three Cove Cannons 186432 (usable while you have the quest) now takes 10% of his health (spell
+    42576; TDB only cast a 62 damage Death Blast here). Tethyr casts 42576 on himself when a cannon
+    shot hits him: the shot comes from a level 1 invisible trigger, and 42576 cast by that trigger
+    missed him every time (Four 2026-11-20: "I dont think the cannons are taking anything off him").
+  - Tethyr dies: Mills says "We did it! We've defeated Tethyr!" and completes the quest for players
+    within 100 yd; the marksmen fire fireworks and leave. Five marksmen dead: the quest fails for
+    players within 90 yd, the marksmen and Tethyr despawn, and you can take it again.
+  - Tethyr fights back (Four, 2026-11-20: "Tethyr just sort of sits in the water and takes it"; TDB keeps
+    him passive): at the docks he is rooted in the water and aggressive, casts Water Bolt on a random
+    enemy every 4-5 s (was 8 s) and Spout at his current target every 7 s.
+  - 27222 SpecialFlags |= 2 (event). Tethyr faction 7 -> 1771 (TDB, the marksmen are 1770).
+  - Removed the leftover static Tethyr (307657) and marksman (307658). Neither starts, ends or is the
+    target of a quest; the quest's Tethyr is the one the event summons.
+- **Status:** Four tested 2026-11-20 on an admin character: event, fireworks, completion, reward and
+  achievement work. Tethyr was passive and the cannons did no damage; both fixed above, retest pending.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_75_take_down_tethyr.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+### DB: Doubled Lieutenant Doren and Nesingwary camp NPCs (Northern Stranglethorn)
+- **Found** (Four, 2026-11-20, chose "Remove the named copies"): the dump has the 4.1 (Rise of the
+  Zandalari) copies of named camp NPCs next to the camp's own.
+- **Changed** (`sql/fixes/world/2026_11_20_74_rebel_camp_nesingwary_doubles.sql`):
+  - Rebel Camp: the camp's Lieutenant Doren 469 now ends Warn the Rebel Camp 29124 and starts and ends
+    Defend the Rebel Camp 29131; the 4.1 Doren (52410, guid 307971, 49 yd away) is removed. 469's old
+    script row that completed 29131 on accept is removed (the quest now has its 3 minute event).
+  - Nesingwary's Expedition: removed the 4.1 Ajeck Rouack 52293 (guid 302758), Sir S. J. Erlgadin 52298
+    (302727), Barnil Stonepot 52291 (302702), Drizzlik 52295 (302699) and Jaquilina Dramet 52296 (302734).
+    They had no quests, shop, menu or script; the camp's own keep all quests and Jaquilina's shop.
+  - Not changed: Rebel Watchmen, Nesingwary Hired Guns, Injured Hired Guns and Razzashi Serpents (no
+    quest roles, the 4.1 "camp under attack" scene).
+- **Status:** CONFIRMED in game by Four on 2026-11-20.
+- **Pick up:** SQL only (after 2026_11_20_73):
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_74_rebel_camp_nesingwary_doubles.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+### Core + DB: Rise of the Zandalari chain playable for both factions (Stranglethorn)
+- **Found** (Four, 2026-11-20, review of the whole 4.1 intro chain: Alliance The Troll Incursion 29156 to
+  A Shiny Reward 29155, Horde The Zandalari Menace 29157 to 29253):
+  - Bwemba's spirit 52234 starts or ends 26 quests of the chain but never appeared. Only Vol'jin's
+    script summoned her (spell 96591), from his gossip menu 52767, which did not exist, so Bwemba's
+    Spirit 29100 / 29219 could not be done and nothing after it either. The spell also only summons her
+    once: a flight, teleport, relog or death would have lost her for good.
+  - To the Digsite 29133 starts at James Stillair 52753 and To Hardwrench Hideaway 29236 at the 4.1
+    Thysta 53008; their rides used menu options that did not exist (52753 was not even spawned).
+  - Hemet Nesingwary Jr. 52294 (ends Nesingwary Will Know, starts Track the Tracker / The Hunter's
+    Revenge) and Jungle Serpent 52224 (Serpents and Poison) had no spawns.
+  - The Horde's Injured Bambala Headhunters 52978 could not be clicked (no spellclick).
+  - Defend the Rebel Camp 29131 / Defend Grom'gol 29235 never started (event quests with no event).
+  - Direhammer's Boots 68937 (Bury Me With Me Boots... 29121 / 29232) had no source.
+  - The dump has 4.1 copies of camp NPCs on the spot of the camp's own: two Thystas at Grom'gol (0.5 yd
+    apart), two Commander Aggro'goshes (6.6 yd), and MaNGOS puts the 4.1 James Stillair exactly on the
+    Rebel Camp's James.
+- **Changed:**
+  - New `tools/bfa/zandalari-bwemba-spirit.patch` (after `smartai-passive-escort.patch`, only
+    `src/server/scripts/EasternKingdoms/zone_stranglethorn_vale.cpp`): spell script
+    `spell_zg_event_bwemba_spirit` on 96591. Every 3 seconds while you have the aura it keeps one
+    spirit, brings her to you when she is more than 40 yd away (not while flying, on a flight path or in
+    combat) and summons a new one when she is gone. The aura (and the spirit) ends when Making Contact
+    29152 / 29250 is turned in.
+  - `sql/fixes/world/2026_11_20_73_rise_of_the_zandalari.sql`:
+    - spell_area 96591 in Northern Stranglethorn (33) and the Cape (5287) from Bwemba's Spirit
+      (complete or turned in) until Making Contact is turned in, so she comes back after a death or when
+      you return to Stranglethorn. To Fort Livingston 29102 / To Bambala 29220 (also offered by Bwemba in
+      Stormwind / Orgrimmar) now need Bwemba's Spirit first.
+    - Vol'jin 52767 (Booty Bay): gossip flag, menu 52767 with "Bwemba sent me to speak with you." while
+      29100 or 29219 is in progress: credit 52930, his scene (5276700), and the spirit if you don't have
+      her. His and Bwemba's lines in that scene have no text in the DB, so the scene is silent.
+    - The Rebel Camp's James Stillair 43045 now starts To the Digsite 29133 and has menu 12783: the flight
+      master option plus "I need to get to the Explorers' League Digsite." while 29133 is in progress
+      (credit 52762, teleport). 52753 stays unspawned.
+    - Grom'gol's Thysta 1387 now starts To Hardwrench Hideaway 29236; flight master menu 6944 gets option
+      2 "I need to get to Hardwrench Hideaway." only on Thysta 1387 while 29236 is in progress (credit,
+      teleport). The stacked 4.1 Thysta spawn (53008, guid 300919) is removed.
+    - Grom'gol's Commander Aggro'gosh 2464 now ends Warn Grom'gol 29233 and starts and ends Defend Grom'gol
+      29235; the stacked 4.1 copy (52996, guid 300945) is removed.
+    - The camp's Hemet Nesingwary Jr. 715 ends 29105 / 29223 and starts 29114 / 29226 / 29227.
+    - 56 Jungle Serpents 52224 (MaNGOS 4.3.4 spawns, same guids) around Fort Livingston and Bambala in new
+      phase 314, seen only while Serpents and Poison 29103 / 29221 is in progress. Phase 169 added to
+      Northern Stranglethorn (33) so normal spawns stay visible.
+    - Injured Bambala Headhunter 52978: spellclick flag and 99467, like the Alliance's adventurers.
+    - Defend quests: SourceSpellID 96983 (29131) / 98003 (29235). Accepting brings Mandokir and
+      Ohgan'aka and the Defender bar (dying fails the quest); Mandokir 52411 completes it for you after 3
+      minutes. There are no attack waves, the event's spawning script is not in the data.
+    - Panther Cub 52374 next to Grent 52371: gossip "Let go of Grent's boots, little one." gives
+      Direhammer's Boots 68937 while 29121 / 29232 is in progress and you don't have them.
+- **Not changed:** the digsite zombies (Wayfarer's 2026_11_20_30). The unstacked doubles at the Rebel
+  Camp and Nesingwary's Expedition are the entry above.
+- **Status:** Vol'jin and his gossip window confirmed there by Four on 2026-11-20; the chain (level 85)
+  will be tested when a character is level appropriate. The SQL runs clean (twice) on my copy of the DB
+  and the script compiles.
+- **Pick up:** core patch (short build) plus SQL:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/zandalari-bwemba-spirit.patch | git apply
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_73_rise_of_the_zandalari.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver and delete the client's Cache folder (Vol'jin, James, Thysta, the cub and the
+  headhunters changed flags).
+
+### DB: Audit, nothing tied to a quest may be dropped; Razorfen Downs boss quests
+- **Found** (Four, 2026-11-20: "we never want to outright drop anything that is associated with a
+  quest", then "has anything else been dropped in that fashion?"): I loaded the clean world dump plus
+  the core updates, applied all 281 world fixes (main plus open PRs #82, #92, #93) and compared quest
+  starters, enders, kill/talk/object targets and quest item loot sources before and after.
+- **Result:**
+  - Lost for real: Partners in Crime 27024 and The Coldbringer 27009 (Razorfen Downs, from Koristrasza
+    44837). 2026_10_31_01_razorfen_downs swapped the classic bosses (Tuten'kash 7355, Mordresh 7357,
+    Glutton 8567, Amnennar 7358) for the Warlords ones the scenario needs, so the quests' kill targets
+    were gone. The Warlords versions of these quests come from a Koristrasza (74367) with no spawn.
+  - Colin Swifthammer's Making Contact 29152: already moved to the camp's Colin (entry below).
+  - Checked and fine: Mosh'Ogg Bounty 26783 (a duplicate of 26782, which Wulfred still gives), Zaetar's
+    Spirit 12238 (summoned where Princess Theradras dies; the static copy stood on the same spot),
+    Servants of Theradras starters on Razorlash/Noxxion (bogus rows, Zaetar keeps his), Rider on the Storm
+    starters on Nijel's Point NPCs (bogus rows), Necessary Roughness on 37114 (bogus row), Northwatch
+    Lugs/Supply Crates (now ride the caravans as accessories), Water Snakes turned into Moccasin battle
+    pets (No Dumping Allowed's Toxic Puddlefish is fished, not looted), and a DEPRECATED Darkmoon quest.
+  - Not covered by the audit: quest credit given by scripts (SAI/C++), spell clicks and quest start items.
+- **Changed** (`sql/fixes/world/2026_11_20_72_razorfen_downs_old_boss_quests.sql`): kill credit on the
+  Warlords bosses: Aarux 74412 -> 7355, Mordresh 74347 -> 7357, Mushlump 74435 -> 8567, Amnennar 74434
+  -> 7358. One kill now counts for both versions.
+- **Status:** not tested in game yet (Four will test Razorfen Downs).
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_72_razorfen_downs_old_boss_quests.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+### DB: Doubled Dask quests, Linzi's shop closes, two Colin Swifthammers (Cape of Stranglethorn)
+- **Found** (Four, 2026-11-20): Bronwyn Hewstrike and Dask "The Flask" Gobfizzle both list two quests
+  named 'Dask "The Flask" Gobfizzle'; Linzi Hewstrike's "I would like to buy from you." just closes the
+  window; two Colin Swifthammers stand at the camp, one of them on Dask's spot.
+- **Cause:**
+  - 26825 (text names Wulfred) and 26826 (after Hero's Call 28702) are two versions of the same
+    breadcrumb, both started by Bronwyn 44082 and, wrongly, by Dask 44099 too. Nothing kept a player
+    who did both earlier quests from seeing both.
+  - Linzi's menu option (11801) had OptionType 1 (gossip, no submenu, so it closes) instead of 3
+    (vendor). 98 vendor options in the dump have the same mistake.
+  - Colin 52646 (guid 307980) is the level 85 Rise of the Zandalari version (zombie outbreak, quest
+    29152 Making Contact), sniffed in that event's phase on the spot where Dask stands. The camp's
+    gryphon master is 43043 (guid 300879).
+- **Changed** (`sql/fixes/world/2026_11_20_71_explorers_league_digsite.sql`):
+  - Dask no longer starts 26825/26826. 26825 is offered only to players who have not done 28702
+    (quest-available condition), 26826 only to those who have; both in exclusive group 26825. Too Big
+    For His Britches 26823 still follows either.
+  - Every "I would like to buy from you." / "Let me browse your goods" option with OptionType 1,
+    OptionNpcFlag 1 and no submenu now has OptionType 3, OptionNpcFlag 128 (98 options, Linzi's among
+    them, vendors from Classic to BFA).
+  - Spawn 307980 (Colin 52646) removed. The camp's Colin 43043 now offers its quest 29152 Making
+    Contact instead (npcflag |= 2; level 85, so lower characters never see it).
+- **Status:** CONFIRMED in game by Four on 2026-11-20.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_71_explorers_league_digsite.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-20 (Archaeology)
 
 PR #94, merged 2026-11-20. Confirmed in game 2026-11-20 except a rare pet solve and the daily rotation.
