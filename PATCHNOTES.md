@@ -5,8 +5,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-20 (Quest fixes: Take Down Tethyr, Rise of the Zandalari, Explorers' League Digsite, vendor options, quest audit)
 
-Draft PR, not merged yet. Digsite and camp doubles confirmed; Razorfen Downs to test; Zandalari chain and
-Tethyr to test when level appropriate.
+Draft PR, not merged yet. Digsite, camp doubles and Razorfen Downs confirmed; Tethyr cannon/fight-back
+retest pending; Zandalari chain to test when level appropriate.
 
 ### DB: Razorfen Downs quests had no giver (correction to the audit entry below)
 - **Found** (Four, 2026-11-20): `.quest add 27024` / `.quest add 27009` showed nothing, while Loss
@@ -19,7 +19,7 @@ Tethyr to test when level appropriate.
 - **Changed** (`sql/fixes/world/2026_11_20_76_razorfen_downs_live_quests.sql`): the Koristrasza at the
   entrance (44837, guid 325121) now starts and ends 33513 and 33514. Nothing removed. The kill credit
   change in 2026_11_20_72 is harmless but only matters for the retired quests.
-- **Status:** not tested in game yet.
+- **Status:** CONFIRMED in game by Four 2026-11-20 (all Razorfen Downs quests).
 - **Pick up:** SQL only:
 
   ```
