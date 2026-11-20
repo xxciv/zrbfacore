@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-20 (Quest fixes: Take Down Tethyr, Rise of the Zandalari, Explorers' League Digsite, vendor options, quest audit)
 
-Draft PR, not merged yet. Digsite, camp doubles and Razorfen Downs confirmed; Tethyr cannon/fight-back
+PR #93, merged 2026-11-20. Digsite, camp doubles and Razorfen Downs confirmed; Tethyr cannon/fight-back
 retest pending; Zandalari chain to test when level appropriate.
 
 ### DB: Razorfen Downs quests had no giver (correction to the audit entry below)
@@ -239,6 +239,88 @@ retest pending; Zandalari chain to test when level appropriate.
 
   Then restart worldserver.
 
+## 2026-11-20 (Archaeology)
+
+PR #94, merged 2026-11-20. Confirmed in game 2026-11-20 except a rare pet solve and the daily rotation.
+
+### Core: Archaeology never gives dig sites, Survey does nothing, Solve can't complete
+
+- **Found** (2026-11-19, while checking the battle pets): learning Archaeology places no dig sites, so
+  Survey never finds one, no research projects show and the Archaeology pets (Fossilized Hatchling,
+  Pterrordax Hatchling, Crawling Claw) can't be made.
+- **Cause:** HavenCore's `src/server/game/Archaeology/` is AshamaneCore's Legion code, commented out
+  ("TODO MERGE") in their 8.0 merge because it used the old update fields. `InitBranch`,
+  `ChangeDigsite`, `AddDigsitesToMap`, `GetDigsite`, `IsCurrentArtifactSpell`, `CompleteArtifact` and the
+  dig site/project load and save were all stubs. On top of that: Survey read the site's race from an
+  empty list (always Night Elf), sites were only set up for Eastern Kingdoms, Kalimdor, Outland and
+  Northrend at the moment the skill was learned, Solve took the fragments while reading the cast packet
+  (before the cast was checked), projects were only handed out for the 9 Cataclysm races and only when
+  fewer than 8 fragments came in, the three archaeology packets were blocked (`STATUS_UNHANDLED`), and
+  the research history reply listed every project twice (empty copies first).
+- **Changed:** new `tools/bfa/archaeology.patch` (last in the chain, after `smartai-passive-escort.patch`):
+  - `ArchaeologyMgr`: loads the 403 `archaeology_digsites` rows with their outline from
+    `QuestPOIPoint.db2` (the site's QuestPOIBlob), the research branches and their projects (project
+    spell must exist), and `archaeology_artifacts` once instead of a query per project.
+  - `ArchaeologyPlayerMgr`, rewritten on `ActivePlayerData::ResearchSites` / `ResearchSiteProgress` /
+    `Research`:
+    - 4 dig sites per continent (maps 0, 1, 530, 571, 870, 1116, 1220), picked at random among the
+      sites whose `minLevel`/`minSkillLevel` you meet. Topped up on login, on learning the skill, on
+      level-up and after every find and solve. Saved in `character_archaeology_digsites` with the
+      current find position and find count.
+    - Survey (`SPELL_EFFECT_SURVEY`): only inside one of your sites (else the client's "You can't use that here" error, SPELL_FAILED_NOT_HERE). The
+      find is rolled inside the site's outline, within 120 yards of you, on dry loaded ground when it
+      can. Further than 8 yards: survey tool pointing at it, red (85+ yards), yellow (35-85), green
+      (under 35). Within 8 yards: the race's find object appears for 15 seconds (only to look at:
+      its loot, the race's keystone at about 7%, is rolled and given straight away), 5-9
+      fragments (Dwarves +1), skill as before (only under 50), and the progress bar updates
+      (`SMSG_ARCHAEOLOGY_SURVERY_CAST`: finds done, total finds, branch, success; the other
+      order, from the 5.5 classic packet parser, filled the bar after the first find). After 3 finds (6 on
+      Pandaria, Draenor and the Broken Isles) the site moves elsewhere on the continent.
+    - Projects: a race gets one with its first fragments (any race in ResearchBranch.db2), and on login
+      for races you already have fragments of. A rare you haven't solved yet is picked one time in four,
+      else a common; solved rares only come back if the race has nothing else. Saved in
+      `character_archaeology_branchs`.
+    - Solve: `HandleCastSpellOpcode` checks the keystones offered (at most the project's sockets, 12
+      fragments each for Cataclysm races, 20 for later ones) and that you have the remaining
+      fragments; they are taken only after the artifact item is in your bags (`DoCreateItem`), so a
+      failed cast or a full bag costs nothing. Then: history (first time, count), achievement criteria
+      (`COMPLETE_ARCHAEOLOGY_PROJECTS`), `SMSG_RESEARCH_COMPLETE`, skill +5 (common) / +15 (rare) from
+      SkillLineAbility, and a new project for that race.
+  - `UpdateField.h`: `ModifyDynamicArrayValue`, a setter for an element of an array of dynamic fields
+    (the project list is `Research[0]`; the core had no way to write it).
+  - `CriteriaHandler.cpp`: `SURVEY_GAMEOBJECT` (find object entry) and `CLEAR_DIGSITE` now count.
+  - `Opcodes.cpp`: `SMSG_ARCHAEOLOGY_SURVERY_CAST`, `SMSG_RESEARCH_COMPLETE`, `SMSG_SETUP_RESEARCH_HISTORY`
+    can be sent. `MiscHandler.cpp`: history list no longer doubled. `MiscPackets.cpp`: the history
+    request no longer writes into the client's packet.
+  - `.debug archaeology` (sites on this continent, `all`, `reset`, `go <n>`).
+- **Changed** (Four's request, 2026-11-20): dig sites rotate daily. At the daily reset
+  (`World::DailyReset` -> `Player::DailyReset`, hour `Quests.DailyResetTime`) every site with no finds dug
+  moves to another site on its continent; started sites stay until finished. A character offline over a
+  reset (logout before the last reset) rotates at login. New `worldserver.conf.dist` option
+  `Archaeology.DailyDigsiteRotation` (default 1; 0 = retail, sites only move when finished).
+- **Changed:** `sql/fixes/world/2026_11_20_80_archaeology_survey_tool.sql`: green Survey Tool 204272 was
+  named 'Pointeur de test d'archéologie'; now 'Survey Tool (Green)'.
+- **Not done:** the 47 Kul Tiras and Zandalar dig sites (Zandalari, Drust) aren't in
+  `archaeology_digsites` and have no find object; Legion find objects 246804, 268440, 268451 are empty
+  placeholders in the dump, so Legion sites give fragments without a find to loot. Broken Isles sites
+  don't need their unlock quests here. `archaeology_artifacts` is empty, so every project is open from
+  skill 1.
+- **Status:** confirmed in game 2026-11-20: dig sites on the map, Survey tool and finds, fragments,
+  dig site rotation, progress bar, Solve (fragments taken, item, skill, new project), rare project,
+  keystone drop and socket, relog. Not seen yet: a rare pet project solved.
+- **Pick up:** core rebuild (headers in the game library's precompiled header changed, so most of
+  the game library rebuilds), the SQL, then restart:
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8d7v53
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/archaeology.patch | git apply
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_80_archaeology_survey_tool.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-20 (Quest fixes: Be Raptor, Stranglethorn)
 
 Merged to `main` with PR #91 on 2026-11-20. Confirmed in game 2026-11-20 (the 8-second Burning Twig hotfix
@@ -426,6 +508,112 @@ Merged to `main` with PR #91 on 2026-11-20. Confirmed in game 2026-11-20.
   ```
 
   Then restart worldserver.
+
+## 2026-11-19 (pet battles)
+
+### Pet battles: wild pets missing from zones their pet card lists
+
+- **Found** (Four, 2026-11-19): the Mouse pet card says "Pet Battle: Duskwood, Dustwallow Marsh,
+  Grizzly Hills, Mulgore, Netherstorm, Westfall, Wetlands", but Mice only lived in Duskwood and
+  Dustwallow Marsh.
+- **Cause:** `battlepet_wild_zone_pool` (which zone gets which pet) has no row for many zones the pet
+  cards list. An audit of every capturable species (BattlePetSpecies flag 0x8) against the zones on its
+  card found 382 (species, zone) pairs with no pool row. Left alone:
+  - 171 Dragonflight / Shadowlands zones, species newer than 8.3.7, dungeons, raids and the Gilneas,
+    Kezan and Tol Barad instance maps;
+  - 65 pairs whose pet is already spawned directly in that zone;
+  - Young Mutant Warturtle, already spawned in the Dalaran Underbelly (its own map);
+  - 6 pairs with no usable critter spot (Lost Isles Strand Crab and Rat, Azjol-Nerub and Violet Hold
+    Spider and Rat, Great Sea Squirky).
+- **Changed:** `sql/fixes/world/2026_11_19_50_wild_battle_pet_card_zones.sql` adds 139 pool rows on
+  62 zones:
+  - 68 rows name a critter that lives in the zone. The file then converts up to Max of those critters
+    into the pet (the 2026_11_01_50 procedure, limited to the new rows; logged in
+    `zr_wild_battlepet_conversion`).
+  - 71 rows have no matching critter in the zone: 194 new spawns (guids 1000100039-1000100232), each
+    1 yard from a random unscripted, unphased critter of the zone, wandering 3 yards (as in
+    2026_11_10_52). Max = the species' usual Max elsewhere, capped at 3. These spots do not match
+    retail exactly.
+  - Levels: the zone's existing pool levels, else the AreaTable wild pet range.
+
+  | Zone | Pets added (Max, source) |
+  |---|---|
+  | Arathi Highlands | Cat (1, new spawn), Hare (3, new spawns) |
+  | Azshara | Rabbit (6, from Rabbit), Rat (5, from Rat), Squirrel (10, from Squirrel) |
+  | Azsuna | Garden Frog (1, new spawn) |
+  | Blade's Edge Mountains | Brown Marmot (3, new spawns), Rabbit (6, from Rabbit) |
+  | Blasted Lands | Adder (7, from Adder) |
+  | Bloodmyst Isle | Rat (5, from Rat) |
+  | Crystalsong Forest | Rabbit (3, new spawns), Rat (3, new spawns) |
+  | Darkshore | Rabbit (6, from Rabbit), Rat (5, from Rat), Squirrel (10, from Squirrel), Strand Crab (3, new spawns) |
+  | Dragonblight | Strand Crab (3, new spawns) |
+  | Dun Morogh | Long-tailed Mole (2, from Long-tailed Mole), Rabbit (6, from Rabbit), Rat (3, new spawns), Roach (3, new spawns), Spider (3, new spawns), Squirrel (3, new spawns), Strand Crab (3, new spawns) |
+  | Duskwood | Rabbit (6, from Rabbit) |
+  | Dustwallow Marsh | Chicken (2, from Chicken), Squirrel (10, from Squirrel) |
+  | Eastern Plaguelands | Beetle (46, from Beetle), Cockroach (25, from Cockroach), Scorpid (3, new spawns), Spider (3, from Spider) |
+  | Elwynn Forest | Spider (3, from Spider) |
+  | Eversong Woods | Cat (1, new spawn), Rabbit (6, from Rabbit) |
+  | Feralas | Rabbit (6, from Rabbit) |
+  | Frostfire Ridge | Fire-Proof Roach (3, new spawns) |
+  | Ghostlands | Rat (5, from Rat), Spider (3, from Spider) |
+  | Grizzly Hills | Mouse (1, new spawn) |
+  | Hellfire Peninsula | Flayer Youngling (3, new spawns) |
+  | Hillsbrad Foothills | Chicken (1, from Chicken), Rabbit (6, from Rabbit), Spider (3, from Spider), Squirrel (3, new spawns) |
+  | Howling Fjord | Rabbit (5, from Rabbit), Roach (8, from Roach), Spider (3, from Spider), Toad (3, new spawns) |
+  | Krasarang Wilds | Sea Gull (3, new spawns), Shore Crab (3, new spawns) |
+  | Loch Modan | Roach (3, new spawns), Small Frog (9, from Small Frog), Squirrel (10, from Squirrel) |
+  | Mechagon | Duskytooth Snooter (3, new spawns), Experimental Roach (3, new spawns), Fleeting Frog (3, new spawns), Motorized Croaker (3, new spawns), Rustbolt Clucker (3, new spawns), Rustyroot Snooter (3, new spawns), Scrapyard Tunneler (3, new spawns), Specimen 97 (3, new spawns), Yellow Junkhopper (3, new spawns) |
+  | Moonglade | Rabbit (6, from Rabbit), Silky Moth (3, new spawns), Squirrel (10, from Squirrel) |
+  | Mount Hyjal | Bat (11, from Bat), Forest Moth (3, new spawns), Rabbit (6, from Rabbit), Squirrel (3, new spawns) |
+  | Mulgore | Mouse (1, new spawn), Rabbit (6, from Rabbit) |
+  | Nagrand | Rabbit (6, from Rabbit), Rat (5, from Rat), Snake (2, from Snake) |
+  | Nazjatar | Bloodseeker (3, new spawns), Chitterspine Skitterling (3, new spawns), Deeptide Fingerling (3, new spawns), Hissing Chitterspine (3, new spawns), Sandclaw Sunshell (3, new spawns), Spireshell Snail (3, new spawns) |
+  | Nazmir | Spectral Raven (3, new spawns) |
+  | Netherstorm | Cat (1, new spawn), Mouse (1, new spawn) |
+  | Orgrimmar | Scorpid (3, new spawns), Spider (3, new spawns) |
+  | Ruins of Gilneas | Rat (3, new spawns), Spider (3, new spawns), Squirrel (3, new spawns) |
+  | Shadowmoon Valley | Forest Spiderling (3, new spawns) |
+  | Shattrath City | Rat (5, from Rat) |
+  | Sholazar Basin | Squirrel (10, from Squirrel) |
+  | Silvermoon City | Cat (1, from Cat), Rabbit (3, from Rabbit) |
+  | Silverpine Forest | Rabbit (6, from Rabbit), Rat (5, from Rat), Snake (19, from Snake), Squirrel (10, from Squirrel) |
+  | Stonetalon Mountains | Rat (5, from Rat) |
+  | Stormheim | Stormstruck Beaver (3, new spawns) |
+  | Stormsong Valley | Freshwater Crawler (3, new spawns) |
+  | Stormwind City | Rat (5, from Rat) |
+  | Swamp of Sorrows | Rat (5, from Rat), Small Frog (3, new spawns), Spider (3, from Spider) |
+  | Tanaan Jungle | Maggot (7, from Maggot) |
+  | Teldrassil | Spider (3, from Spider), Squirrel (3, new spawns), Toad (3, new spawns) |
+  | Terokkar Forest | Chicken (2, new spawns) |
+  | The Hinterlands | Spider (3, from Spider) |
+  | The Storm Peaks | Spider (3, new spawns) |
+  | Thunder Bluff | Prairie Dog (1, from Prairie Dog) |
+  | Tirisfal Glades | Chicken (2, from Chicken), Rabbit (6, from Rabbit), Roach (5, from Roach), Spider (3, from Spider), Undercity Rat (31, from Undercity Rat) |
+  | Twilight Highlands | Squirrel (3, new spawns), Toad (3, new spawns), Twilight Whelpling (3, new spawns) |
+  | Uldum | Oasis Void-Duster (3, new spawns), Void-Scarred Locust (3, new spawns) |
+  | Un'Goro Crater | Silky Moth (3, new spawns) |
+  | Val'sharah | Squirrel (7, from Squirrel) |
+  | Vale of Eternal Blossoms | Golden Chirper (3, new spawns), Voidglower (3, new spawns), Voidskimmer (3, new spawns) |
+  | Western Plaguelands | Rabbit (6, from Rabbit), Squirrel (10, from Squirrel) |
+  | Westfall | Mouse (1, new spawn), Rabbit (5, from Rabbit), Squirrel (4, from Squirrel) |
+  | Wetlands | Chicken (2, from Chicken), Mouse (1, new spawn), Rabbit (5, from Rabbit), Squirrel (10, from Squirrel) |
+  | Winterspring | Spider (3, from Spider) |
+  | Zul'Drak | Spider (3, new spawns) |
+  | Zuldazar | Baby Zandalari Raptor (3, new spawns) |
+
+- **Status:** confirmed in game by Four (2026-11-20): pets are now found in zones that had none.
+  Ran twice on a copy of the world DB with the earlier pet SQL applied (same result both times).
+  Expected output, give or take on your live DB:
+  `139 new pool rows, 194 new spawns, 664 pets now in those zones`.
+- **Pick up:**
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo pull
+  mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_19_50_wild_battle_pet_card_zones.sql
+  ```
+
+  Then restart `worldserver`.
 
 ## 2026-11-18 (Quest fixes: Crossroads Caravan Pickup, Northern Barrens)
 
