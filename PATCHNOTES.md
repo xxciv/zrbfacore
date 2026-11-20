@@ -3,9 +3,43 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-20 (Quest fixes: Explorers' League Digsite, vendor options)
+## 2026-11-20 (Quest fixes: Explorers' League Digsite, vendor options, quest audit)
 
 Draft PR, not merged yet. Not tested in game yet.
+
+### DB: Audit, nothing tied to a quest may be dropped; Razorfen Downs boss quests
+- **Found** (Four, 2026-11-20: "we never want to outright drop anything that is associated with a
+  quest", then "has anything else been dropped in that fashion?"): I loaded the clean world dump plus
+  the core updates, applied all 281 world fixes (main plus open PRs #82, #92, #93) and compared quest
+  starters, enders, kill/talk/object targets and quest item loot sources before and after.
+- **Result:**
+  - Lost for real: Partners in Crime 27024 and The Coldbringer 27009 (Razorfen Downs, from Koristrasza
+    44837). 2026_10_31_01_razorfen_downs swapped the classic bosses (Tuten'kash 7355, Mordresh 7357,
+    Glutton 8567, Amnennar 7358) for the Warlords ones the scenario needs, so the quests' kill targets
+    were gone. The Warlords versions of these quests come from a Koristrasza (74367) with no spawn.
+  - Colin Swifthammer's Making Contact 29152: already moved to the camp's Colin (entry below).
+  - Checked and fine: Mosh'Ogg Bounty 26783 (a duplicate of 26782, which Wulfred still gives), Zaetar's
+    Spirit 12238 (summoned where Princess Theradras dies; the static copy stood on the same spot),
+    Servants of Theradras starters on Razorlash/Noxxion (bogus rows, Zaetar keeps his), Rider on the Storm
+    starters on Nijel's Point NPCs (bogus rows), Necessary Roughness on 37114 (bogus row), Northwatch
+    Lugs/Supply Crates (now ride the caravans as accessories), Water Snakes turned into Moccasin battle
+    pets (No Dumping Allowed's Toxic Puddlefish is fished, not looted), and a DEPRECATED Darkmoon quest.
+  - Not covered by the audit: quest credit given by scripts (SAI/C++), spell clicks and quest start items.
+- **Changed** (`sql/fixes/world/2026_11_20_72_razorfen_downs_old_boss_quests.sql`): kill credit on the
+  Warlords bosses: Aarux 74412 -> 7355, Mordresh 74347 -> 7357, Mushlump 74435 -> 8567, Amnennar 74434
+  -> 7358. One kill now counts for both versions.
+- **Status:** not tested in game yet.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_72_razorfen_downs_old_boss_quests.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
 
 ### DB: Doubled Dask quests, Linzi's shop closes, two Colin Swifthammers (Cape of Stranglethorn)
 - **Found** (Four, 2026-11-20): Bronwyn Hewstrike and Dask "The Flask" Gobfizzle both list two quests
