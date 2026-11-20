@@ -7,6 +7,12 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four walks Stranglethorn, Duskwood, Redridge and Ratchet and reports what is off.
 
+### World: Theramore dock, floating ship chairs
+- **Found** (2026-11-20, while fixing Ratchet): the same leftover as at Ratchet. The dump has two sniff snapshots of The Lady Mehley (Menethil - Theramore) docked at Theramore, so 18 Wooden Chairs (164759-164767, two copies of the ship's 9) float on the water off the dock. TDB 8.3.7 has none of them, there or on the ship (map 584 has no deck objects in TDB either), and they have no quest role.
+- **Changed** (`sql/fixes/world/2026_11_20_35_theramore_dock_chairs.sql`): the 18 chairs (guids 173730-173747) removed.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Ratchet and Booty Bay, The Maiden's Fancy leftovers
 - **Found** (Four, 2026-11-20, screenshots at the Ratchet dock): "First Mate Masker is underwater, and there's a bunch of leftover furniture. I assume they should be on the transport between here and Booty Bay." The dump has sniff snapshots of the docked ship in world coordinates:
   - First Mate Masker 25093 at Ratchet (guid 265581, in the water) and at Booty Bay (369219).
