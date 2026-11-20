@@ -31,7 +31,7 @@ Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four w
   - Not phased: the quest givers (Koltira, Thassarian, Jearl Donald, Lindsay Ravensun, Lang Loosegrip), the fires, the towers and the Scourge Invasion spawns.
   - The Desiccated (and the two second-battle commanders) lose `IMMUNE_TO_NPC`, as in 8.3.7.
   - Fight starters (our own tuning, the staged-battle pattern): out of combat, soldiers attack the closest enemy within 5 yards (Minutemen: the Forsaken Behemoth within 10). All fighters take no damage from other creatures below 85% health (`flags_extra` 0x400), so the battles go on; players deal full damage.
-- **Status:** untested in game. A character before The Battle Resumes! sees the Scourge battle; the farmers and the val'kyr appear after it.
+- **Status:** confirmed in game by Four (2026-11-20): "Andorhal looks good now! everyones fighting." A character before The Battle Resumes! sees the Scourge battle; the farmers and the val'kyr appear after it.
 - **Pick up:** run the SQL, restart `worldserver`. Needs `staged-npc-battles.patch` (already in the build).
 
 ### World: Theramore dock, floating ship chairs
