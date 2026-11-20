@@ -3,6 +3,194 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-20 (Quest fixes: Be Raptor, Stranglethorn)
+
+Merged to `main` with PR #91 on 2026-11-20. Confirmed in game 2026-11-20 (the 8-second Burning Twig hotfix
+was merged before its in-game test).
+
+### DB: Be Raptor, the Mind Control ritual does nothing; Zul'Gurub courtyard trolls kill passers-by (26775)
+
+- **Found** (Four, 2026-11-19): Thaalia's "I am ready for the Mind Control ritual" option does nothing.
+  During the See Raptor test the trolls outside Zul'Gurub killed Four's character.
+- **Cause:** the minigame was never scripted (no SAI on the four Captured Lashtail Hatchlings, the elder
+  raptors, the tikis, the Shade of the Hexxer or Mandokir; the hatchlings had no action bar spells).
+  The courtyard trolls belong to the Mind Control vision (phase 235, spell 79975 Zul'Gurub Mind
+  Control) but were in the normal world: 76 Gurubashi Soldiers, 40 Crushers and about 120 level 81-82
+  workers, behemoths, raptors and bat riders. The dump also left 15 dropped-skull bunnies and 8 extra
+  soldiers standing on the two bridges. Teleport/summon destinations for raptor 3 had no row.
+- **Changed:** `sql/fixes/world/2026_11_20_70_be_raptor.sql`:
+  - Phase 235 for all courtyard troll/raptor/tiki/shade/Mandokir spawns (entries 42825, 42834, 42837,
+    42838, 42871, 42872, 42881-42884, 42888, 42922, 42941, 43351 inside the Zul'Gurub courtyard box)
+    and the Tiki 204112 / Gurubashi Brazier 204111 / Giant Skullpile 204113 objects. Players only see
+    them during the vision; the walk to the instance portal is empty again.
+  - Thaalia (SAI 44017 ids 10-27): option 1 -> close, line (our own wording), player immune to NPCs
+    (0x200), Thaalia becomes active (and stays so: net resets come back through her), player casts 79975 (phase 235) and teleports to the last elder raptor
+    reached (objective progress: Tian-kuyi start, Tan'shang, Tenjiyu or Chiyu, spells 80119-80122),
+    2.5 s later rides that raptor's hatchling (79952/80123/80124/80125).
+  - Hatchlings 42870/42930/42931/42932 (vehicle 928): action bar Dash 44531, then + Eat Through Net
+    80022, + Light Tiki Fire 80046, + Drop Skull 80049. SAI: friendly faction 35 and 0x200 on board,
+    active; netted and still in the net after 3 s -> teleport back to the last raptor, and Thaalia
+    (data N, guid 183124) gives the fresh hatchling 2.5 s later; in water, leaving the hatchling or
+    the hatchling dying -> the player casts 82399 back to Thaalia (clears 0x200 and phase 235);
+    Light Tiki Fire lights the closest tiki within 12 yards; leaving Zul'Gurub (area 19) also ends the
+    vision (Four ran out of the courtyard into an empty Stranglethorn during the first test).
+  - All courtyard trolls (soldiers, Crushers, workers, behemoths, raptors, bat riders, batlings, the
+    shade, Mandokir) are passive: only the vision script acts. Gurubashi Soldier 42871: hatchling within
+    7 yards -> Net 80021 on it. Gurubashi Crusher 42872: within 9 yards -> Ironweave Net 80074 (cannot
+    be bitten through); their Stealth-on-spawn rows are
+    removed (they are the visible blockers). A burning tiki pulls soldiers within 30 yards to it for
+    20 s (the closest yells), then they walk back. Six sitting soldiers in the second area sleep (stand
+    state 3, guids 317023, 317028, 316944, 317022, 316950, 316942): sneaking up to one with hatchling
+    2 gives the Raptor Food Pouch 58249. A soldier who walks onto a dropped skull yells, slides off into
+    the lake and respawns 8 s later.
+  - Elder raptors: Tan'shang (menu 11664) and Chiyu (11666) give their objective credit and the next
+    hatchling; Tenjiyu (11665) option 0 sends you for food, option 1 (needs 58249, taken) gives credit
+    and hatchling 3. Options are gated on the quest and objective progress.
+  - Bridges: one patrol per bridge (317116 path 3171160, 317110 path 3171100, respawn 8 s); extra
+    soldiers 317102, 317092, 317106, 317121, 317112, 317118, 317093, 317108 and all 42927 skull bunny
+    spawns deleted. Soldier patrol groups (3-4 standing copies in the dump) cut to one soldier (two per
+    tiki guard group), Crusher squads of 5 cut to 2: 26 soldiers and 18 Crushers deleted (50 soldiers
+    and 22 Crushers left). Second pass after Four's next test ("still waaaay too many"): keep a spawn
+    only if no kept spawn of its kind is closer than soldiers 28 y (tiki guards, sleepers, bridge patrols
+    always kept), Crushers 25, workers 22, behemoths and raptors 35, bat riders and batlings 40: 111
+    more deleted. Left: 32 soldiers, 10 Crushers, 19 workers, 11 behemoths, 9 raptors, 8 bat riders,
+    6 batlings (from 76/40/73/19/22/9/11).
+  - Escape: hatchling 4 within 30 yards of the Shade of the Hexxer 42884 at the portal -> hatchling
+    frozen (82646), Jin'do's shade and Mandokir 42941 (who walks up) play their scene, then the escape
+    credit (42884) and back to Thaalia. Their lines and the soldiers' fire/slip yells are the original
+    ones as quoted on warcraft.wiki.gg (Be Raptor); the food-sack message is our own wording.
+  - `spell_target_position` 80121/80124 (raptor 3, next to Tenjiyu). `sql/fixes/world/2026_11_19_71`
+    now only replaces Thaalia's text group 0, so rerunning it keeps this line.
+- **Fix after first test** (Four, 2026-11-19: spotted, chased and netted at once, about 40 trolls on
+  one screen, then "no longer a raptor" but still under Zul'Gurub Mind Control; water did nothing):
+  a hatchling a player controls counts as hostile to the trolls whatever its faction, and this core's
+  `Creature::CanStartAttack` only checks the attacker's immunity flags, so every aggressive troll
+  attacked the level 1 hatchling and killed it; the dead hatchling could not send the player home.
+  The core also despawns a player-owned vehicle the moment its owner leaves it (`Unit::_ExitVehicle`),
+  so the "new hatchling in 2.5 s" step on the old hatchling never ran. Fixed by the passive trolls,
+  the net/sight checks for both hostile and friendly hatchlings, the reset through Thaalia, the player
+  casting the way home, the death safety, and the thinning above.
+- **Second fix** (Four, 2026-11-20: the leave-vehicle button did not send him home): the passenger's
+  own cast of 82399 runs while the core is still taking him out of the hatchling, and that teleport is
+  lost. Leaving now tells Thaalia (data 9), who makes the player cast 82399 and clears the 0x200 flag
+  half a second later.
+- **Third fix** (Four, 2026-11-20: no way to get the Raptor Food Pouch for Tenjiyu): the sleeping
+  soldiers only handed the sack over when hatchling 2 walked within 5 yards, and only after the sight
+  check fired. Each of the six sleepers (one near -12222 -1900, two at -12246 -1944, three
+  at -12186 -1958) now also gives it when clicked (the soldiers' existing spellclick 80603 now fires
+  `SMART_EVENT_ON_SPELLCLICK`), once, only while Be Raptor is in progress and the player has no pouch.
+- **Fourth fix** (Four, 2026-11-20: the sleeping trolls still netted him and gave nothing): the trolls
+  that look asleep in the dump are four standing soldiers with the Zzz aura 78677 (near -12277 -1849,
+  -12341 -1945, -12364 -1854, -12383 -1818), and they still ran the normal soldier net script. They
+  now run the sleeper script (no net, food sack on approach or click). The six lying sleepers also
+  get the Zzz aura so they read as asleep.
+- **Fifth fix** (Four, 2026-11-20: food and Tenjiyu work, but the brazier says "You can't do that
+  right now", the skull piles can't be used, and nothing happens after Jin'do's last line):
+  - The player steers the hatchling, which makes the core treat it as charmed, and SAI skips every
+    event of a charmed creature unless the row has `SMART_EVENT_FLAG_WHILE_CHARMED` (0x200). So none of
+    the hatchling's own rows ran while ridden: no credit or trip home after the Shade's speech, no net
+    reset, no water or leaving-Zul'Gurub check, no tiki lighting. Every hatchling row now has the flag.
+  - The Gurubashi Brazier 204111 and Giant Skullpile 204113 make the player cast their spell (80083
+    Burning Twig, 80111 Gurubashi Skull), and a player in the hatchling's seat cannot cast. Their new
+    SAI casts the spell triggered on use (only while Be Raptor is in progress) and skips the default cast.
+  - The "left Zul'Gurub" check now also needs no Gurubashi Soldier within 200 yards, in case part of
+    the courtyard has an area id other than 19 (that check had never run before this fix).
+- **Sixth fix** (Four, 2026-11-20: the twig burns out before you reach a tiki): the Burning Twig 58250
+  now lasts 8 seconds instead of the client's 6, through a hotfix row (ItemSparse, hotfix id 9558250).
+  The brazier still shows "You can't do that right now" when used from the hatchling, but gives the
+  twig; the message seems to come from the client's own check and is left as it is.
+- **Status:** Be Raptor completed end to end in game by Four on 2026-11-20 (fourth and fifth fixes:
+  food from the Zzz soldiers, Tenjiyu, twig and tiki, Chiyu, skull piles, the Shade's scene, credit and
+  the way home). The 8-second twig is not tested yet. If you are stuck in the vision (world missing, buff
+  "Zul'Gurub Mind Control" still on), `.unaura 79975` and a relog fix it.
+- **Pick up:** SQL (world and hotfixes):
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_70_be_raptor.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/hotfixes/2026_11_20_70_be_raptor_burning_twig.sql | mysql -u root -p bfa_hotfixes
+  ```
+
+  Then restart worldserver and delete the client Cache folder.
+
+## 2026-11-19 (Quest fixes: Stranglethorn)
+
+Merged to `main` with PR #91 on 2026-11-20. Confirmed in game 2026-11-20.
+
+### DB: The Mosh'Ogg Bounty offered twice, Robert Rhodes' free flight, Priestess Thaalia's options
+
+- **Found** (Four, 2026-11-19): Wulfred Harrys offers both 26782 and 26783 "The Mosh'Ogg Bounty".
+  Robert Rhodes always shows "Wulfred says that he paid for my trip..." and it should only show on
+  To the Cape! 26805 and fly you to the Explorers' League Digsite for free. Priestess Thaalia's two
+  ritual options always show, and the Mind Vision one does nothing.
+- **Cause:** 26782 and 26783 are the same quest (same giver, ender, objective Mosh'Ogg Bounty 58205,
+  text differs by one word) and both were in `creature_queststarter`. Robert Rhodes 43042's option
+  (menu 11791 option 1) had no condition, and his SAI listened for a menu 43042 that does not exist
+  and then ran a teleport with no destination. Thaalia's menu 11785 options had no conditions.
+- **Changed:** `sql/fixes/world/2026_11_19_70_stranglethorn_quest_fixes.sql`: 26783 no longer
+  offered by 44018 (still turned in there), 26782/26783 exclusive group 26782. Condition on 11791
+  option 1: 26805 in progress or complete (47, mask 10). SAI 43042 rewritten: option 1 -> close
+  window, the player casts 82504 "Explorer's League Digsite: Taxi Flight" (taxi path 2240, Fort
+  Livingston -> Explorers' League Digsite, no charge). Conditions on 11785: option 0 (Mind Vision)
+  only while See Raptor 26773 is in progress, option 1 (Mind Control) only while Be Raptor 26775 is.
+  Braddok's brain 58225 for Mind Control 26774 drops at 100% from Braddok 42858 (was 76.8%; he is
+  the only source and has one spawn).
+- **Status:** confirmed in game by Four on 2026-11-20 (Mosh'Ogg Bounty offered once, Robert Rhodes'
+  free flight, Thaalia's options shown only for the matching quest). The rituals themselves are scripted in their own entries (See Raptor below, Be Raptor above).
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_19_70_stranglethorn_quest_fixes.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+### DB: See Raptor, the Mind Vision ritual does nothing (26773)
+
+- **Found** (Four, 2026-11-19): picking "I am ready for the Mind Vision ritual, Thaalia." does nothing.
+- **Cause:** the ritual was never scripted: no SAI on Priestess Thaalia 44017, the Captured Lashtail
+  Hatchling 42840 or Bloodlord Mandokir 42842, and no texts. The spells exist in the game data:
+  79845 See Raptor: Teleport In (into Zul'Gurub), 79834 See Raptor: Summon Raptor (42840, vehicle 926
+  with a hidden, unselectable passenger), 79838 See Raptor: Summon Mandokir, 82399 See Raptor:
+  Teleport Out A (back to Thaalia). 79834 had no `spell_target_position` row.
+- **Changed:** `sql/fixes/world/2026_11_19_71_see_raptor.sql`: `spell_target_position` 79834 at the
+  79845 spot (-12161.7, -1818.5, 94.0). SAI 44017: Mind Vision option -> close window, Thaalia
+  speaks, you get unit flag 0x200 (immune to NPCs), Thaalia becomes an active object, you cast
+  79845, 2.5 s later you cast 79834 and ride the hatchling, and Thaalia stops being active. SAI
+  42840: when you board it sets itself to faction 35 and unit flag 0x200 (the summon gave it your
+  faction, which the Gurubashi attack), and 4 s later summons Mandokir (79838); when Mandokir is done
+  it gives you the 42840 credit, casts 82399 on you and despawns with Mandokir. When you leave the
+  hatchling (sent home, or early) it clears your 0x200 flag and sends you back. SAI 42842: faces the
+  hatchling and says four lines, then tells it he is done. Mandokir's lines are the original ones as
+  quoted on warcraft.wiki.gg (See Raptor); Thaalia's line is our own wording.
+- **Fix after first test** (Four, 2026-11-19: "She sent me to ZG, but I am me", then killed by the
+  Gurubashi): the 2 s timed event on Thaalia never ran. Once you are teleported 1,400 yards away no
+  player is near her, her grid cell stops updating (`Map::Update` only visits cells around players
+  and active objects), so she never made you cast 79834. Fixed by making her active for the ritual
+  (SAI action 48) and by the NPC immunity above for the moments before the hatchling arrives.
+- **Status:** confirmed in game 2026-11-19 (hatchling ride, Mandokir's lines, credit, return to Thaalia).
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_19_71_see_raptor.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-18 (Quest fixes: Crossroads Caravan Pickup, Northern Barrens)
 
 Merged to `main` with PR #90 on 2026-11-18. Confirmed in game 2026-11-18.
