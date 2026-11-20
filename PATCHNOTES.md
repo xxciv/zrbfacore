@@ -19,7 +19,7 @@ to do to pick it up (rebuild, restart, run SQL).
   has no zone yet, `EnableWildBattle` looks it up from the spawn position with
   `Map::GetZoneAndAreaId`, the same lookup `AddToWorld` uses. Only touches `WildBattlePet.cpp`.
   No SQL.
-- **Status:** not tested in game yet. The patched file compiles.
+- **Status:** confirmed in game by Four (2026-11-20).
 - **Pick up:** apply the patch, rebuild and restart `worldserver`. Wild pets get their level when
   their grid loads, so after the restart a Western Plaguelands pet should be 10 or 11.
 
