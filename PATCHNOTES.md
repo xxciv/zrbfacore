@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-20 (Archaeology)
 
-Draft PR #94, not merged yet. Confirmed in game 2026-11-20 except a rare pet solve.
+PR #94, merged 2026-11-20. Confirmed in game 2026-11-20 except a rare pet solve and the daily rotation.
 
 ### Core: Archaeology never gives dig sites, Survey does nothing, Solve can't complete
 
