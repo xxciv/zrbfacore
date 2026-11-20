@@ -23,6 +23,8 @@ Draft PR, not merged yet. Not tested in game yet.
   window, the player casts 82504 "Explorer's League Digsite: Taxi Flight" (taxi path 2240, Fort
   Livingston -> Explorers' League Digsite, no charge). Conditions on 11785: option 0 (Mind Vision)
   only while See Raptor 26773 is in progress, option 1 (Mind Control) only while Be Raptor 26775 is.
+  Braddok's brain 58225 for Mind Control 26774 drops at 100% from Braddok 42858 (was 76.8%; he is
+  the only source and has one spawn).
 - **Status:** not tested in game. The rituals themselves are scripted in the entries below.
 - **Pick up:** SQL only:
 

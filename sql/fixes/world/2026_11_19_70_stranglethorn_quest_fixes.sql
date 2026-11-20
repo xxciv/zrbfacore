@@ -28,3 +28,7 @@ DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId`=15 AND `SourceGroup`=11
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`,`SourceGroup`,`SourceEntry`,`SourceId`,`ElseGroup`,`ConditionTypeOrReference`,`ConditionTarget`,`ConditionValue1`,`ConditionValue2`,`ConditionValue3`,`NegativeCondition`,`ErrorType`,`ErrorTextId`,`ScriptName`,`Comment`) VALUES
 (15,11785,0,0,0,9,0,26773,0,0,0,0,0,'','Priestess Thaalia - Mind Vision ritual only while See Raptor is in progress'),
 (15,11785,1,0,0,9,0,26775,0,0,0,0,0,'','Priestess Thaalia - Mind Control ritual only while Be Raptor is in progress');
+
+-- Mind Control (26774): Braddok's Brain 58225 drops only from Braddok 42858 (one spawn in Zul'Mamwe).
+-- Single-source named quest drop, so 100% instead of 76.8%.
+UPDATE `creature_loot_template` SET `Chance`=100 WHERE `Entry`=42858 AND `Item`=58225;
