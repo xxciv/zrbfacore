@@ -3,9 +3,36 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-20 (World fixes: Cape of Stranglethorn, Duskwood, Redridge)
+## 2026-11-20 (World fixes: Cape of Stranglethorn, Duskwood, Redridge, Western Plaguelands)
 
-Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four walks Stranglethorn, Duskwood, Redridge and Ratchet and reports what is off.
+Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four walks Stranglethorn, Duskwood, Redridge, Ratchet and the Western Plaguelands and reports what is off.
+
+### World: Western Plaguelands zone review
+- **Found** (2026-11-20, the zone review that follows Four's Andorhal question): against TDB 8.3.7 the zone had stacked copies (4 Cauldron Lord Soulwrath on one spot, 3 extra Scarlet Hunters), extra Venom Mist Lurkers, Diseased Wolves, Redpine Shamans, Wailing Deaths and Hungering Wraiths, 7 rares with 2-3 spawn points up at once, a few missing Redpine Gnolls and Rabid Foxes, and the dump's 3-yard shuffle on most mobs that stand still in 8.3.7.
+- **Changed** (`sql/fixes/world/2026_11_20_37_western_plaguelands_review.sql`, run after `2026_11_20_36`):
+  - 63 extra creatures removed: Venom Mist Lurker 19, Diseased Wolf 16, Redpine Shaman 11, Wailing Death 7, Hungering Wraith 4, Scarlet Hunter 3, Cauldron Lord Soulwrath 3.
+  - Quest rule: quest givers are never removed. The quest-loot mobs among the removals (Diseased Wolf, Venom Mist Lurker, Redpine Shaman, Cauldron Lord Soulwrath) keep exactly the 8.3.7 count.
+  - 7 rares pooled so only one spawn point is up at a time (pools 5100638-5100644): Scarlet Smith, Scarlet Judge, Scarlet Interrogator, Scarlet Executioner, Scarlet High Clerist, The Husk, Lord Maldazzar.
+  - 19 missing TDB spawns added (735401524-735401542): Redpine Gnoll 11, Rabid Fox 7, Northridge Spider 1.
+  - Movement set to TDB on 494 spawns (mostly the 3-yard shuffle becoming standing still).
+- **Not changed:** Andorhal (its own entry below), critters and wild battle pets, anything next to a hostile NPC, spawns tied to events, pools, formations, paths or scripts.
+- **Status:** untested in game.
+- **Pick up:** run the SQL after `2026_11_20_36`, restart `worldserver`.
+
+### World: Western Plaguelands, Andorhal's two battles phased
+- **Found** (Four, 2026-11-20): "is andorhal supposed to be phased or something? Lots of Andorhal Defenders right next to Undead mobs who are pretty much ignoring each other unless i attack something", and "Similar to the farm fields and the farmers". Andorhal has two battles, one after the other, and our dump showed both at once with no phases:
+  - **First battle** (Scourge First..., War Machines, The Endless Flow, Scholomancer, Brute Strength): Andorhal Defenders 44328 and Deathguard 44326/44447 each fight the Scourge (Desiccated Magus 44315, Desiccated Spearman 44316, Opengut Behemoth 44562). TDB 8.3.7 has exactly this battle: 181 spawns, every Defender and Deathguard 44326 within 5 yards of a Desiccated. Ours had only 31 of them, with 2 Behemoths for War Machines (6 kills).
+  - **Second battle** (after The Battle Resumes!: Supporting the Troops, Ashes to Ashes, The Farmers' Militia, Val'kyr Incursion, Brother Against Brother, Aradne): the Alliance and the farmers' militia (Provincial Minutemen) against the Forsaken, their Opengut Behemoths 44946 and val'kyr. TDB 8.3.7 has none of it; ours has all of it.
+  - The Desiccated templates carried `UNIT_FLAG_IMMUNE_TO_NPC` (0x200), which 8.3.7 does not, so no soldier could hit them. The Scourge faction is neutral to both armies, and creatures that stand still never start a fight on their own.
+- **Changed** (`sql/fixes/world/2026_11_20_36_andorhal_two_battles.sql`). 8.3.7 data has no phases here; the split and the quests that switch it are our own reading of the quest text:
+  - Phase 314, the first battle: TDB 8.3.7's 181 spawns (735401343-735401523) replace our 31 copies of the same entries, plus our 21 Stickbone Berserkers (The Endless Flow; TDB has none).
+  - Phase 317, the second battle: our dump's 138 spawns, unchanged except the phase. All quest targets kept.
+  - A player sees phase 317 once The Battle Resumes! (27083 Horde, 27197 Alliance) or any second-battle quest is taken, completed or rewarded, otherwise phase 314. Phase 169 stays on, so the rest of the zone is unchanged.
+  - Not phased: the quest givers (Koltira, Thassarian, Jearl Donald, Lindsay Ravensun, Lang Loosegrip), the fires, the towers and the Scourge Invasion spawns.
+  - The Desiccated (and the two second-battle commanders) lose `IMMUNE_TO_NPC`, as in 8.3.7.
+  - Fight starters (our own tuning, the staged-battle pattern): out of combat, soldiers attack the closest enemy within 5 yards (Minutemen: the Forsaken Behemoth within 10). All fighters take no damage from other creatures below 85% health (`flags_extra` 0x400), so the battles go on; players deal full damage.
+- **Status:** untested in game. A character before The Battle Resumes! sees the Scourge battle; the farmers and the val'kyr appear after it.
+- **Pick up:** run the SQL, restart `worldserver`. Needs `staged-npc-battles.patch` (already in the build).
 
 ### World: Theramore dock, floating ship chairs
 - **Found** (2026-11-20, while fixing Ratchet): the same leftover as at Ratchet. The dump has two sniff snapshots of The Lady Mehley (Menethil - Theramore) docked at Theramore, so 18 Wooden Chairs (164759-164767, two copies of the ship's 9) float on the water off the dock. TDB 8.3.7 has none of them, there or on the ship (map 584 has no deck objects in TDB either), and they have no quest role.
