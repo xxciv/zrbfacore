@@ -151,6 +151,7 @@ git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 git apply ../tools-repo/tools/bfa/archaeology.patch
+git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -540,6 +541,16 @@ is made. It also adds `.debug archaeology`. The rest of the files it touches: `S
 (Survey), `Spell.cpp` and `SpellHandler.cpp` (Solve), `Player.cpp/.h`, `UpdateField.h` (a setter for
 the project list), `MiscPackets`, `Opcodes.cpp`, `MiscHandler.cpp`, `CriteriaHandler.cpp` and
 `cs_debug.cpp`, plus `worldserver.conf.dist` (`Archaeology.DailyDigsiteRotation`, see the Archaeology section below).
+
+`expansion-xp-gate.patch` stops experience at the old level caps until the character moves on to the
+next expansion. At 60 a character gets no more experience until they turn in a quest in Outland (or
+Through the Dark Portal), at 70 a quest in Northrend, at 80 one in the Cataclysm zones (Mount Hyjal,
+Vashj'ir, Deepholm, Uldum, Twilight Highlands, Tol Barad), at 85 Pandaria, at 90 Draenor, at 100 the
+Broken Isles and at 110 Kul Tiras or Zandalar. Quests elsewhere still give money, items and
+reputation. The quest that opens the gate pays its own experience, and a quest in a later expansion
+also opens the earlier gates. Leftover experience past the cap is dropped. The player gets a chat
+message when experience locks and when it unlocks. It only touches `Player.cpp/.h` and
+`worldserver.conf.dist` (`ExpansionXpGate.Enable`, default 1; set it to 0 to turn the gate off).
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -1047,6 +1058,7 @@ git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 git apply ../tools-repo/tools/bfa/archaeology.patch
+git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

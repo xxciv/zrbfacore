@@ -3,6 +3,57 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-20 (core: expansion XP gate)
+
+Draft PR, not merged yet. Not tested in game yet.
+
+### Core: no experience at the old level caps until the next expansion is started
+
+- **Asked** (Four, 2026-11-20): when a character hits 60, the vanilla cap, stop all experience until
+  they do the quest that moves them into the next expansion. They can keep questing around Azeroth for
+  rewards, money and reputation only. Once they start the next expansion, experience comes back
+  everywhere (also when they return to Azeroth). The same at every later cap.
+- **Changed:** new `tools/bfa/expansion-xp-gate.patch` (after `archaeology.patch`):
+  - `Player.cpp`: new gate table above `Player::GiveXP`. A gate opens when the character has turned
+    in a quest whose `QuestSortID` is one of the zones, or one of the listed entry quests. Hidden
+    tracking quests (flag `0x400`) never count. A quest in a later expansion also opens the earlier
+    gates.
+
+    | Gate level | Next expansion | Zones (`QuestSortID`) | Extra entry quests |
+    |---|---|---|---|
+    | 60 | Outland | 3483 Hellfire, 3521 Zangarmarsh, 3519 Terokkar, 3518 Nagrand, 3522 Blade's Edge, 3520 Shadowmoon, 3523 Netherstorm, 3703 Shattrath | 9407, 10119 Through the Dark Portal |
+    | 70 | Northrend | 3537 Borean Tundra, 495 Howling Fjord, 65 Dragonblight, 394 Grizzly Hills, 66 Zul'Drak, 3711 Sholazar, 67 Storm Peaks, 210 Icecrown, 4395 Dalaran | none |
+    | 80 | Cataclysm zones | 616 Mount Hyjal, 5146/4815/5144/5145 Vashj'ir, 5042 Deepholm, 5034 Uldum, 4922 Twilight Highlands, 5095/5389 Tol Barad | 14482, 25924 Call of Duty |
+    | 85 | Pandaria | 5785 Jade Forest, 5805 Valley of the Four Winds, 6134 Krasarang, 5841 Kun-Lai, 5842 Townlong, 6138 Dread Wastes, 5840 Vale, 6507 Isle of Thunder, 6757 Timeless Isle | 29548 The Mission, 29690 Into the Mists |
+    | 90 | Draenor | 6720, 6719, 6721, 6662, 6722, 6755, 6723, 7025, 6941 | 34398, 36881 The Dark Portal |
+    | 100 | Broken Isles | 7334 Azsuna, 7558 Val'sharah, 7503 Highmountain, 7541 Stormheim, 7637 Suramar, 7502 Dalaran, 7543 Broken Shore | 40519, 43926 The Legion Returns |
+    | 110 | Kul Tiras / Zandalar | 8567 Tiragarde, 8721 Drustvar, 9042 Stormsong, 8499 Zuldazar, 8500 Nazmir, 8501 Vol'dun, 9653 | 46727 Tides of War, 51443 Mission Statement |
+
+    The Wandering Isle (monk start) and the blood elf and draenei starting zones are not in any list.
+  - `Player::GiveXP`: while the gate for the character's level is closed, experience is ignored (no
+    "You gain" message) and the bar is set to 0. A level-up that reaches a closed gate stops there and
+    drops the leftover experience. Chat message: "Experience locked at level 60. Complete a quest in
+    Outland to keep earning experience...", once per gate per session.
+  - `Player::RewardQuest`: the quest that opens the gate counts before its own experience is paid, so
+    it still gives its experience, with the message "Experience unlocked: welcome to Outland...".
+  - `Player.h`: `GetLockedXpGateLevel`, `SendXpGateMessage` and a small cache (rescanned only when
+    the rewarded quest list changes size).
+  - `worldserver.conf.dist`: `ExpansionXpGate.Enable = 1` (0 turns the gate off). Not needed in your
+    `worldserver.conf`: missing means on.
+- **Status:** applies cleanly after the full chain on upstream 2c13546, `Player.cpp` compiles. Not
+  checked in game yet.
+- **Pick up** (until the PR is merged):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/expansion-xp-gate.patch | git apply && echo "xp gate patch applied"
+  grep -c "zrbfacore: expansion XP gate" src/server/game/Entities/Player/Player.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The grep prints 4. Restart worldserver.
+
 ## 2026-11-20 (Archaeology)
 
 PR #94, merged 2026-11-20. Confirmed in game 2026-11-20 except a rare pet solve and the daily rotation.
