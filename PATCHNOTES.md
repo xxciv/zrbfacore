@@ -83,6 +83,17 @@ Draft PR, not merged yet. Not tested in game yet.
   -12341 -1945, -12364 -1854, -12383 -1818), and they still ran the normal soldier net script. They
   now run the sleeper script (no net, food sack on approach or click). The six lying sleepers also
   get the Zzz aura so they read as asleep.
+- **Fifth fix** (Four, 2026-11-20: food and Tenjiyu work, but the brazier says "You can't do that
+  right now", the skull piles can't be used, and nothing happens after Jin'do's last line):
+  - The player steers the hatchling, which makes the core treat it as charmed, and SAI skips every
+    event of a charmed creature unless the row has `SMART_EVENT_FLAG_WHILE_CHARMED` (0x200). So none of
+    the hatchling's own rows ran while ridden: no credit or trip home after the Shade's speech, no net
+    reset, no water or leaving-Zul'Gurub check, no tiki lighting. Every hatchling row now has the flag.
+  - The Gurubashi Brazier 204111 and Giant Skullpile 204113 make the player cast their spell (80083
+    Burning Twig, 80111 Gurubashi Skull), and a player in the hatchling's seat cannot cast. Their new
+    SAI casts the spell triggered on use (only while Be Raptor is in progress) and skips the default cast.
+  - The "left Zul'Gurub" check now also needs no Gurubashi Soldier within 200 yards, in case part of
+    the courtyard has an area id other than 19 (that check had never run before this fix).
 - **Status:** first version tested and failed (above); Tan'shang's credit and the swap to hatchling 2
   confirmed in game 2026-11-20; the rest not tested yet. If you are
   stuck in the vision (world missing, buff "Zul'Gurub Mind Control" still on), `.unaura 79975` and a
