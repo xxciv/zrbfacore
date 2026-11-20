@@ -78,7 +78,7 @@ Draft PR, not merged yet.
   smart_scripts rewritten: row 0 Spirit Burst 85424 in combat (unchanged); row 1 on Holy Thurible 84375
   hit: kill credit 45166 to the player, now with a 10 s cooldown; row 2 (linked): despawn the soul after
   2 s (it respawns on its normal timer). The say row is gone.
-- **Status:** not tested in game yet.
+- **Status:** CONFIRMED in game by Four 2026-11-20.
 - **Pick up:** SQL only:
 
   ```
