@@ -151,6 +151,7 @@ git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 git apply ../tools-repo/tools/bfa/archaeology.patch
+git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -540,6 +541,13 @@ is made. It also adds `.debug archaeology`. The rest of the files it touches: `S
 (Survey), `Spell.cpp` and `SpellHandler.cpp` (Solve), `Player.cpp/.h`, `UpdateField.h` (a setter for
 the project list), `MiscPackets`, `Opcodes.cpp`, `MiscHandler.cpp`, `CriteriaHandler.cpp` and
 `cs_debug.cpp`, plus `worldserver.conf.dist` (`Archaeology.DailyDigsiteRotation`, see the Archaeology section below).
+
+`wild-pet-zone-level.patch` gives wild battle pets their zone's level. The core picks a wild pet's
+level from its `battlepet_info` range, raised to the zone's `WildBattlePetLevelMin/Max` from
+`AreaTable.db2`. A spawn loaded with its grid is set up before it is added to the world, when it has
+no zone yet, so it skipped the zone range and came out at its `battlepet_info` level (1 for most wild
+pets). Only respawns got the zone's level. It now looks the zone up from the spawn position when the
+creature has none yet. It only touches `WildBattlePet.cpp`.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -1055,6 +1063,7 @@ git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 git apply ../tools-repo/tools/bfa/archaeology.patch
+git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

@@ -1,0 +1,21 @@
+diff --git a/src/server/game/Entities/Creature/WildBattlePet.cpp b/src/server/game/Entities/Creature/WildBattlePet.cpp
+index f06741b..a440baf 100644
+--- a/src/server/game/Entities/Creature/WildBattlePet.cpp
++++ b/src/server/game/Entities/Creature/WildBattlePet.cpp
+@@ -236,7 +236,15 @@ void WildBattlePetMgr::EnableWildBattle(Creature* creature)
+ 
+     uint8 minlevel = temp->minlevel;
+     uint8 maxlevel = temp->maxlevel;
+-    if (AreaTableEntry const* areaInfo = sAreaTableStore.LookupEntry(creature->GetZoneId()))
++    // Spawns loaded with their grid get here from Creature::LoadFromDB before AddToWorld has set
++    // their zone, so GetZoneId() is still 0: look the zone up from the spawn position instead.
++    uint32 zoneId = creature->GetZoneId();
++    if (!zoneId)
++    {
++        uint32 areaId = 0;
++        creature->GetMap()->GetZoneAndAreaId(creature->GetPhaseShift(), zoneId, areaId, creature->GetPositionX(), creature->GetPositionY(), creature->GetPositionZ());
++    }
++    if (AreaTableEntry const* areaInfo = sAreaTableStore.LookupEntry(zoneId))
+     {
+         if (minlevel < areaInfo->WildBattlePetLevelMin)
+             minlevel = areaInfo->WildBattlePetLevelMin;
