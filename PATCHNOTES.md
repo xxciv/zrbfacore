@@ -5,7 +5,8 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-20 (Quest fixes: Be Raptor, Stranglethorn)
 
-Draft PR, not merged yet. Not tested in game yet.
+Merged to `main` with PR #91 on 2026-11-20. Confirmed in game 2026-11-20 (the 8-second Burning Twig hotfix
+was merged before its in-game test).
 
 ### DB: Be Raptor, the Mind Control ritual does nothing; Zul'Gurub courtyard trolls kill passers-by (26775)
 
@@ -120,7 +121,7 @@ Draft PR, not merged yet. Not tested in game yet.
 
 ## 2026-11-19 (Quest fixes: Stranglethorn)
 
-Draft PR, not merged yet. Not tested in game yet.
+Merged to `main` with PR #91 on 2026-11-20. Confirmed in game 2026-11-20.
 
 ### DB: The Mosh'Ogg Bounty offered twice, Robert Rhodes' free flight, Priestess Thaalia's options
 
@@ -140,7 +141,8 @@ Draft PR, not merged yet. Not tested in game yet.
   only while See Raptor 26773 is in progress, option 1 (Mind Control) only while Be Raptor 26775 is.
   Braddok's brain 58225 for Mind Control 26774 drops at 100% from Braddok 42858 (was 76.8%; he is
   the only source and has one spawn).
-- **Status:** not tested in game. The rituals themselves are scripted in the entries below.
+- **Status:** confirmed in game by Four on 2026-11-20 (Mosh'Ogg Bounty offered once, Robert Rhodes'
+  free flight, Thaalia's options shown only for the matching quest). The rituals themselves are scripted in the entries above.
 - **Pick up:** SQL only:
 
   ```
