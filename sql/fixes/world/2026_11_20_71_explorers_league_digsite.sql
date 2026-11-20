@@ -26,6 +26,10 @@ WHERE g.`OptionType`=1 AND g.`OptionNpcFlag`=1
 
 -- 3. Two Colin Swifthammers. 43043 (guid 300879) is the camp's gryphon master. 52646 (guid 307980) is the
 --    level 85 Rise of the Zandalari version (zombie outbreak, quest 29152 Making Contact), sniffed in that
---    event's phase on the exact spot where Dask stands (0.9 yd away). Remove that spawn.
+--    event's phase on the exact spot where Dask stands (0.9 yd away). Remove that spawn and let the
+--    camp's own Colin 43043 offer Making Contact (level 85, so lower players never see it).
 DELETE FROM `creature` WHERE `guid`=307980 AND `id`=52646;
 DELETE FROM `creature_addon` WHERE `guid`=307980;
+UPDATE `creature_template` SET `npcflag`=`npcflag`|2 WHERE `entry`=43043;
+DELETE FROM `creature_queststarter` WHERE `id`=43043 AND `quest`=29152;
+INSERT INTO `creature_queststarter` (`id`,`quest`) VALUES (43043,29152);

@@ -27,7 +27,8 @@ Draft PR, not merged yet. Not tested in game yet.
   - Every "I would like to buy from you." / "Let me browse your goods" option with OptionType 1,
     OptionNpcFlag 1 and no submenu now has OptionType 3, OptionNpcFlag 128 (98 options, Linzi's among
     them, vendors from Classic to BFA).
-  - Spawn 307980 (Colin 52646) removed. Quest 29152 Making Contact has no other starter.
+  - Spawn 307980 (Colin 52646) removed. The camp's Colin 43043 now offers its quest 29152 Making
+    Contact instead (npcflag |= 2; level 85, so lower characters never see it).
 - **Status:** not tested in game yet.
 - **Pick up:** SQL only:
 
