@@ -3,9 +3,33 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-20 (World fixes: Cape of Stranglethorn walk)
+## 2026-11-20 (World fixes: Cape of Stranglethorn, Duskwood, Redridge)
 
-Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below.
+Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four walks Stranglethorn, Duskwood and Redridge and reports what is off.
+
+### World: Redridge Mountains, Lakeshire Inn basement fight club
+- **Found** (Four, 2026-11-20): "the two fighters are not fighting? Should the crowd not be cheering? Everyone is just standing around and the two fighters have a short wander distance." In 8.3.7 the basement is a scene staged by the Keeshan quests. Each spawn carries a "Quest Invis Zone" aura, and players get the matching detect aura from `spell_area` in Lakeshire (area 69), so each player sees the stage that fits their quests. Our DB had none of TDB's four `spell_area` rows, and one mixed set: Keeshan, Big Earl and Dumpy together, 20 citizens with no stage aura, and fighters wandering 3 yards. Dumpy's dump SmartAI also cast and then removed the detect auras on nearby players every second (rows 5-10; their conditions don't exist).
+- **Changed** (`sql/fixes/world/2026_11_20_32_lakeshire_fight_club.sql`):
+  - Our 23 basement spawns replaced by TDB 8.3.7's 51 (same entries, TDB positions and per-spawn addons, all standing still; guids 735401290-735401340):
+    - Before John J. Keeshan 26567 is taken: Dumpy and Big Earl with 20 citizens.
+    - From 26567 until They Drew First Blood 26607 is taken: Keeshan and Big Earl with 21 citizens.
+    - From 26607 until It's Never Over 26616 is taken: Keeshan, a knocked-out Big Earl, and Messner, Jorgensen, Krakauer and Danforth.
+  - TDB's 4 `spell_area` rows for area 69 added (detect spells 80817, 80818, 81202, 82100).
+  - Dumpy `smart_scripts` rows 5-10 removed.
+- **Not changed:** the punches between the fighters and Keeshan's cheer trigger for the crowd. Both come from the dump SmartAI; TDB has no script here. Keeshan 43184 still ends 26567/26607 and starts 26616, visible during those stages. Colonel Troteman 43221 is not touched. Once 26616 is taken the basement is empty, as in 8.3.7.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Duskwood, doubled watchers in Darkshire
+- **Found** (Four, 2026-11-20): "watcher jordan double spawn, watcher fraizer double spawn, watch burkouris double spawn". Compared with TDB 8.3.7: Watcher Jordan 887 had 3 spawns (TDB 1), Watcher Fraizer 2470 had 2 spawns 2.5 yards apart (TDB 1), and Watcher Mocarski 827 had 2 (TDB 1). Watcher Bukouris 494 has 2 spawns 9 yards apart, and TDB has two as well. None of them has a quest role.
+- **Changed** (`sql/fixes/world/2026_11_20_31_duskwood_watcher_doubles.sql`):
+  - Jordan: the pair 170441/170926 removed; 170824 moved to TDB's spot.
+  - Fraizer: 170415 removed.
+  - Mocarski: 170440 removed.
+  - Our own call (TDB has two): Bukouris 170416 removed.
+  - The kept watchers stand still, as in TDB.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Cape of Stranglethorn, Digsite Zombie Survivors
 - **Found** (Four, 2026-11-20, screenshot): a Digsite Zombie 52604 (guid 302821) near Gurubashi Arena and "a bunch of Digsite Zombie Survivors by the Dig Site". Both belong to Bwemba's 4.1 quest Voodoo Zombies (29150 Alliance, 29237 Horde): killing a zombie summons a survivor, which should then leave. Bwemba 52234 has no spawn in our DB or in TDB 8.3.7, so the quest can't be taken, and TDB 8.3.7 has none of these creatures. The 10 survivors at the Explorers' League Digsite are static copies of that summon. Their despawn waits for a `creature_text` line that doesn't exist, so they never leave.
