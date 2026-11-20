@@ -23,6 +23,74 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Pick up:** apply the patch, rebuild and restart `worldserver`. Wild pets get their level when
   their grid loads, so after the restart a Western Plaguelands pet should be 10 or 11.
 
+## 2026-11-20 (Quest fixes: Those That Couldn't Let Go, Uther's Blessing, spell focus objects)
+
+PR #97, merged 2026-11-20. Both quests confirmed in game.
+
+### DB: Uther's Blessing says "Requires Uther's Tomb Statue" inside the tomb (Western Plaguelands)
+- **Found** (Four, 2026-11-20): using the item for Uther's Blessing (27169) anywhere in Uther's Tomb,
+  right at the statue's feet included, says "Requires Uther's Tomb Statue".
+- **Cause:** the item's spell 85752 (kill credit 45194) needs spell focus 1323, the invisible Uther's
+  Tomb Statue object 1323 (guid 19147, 970.9 -1825.4 82.0, 5 yd radius). Its spawntimesecs was -600, and
+  a negative respawn time means the object stays unspawned until a script spawns it. Nothing does.
+- **Changed** (`sql/fixes/world/2026_11_20_78_uthers_blessing.sql`): guid 19147 spawntimesecs -600 -> 300.
+  A spell focus object is never used up, so it now stays.
+- **Status:** CONFIRMED in game by Four 2026-11-20.
+
+### DB: 278 more spell focus objects were never spawned (all zones)
+- **Found** (2026-11-20, while fixing Uther's Blessing): the same negative spawntimesecs is on 278
+  spawns of 155 invisible spell focus objects (type 8, display 0 or 299). These are the "TEMP <place>"
+  markers that quest items need nearby. Examples: TEMP Darrowshire Town Square (Western/Eastern
+  Plaguelands), TEMP Scarlet Crusade Forward Camp and the Northridge Lumber Mill crate (Western
+  Plaguelands), Andorhal Towers, TEMP Burning Troll Hut (Ghostlands), TEMP Legion Antenna and many more
+  in Outland, TEMP Farshire Grain and many more in Northrend. No SmartAI row spawns or respawns any of
+  them, so each of those quest items would say "Requires <place>" at the right spot.
+- **Changed** (`sql/fixes/world/2026_11_20_79_spell_focus_spawns.sql`): spawntimesecs -> its positive
+  value for every type 8 spawn with display 0 or 299 and a negative time. Left alone: the 10 visible
+  focus spawns (Bank, Witherbark Village, Preserved Threshadon Carcass, Earthbinder's Circle, First
+  Burning Blade Pyre), since spawning them would add a visible model.
+- **Status:** same fix as Uther's Blessing, which Four confirmed 2026-11-20; the other markers aren't tested one by one. Any quest item that said "Requires <place>" at the right spot
+  should now work.
+- **Pick up** (both entries above): SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_78_uthers_blessing.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_79_spell_focus_spawns.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+### DB: Holy Thurible counts every time on the same Withdrawn Soul (Western Plaguelands)
+- **Found** (Four, 2026-11-20): in Those That Couldn't Let Go (27168) the Holy Thurible on a Withdrawn
+  Soul 45166 doesn't make the soul go away, so you can use it over and over on the same soul.
+- **Cause:** the soul's hit script (from our dump; TDB 8.3.7 only has its Spirit Burst row) ran credit
+  -> say line 0 -> despawn as one linked chain. The soul has no creature_text, so the say row is dropped
+  when scripts load and the despawn after it never ran. The despawn also targeted the player instead of
+  the soul, and the rows reused id 0.
+- **Changed** (`sql/fixes/world/2026_11_20_77_those_that_couldnt_let_go.sql`): Withdrawn Soul 45166
+  smart_scripts rewritten: row 0 Spirit Burst 85424 in combat (unchanged); row 1 on Holy Thurible 84375
+  hit: kill credit 45166 to the player, now with a 10 s cooldown; row 2 (linked): despawn the soul after
+  2 s (it respawns on its normal timer). The say row is gone.
+- **Status:** CONFIRMED in game by Four 2026-11-20.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_77_those_that_couldnt_let_go.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-20 (Quest fixes: Take Down Tethyr, Rise of the Zandalari, Explorers' League Digsite, vendor options, quest audit)
 
 PR #93, merged 2026-11-20. Digsite, camp doubles and Razorfen Downs confirmed; Tethyr cannon/fight-back
