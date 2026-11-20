@@ -3,6 +3,26 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-20 (pet battles)
+
+### Core: wild battle pets ignore their zone's level
+
+- **Found** (Four, 2026-11-20): a level 1 Blighthawk in Western Plaguelands, where wild pets are
+  level 10 to 11 (`AreaTable.db2` `WildBattlePetLevelMin/Max` for zone 28).
+- **Cause:** `WildBattlePetMgr::EnableWildBattle` picks the level from the pet's `battlepet_info`
+  range, raised to the zone's range looked up by `GetZoneId()`. Spawns loaded with their grid reach it
+  from `Creature::LoadFromDB` before `AddToWorld`, while their zone is still 0, so the zone lookup
+  found nothing and the pet rolled its `battlepet_info` range alone. Most wild pets are 1-1 there
+  (Blighthawk included, since `2026_11_04_50`), so every grid-loaded wild pet was level 1. Only
+  respawned pets got the zone's level. Low zones (1-2) hid it.
+- **Changed:** `tools/bfa/wild-pet-zone-level.patch` (after `zandalari-bwemba-spirit.patch`): when the creature
+  has no zone yet, `EnableWildBattle` looks it up from the spawn position with
+  `Map::GetZoneAndAreaId`, the same lookup `AddToWorld` uses. Only touches `WildBattlePet.cpp`.
+  No SQL.
+- **Status:** confirmed in game by Four (2026-11-20).
+- **Pick up:** apply the patch, rebuild and restart `worldserver`. Wild pets get their level when
+  their grid loads, so after the restart a Western Plaguelands pet should be 10 or 11.
+
 ## 2026-11-20 (Quest fixes: Take Down Tethyr, Rise of the Zandalari, Explorers' League Digsite, vendor options, quest audit)
 
 PR #93, merged 2026-11-20. Digsite, camp doubles and Razorfen Downs confirmed; Tethyr cannon/fight-back
