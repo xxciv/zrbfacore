@@ -23,16 +23,19 @@ Draft PR, not merged yet. Not tested in game yet.
     and the Tiki 204112 / Gurubashi Brazier 204111 / Giant Skullpile 204113 objects. Players only see
     them during the vision; the walk to the instance portal is empty again.
   - Thaalia (SAI 44017 ids 10-27): option 1 -> close, line (our own wording), player immune to NPCs
-    (0x200), Thaalia active, player casts 79975 (phase 235) and teleports to the last elder raptor
+    (0x200), Thaalia becomes active (and stays so: net resets come back through her), player casts 79975 (phase 235) and teleports to the last elder raptor
     reached (objective progress: Tian-kuyi start, Tan'shang, Tenjiyu or Chiyu, spells 80119-80122),
     2.5 s later rides that raptor's hatchling (79952/80123/80124/80125).
   - Hatchlings 42870/42930/42931/42932 (vehicle 928): action bar Dash 44531, then + Eat Through Net
     80022, + Light Tiki Fire 80046, + Drop Skull 80049. SAI: friendly faction 35 and 0x200 on board,
-    active; netted and still in the net after 3 s -> teleport back to the last raptor and a fresh
-    hatchling; in water or leaving the hatchling -> 82399 back to Thaalia (clears 0x200 and phase 235);
+    active; netted and still in the net after 3 s -> teleport back to the last raptor, and Thaalia
+    (data N, guid 183124) gives the fresh hatchling 2.5 s later; in water, leaving the hatchling or
+    the hatchling dying -> the player casts 82399 back to Thaalia (clears 0x200 and phase 235);
     Light Tiki Fire lights the closest tiki within 12 yards.
-  - Gurubashi Soldier 42871: hatchling within 10 yards -> Net 80021 on it. Gurubashi Crusher 42872:
-    within 14 yards -> Ironweave Net 80074 (cannot be bitten through); their Stealth-on-spawn rows are
+  - All courtyard trolls (soldiers, Crushers, workers, behemoths, raptors, bat riders, batlings, the
+    shade, Mandokir) are passive: only the vision script acts. Gurubashi Soldier 42871: hatchling within
+    7 yards -> Net 80021 on it. Gurubashi Crusher 42872: within 9 yards -> Ironweave Net 80074 (cannot
+    be bitten through); their Stealth-on-spawn rows are
     removed (they are the visible blockers). A burning tiki pulls soldiers within 30 yards to it for
     20 s (the closest yells), then they walk back. Six sitting soldiers in the second area sleep (stand
     state 3, guids 317023, 317028, 316944, 317022, 316950, 316942): sneaking up to one with hatchling
@@ -43,16 +46,27 @@ Draft PR, not merged yet. Not tested in game yet.
     and hatchling 3. Options are gated on the quest and objective progress.
   - Bridges: one patrol per bridge (317116 path 3171160, 317110 path 3171100, respawn 8 s); extra
     soldiers 317102, 317092, 317106, 317121, 317112, 317118, 317093, 317108 and all 42927 skull bunny
-    spawns deleted.
+    spawns deleted. Soldier patrol groups (3-4 standing copies in the dump) cut to one soldier (two per
+    tiki guard group), Crusher squads of 5 cut to 2: 26 soldiers and 18 Crushers deleted (50 soldiers
+    and 22 Crushers left).
   - Escape: hatchling 4 within 30 yards of the Shade of the Hexxer 42884 at the portal -> hatchling
     frozen (82646), Jin'do's shade and Mandokir 42941 (who walks up) play their scene, then the escape
     credit (42884) and back to Thaalia. Their lines and the soldiers' fire/slip yells are the original
     ones as quoted on warcraft.wiki.gg (Be Raptor); the food-sack message is our own wording.
   - `spell_target_position` 80121/80124 (raptor 3, next to Tenjiyu). `sql/fixes/world/2026_11_19_71`
     now only replaces Thaalia's text group 0, so rerunning it keeps this line.
-- **Status:** not tested in game. The troll spawns are dump positions (unsniffed), so the vision may be
-  too crowded or too easy; tell me where and I will tune it. If you log out during the vision and come
-  back still in phase 235 (everything else missing), `.unaura 79975` fixes it.
+- **Fix after first test** (Four, 2026-11-19: spotted, chased and netted at once, about 40 trolls on
+  one screen, then "no longer a raptor" but still under Zul'Gurub Mind Control; water did nothing):
+  a hatchling a player controls counts as hostile to the trolls whatever its faction, and this core's
+  `Creature::CanStartAttack` only checks the attacker's immunity flags, so every aggressive troll
+  attacked the level 1 hatchling and killed it; the dead hatchling could not send the player home.
+  The core also despawns a player-owned vehicle the moment its owner leaves it (`Unit::_ExitVehicle`),
+  so the "new hatchling in 2.5 s" step on the old hatchling never ran. Fixed by the passive trolls,
+  the net/sight checks for both hostile and friendly hatchlings, the reset through Thaalia, the player
+  casting the way home, the death safety, and the thinning above.
+- **Status:** the first version was tested and failed (above); this version not tested yet. If you are
+  stuck in the vision (world missing, buff "Zul'Gurub Mind Control" still on), `.unaura 79975` and a
+  relog fix it.
 - **Pick up:** SQL only:
 
   ```
