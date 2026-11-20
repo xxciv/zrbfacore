@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-20 (Archaeology)
 
-Draft PR, not merged yet. Not tested in game yet.
+Draft PR #94, not merged yet. Not tested in game yet.
 
 ### Core: Archaeology never gives dig sites, Survey does nothing, Solve can't complete
 
