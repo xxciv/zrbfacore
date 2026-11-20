@@ -10,7 +10,7 @@ Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four w
 ### World: Theramore dock, floating ship chairs
 - **Found** (2026-11-20, while fixing Ratchet): the same leftover as at Ratchet. The dump has two sniff snapshots of The Lady Mehley (Menethil - Theramore) docked at Theramore, so 18 Wooden Chairs (164759-164767, two copies of the ship's 9) float on the water off the dock. TDB 8.3.7 has none of them, there or on the ship (map 584 has no deck objects in TDB either), and they have no quest role.
 - **Changed** (`sql/fixes/world/2026_11_20_35_theramore_dock_chairs.sql`): the 18 chairs (guids 173730-173747) removed.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-20).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Ratchet and Booty Bay, The Maiden's Fancy leftovers
@@ -22,7 +22,7 @@ Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four w
   - The two static Masker copies and the 9 floating chairs removed. None of them has a quest role, and Masker keeps his gossip on the ship copy (735200074, from `2026_11_12_33`).
   - The ship gets TDB 8.3.7's 9 deck chairs (GO guids 735400105-735400113).
   - The ship also gets the two crewmen that the TDB 7.3.5 crew list in `2026_11_12_33` lacked: Bosun Thunderhorn 25098 (735401341) and Crewman Gearspinner 25096 (735401342). Phase 169 becomes 0, as in `2026_11_12_33`.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-20).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Redridge Mountains, Lakeshire Inn fight club, a real fight both ways
@@ -59,7 +59,7 @@ Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four w
   - Mocarski: 170440 removed.
   - Our own call (TDB has two): Bukouris 170416 removed.
   - The kept watchers stand still, as in TDB.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-20): no doubles.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Cape of Stranglethorn, Digsite Zombie Survivors
@@ -68,7 +68,7 @@ Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four w
   - The 10 static Digsite Zombie Survivors 52870 (guids 307982-307991) removed. No quest needs them: credit comes from killing the zombie, which still summons a survivor.
   - Our own tuning: a survivor summoned by a zombie kill now despawns after 5 seconds (`smart_scripts` 52870 row 0 = force despawn 5000 ms).
 - **Not changed:** the 3 Digsite Zombies at Gurubashi Arena (302820-302822) stay, because they are the quest's kill target. Bwemba's whole quest chain (29100-29238) has no quest giver in 8.3.7 either.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-20): the standing survivors are gone.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ## 2026-11-19 (World fixes: Northern Stranglethorn walk)
@@ -83,14 +83,14 @@ Open in the same draft PR as the 2026-11-18 feedback below. Four walks Northern 
   - 92 missing TDB spawns added (guids 735401198-735401289): Crystal Spine Basilisk 13, Saltscale Forager 11, Saltscale Hunter 10, Skullsplitter Axe Thrower 8, Bloodscalp Hunter 6, Kurzen Medicine Man 6, Murkgill Hunter 6, Saltscale Warrior 5, Bloodscalp Scavenger 4, Skullsplitter Spiritchaser 4, Mosh'Ogg Brute 4, Kurzen Subchief 4, Kurzen Commando 4 (with the creep fix from `2026_11_19_31`), Kurzen Elite 3, Bloodscalp Warrior 3, Saltscale Oracle 1.
   - 362 spawns stand still as in 8.3.7 (`MovementType` 0, `spawndist` 0). Largest groups: Zuuldaian Fetish 40, Venture Co. Geologist 31, Lesser Water Elemental 24, Skullsplitter Hunter 20, Mosh'Ogg Warmonger 15, Kurzen Jungle Fighter 13, Young Stranglethorn Tiger 12, Bloodscalp Scavenger 12.
 - **Not changed:** critters and wild battle pets; spawns linked to events, pools, formations, paths or scripts; anything standing next to a hostile NPC (staged fights); phased spawns; Herald's Stranglethorn quest NPCs (Wulfred 44018, Robert Rhodes 43042, Thaalia 44017 and the raptor ritual creatures 42840, 42842, 42870). One Mosh'Ogg Brute was not added because its 8.3.7 spot is next to a Fort Livingston Adventurer. 332 creatures keep the dump's wander because 8.3.7 has them moving too or has no matching spawn.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-20): troll counts, Gluggl and Roloch.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: stealthed creatures creep instead of floating
 - **Found** (Four, 2026-11-19): "Kurzen Commandos are floating while in stealth. I think this affects most stealthed units". Their addon rows have `bytes1` 0x02000000: byte 3 is the animation tier, and 2 means hover, so the client draws them hovering. The value belongs one byte lower: byte 2 = 0x02 is the "creep" stand flag, the crouched stealth walk. AzerothCore (WotLK) has these creatures at 131072 (0x00020000, creep); TDB 8.3.7 has the shifted value too.
 - **Changed** (`sql/fixes/world/2026_11_19_31_stealthers_creep_not_hover.sql`): byte 3 cleared and creep set on stealthed creatures only (they cast a stealth spell from SmartAI or their aura list, or AzerothCore gives them creep). 16 `creature_template_addon` rows: Defias Night Runner 215, Shadowhide Assassin 579, Shadow Panther 768, Kurzen Commando 938, Fen Creeper 1040, Elder Shadowmaw Panther 1713, Fallenroot Shadowstalker 4798, Theramore Infiltrator 4834, Stonevault Cave Lurker 4850, Razorfen Stalker 6035, Onin MacHammar 6886, Putridus Shadowstalker 11792, Coldmist Stalker 16170, Stonescythe Ambusher 16928, Fenissa the Assassin 22060, Shadowsword Assassin 25484. 14 `creature_addon` rows: Coldmist Stalker 6, Stonescythe Ambusher 4, Daggerfen Assassin 3, Expedition Druid 1.
 - **Not changed:** the other ~170 creatures with the hover value (Val'kyr, Shadow Orbs, proto-drakes, elementals and the like), which are meant to hover.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-20).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Northern Stranglethorn, first notes
@@ -102,7 +102,7 @@ Open in the same draft PR as the 2026-11-18 feedback below. Four walks Northern 
   - The 9 Kurzen Medicine Men stand still (`MovementType` 0, as in 8.3.7).
   - Krazek 302753 (entry 52297) removed.
   - Chillwind Lieutenant 26204 (373403, Stranglethorn), Frigid Lieutenant 26214 (373404, Searing Gorge), Frostwave Lieutenant 26116 (370754, Ashenvale) and Glacial Lieutenant 26215 (373405, Silithus) only appear during the Midsummer Fire Festival (event 1). TDB 8.3.7 has no spawns of them; ours keep their spots.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-20): medicine men, one Krazek, Chillwind Lieutenant.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ## 2026-11-18 (World fixes: feedback on the reviewed zones)
