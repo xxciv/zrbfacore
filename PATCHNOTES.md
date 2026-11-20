@@ -3,6 +3,79 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-20 (Archaeology)
+
+Draft PR, not merged yet. Not tested in game yet.
+
+### Core: Archaeology never gives dig sites, Survey does nothing, Solve can't complete
+
+- **Found** (2026-11-19, while checking the battle pets): learning Archaeology places no dig sites, so
+  Survey never finds one, no research projects show and the Archaeology pets (Fossilized Hatchling,
+  Pterrordax Hatchling, Crawling Claw) can't be made.
+- **Cause:** HavenCore's `src/server/game/Archaeology/` is AshamaneCore's Legion code, commented out
+  ("TODO MERGE") in their 8.0 merge because it used the old update fields. `InitBranch`,
+  `ChangeDigsite`, `AddDigsitesToMap`, `GetDigsite`, `IsCurrentArtifactSpell`, `CompleteArtifact` and the
+  dig site/project load and save were all stubs. On top of that: Survey read the site's race from an
+  empty list (always Night Elf), sites were only set up for Eastern Kingdoms, Kalimdor, Outland and
+  Northrend at the moment the skill was learned, Solve took the fragments while reading the cast packet
+  (before the cast was checked), projects were only handed out for the 9 Cataclysm races and only when
+  fewer than 8 fragments came in, the three archaeology packets were blocked (`STATUS_UNHANDLED`), and
+  the research history reply listed every project twice (empty copies first).
+- **Changed:** new `tools/bfa/archaeology.patch` (last in the chain, after `smartai-passive-escort.patch`):
+  - `ArchaeologyMgr`: loads the 403 `archaeology_digsites` rows with their outline from
+    `QuestPOIPoint.db2` (the site's QuestPOIBlob), the research branches and their projects (project
+    spell must exist), and `archaeology_artifacts` once instead of a query per project.
+  - `ArchaeologyPlayerMgr`, rewritten on `ActivePlayerData::ResearchSites` / `ResearchSiteProgress` /
+    `Research`:
+    - 4 dig sites per continent (maps 0, 1, 530, 571, 870, 1116, 1220), picked at random among the
+      sites whose `minLevel`/`minSkillLevel` you meet. Topped up on login, on learning the skill, on
+      level-up and after every find and solve. Saved in `character_archaeology_digsites` with the
+      current find position and find count.
+    - Survey (`SPELL_EFFECT_SURVEY`): only inside one of your sites (else the client's "You can't use that here" error, SPELL_FAILED_NOT_HERE). The
+      find is rolled inside the site's outline, within 120 yards of you, on dry loaded ground when it
+      can. Further than 8 yards: survey tool pointing at it, red (85+ yards), yellow (35-85), green
+      (under 35). Within 8 yards: the race's find object appears (keystone loot as before), 5-9
+      fragments (Dwarves +1), skill as before (only under 50), and the progress bar updates
+      (`SMSG_ARCHAEOLOGY_SURVERY_CAST`: total finds, finds done, branch, success). After 3 finds (6 on
+      Pandaria, Draenor and the Broken Isles) the site moves elsewhere on the continent.
+    - Projects: a race gets one with its first fragments (any race in ResearchBranch.db2), and on login
+      for races you already have fragments of. A rare you haven't solved yet is picked one time in four,
+      else a common; solved rares only come back if the race has nothing else. Saved in
+      `character_archaeology_branchs`.
+    - Solve: `HandleCastSpellOpcode` checks the keystones offered (at most the project's sockets, 12
+      fragments each for Cataclysm races, 20 for later ones) and that you have the remaining
+      fragments; they are taken only after the artifact item is in your bags (`DoCreateItem`), so a
+      failed cast or a full bag costs nothing. Then: history (first time, count), achievement criteria
+      (`COMPLETE_ARCHAEOLOGY_PROJECTS`), `SMSG_RESEARCH_COMPLETE`, skill +5 (common) / +15 (rare) from
+      SkillLineAbility, and a new project for that race.
+  - `UpdateField.h`: `ModifyDynamicArrayValue`, a setter for an element of an array of dynamic fields
+    (the project list is `Research[0]`; the core had no way to write it).
+  - `CriteriaHandler.cpp`: `SURVEY_GAMEOBJECT` (find object entry) and `CLEAR_DIGSITE` now count.
+  - `Opcodes.cpp`: `SMSG_ARCHAEOLOGY_SURVERY_CAST`, `SMSG_RESEARCH_COMPLETE`, `SMSG_SETUP_RESEARCH_HISTORY`
+    can be sent. `MiscHandler.cpp`: history list no longer doubled. `MiscPackets.cpp`: the history
+    request no longer writes into the client's packet.
+  - `.debug archaeology` (sites on this continent, `all`, `reset`, `go <n>`).
+- **Changed:** `sql/fixes/world/2026_11_20_80_archaeology_survey_tool.sql`: green Survey Tool 204272 was
+  named 'Pointeur de test d'archéologie'; now 'Survey Tool (Green)'.
+- **Not done:** the 47 Kul Tiras and Zandalar dig sites (Zandalari, Drust) aren't in
+  `archaeology_digsites` and have no find object; Legion find objects 246804, 268440, 268451 are empty
+  placeholders in the dump, so Legion sites give fragments without a find to loot. Broken Isles sites
+  don't need their unlock quests here. `archaeology_artifacts` is empty, so every project is open from
+  skill 1.
+- **Status:** every changed file compiles against the full patch chain (GCC 13, not linked); untested in game.
+- **Pick up:** core rebuild (headers in the game library's precompiled header changed, so most of
+  the game library rebuilds), the SQL, then restart:
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8d7v53
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/archaeology.patch | git apply
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_80_archaeology_survey_tool.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-20 (Quest fixes: Be Raptor, Stranglethorn)
 
 Merged to `main` with PR #91 on 2026-11-20. Confirmed in game 2026-11-20 (the 8-second Burning Twig hotfix

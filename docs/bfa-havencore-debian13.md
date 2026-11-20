@@ -150,6 +150,7 @@ git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
 git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
+git apply ../tools-repo/tools/bfa/archaeology.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -526,6 +527,19 @@ because threat on a vehicle's rider goes to the vehicle, and the SmartAI cancell
 entered combat. A passive creature on a waypoint path now keeps going, and when the fight ends it
 carries on to its next waypoint instead of walking back to where the path started. It only touches
 `SmartAI.cpp`.
+
+`archaeology.patch` makes Archaeology work. HavenCore took its archaeology code from AshamaneCore,
+where it was commented out during the 8.0 merge because it used the old update fields, so no character
+ever got a dig site and Survey did nothing. The patch rewrites `src/server/game/Archaeology/` on the
+8.3.7 fields (`ResearchSites`, `ResearchSiteProgress`, `Research`): every continent with dig sites in
+`archaeology_digsites` (Eastern Kingdoms, Kalimdor, Outland, Northrend, Pandaria, Draenor, Broken Isles)
+gets 4 sites, checked against the site outlines in `QuestPOIPoint.db2`; Survey points to a find and
+gives the site's race fragments; a site moves on after 3 finds (6 from Pandaria on); a race gets a
+research project with its first fragments; Solve only takes fragments and keystones once the artifact
+is made. It also adds `.debug archaeology`. The rest of the files it touches: `SpellEffects.cpp`
+(Survey), `Spell.cpp` and `SpellHandler.cpp` (Solve), `Player.cpp/.h`, `UpdateField.h` (a setter for
+the project list), `MiscPackets`, `Opcodes.cpp`, `MiscHandler.cpp`, `CriteriaHandler.cpp` and
+`cs_debug.cpp`.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -932,6 +946,27 @@ no spawn. Their world quests follow the normal rotation; to test one now, use
 `.quest add <quest id>` (Kwint is 52430), then right-click the tamer. If the client shows the talk
 cursor but nothing opens, you are probably more than about 5 yards away (easy underwater).
 
+### Archaeology
+
+Learn Archaeology from an Archaeology trainer (Harrison Jones in Stormwind, Belloc Brightblade in
+Orgrimmar). Each continent then shows 4 dig sites (shovel icons) on the world map. Inside one, cast
+Survey: the telescope points to the find, red is far, yellow closer, green under 35 yards. Standing on
+it, Survey digs it up and gives that race's fragments. Open the Archaeology window from your
+professions to see the race's project and press Solve when you have enough fragments (keystones from
+finds lower the cost).
+
+`.debug archaeology` lists your dig sites on this continent (`all` for every continent), the find
+position and distance, and your projects. `.debug archaeology go <n>` teleports you into site `n` of
+the list, and `.debug archaeology reset` rolls new sites. Fragments for testing:
+`.modify currency <id> <amount>` (Fossil 393, Tol'vir 401, Dwarf 384, Night Elf 394, Troll 385).
+
+The Cataclysm pets are rare projects: Fossilized Hatchling and Pterrordax Hatchling (Fossil),
+Crawling Claw (Tol'vir, from the Mummified Monkey Paw). A rare that you haven't solved yet comes up
+one time in four when a race gets a new project.
+
+Run `sql/fixes/world/2026_11_20_80_archaeology_survey_tool.sql` once for the green survey tool's
+name.
+
 ## 10. Updating
 
 ```sh
@@ -1002,6 +1037,7 @@ git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
 git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
+git apply ../tools-repo/tools/bfa/archaeology.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
