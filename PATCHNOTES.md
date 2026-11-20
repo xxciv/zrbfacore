@@ -3,6 +3,19 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-20 (World fixes: Cape of Stranglethorn walk)
+
+Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below.
+
+### World: Cape of Stranglethorn, Digsite Zombie Survivors
+- **Found** (Four, 2026-11-20, screenshot): a Digsite Zombie 52604 (guid 302821) near Gurubashi Arena and "a bunch of Digsite Zombie Survivors by the Dig Site". Both belong to Bwemba's 4.1 quest Voodoo Zombies (29150 Alliance, 29237 Horde): killing a zombie summons a survivor, which should then leave. Bwemba 52234 has no spawn in our DB or in TDB 8.3.7, so the quest can't be taken, and TDB 8.3.7 has none of these creatures. The 10 survivors at the Explorers' League Digsite are static copies of that summon. Their despawn waits for a `creature_text` line that doesn't exist, so they never leave.
+- **Changed** (`sql/fixes/world/2026_11_20_30_digsite_zombie_survivors.sql`):
+  - The 10 static Digsite Zombie Survivors 52870 (guids 307982-307991) removed. No quest needs them: credit comes from killing the zombie, which still summons a survivor.
+  - Our own tuning: a survivor summoned by a zombie kill now despawns after 5 seconds (`smart_scripts` 52870 row 0 = force despawn 5000 ms).
+- **Not changed:** the 3 Digsite Zombies at Gurubashi Arena (302820-302822) stay, because they are the quest's kill target. Bwemba's whole quest chain (29100-29238) has no quest giver in 8.3.7 either.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-19 (World fixes: Northern Stranglethorn walk)
 
 Open in the same draft PR as the 2026-11-18 feedback below. Four walks Northern Stranglethorn and reports what is off.
