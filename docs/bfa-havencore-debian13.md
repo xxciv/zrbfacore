@@ -153,6 +153,7 @@ git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 git apply ../tools-repo/tools/bfa/archaeology.patch
 git apply ../tools-repo/tools/bfa/zandalari-bwemba-spirit.patch
 git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
+git apply ../tools-repo/tools/bfa/stratholme.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -556,6 +557,17 @@ level from its `battlepet_info` range, raised to the zone's `WildBattlePetLevelM
 no zone yet, so it skipped the zone range and came out at its `battlepet_info` level (1 for most wild
 pets). Only respawns got the zone's level. It now looks the zone up from the spawn position when the
 creature has none yet. It only touches `WildBattlePet.cpp`.
+
+`stratholme.patch` gives Stratholme its dungeon scenario. Since Cataclysm map 329 holds two dungeons,
+Main Gate (scenario 636, ends with Balnazzar) and Service Entrance (scenario 637, ends with Lord Aurius
+Rivendare), and the `scenarios` table can link only one scenario to a map, so it linked none and
+Stratholme had no objectives at all. The instance now picks the scenario when the first player enters:
+the dungeon the group queued for in the Dungeon Finder, otherwise the entrance the player came in by.
+The choice is saved with the instance. It also keeps the Brotherhood of the Light questgivers in
+Balnazzar's hall (Crusade Commander Eligor Dawnbringer, Master Craftsman Wilhelm, Packmaster
+Stonebruiser) hidden until Balnazzar dies; their copies at the entrance stay. It touches
+`ScenarioMgr.h/.cpp` (a function that creates a given scenario for an instance) and the Stratholme
+instance script.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -1073,6 +1085,7 @@ git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 git apply ../tools-repo/tools/bfa/archaeology.patch
 git apply ../tools-repo/tools/bfa/zandalari-bwemba-spirit.patch
 git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
+git apply ../tools-repo/tools/bfa/stratholme.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -1171,6 +1184,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_13_04_dire_maul_slipkik_trap.sql` | Dire Maul, Gordok Commons: repairing the Broken Trap (quest A Broken Trap, now repeatable) makes Guard Slip'kik walk into the Fixed Trap and freeze, so you can walk past him |
 | `2026_11_13_05_dire_maul_ogre_suit_quests.sql` | Dire Maul, Gordok Commons: Knot Thimblejack offers the repeatable The Gordok Ogre Suit only after the first one is done, instead of both at once |
 | `2026_11_13_06_dire_maul_gordok_tribute.sql` | Dire Maul, Gordok Commons: the tribute run ending. King Gordok's death brings in Mizzle the Crafty and makes a living Cho'Rush stand down; Mizzle crowns you and gives the Gordok Tribute once, with one extra roll per guard left alive (needs `dire-maul-north.patch`) |
+| `2026_11_20_00_stratholme_main_gate.sql` | Stratholme, Main Gate: the Argent Crusaders fight the Scourge in the streets as a backdrop (nobody dies, needs `staged-npc-battles.patch`), Ravaged Cadavers no longer permanently stunned, 29 patrols and 24 wanderers |
 | `2026_11_14_70_guild_vendor_locks.sql` | Guild vendors: all 12 sell the BFA guild reward list (Dalaran and Shattrath sell both factions' items) and lock each item like the guild Rewards tab: guild reputation rank + guild achievements + faction. Removes the dead 'Guild Level' locks (needs `guild-progression.patch`; backups `zr_guild_vendor_backup_npc_vendor` / `zr_guild_vendor_backup_conditions`) |
 | `2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` | 854 old-world NPCs that only meleed get their SmartAI scripts from TDB 7.3.5 (casts, gossip and quest events); Ghostclaw Lynx Rake verified in game 2026-11-12 |
 | `2026_11_12_31_tdb735_patrols.sql` | 733 open-world NPCs that stood still walk their TDB 7.3.5 patrol paths, 8 followers in formation (Orgrimmar Grunts verified in game 2026-11-12) |

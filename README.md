@@ -144,6 +144,9 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   phased ship (the Ship to Vashj'ir) no longer shows to everyone each time it crosses to another
   map, and a ship never disappears under the player riding it. Needs
   `sql/fixes/world/2026_11_12_40_vashjir_ship_quest_phase.sql`.
+- [`tools/bfa/stratholme.patch`](tools/bfa/stratholme.patch): Stratholme gets its dungeon scenario
+  (Main Gate or Service Entrance, picked from the Dungeon Finder queue or the entrance used), and the
+  Brotherhood of the Light questgivers in Balnazzar's hall appear when he dies.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.

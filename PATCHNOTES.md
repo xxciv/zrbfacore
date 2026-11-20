@@ -3,6 +3,64 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-20 (Stratholme, Main Gate)
+
+### Core: Stratholme had no dungeon scenario
+
+- **Found** (survey, 2026-11-20): map 329 is two dungeons since Cataclysm, Main Gate (Dungeon Finder 40,
+  scenario 636: Balnazzar, plus bonus objectives for The Unforgiven, Hearthsinger Forresten, Timmy the
+  Cruel, Postmaster Malown, Commander Malor, Willey Hopebreaker and Instructor Galford) and Service
+  Entrance (274, scenario 637). The `scenarios` table can link only one scenario per map and difficulty,
+  so it had no row for 329 and Stratholme ran without any scenario (nothing for `.debug scenario`).
+  `ScenarioMgr::CreateInstanceScenarioByID` exists but always returns nothing (its last line is
+  commented out).
+- **Changed:** new `tools/bfa/stratholme.patch` (after `wild-pet-zone-level.patch`):
+  - `ScenarioMgr::CreateInstanceScenarioForMap(Map*, scenarioId)` creates a given scenario for an
+    instance (`ScenarioMgr.h/.cpp`).
+  - `instance_stratholme.cpp`: when the first player enters, the instance picks Main Gate or Service
+    Entrance from the group's Dungeon Finder dungeon (40 / 274), else from the nearer entrance
+    (front gate 3393, -3380 or back gate 3591, -3643), saves the choice with the instance (save data
+    gets two more numbers; older saves pick again) and creates scenario 636 or 637.
+  - The Brotherhood of the Light questgivers standing in Balnazzar's hall (Crusade Commander Eligor
+    Dawnbringer 45200, Master Craftsman Wilhelm 45201, Packmaster Stonebruiser 45323, the copies north
+    of y -3364) stay hidden, without gossip or quests, until Balnazzar 10813 dies, as in Pandaria
+    5.4.8. Their copies at the entrance are unchanged, so every quest stays available there.
+  - Compiles against the current patch chain.
+- **Status:** not tested in game yet.
+- **Pick up:** apply the patch, rebuild, restart `worldserver`.
+
+### DB: Stratholme Main Gate, crusaders vs Scourge, Ravaged Cadavers, movement
+
+- **Found** (survey, 2026-11-20):
+  - 54 Argent Crusaders 45346 stand on top of the Scourge in the Main Gate streets (0-3 yards apart).
+    Since Cataclysm they fight the undead there as a backdrop (Pandaria 5.4.8 gives them a script that
+    attacks the nearest one and deals no damage). Here they have no script: two units that both stand
+    still never notice each other, and a fight that did start (a patrol walking by) was real, so
+    crusaders or Scourge died.
+  - Ravaged Cadaver 10381: `unit_flags` 294976 includes `UNIT_FLAG_STUNNED` (0x40000), so the 15
+    cadavers never fight back (same fault as Guard Slip'kik in Dire Maul). Pandaria 5.4.8 has 32832,
+    AzerothCore 64.
+  - Almost every mob in the wing stands still.
+  - Overspawn check: the Main Gate packs match Pandaria 5.4.8 (400 creatures here, 404 there, same
+    guids); AzerothCore has fewer because the 8.x layout added skeletons. Nothing removed.
+- **Changed** (`sql/fixes/world/2026_11_20_00_stratholme_main_gate.sql`):
+  - Our staged battle mechanism (`staged-npc-battles.patch`, `flags_extra` 0x400: no damage from other
+    creatures below 85% health) on both Argent Crusader templates (45346, and the Service Entrance's
+    mounted 45456) and 20 Scourge trash templates (10381, 10382, 10383, 10387, 10390, 10391, 10411,
+    10414, 10418-10426, 11043, 11120, 42975). Players and their pets do full damage, so a Scourge mob
+    pulled out of a fight has at least 85% health.
+  - Argent Crusader 45346 `smart_scripts` ids 0-11: out of combat, every 2-4 seconds, attack the
+    closest Risen Guardsman, Skeletal Guardian, Plague Ghoul, Risen Initiate, Risen Gallant, Risen
+    Priest, Risen Conjuror, Risen Defender, Risen Sorcerer, Skeletal Berserker, Mangled Cadaver or Risen
+    Hammersmith within 8 yards. 23 crusaders have none within 8 yards and stand guard.
+  - Ravaged Cadaver 10381 `unit_flags` &= ~0x40000.
+  - Movement: 26 Pandaria 5.4.8 patrol paths on the same guids (citizens' ghosts, Vengeful Phantoms,
+    cadavers, skeletons, a Risen Gallant, a Risen Monk, the Risen Hammersmith) and 3 AzerothCore patrols
+    (two Risen Monks, a Risen Guardsman), paths 329000001-329000029; 24 skeletons and cadavers wander
+    (AzerothCore radius, at most 5 yards). Bosses, crusaders, questgivers and Fras Siabi are left alone.
+- **Status:** not tested in game yet. The SQL runs cleanly twice in a row on our copy of the world DB.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-20 (pet battles)
 
 ### Core: wild battle pets ignore their zone's level
