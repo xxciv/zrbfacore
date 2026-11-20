@@ -3,9 +3,41 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-20 (Quest fixes: Rise of the Zandalari, Explorers' League Digsite, vendor options, quest audit)
+## 2026-11-20 (Quest fixes: Take Down Tethyr, Rise of the Zandalari, Explorers' League Digsite, vendor options, quest audit)
 
 Draft PR, not merged yet. Not tested in game yet.
+
+### DB: Take Down Tethyr! can't be done (Theramore, Dustwallow Marsh)
+- **Found** (Four on Wayfarer's Theramore walk, 2026-11-20): Tethyr idles at the Theramore docks and
+  Take Down Tethyr! 27222 (Major Mills 23905) can't be done.
+- **Cause:** the quest has no objectives; an event completes it. Major Mills 23905 and Tethyr 23899 had
+  no script at all. TDB 8.3.7 has the event but keys it on the old quest id 11198 and on a Mills guid
+  that doesn't exist. Without SpecialFlags 2 a quest with no objectives also completes the moment it's
+  accepted. The Tethyr at the docks (guid 307657) and a wandering marksman (guid 307658) are leftover
+  summons from a sniff; TDB has neither.
+- **Changed** (`sql/fixes/world/2026_11_20_75_take_down_tethyr.sql`):
+  - TDB's event on 27222 and our Mills (guid 255200). Accept: Mills calls 12 Theramore Marksmen and his
+    lines play; Tethyr swims in from the sea to the docks. The marksmen shoot him. Each shot from one of
+    the three Cove Cannons 186432 (usable while you have the quest) now takes 10% of his health (spell
+    42576; TDB only cast a 62 damage Death Blast here).
+  - Tethyr dies: Mills says "We did it! We've defeated Tethyr!" and completes the quest for players
+    within 100 yd; the marksmen fire fireworks and leave. Five marksmen dead: the quest fails for
+    players within 90 yd, the marksmen and Tethyr despawn, and you can take it again.
+  - 27222 SpecialFlags |= 2 (event). Tethyr faction 7 -> 1771 (TDB, the marksmen are 1770).
+  - Removed the leftover static Tethyr (307657) and marksman (307658). Neither starts, ends or is the
+    target of a quest; the quest's Tethyr is the one the event summons.
+- **Status:** not tested in game yet. Runs clean (twice) on my copy of the DB.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_75_take_down_tethyr.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
 
 ### DB: Doubled Lieutenant Doren and Nesingwary camp NPCs (Northern Stranglethorn)
 - **Found** (Four, 2026-11-20, chose "Remove the named copies"): the dump has the 4.1 (Rise of the
