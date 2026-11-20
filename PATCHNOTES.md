@@ -73,6 +73,11 @@ Draft PR, not merged yet. Not tested in game yet.
   own cast of 82399 runs while the core is still taking him out of the hatchling, and that teleport is
   lost. Leaving now tells Thaalia (data 9), who makes the player cast 82399 and clears the 0x200 flag
   half a second later.
+- **Third fix** (Four, 2026-11-20: no way to get the Raptor Food Pouch for Tenjiyu): the sleeping
+  soldiers only handed the sack over when hatchling 2 walked within 5 yards, and only after the sight
+  check fired. Each of the six sleepers (one near -12222 -1900, two at -12246 -1944, three
+  at -12186 -1958) now also gives it when clicked (the soldiers' existing spellclick 80603 now fires
+  `SMART_EVENT_ON_SPELLCLICK`), once, only while Be Raptor is in progress and the player has no pouch.
 - **Status:** first version tested and failed (above); Tan'shang's credit and the swap to hatchling 2
   confirmed in game 2026-11-20; the rest not tested yet. If you are
   stuck in the vision (world missing, buff "Zul'Gurub Mind Control" still on), `.unaura 79975` and a
