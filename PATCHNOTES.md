@@ -31,7 +31,8 @@ Draft PR, not merged yet. Not tested in game yet.
     active; netted and still in the net after 3 s -> teleport back to the last raptor, and Thaalia
     (data N, guid 183124) gives the fresh hatchling 2.5 s later; in water, leaving the hatchling or
     the hatchling dying -> the player casts 82399 back to Thaalia (clears 0x200 and phase 235);
-    Light Tiki Fire lights the closest tiki within 12 yards.
+    Light Tiki Fire lights the closest tiki within 12 yards; leaving Zul'Gurub (area 19) also ends the
+    vision (Four ran out of the courtyard into an empty Stranglethorn during the first test).
   - All courtyard trolls (soldiers, Crushers, workers, behemoths, raptors, bat riders, batlings, the
     shade, Mandokir) are passive: only the vision script acts. Gurubashi Soldier 42871: hatchling within
     7 yards -> Net 80021 on it. Gurubashi Crusher 42872: within 9 yards -> Ironweave Net 80074 (cannot
