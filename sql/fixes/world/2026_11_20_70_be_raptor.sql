@@ -1,0 +1,327 @@
+-- Be Raptor (26775, Northern Stranglethorn): Priestess Thaalia 44017's "I am ready for the Mind Control
+-- ritual" did nothing, and the Zul'Gurub courtyard trolls (level 31 soldiers, level 81-82 builders) stood
+-- in the normal world and killed anyone walking to the instance portal.
+--
+-- Built from the game data and the warcraft.wiki.gg walkthrough:
+--   79975 Zul'Gurub Mind Control (phase 235), 80119-80122 Be Raptor: Teleport In 1-4,
+--   79952/80123-80125 Be Raptor: Summon Raptor 1-4 (Captured Lashtail Hatchling 42870/42930/42931/42932,
+--   vehicle 928), 80021 Net, 80074 Ironweave Net, 80022 Eat Through Net, 80046 Light Tiki Fire,
+--   80049 Drop Skull (summons skull 204114 + Zul'Gurub Skull Bunny 42927), 82646 Freeze Hatchling,
+--   82399 Teleport Out A (back to Thaalia, removes 79975). Braziers 204111 / Giant Skullpiles 204113 cast
+--   80083 / 80111 on use (Burning Twig / Gurubashi Skull items).
+--
+-- Flow: Thaalia's option -> the player (immune to NPCs, phase 235) is teleported to the last elder raptor
+-- reached (objective progress) and rides a hatchling. Soldiers within 10 yards net it (Ironweave Net from
+-- Crushers within 14); still netted after 3 s -> back to the last raptor. Tan'shang 42881 teaches Eat
+-- Through Net (hatchling 2), Tenjiyu 42882 wants a food sack from a sleeping soldier (sneak up to one) and
+-- teaches Light Tiki Fire (hatchling 3; a burning tiki pulls the nearby guards away for 20 s), Chiyu 42883
+-- teaches Drop Skull (hatchling 4; a soldier who steps on a dropped skull slips into the lake and comes
+-- back 8 s later). At the portal Jin'do's shade and Mandokir catch the hatchling, then the escape credit
+-- (42884) and back to Thaalia. Water also ends the vision; talk to Thaalia again to resume.
+
+-- 1. The Zul'Gurub courtyard trolls belong to the Mind Control vision (phase 235, Zul'Gurub Mind Control 79975).
+UPDATE `creature` SET `PhaseId`=235, `phaseGroup`=0 WHERE `map`=0 AND `position_x` BETWEEN -12420 AND -11750 AND `position_y` BETWEEN -2000 AND -1200 AND `id` IN (42837,42825,42838,42834,42871,42872,42922,43351,42884,42941,42888,42881,42882,42883);
+UPDATE `gameobject` SET `PhaseId`=235, `phaseGroup`=0 WHERE `map`=0 AND `id` IN (204111,204112,204113);
+
+-- 2. Spawn clean-up: dropped-skull bunnies left in the dump (soldiers would slip on them forever) and the
+--    extra soldiers standing on the two bridges (one patrol per bridge).
+DELETE FROM `creature` WHERE `id`=42927;
+DELETE FROM `creature` WHERE `guid` IN (317102,317092,317106,317121,317112,317118,317093,317108);
+DELETE FROM `creature_addon` WHERE `guid` IN (317102,317092,317106,317121,317112,317118,317093,317108);
+UPDATE `creature` SET `MovementType`=2, `spawndist`=0, `spawntimesecs`=8 WHERE `guid` IN (317116,317110);
+UPDATE `creature` SET `MovementType`=0, `spawndist`=0 WHERE `guid`=317114; -- Shade of the Hexxer stays at the portal
+DELETE FROM `creature_addon` WHERE `guid` IN (317116,317110);
+INSERT INTO `creature_addon` (`guid`,`path_id`,`bytes1`) VALUES (317116,3171160,0),(317110,3171100,0);
+DELETE FROM `waypoint_data` WHERE `id` IN (3171160,3171100);
+INSERT INTO `waypoint_data` (`id`,`point`,`position_x`,`position_y`,`position_z`,`orientation`,`delay`,`move_type`) VALUES
+(3171160,1,-11946.6,-1606.3,35.46,0,3000,0),
+(3171160,2,-11945.4,-1590.1,34.14,0,0,0),
+(3171160,3,-11943.1,-1572.4,38.85,0,3000,0),
+(3171160,4,-11945.4,-1590.1,34.14,0,0,0),
+(3171100,1,-11937.3,-1517.1,41.79,0,3000,0),
+(3171100,2,-11930.2,-1489.8,32.03,0,0,0),
+(3171100,3,-11922.5,-1455.1,38.43,0,3000,0),
+(3171100,4,-11930.2,-1489.8,32.03,0,0,0);
+-- sleeping soldiers (food for Tenjiyu): stand state 3
+DELETE FROM `creature_addon` WHERE `guid` IN (317023,317028,316944,317022,316950,316942);
+INSERT INTO `creature_addon` (`guid`,`bytes1`) VALUES (317023,3),(317028,3),(316944,3),(317022,3),(316950,3),(316942,3);
+
+-- 3. Missing teleport/summon destinations for raptor 3 (Tenjiyu).
+DELETE FROM `spell_target_position` WHERE `ID` IN (80121,80124);
+INSERT INTO `spell_target_position` (`ID`,`EffectIndex`,`MapID`,`PositionX`,`PositionY`,`PositionZ`,`VerifiedBuild`) VALUES
+(80121,0,0,-12239.8,-1820.3,129.5,0),(80124,0,0,-12239.8,-1820.3,129.5,0);
+
+-- 4. Hatchling action bars: Dash, then one more skill per elder raptor.
+UPDATE `creature_template` SET `spell1`=44531,`spell2`=0,`spell3`=0,`spell4`=0 WHERE `entry`=42870;
+UPDATE `creature_template` SET `spell1`=44531,`spell2`=80022,`spell3`=0,`spell4`=0 WHERE `entry`=42930;
+UPDATE `creature_template` SET `spell1`=44531,`spell2`=80022,`spell3`=80046,`spell4`=0 WHERE `entry`=42931;
+UPDATE `creature_template` SET `spell1`=44531,`spell2`=80022,`spell3`=80046,`spell4`=80049 WHERE `entry`=42932;
+UPDATE `creature_template` SET `AIName`='SmartAI' WHERE `entry` IN (42870,42871,42872,42881,42882,42883,42884,42922,42927,42930,42931,42932,42941,44017);
+
+-- 5. Texts. Jin'do, Mandokir and the soldiers' lines are the original ones as quoted on warcraft.wiki.gg
+--    (Be Raptor); Thaalia's line and the food-sack message are our own wording.
+DELETE FROM `creature_text` WHERE (`CreatureID`=44017 AND `GroupID`=1) OR `CreatureID` IN (42871,42884,42941);
+INSERT INTO `creature_text` (`CreatureID`,`GroupID`,`ID`,`Text`,`Type`,`Language`,`Probability`,`Emote`,`Duration`,`Sound`,`BroadcastTextId`,`TextRange`,`comment`) VALUES
+(44017,1,0,'Close your eyes, $n. Priestess sends your mind into the hatchling now. Help her escape, yes.',12,0,100,0,0,0,0,0,'Be Raptor'),
+(42871,0,0,'Someone been burnin'' my tiki!',14,0,100,0,0,0,0,0,'Be Raptor'),
+(42871,0,1,'It''s a fire! Hurry up mon!',14,0,100,0,0,0,0,0,'Be Raptor'),
+(42871,0,2,'Get over here, bruddas, quick!',14,0,100,0,0,0,0,0,'Be Raptor'),
+(42871,1,0,'Ouch, mon! I be trippin''!',14,0,100,0,0,0,0,0,'Be Raptor'),
+(42871,1,1,'Who left this here, mon? Wooaahh...',14,0,100,0,0,0,0,0,'Be Raptor'),
+(42871,1,2,'Must...regain...balance...mon...',14,0,100,0,0,0,0,0,'Be Raptor'),
+(42871,1,3,'Aaaaahhh!',14,0,100,0,0,0,0,0,'Be Raptor'),
+(42871,2,0,'You snatch a sack of raptor food from the sleeping troll.',42,0,100,0,0,0,0,0,'Be Raptor'),
+(42884,0,0,'Where you goin'', little one?',12,0,100,0,0,0,0,0,'Be Raptor'),
+(42884,1,0,'You tryin'' to escape from Zul''Gurub?',12,0,100,0,0,0,0,0,'Be Raptor'),
+(42884,2,0,'Ain''t NO ONE gonna escape Zul''Gurub! Not with Jin''do in charge!',14,0,100,0,0,0,0,0,'Be Raptor'),
+(42884,3,0,'You''re lucky I don''t kill ya right now... but I got bigger plans for ya.',12,0,100,0,0,0,0,0,'Be Raptor'),
+(42884,4,0,'Ya see... to summon Hakkar, I need Mandokir. And Mandokir, he needs you.',12,0,100,0,0,0,0,0,'Be Raptor'),
+(42884,5,0,'Bloodlord, you gonna take better care of your possessions?',12,0,100,0,0,0,0,0,'Be Raptor'),
+(42884,6,0,'Good, Good. And you... yes, you... the meddling worm inside dat Mind Control spell. Don''t think Jin''do can''t see you.',12,0,100,0,0,0,0,0,'Be Raptor'),
+(42884,7,0,'Whenever you get the GUTS to come back here, you better be ready. ''Cause Jin''do''s got a surprise for you...',14,0,100,0,0,0,0,0,'Be Raptor'),
+(42941,0,0,'Hello, Ohgan''aka.',12,0,100,0,0,0,0,0,'Be Raptor'),
+(42941,1,0,'Oh yeah, Jin''do. We gonna take REAL good care of Ohgan''aka.',12,0,100,0,0,0,0,0,'Be Raptor'),
+(42941,2,0,'I got a new cage built up, and we got plenty of ways to... teach her not to escape again.',12,0,100,0,0,0,0,0,'Be Raptor');
+
+-- 6. SmartAI.
+DELETE FROM `smart_scripts` WHERE `source_type`=0 AND `entryorguid` IN (42870,42930,42931,42932,42881,42882,42883,42922,42927,42884,42941,-317023,-317028,-316944,-317022,-316950,-316942);
+DELETE FROM `smart_scripts` WHERE `source_type`=0 AND `entryorguid`=44017 AND `id` BETWEEN 10 AND 39;
+DELETE FROM `smart_scripts` WHERE `source_type`=0 AND `entryorguid` IN (42871,42872) AND `id` >= 10;
+DELETE FROM `smart_scripts` WHERE `source_type`=0 AND `entryorguid`=42872 AND `id` IN (0,1); -- crushers cast Stealth on spawn/evade: they are the visible blockers
+INSERT INTO `smart_scripts` (`entryorguid`,`source_type`,`id`,`link`,`event_type`,`event_phase_mask`,`event_chance`,`event_flags`,`event_param1`,`event_param2`,`event_param3`,`event_param4`,`event_param_string`,`action_type`,`action_param1`,`action_param2`,`action_param3`,`action_param4`,`action_param5`,`action_param6`,`target_type`,`target_param1`,`target_param2`,`target_param3`,`target_x`,`target_y`,`target_z`,`target_o`,`comment`) VALUES
+(42870,0,0,1,27,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Player boarded - Phase 1 (riding)'),
+(42870,0,1,2,61,0,100,0,0,0,0,0,'',2,35,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Linked - Friendly faction'),
+(42870,0,2,3,61,0,100,0,0,0,0,0,'',18,512,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Linked - Immune to NPCs'),
+(42870,0,3,0,61,0,100,0,0,0,0,0,'',48,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Linked - Active (keeps running when the player is teleported)'),
+(42870,0,4,5,28,9,100,0,0,0,0,0,'',19,512,0,0,0,0,0,7,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Player left (riding/escape) - Clear their NPC immunity'),
+(42870,0,5,6,61,0,100,0,0,0,0,0,'',11,82399,2,0,0,0,0,7,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Linked - Send them back to Thaalia'),
+(42870,0,6,0,61,0,100,0,0,0,0,0,'',41,1000,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Linked - Despawn'),
+(42870,0,7,0,28,2,100,0,0,0,0,0,'',41,500,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Player left for the next raptor - Despawn'),
+(42870,0,8,0,38,0,100,0,1,1,0,0,'',22,2,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Data 1 (raptor taught a skill) - Phase 2 (swap)'),
+(42870,0,9,0,38,1,100,0,2,1,0,0,'',67,1,3000,3000,0,0,100,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Data 2 (netted) - Check the net in 3 s'),
+(42870,0,10,11,59,1,100,0,1,0,0,0,'',22,3,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Timed 1, still netted - Phase 3 (caught)'),
+(42870,0,11,12,61,0,100,0,0,0,0,0,'',86,80119,2,23,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Linked - Player casts Be Raptor: Teleport In 1 (last raptor)'),
+(42870,0,12,0,61,0,100,0,0,0,0,0,'',67,2,2500,2500,0,0,100,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Linked - New hatchling in 2.5 s'),
+(42870,0,13,14,59,0,100,0,2,0,0,0,'',86,79952,2,23,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Timed 2 - Player casts Be Raptor: Summon Raptor 1 (rides it)'),
+(42870,0,14,0,61,0,100,0,0,0,0,0,'',41,1000,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Linked - Despawn'),
+(42870,0,15,16,38,0,100,0,3,1,0,0,'',33,42884,0,0,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Data 3 (Jin''do is done) - Escape credit'),
+(42870,0,16,0,61,0,100,0,0,0,0,0,'',11,82399,2,0,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Linked - Send the player back to Thaalia'),
+(42870,0,17,18,38,0,100,0,4,1,0,0,'',22,4,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Data 4 (caught at the portal) - Phase 4 (scene)'),
+(42870,0,18,0,61,0,100,0,0,0,0,0,'',75,82646,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Linked - Be Raptor: Freeze Hatchling'),
+(42870,0,19,0,1,1,100,0,1000,1000,1000,1000,'',11,82399,2,0,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 1 - In water - Mind Control ends, back to Thaalia'),
+(42870,0,20,0,8,0,100,0,80046,0,0,0,'',45,1,1,0,0,0,0,19,42922,12,0,0,0,0,0,'Captured Lashtail Hatchling 1 - Light Tiki Fire - Light the closest Zul''Gurub Tiki'),
+(42930,0,0,1,27,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Player boarded - Phase 1 (riding)'),
+(42930,0,1,2,61,0,100,0,0,0,0,0,'',2,35,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Linked - Friendly faction'),
+(42930,0,2,3,61,0,100,0,0,0,0,0,'',18,512,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Linked - Immune to NPCs'),
+(42930,0,3,0,61,0,100,0,0,0,0,0,'',48,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Linked - Active (keeps running when the player is teleported)'),
+(42930,0,4,5,28,9,100,0,0,0,0,0,'',19,512,0,0,0,0,0,7,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Player left (riding/escape) - Clear their NPC immunity'),
+(42930,0,5,6,61,0,100,0,0,0,0,0,'',11,82399,2,0,0,0,0,7,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Linked - Send them back to Thaalia'),
+(42930,0,6,0,61,0,100,0,0,0,0,0,'',41,1000,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Linked - Despawn'),
+(42930,0,7,0,28,2,100,0,0,0,0,0,'',41,500,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Player left for the next raptor - Despawn'),
+(42930,0,8,0,38,0,100,0,1,1,0,0,'',22,2,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Data 1 (raptor taught a skill) - Phase 2 (swap)'),
+(42930,0,9,0,38,1,100,0,2,1,0,0,'',67,1,3000,3000,0,0,100,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Data 2 (netted) - Check the net in 3 s'),
+(42930,0,10,11,59,1,100,0,1,0,0,0,'',22,3,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Timed 1, still netted - Phase 3 (caught)'),
+(42930,0,11,12,61,0,100,0,0,0,0,0,'',86,80120,2,23,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Linked - Player casts Be Raptor: Teleport In 2 (last raptor)'),
+(42930,0,12,0,61,0,100,0,0,0,0,0,'',67,2,2500,2500,0,0,100,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Linked - New hatchling in 2.5 s'),
+(42930,0,13,14,59,0,100,0,2,0,0,0,'',86,80123,2,23,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Timed 2 - Player casts Be Raptor: Summon Raptor 2 (rides it)'),
+(42930,0,14,0,61,0,100,0,0,0,0,0,'',41,1000,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Linked - Despawn'),
+(42930,0,15,16,38,0,100,0,3,1,0,0,'',33,42884,0,0,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Data 3 (Jin''do is done) - Escape credit'),
+(42930,0,16,0,61,0,100,0,0,0,0,0,'',11,82399,2,0,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Linked - Send the player back to Thaalia'),
+(42930,0,17,18,38,0,100,0,4,1,0,0,'',22,4,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Data 4 (caught at the portal) - Phase 4 (scene)'),
+(42930,0,18,0,61,0,100,0,0,0,0,0,'',75,82646,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Linked - Be Raptor: Freeze Hatchling'),
+(42930,0,19,0,1,1,100,0,1000,1000,1000,1000,'',11,82399,2,0,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 2 - In water - Mind Control ends, back to Thaalia'),
+(42930,0,20,0,8,0,100,0,80046,0,0,0,'',45,1,1,0,0,0,0,19,42922,12,0,0,0,0,0,'Captured Lashtail Hatchling 2 - Light Tiki Fire - Light the closest Zul''Gurub Tiki'),
+(42931,0,0,1,27,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Player boarded - Phase 1 (riding)'),
+(42931,0,1,2,61,0,100,0,0,0,0,0,'',2,35,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Linked - Friendly faction'),
+(42931,0,2,3,61,0,100,0,0,0,0,0,'',18,512,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Linked - Immune to NPCs'),
+(42931,0,3,0,61,0,100,0,0,0,0,0,'',48,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Linked - Active (keeps running when the player is teleported)'),
+(42931,0,4,5,28,9,100,0,0,0,0,0,'',19,512,0,0,0,0,0,7,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Player left (riding/escape) - Clear their NPC immunity'),
+(42931,0,5,6,61,0,100,0,0,0,0,0,'',11,82399,2,0,0,0,0,7,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Linked - Send them back to Thaalia'),
+(42931,0,6,0,61,0,100,0,0,0,0,0,'',41,1000,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Linked - Despawn'),
+(42931,0,7,0,28,2,100,0,0,0,0,0,'',41,500,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Player left for the next raptor - Despawn'),
+(42931,0,8,0,38,0,100,0,1,1,0,0,'',22,2,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Data 1 (raptor taught a skill) - Phase 2 (swap)'),
+(42931,0,9,0,38,1,100,0,2,1,0,0,'',67,1,3000,3000,0,0,100,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Data 2 (netted) - Check the net in 3 s'),
+(42931,0,10,11,59,1,100,0,1,0,0,0,'',22,3,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Timed 1, still netted - Phase 3 (caught)'),
+(42931,0,11,12,61,0,100,0,0,0,0,0,'',86,80121,2,23,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Linked - Player casts Be Raptor: Teleport In 3 (last raptor)'),
+(42931,0,12,0,61,0,100,0,0,0,0,0,'',67,2,2500,2500,0,0,100,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Linked - New hatchling in 2.5 s'),
+(42931,0,13,14,59,0,100,0,2,0,0,0,'',86,80124,2,23,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Timed 2 - Player casts Be Raptor: Summon Raptor 3 (rides it)'),
+(42931,0,14,0,61,0,100,0,0,0,0,0,'',41,1000,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Linked - Despawn'),
+(42931,0,15,16,38,0,100,0,3,1,0,0,'',33,42884,0,0,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Data 3 (Jin''do is done) - Escape credit'),
+(42931,0,16,0,61,0,100,0,0,0,0,0,'',11,82399,2,0,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Linked - Send the player back to Thaalia'),
+(42931,0,17,18,38,0,100,0,4,1,0,0,'',22,4,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Data 4 (caught at the portal) - Phase 4 (scene)'),
+(42931,0,18,0,61,0,100,0,0,0,0,0,'',75,82646,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Linked - Be Raptor: Freeze Hatchling'),
+(42931,0,19,0,1,1,100,0,1000,1000,1000,1000,'',11,82399,2,0,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 3 - In water - Mind Control ends, back to Thaalia'),
+(42931,0,20,0,8,0,100,0,80046,0,0,0,'',45,1,1,0,0,0,0,19,42922,12,0,0,0,0,0,'Captured Lashtail Hatchling 3 - Light Tiki Fire - Light the closest Zul''Gurub Tiki'),
+(42932,0,0,1,27,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Player boarded - Phase 1 (riding)'),
+(42932,0,1,2,61,0,100,0,0,0,0,0,'',2,35,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Linked - Friendly faction'),
+(42932,0,2,3,61,0,100,0,0,0,0,0,'',18,512,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Linked - Immune to NPCs'),
+(42932,0,3,0,61,0,100,0,0,0,0,0,'',48,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Linked - Active (keeps running when the player is teleported)'),
+(42932,0,4,5,28,9,100,0,0,0,0,0,'',19,512,0,0,0,0,0,7,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Player left (riding/escape) - Clear their NPC immunity'),
+(42932,0,5,6,61,0,100,0,0,0,0,0,'',11,82399,2,0,0,0,0,7,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Linked - Send them back to Thaalia'),
+(42932,0,6,0,61,0,100,0,0,0,0,0,'',41,1000,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Linked - Despawn'),
+(42932,0,7,0,28,2,100,0,0,0,0,0,'',41,500,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Player left for the next raptor - Despawn'),
+(42932,0,8,0,38,0,100,0,1,1,0,0,'',22,2,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Data 1 (raptor taught a skill) - Phase 2 (swap)'),
+(42932,0,9,0,38,1,100,0,2,1,0,0,'',67,1,3000,3000,0,0,100,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Data 2 (netted) - Check the net in 3 s'),
+(42932,0,10,11,59,1,100,0,1,0,0,0,'',22,3,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Timed 1, still netted - Phase 3 (caught)'),
+(42932,0,11,12,61,0,100,0,0,0,0,0,'',86,80122,2,23,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Linked - Player casts Be Raptor: Teleport In 4 (last raptor)'),
+(42932,0,12,0,61,0,100,0,0,0,0,0,'',67,2,2500,2500,0,0,100,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Linked - New hatchling in 2.5 s'),
+(42932,0,13,14,59,0,100,0,2,0,0,0,'',86,80125,2,23,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Timed 2 - Player casts Be Raptor: Summon Raptor 4 (rides it)'),
+(42932,0,14,0,61,0,100,0,0,0,0,0,'',41,1000,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Linked - Despawn'),
+(42932,0,15,16,38,0,100,0,3,1,0,0,'',33,42884,0,0,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Data 3 (Jin''do is done) - Escape credit'),
+(42932,0,16,0,61,0,100,0,0,0,0,0,'',11,82399,2,0,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Linked - Send the player back to Thaalia'),
+(42932,0,17,18,38,0,100,0,4,1,0,0,'',22,4,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Data 4 (caught at the portal) - Phase 4 (scene)'),
+(42932,0,18,0,61,0,100,0,0,0,0,0,'',75,82646,0,0,0,0,0,1,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Linked - Be Raptor: Freeze Hatchling'),
+(42932,0,19,0,1,1,100,0,1000,1000,1000,1000,'',11,82399,2,0,0,0,0,23,0,0,0,0,0,0,0,'Captured Lashtail Hatchling 4 - In water - Mind Control ends, back to Thaalia'),
+(42932,0,20,0,8,0,100,0,80046,0,0,0,'',45,1,1,0,0,0,0,19,42922,12,0,0,0,0,0,'Captured Lashtail Hatchling 4 - Light Tiki Fire - Light the closest Zul''Gurub Tiki'),
+(44017,0,10,11,62,0,100,0,11785,1,0,0,'',72,0,0,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Mind Control option - Close gossip'),
+(44017,0,11,12,61,0,100,0,0,0,0,0,'',1,1,0,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - Say Mind Control line'),
+(44017,0,12,13,61,0,100,0,0,0,0,0,'',18,512,0,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - Player immune to NPCs until the hatchling has them'),
+(44017,0,13,14,61,0,100,0,0,0,0,0,'',48,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - Stay active while the player is away'),
+(44017,0,14,0,61,0,100,0,0,0,0,0,'',85,79975,2,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - Player casts Zul''Gurub Mind Control (phase 235)'),
+(44017,0,15,19,62,0,100,0,11785,1,0,0,'',85,80119,2,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Mind Control option - Player casts Be Raptor: Teleport In 1'),
+(44017,0,19,0,61,0,100,0,0,0,0,0,'',67,11,2500,2500,0,0,100,1,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - Hatchling 1 in 2.5 s'),
+(44017,0,23,27,59,0,100,0,11,0,0,0,'',85,79952,2,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Timed 11 - Player casts Be Raptor: Summon Raptor 1 (rides it)'),
+(44017,0,16,20,62,0,100,0,11785,1,0,0,'',85,80120,2,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Mind Control option - Player casts Be Raptor: Teleport In 2'),
+(44017,0,20,0,61,0,100,0,0,0,0,0,'',67,12,2500,2500,0,0,100,1,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - Hatchling 2 in 2.5 s'),
+(44017,0,24,27,59,0,100,0,12,0,0,0,'',85,80123,2,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Timed 12 - Player casts Be Raptor: Summon Raptor 2 (rides it)'),
+(44017,0,17,21,62,0,100,0,11785,1,0,0,'',85,80121,2,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Mind Control option - Player casts Be Raptor: Teleport In 3'),
+(44017,0,21,0,61,0,100,0,0,0,0,0,'',67,13,2500,2500,0,0,100,1,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - Hatchling 3 in 2.5 s'),
+(44017,0,25,27,59,0,100,0,13,0,0,0,'',85,80124,2,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Timed 13 - Player casts Be Raptor: Summon Raptor 3 (rides it)'),
+(44017,0,18,22,62,0,100,0,11785,1,0,0,'',85,80122,2,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Mind Control option - Player casts Be Raptor: Teleport In 4'),
+(44017,0,22,0,61,0,100,0,0,0,0,0,'',67,14,2500,2500,0,0,100,1,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - Hatchling 4 in 2.5 s'),
+(44017,0,26,27,59,0,100,0,14,0,0,0,'',85,80125,2,0,0,0,0,7,0,0,0,0,0,0,0,'Priestess Thaalia - Timed 14 - Player casts Be Raptor: Summon Raptor 4 (rides it)'),
+(44017,0,27,0,61,0,100,0,0,0,0,0,'',48,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Priestess Thaalia - Linked - No longer active'),
+(42881,0,0,1,62,0,100,0,11664,0,0,0,'',72,0,0,0,0,0,0,7,0,0,0,0,0,0,0,'Tan''shang - Option - Close gossip'),
+(42881,0,1,2,61,0,100,0,0,0,0,0,'',33,42881,0,0,0,0,0,7,0,0,0,0,0,0,0,'Tan''shang - Linked - Objective credit'),
+(42881,0,2,3,61,0,100,0,0,0,0,0,'',45,1,1,0,0,0,0,22,0,0,0,0,0,0,0,'Tan''shang - Linked - Old hatchling: swap'),
+(42881,0,3,0,61,0,100,0,0,0,0,0,'',85,80123,2,0,0,0,0,7,0,0,0,0,0,0,0,'Tan''shang - Linked - Player casts Be Raptor: Summon Raptor 2 (new skill)'),
+(42883,0,0,1,62,0,100,0,11666,0,0,0,'',72,0,0,0,0,0,0,7,0,0,0,0,0,0,0,'Chiyu - Option - Close gossip'),
+(42883,0,1,2,61,0,100,0,0,0,0,0,'',33,42883,0,0,0,0,0,7,0,0,0,0,0,0,0,'Chiyu - Linked - Objective credit'),
+(42883,0,2,3,61,0,100,0,0,0,0,0,'',45,1,1,0,0,0,0,22,0,0,0,0,0,0,0,'Chiyu - Linked - Old hatchling: swap'),
+(42883,0,3,0,61,0,100,0,0,0,0,0,'',85,80125,2,0,0,0,0,7,0,0,0,0,0,0,0,'Chiyu - Linked - Player casts Be Raptor: Summon Raptor 4 (new skill)'),
+(42882,0,10,0,62,0,100,0,11665,0,0,0,'',72,0,0,0,0,0,0,7,0,0,0,0,0,0,0,'Tenjiyu - I will get food - Close gossip'),
+(42882,0,0,1,62,0,100,0,11665,1,0,0,'',72,0,0,0,0,0,0,7,0,0,0,0,0,0,0,'Tenjiyu - Option - Close gossip'),
+(42882,0,1,2,61,0,100,0,0,0,0,0,'',57,58249,1,0,0,0,0,7,0,0,0,0,0,0,0,'Tenjiyu - Linked - Take the Raptor Food Pouch'),
+(42882,0,2,3,61,0,100,0,0,0,0,0,'',33,42882,0,0,0,0,0,7,0,0,0,0,0,0,0,'Tenjiyu - Linked - Objective credit'),
+(42882,0,3,4,61,0,100,0,0,0,0,0,'',45,1,1,0,0,0,0,22,0,0,0,0,0,0,0,'Tenjiyu - Linked - Old hatchling: swap'),
+(42882,0,4,0,61,0,100,0,0,0,0,0,'',85,80124,2,0,0,0,0,7,0,0,0,0,0,0,0,'Tenjiyu - Linked - Player casts Be Raptor: Summon Raptor 3 (new skill)'),
+(42871,0,10,0,37,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier - AI init - Phase 1 (on watch)'),
+(42871,0,11,0,25,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier - Reset - Phase 1 (on watch)'),
+(42871,0,12,13,10,1,100,0,1,10,5000,5000,'',75,80021,0,0,0,0,0,7,0,0,0,0,0,0,0,'Gurubashi Soldier - Sees a hatchling - Net it'),
+(42871,0,13,0,61,0,100,0,0,0,0,0,'',45,2,1,0,0,0,0,7,0,0,0,0,0,0,0,'Gurubashi Soldier - Linked - Tell the hatchling it is netted'),
+(42872,0,10,0,37,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Crusher - AI init - Phase 1 (on watch)'),
+(42872,0,11,0,25,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Crusher - Reset - Phase 1 (on watch)'),
+(42872,0,12,13,10,1,100,0,1,14,5000,5000,'',75,80074,0,0,0,0,0,7,0,0,0,0,0,0,0,'Gurubashi Crusher - Sees a hatchling - Net it'),
+(42872,0,13,0,61,0,100,0,0,0,0,0,'',45,2,1,0,0,0,0,7,0,0,0,0,0,0,0,'Gurubashi Crusher - Linked - Tell the hatchling it is netted'),
+(42871,0,14,15,38,1,100,0,5,1,0,0,'',22,2,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier - Tiki on fire - Phase 2 (distracted)'),
+(42871,0,15,16,61,0,100,0,0,0,0,0,'',59,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier - Linked - Run'),
+(42871,0,16,17,61,0,100,0,0,0,0,0,'',69,1,0,0,3,0,0,19,42922,40,0,0,0,0,0,'Gurubashi Soldier - Linked - Run to the burning tiki'),
+(42871,0,17,0,61,0,100,0,0,0,0,0,'',67,1,20000,20000,0,0,100,1,0,0,0,0,0,0,0,'Gurubashi Soldier - Linked - Back to post in 20 s'),
+(42871,0,18,19,59,0,100,0,1,0,0,0,'',59,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier - Timed 1 - Walk'),
+(42871,0,19,0,61,0,100,0,0,0,0,0,'',24,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier - Linked - Back to post (reset sets phase 1)'),
+(42871,0,20,0,38,0,100,0,6,1,0,0,'',1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier - Closest to the tiki - Yell about the fire'),
+(42871,0,21,22,38,0,100,0,7,1,0,0,'',1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier - Stepped on a skull - Yell'),
+(42871,0,22,23,61,0,100,0,0,0,0,0,'',69,2,0,1,0,0,0,1,0,0,0,10,0,-8,0,'Gurubashi Soldier - Linked - Slide off the bridge into the lake (north)'),
+(42871,0,23,0,61,0,100,0,0,0,0,0,'',41,2500,0,0,0,0,0,1,0,0,0,0,0,0,0,'Gurubashi Soldier - Linked - Despawn (respawns in 8 s)'),
+(-317023,0,0,1,10,0,100,0,1,5,20000,20000,'',1,2,0,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Hatchling 2 sneaks up - Tell the player'),
+(-317023,0,1,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
+(-317028,0,0,1,10,0,100,0,1,5,20000,20000,'',1,2,0,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Hatchling 2 sneaks up - Tell the player'),
+(-317028,0,1,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
+(-316944,0,0,1,10,0,100,0,1,5,20000,20000,'',1,2,0,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Hatchling 2 sneaks up - Tell the player'),
+(-316944,0,1,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
+(-317022,0,0,1,10,0,100,0,1,5,20000,20000,'',1,2,0,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Hatchling 2 sneaks up - Tell the player'),
+(-317022,0,1,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
+(-316950,0,0,1,10,0,100,0,1,5,20000,20000,'',1,2,0,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Hatchling 2 sneaks up - Tell the player'),
+(-316950,0,1,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
+(-316942,0,0,1,10,0,100,0,1,5,20000,20000,'',1,2,0,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Hatchling 2 sneaks up - Tell the player'),
+(-316942,0,1,0,61,0,100,0,0,0,0,0,'',56,58249,1,0,0,0,0,21,8,0,0,0,0,0,0,'Gurubashi Soldier (asleep) - Linked - Raptor Food Pouch to the player'),
+(42922,0,0,0,37,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Zul''Gurub Tiki - AI init - Phase 1'),
+(42922,0,1,0,25,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Zul''Gurub Tiki - Reset - Phase 1'),
+(42922,0,2,3,38,1,100,0,1,1,0,0,'',22,2,0,0,0,0,0,1,0,0,0,0,0,0,0,'Zul''Gurub Tiki - Lit by a hatchling - Phase 2 (burning)'),
+(42922,0,3,4,61,0,100,0,0,0,0,0,'',75,42726,0,0,0,0,0,1,0,0,0,0,0,0,0,'Zul''Gurub Tiki - Linked - Fire'),
+(42922,0,4,5,61,0,100,0,0,0,0,0,'',45,5,1,0,0,0,0,11,42871,30,0,0,0,0,0,'Zul''Gurub Tiki - Linked - Guards nearby come to put it out'),
+(42922,0,5,6,61,0,100,0,0,0,0,0,'',45,6,1,0,0,0,0,19,42871,30,0,0,0,0,0,'Zul''Gurub Tiki - Linked - Closest guard yells'),
+(42922,0,6,0,61,0,100,0,0,0,0,0,'',67,1,25000,25000,0,0,100,1,0,0,0,0,0,0,0,'Zul''Gurub Tiki - Linked - Burns 25 s'),
+(42922,0,7,8,59,0,100,0,1,0,0,0,'',28,42726,0,0,0,0,0,1,0,0,0,0,0,0,0,'Zul''Gurub Tiki - Timed 1 - Fire out'),
+(42922,0,8,0,61,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Zul''Gurub Tiki - Linked - Phase 1'),
+(42927,0,0,1,10,0,100,0,1,3,3000,3000,'',45,7,1,0,0,0,0,7,0,0,0,0,0,0,0,'Zul''Gurub Skull Bunny - Soldier steps on the skull - Tell him to slip'),
+(42927,0,1,0,61,0,100,0,0,0,0,0,'',41,500,0,0,0,0,0,1,0,0,0,0,0,0,0,'Zul''Gurub Skull Bunny - Linked - Despawn'),
+(42884,0,0,0,37,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Shade of the Hexxer - AI init - Phase 1'),
+(42884,0,1,0,25,0,100,0,0,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Shade of the Hexxer - Reset - Phase 1'),
+(42884,0,2,3,10,1,100,0,1,30,60000,60000,'',22,2,0,0,0,0,0,1,0,0,0,0,0,0,0,'Shade of the Hexxer - Hatchling 4 reaches the portal - Phase 2'),
+(42884,0,3,4,61,0,100,0,0,0,0,0,'',45,4,1,0,0,0,0,7,0,0,0,0,0,0,0,'Shade of the Hexxer - Linked - Freeze the hatchling'),
+(42884,0,4,0,61,0,100,0,0,0,0,0,'',1,0,4000,0,0,0,0,21,60,0,0,0,0,0,0,'Shade of the Hexxer - Linked - Say 0'),
+(42884,0,5,0,52,0,100,0,0,42884,0,0,'',1,1,5000,0,0,0,0,21,60,0,0,0,0,0,0,'Shade of the Hexxer - Text 0 over - Say 1'),
+(42884,0,6,0,52,0,100,0,1,42884,0,0,'',1,2,6000,0,0,0,0,21,60,0,0,0,0,0,0,'Shade of the Hexxer - Text 1 over - Yell 2'),
+(42884,0,7,0,52,0,100,0,2,42884,0,0,'',1,3,6000,0,0,0,0,21,60,0,0,0,0,0,0,'Shade of the Hexxer - Text 2 over - Say 3'),
+(42884,0,8,0,52,0,100,0,3,42884,0,0,'',1,4,6000,0,0,0,0,21,60,0,0,0,0,0,0,'Shade of the Hexxer - Text 3 over - Say 4'),
+(42884,0,9,0,52,0,100,0,4,42884,0,0,'',45,1,1,0,0,0,0,19,42941,100,0,0,0,0,0,'Shade of the Hexxer - Text 4 over - Mandokir walks up'),
+(42884,0,10,0,38,0,100,0,2,1,0,0,'',1,5,5000,0,0,0,0,21,60,0,0,0,0,0,0,'Shade of the Hexxer - Data 2 - Say 5'),
+(42884,0,11,0,52,0,100,0,5,42884,0,0,'',45,2,1,0,0,0,0,19,42941,100,0,0,0,0,0,'Shade of the Hexxer - Text 5 over - Mandokir answers'),
+(42884,0,12,0,38,0,100,0,3,1,0,0,'',1,6,7000,0,0,0,0,21,60,0,0,0,0,0,0,'Shade of the Hexxer - Data 3 - Say 6'),
+(42884,0,13,0,52,0,100,0,6,42884,0,0,'',1,7,6000,0,0,0,0,21,60,0,0,0,0,0,0,'Shade of the Hexxer - Text 6 over - Yell 7'),
+(42884,0,14,15,52,0,100,0,7,42884,0,0,'',45,3,1,0,0,0,0,19,42932,60,0,0,0,0,0,'Shade of the Hexxer - Text 7 over - Hatchling: credit and send the player home'),
+(42884,0,15,0,61,0,100,0,0,0,0,0,'',67,1,30000,30000,0,0,100,1,0,0,0,0,0,0,0,'Shade of the Hexxer - Linked - Ready again in 30 s'),
+(42884,0,16,0,59,0,100,0,1,0,0,0,'',22,1,0,0,0,0,0,1,0,0,0,0,0,0,0,'Shade of the Hexxer - Timed 1 - Phase 1'),
+(42941,0,0,1,38,0,100,0,1,1,0,0,'',59,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Bloodlord Mandokir - Data 1 - Walk'),
+(42941,0,1,0,61,0,100,0,0,0,0,0,'',69,1,0,0,4,0,0,19,42932,100,0,0,0,0,0,'Bloodlord Mandokir - Linked - Walk up to the hatchling'),
+(42941,0,2,3,34,0,100,0,8,1,0,0,'',66,0,0,0,0,0,0,19,42932,20,0,0,0,0,0,'Bloodlord Mandokir - Reached the hatchling - Face it'),
+(42941,0,3,0,61,0,100,0,0,0,0,0,'',1,0,4000,0,0,0,0,21,60,0,0,0,0,0,0,'Bloodlord Mandokir - Linked - Say 0'),
+(42941,0,4,0,52,0,100,0,0,42941,0,0,'',45,2,1,0,0,0,0,19,42884,100,0,0,0,0,0,'Bloodlord Mandokir - Text 0 over - Jin''do speaks'),
+(42941,0,5,0,38,0,100,0,2,1,0,0,'',1,1,5000,0,0,0,0,21,60,0,0,0,0,0,0,'Bloodlord Mandokir - Data 2 - Say 1'),
+(42941,0,6,0,52,0,100,0,1,42941,0,0,'',1,2,6000,0,0,0,0,21,60,0,0,0,0,0,0,'Bloodlord Mandokir - Text 1 over - Say 2'),
+(42941,0,7,8,52,0,100,0,2,42941,0,0,'',45,3,1,0,0,0,0,19,42884,100,0,0,0,0,0,'Bloodlord Mandokir - Text 2 over - Jin''do speaks'),
+(42941,0,8,0,61,0,100,0,0,0,0,0,'',67,1,25000,25000,0,0,100,1,0,0,0,0,0,0,0,'Bloodlord Mandokir - Linked - Go back in 25 s'),
+(42941,0,9,0,59,0,100,0,1,0,0,0,'',24,0,0,0,0,0,0,1,0,0,0,0,0,0,0,'Bloodlord Mandokir - Timed 1 - Back to his spot');
+
+-- 7. Conditions.
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId`=15 AND `SourceGroup` IN (11664,11665,11666);
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId`=22 AND `SourceEntry` IN (-317028,-317023,-317022,-316950,-316944,-316942,42870,42871,42872,42884,42927,42930,42931,42932);
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId`=22 AND `SourceEntry`=44017 AND `SourceGroup` BETWEEN 11 AND 40;
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`,`SourceGroup`,`SourceEntry`,`SourceId`,`ElseGroup`,`ConditionTypeOrReference`,`ConditionTarget`,`ConditionValue1`,`ConditionValue2`,`ConditionValue3`,`NegativeCondition`,`ErrorType`,`ErrorTextId`,`ScriptName`,`Comment`) VALUES
+(22,11,42870,0,0,1,1,80021,0,0,0,0,0,'','Hatchling still in a Net'),
+(22,11,42870,0,1,1,1,80074,0,0,0,0,0,'','or still in an Ironweave Net'),
+(22,20,42870,0,0,40,1,0,0,0,0,0,0,'','Hatchling is in water'),
+(22,11,42930,0,0,1,1,80021,0,0,0,0,0,'','Hatchling still in a Net'),
+(22,11,42930,0,1,1,1,80074,0,0,0,0,0,'','or still in an Ironweave Net'),
+(22,20,42930,0,0,40,1,0,0,0,0,0,0,'','Hatchling is in water'),
+(22,11,42931,0,0,1,1,80021,0,0,0,0,0,'','Hatchling still in a Net'),
+(22,11,42931,0,1,1,1,80074,0,0,0,0,0,'','or still in an Ironweave Net'),
+(22,20,42931,0,0,40,1,0,0,0,0,0,0,'','Hatchling is in water'),
+(22,11,42932,0,0,1,1,80021,0,0,0,0,0,'','Hatchling still in a Net'),
+(22,11,42932,0,1,1,1,80074,0,0,0,0,0,'','or still in an Ironweave Net'),
+(22,20,42932,0,0,40,1,0,0,0,0,0,0,'','Hatchling is in water'),
+(22,16,44017,0,0,48,0,266536,0,0,1,0,0,'','Start 1: Tan''shang not spoken to'),
+(22,17,44017,0,0,48,0,266536,0,0,0,0,0,'','Start 2: Tan''shang done'),
+(22,17,44017,0,0,48,0,266537,0,0,1,0,0,'','Start 2: Tenjiyu not helped'),
+(22,18,44017,0,0,48,0,266537,0,0,0,0,0,'','Start 3: Tenjiyu done'),
+(22,18,44017,0,0,48,0,266538,0,0,1,0,0,'','Start 3: Chiyu not spoken to'),
+(22,19,44017,0,0,48,0,266538,0,0,0,0,0,'','Start 4: Chiyu done'),
+(15,11664,0,0,0,9,0,26775,0,0,0,0,0,'','Be Raptor gossip 11664/0'),
+(15,11664,0,0,0,48,0,266536,0,0,1,0,0,'','Be Raptor gossip 11664/0'),
+(15,11665,0,0,0,9,0,26775,0,0,0,0,0,'','Be Raptor gossip 11665/0'),
+(15,11665,0,0,0,48,0,266536,0,0,0,0,0,'','Be Raptor gossip 11665/0'),
+(15,11665,0,0,0,48,0,266537,0,0,1,0,0,'','Be Raptor gossip 11665/0'),
+(15,11665,0,0,0,2,0,58249,1,0,1,0,0,'','Be Raptor gossip 11665/0'),
+(15,11665,1,0,0,9,0,26775,0,0,0,0,0,'','Be Raptor gossip 11665/1'),
+(15,11665,1,0,0,2,0,58249,1,0,0,0,0,'','Be Raptor gossip 11665/1'),
+(15,11665,1,0,0,48,0,266537,0,0,1,0,0,'','Be Raptor gossip 11665/1'),
+(15,11666,0,0,0,9,0,26775,0,0,0,0,0,'','Be Raptor gossip 11666/0'),
+(15,11666,0,0,0,48,0,266537,0,0,0,0,0,'','Be Raptor gossip 11666/0'),
+(15,11666,0,0,0,48,0,266538,0,0,1,0,0,'','Be Raptor gossip 11666/0'),
+(22,13,42871,0,0,51,0,5,42870,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 42870'),
+(22,13,42871,0,1,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 42930'),
+(22,13,42871,0,2,51,0,5,42931,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 42931'),
+(22,13,42871,0,3,51,0,5,42932,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 42932'),
+(22,13,42872,0,0,51,0,5,42870,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 42870'),
+(22,13,42872,0,1,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 42930'),
+(22,13,42872,0,2,51,0,5,42931,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 42931'),
+(22,13,42872,0,3,51,0,5,42932,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 42932'),
+(22,1,-317023,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
+(22,1,-317028,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
+(22,1,-316944,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
+(22,1,-317022,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
+(22,1,-316950,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
+(22,1,-316942,0,0,51,0,5,42930,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 2 (Tenjiyu stage)'),
+(22,1,42927,0,0,51,0,5,42871,0,0,0,0,'','Invoker is a Gurubashi Soldier'),
+(22,3,42884,0,0,51,0,5,42932,0,0,0,0,'','Invoker is Captured Lashtail Hatchling 4');

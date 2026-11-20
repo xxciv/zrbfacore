@@ -3,6 +3,68 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-20 (Quest fixes: Be Raptor, Stranglethorn)
+
+Draft PR, not merged yet. Not tested in game yet.
+
+### DB: Be Raptor, the Mind Control ritual does nothing; Zul'Gurub courtyard trolls kill passers-by (26775)
+
+- **Found** (Four, 2026-11-19): Thaalia's "I am ready for the Mind Control ritual" option does nothing.
+  During the See Raptor test the trolls outside Zul'Gurub killed Four's character.
+- **Cause:** the minigame was never scripted (no SAI on the four Captured Lashtail Hatchlings, the elder
+  raptors, the tikis, the Shade of the Hexxer or Mandokir; the hatchlings had no action bar spells).
+  The courtyard trolls belong to the Mind Control vision (phase 235, spell 79975 Zul'Gurub Mind
+  Control) but were in the normal world: 76 Gurubashi Soldiers, 40 Crushers and about 120 level 81-82
+  workers, behemoths, raptors and bat riders. The dump also left 15 dropped-skull bunnies and 8 extra
+  soldiers standing on the two bridges. Teleport/summon destinations for raptor 3 had no row.
+- **Changed:** `sql/fixes/world/2026_11_20_70_be_raptor.sql`:
+  - Phase 235 for all courtyard troll/raptor/tiki/shade/Mandokir spawns (entries 42825, 42834, 42837,
+    42838, 42871, 42872, 42881-42884, 42888, 42922, 42941, 43351 inside the Zul'Gurub courtyard box)
+    and the Tiki 204112 / Gurubashi Brazier 204111 / Giant Skullpile 204113 objects. Players only see
+    them during the vision; the walk to the instance portal is empty again.
+  - Thaalia (SAI 44017 ids 10-27): option 1 -> close, line (our own wording), player immune to NPCs
+    (0x200), Thaalia active, player casts 79975 (phase 235) and teleports to the last elder raptor
+    reached (objective progress: Tian-kuyi start, Tan'shang, Tenjiyu or Chiyu, spells 80119-80122),
+    2.5 s later rides that raptor's hatchling (79952/80123/80124/80125).
+  - Hatchlings 42870/42930/42931/42932 (vehicle 928): action bar Dash 44531, then + Eat Through Net
+    80022, + Light Tiki Fire 80046, + Drop Skull 80049. SAI: friendly faction 35 and 0x200 on board,
+    active; netted and still in the net after 3 s -> teleport back to the last raptor and a fresh
+    hatchling; in water or leaving the hatchling -> 82399 back to Thaalia (clears 0x200 and phase 235);
+    Light Tiki Fire lights the closest tiki within 12 yards.
+  - Gurubashi Soldier 42871: hatchling within 10 yards -> Net 80021 on it. Gurubashi Crusher 42872:
+    within 14 yards -> Ironweave Net 80074 (cannot be bitten through); their Stealth-on-spawn rows are
+    removed (they are the visible blockers). A burning tiki pulls soldiers within 30 yards to it for
+    20 s (the closest yells), then they walk back. Six sitting soldiers in the second area sleep (stand
+    state 3, guids 317023, 317028, 316944, 317022, 316950, 316942): sneaking up to one with hatchling
+    2 gives the Raptor Food Pouch 58249. A soldier who walks onto a dropped skull yells, slides off into
+    the lake and respawns 8 s later.
+  - Elder raptors: Tan'shang (menu 11664) and Chiyu (11666) give their objective credit and the next
+    hatchling; Tenjiyu (11665) option 0 sends you for food, option 1 (needs 58249, taken) gives credit
+    and hatchling 3. Options are gated on the quest and objective progress.
+  - Bridges: one patrol per bridge (317116 path 3171160, 317110 path 3171100, respawn 8 s); extra
+    soldiers 317102, 317092, 317106, 317121, 317112, 317118, 317093, 317108 and all 42927 skull bunny
+    spawns deleted.
+  - Escape: hatchling 4 within 30 yards of the Shade of the Hexxer 42884 at the portal -> hatchling
+    frozen (82646), Jin'do's shade and Mandokir 42941 (who walks up) play their scene, then the escape
+    credit (42884) and back to Thaalia. Their lines and the soldiers' fire/slip yells are the original
+    ones as quoted on warcraft.wiki.gg (Be Raptor); the food-sack message is our own wording.
+  - `spell_target_position` 80121/80124 (raptor 3, next to Tenjiyu). `sql/fixes/world/2026_11_19_71`
+    now only replaces Thaalia's text group 0, so rerunning it keeps this line.
+- **Status:** not tested in game. The troll spawns are dump positions (unsniffed), so the vision may be
+  too crowded or too easy; tell me where and I will tune it. If you log out during the vision and come
+  back still in phase 235 (everything else missing), `.unaura 79975` fixes it.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_70_be_raptor.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-19 (Quest fixes: Stranglethorn)
 
 Draft PR, not merged yet. Not tested in game yet.

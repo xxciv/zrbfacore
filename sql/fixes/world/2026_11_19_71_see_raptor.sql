@@ -14,7 +14,7 @@ DELETE FROM `spell_target_position` WHERE `ID`=79834;
 INSERT INTO `spell_target_position` (`ID`,`EffectIndex`,`MapID`,`PositionX`,`PositionY`,`PositionZ`,`VerifiedBuild`) VALUES
 (79834,0,0,-12161.7,-1818.5,94.0228,0);
 
-DELETE FROM `creature_text` WHERE `CreatureID` IN (44017,42842);
+DELETE FROM `creature_text` WHERE (`CreatureID`=44017 AND `GroupID`=0) OR `CreatureID`=42842;
 INSERT INTO `creature_text` (`CreatureID`,`GroupID`,`ID`,`Text`,`Type`,`Language`,`Probability`,`Emote`,`Duration`,`Sound`,`BroadcastTextId`,`TextRange`,`comment`) VALUES
 (44017,0,0,'Close your eyes, $n. Priestess sends your mind to the little raptor, yes. Watch, and remember.',12,0,100,0,0,0,0,0,'Priestess Thaalia - Mind Vision ritual'),
 (42842,0,0,'Welcome to Zul''Gurub, little one. It might not look like much now, but give it time.',12,0,100,0,0,0,0,0,'Bloodlord Mandokir - See Raptor 0'),
