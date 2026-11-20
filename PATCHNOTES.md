@@ -59,7 +59,7 @@ Draft PR, not merged yet. Not tested in game yet.
   player is near her, her grid cell stops updating (`Map::Update` only visits cells around players
   and active objects), so she never made you cast 79834. Fixed by making her active for the ritual
   (SAI action 48) and by the NPC immunity above for the moments before the hatchling arrives.
-- **Status:** teleport in confirmed; the hatchling part not tested yet.
+- **Status:** confirmed in game 2026-11-19 (hatchling ride, Mandokir's lines, credit, return to Thaalia).
 - **Pick up:** SQL only:
 
   ```
