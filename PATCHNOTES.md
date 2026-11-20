@@ -57,6 +57,11 @@ Draft PR #94, not merged yet. Confirmed in game 2026-11-20 except a rare pet sol
     can be sent. `MiscHandler.cpp`: history list no longer doubled. `MiscPackets.cpp`: the history
     request no longer writes into the client's packet.
   - `.debug archaeology` (sites on this continent, `all`, `reset`, `go <n>`).
+- **Changed** (Four's request, 2026-11-20): dig sites rotate daily. At the daily reset
+  (`World::DailyReset` -> `Player::DailyReset`, hour `Quests.DailyResetTime`) every site with no finds dug
+  moves to another site on its continent; started sites stay until finished. A character offline over a
+  reset (logout before the last reset) rotates at login. New `worldserver.conf.dist` option
+  `Archaeology.DailyDigsiteRotation` (default 1; 0 = retail, sites only move when finished).
 - **Changed:** `sql/fixes/world/2026_11_20_80_archaeology_survey_tool.sql`: green Survey Tool 204272 was
   named 'Pointeur de test d'archéologie'; now 'Survey Tool (Green)'.
 - **Not done:** the 47 Kul Tiras and Zandalar dig sites (Zandalari, Drust) aren't in

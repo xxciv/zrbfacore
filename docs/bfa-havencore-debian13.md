@@ -539,7 +539,7 @@ research project with its first fragments; Solve only takes fragments and keysto
 is made. It also adds `.debug archaeology`. The rest of the files it touches: `SpellEffects.cpp`
 (Survey), `Spell.cpp` and `SpellHandler.cpp` (Solve), `Player.cpp/.h`, `UpdateField.h` (a setter for
 the project list), `MiscPackets`, `Opcodes.cpp`, `MiscHandler.cpp`, `CriteriaHandler.cpp` and
-`cs_debug.cpp`.
+`cs_debug.cpp`, plus `worldserver.conf.dist` (`Archaeology.DailyDigsiteRotation`, see the Archaeology section below).
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -954,6 +954,15 @@ Survey: the telescope points to the find, red is far, yellow closer, green under
 it, Survey digs it up and gives that race's fragments. Open the Archaeology window from your
 professions to see the race's project and press Solve when you have enough fragments (keystones from
 finds lower the cost).
+
+Every day at the daily quest reset (`Quests.DailyResetTime`), each dig site you haven't started moves
+somewhere else on its continent; sites with finds dug stay until they're done, and a character that was
+offline over a reset gets its new sites at login. To turn that off (retail: sites only move once their
+finds are done), copy the block into `worldserver.conf` once and set it to 0:
+
+```sh
+grep -q '^Archaeology.DailyDigsiteRotation' ~/bfa/server/etc/worldserver.conf || sed -n '/^# ARCHAEOLOGY$/,/^####/p' ~/bfa/server/etc/worldserver.conf.dist >> ~/bfa/server/etc/worldserver.conf
+```
 
 `.debug archaeology` lists your dig sites on this continent (`all` for every continent), the find
 position and distance, and your projects. `.debug archaeology go <n>` teleports you into site `n` of
