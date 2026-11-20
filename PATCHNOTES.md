@@ -94,11 +94,15 @@ Draft PR, not merged yet. Not tested in game yet.
     SAI casts the spell triggered on use (only while Be Raptor is in progress) and skips the default cast.
   - The "left Zul'Gurub" check now also needs no Gurubashi Soldier within 200 yards, in case part of
     the courtyard has an area id other than 19 (that check had never run before this fix).
-- **Status:** first version tested and failed (above); Tan'shang's credit and the swap to hatchling 2
-  confirmed in game 2026-11-20; the rest not tested yet. If you are
-  stuck in the vision (world missing, buff "Zul'Gurub Mind Control" still on), `.unaura 79975` and a
-  relog fix it.
-- **Pick up:** SQL only:
+- **Sixth fix** (Four, 2026-11-20: the twig burns out before you reach a tiki): the Burning Twig 58250
+  now lasts 8 seconds instead of the client's 6, through a hotfix row (ItemSparse, hotfix id 9558250).
+  The brazier still shows "You can't do that right now" when used from the hatchling, but gives the
+  twig; the message seems to come from the client's own check and is left as it is.
+- **Status:** Be Raptor completed end to end in game by Four on 2026-11-20 (fourth and fifth fixes:
+  food from the Zzz soldiers, Tenjiyu, twig and tiki, Chiyu, skull piles, the Shade's scene, credit and
+  the way home). The 8-second twig is not tested yet. If you are stuck in the vision (world missing, buff
+  "Zul'Gurub Mind Control" still on), `.unaura 79975` and a relog fix it.
+- **Pick up:** SQL (world and hotfixes):
 
   ```
   git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
@@ -108,7 +112,11 @@ Draft PR, not merged yet. Not tested in game yet.
   git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_70_be_raptor.sql | mysql -u root -p bfa_world
   ```
 
-  Then restart worldserver.
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/hotfixes/2026_11_20_70_be_raptor_burning_twig.sql | mysql -u root -p bfa_hotfixes
+  ```
+
+  Then restart worldserver and delete the client Cache folder.
 
 ## 2026-11-19 (Quest fixes: Stranglethorn)
 
