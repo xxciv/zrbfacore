@@ -37,7 +37,8 @@ Draft PR #94, not merged yet. Not tested in game yet.
       (under 35). Within 8 yards: the race's find object appears for 15 seconds (only to look at:
       its loot, the race's keystone at about 7%, is rolled and given straight away), 5-9
       fragments (Dwarves +1), skill as before (only under 50), and the progress bar updates
-      (`SMSG_ARCHAEOLOGY_SURVERY_CAST`: total finds, finds done, branch, success). After 3 finds (6 on
+      (`SMSG_ARCHAEOLOGY_SURVERY_CAST`: finds done, total finds, branch, success; the other
+      order, from the 5.5 classic packet parser, filled the bar after the first find). After 3 finds (6 on
       Pandaria, Draenor and the Broken Isles) the site moves elsewhere on the continent.
     - Projects: a race gets one with its first fragments (any race in ResearchBranch.db2), and on login
       for races you already have fragments of. A rare you haven't solved yet is picked one time in four,

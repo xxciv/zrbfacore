@@ -1734,7 +1734,7 @@ index 0627730..8e971af 100644
      spellInfo = caster->GetCastSpellInfo(spellInfo);
  
 diff --git a/src/server/game/Server/Packets/MiscPackets.cpp b/src/server/game/Server/Packets/MiscPackets.cpp
-index ad790e3..8218e11 100644
+index ad790e3..d0902c5 100644
 --- a/src/server/game/Server/Packets/MiscPackets.cpp
 +++ b/src/server/game/Server/Packets/MiscPackets.cpp
 @@ -656,7 +656,7 @@ WorldPacket const* WorldPackets::Misc::StopElapsedTimer::Write()
@@ -1746,14 +1746,15 @@ index ad790e3..8218e11 100644
  }
  
  WorldPacket const* WorldPackets::Misc::ResearchSetupHistory::Write()
-@@ -669,6 +669,17 @@ WorldPacket const* WorldPackets::Misc::ResearchSetupHistory::Write()
+@@ -669,6 +669,18 @@ WorldPacket const* WorldPackets::Misc::ResearchSetupHistory::Write()
      return &_worldPacket;
  }
  
 +WorldPacket const* WorldPackets::Misc::ArchaeologySurveryCast::Write()
 +{
-+    _worldPacket << uint32(TotalFinds);
++    // zrbfacore: 8.3.7 reads finds done first (with total first the bar was full after one find)
 +    _worldPacket << uint32(NumFindsCompleted);
++    _worldPacket << uint32(TotalFinds);
 +    _worldPacket << int32(ResearchBranchID);
 +    _worldPacket.WriteBit(SuccessfulFind);
 +    _worldPacket.FlushBits();
