@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-20 (Archaeology)
 
-Draft PR #94, not merged yet. Not tested in game yet.
+Draft PR #94, not merged yet. Confirmed in game 2026-11-20 except a rare pet solve.
 
 ### Core: Archaeology never gives dig sites, Survey does nothing, Solve can't complete
 
@@ -64,7 +64,9 @@ Draft PR #94, not merged yet. Not tested in game yet.
   placeholders in the dump, so Legion sites give fragments without a find to loot. Broken Isles sites
   don't need their unlock quests here. `archaeology_artifacts` is empty, so every project is open from
   skill 1.
-- **Status:** every changed file compiles against the full patch chain (GCC 13, not linked); untested in game.
+- **Status:** confirmed in game 2026-11-20: dig sites on the map, Survey tool and finds, fragments,
+  dig site rotation, progress bar, Solve (fragments taken, item, skill, new project), rare project,
+  keystone drop and socket, relog. Not seen yet: a rare pet project solved.
 - **Pick up:** core rebuild (headers in the game library's precompiled header changed, so most of
   the game library rebuilds), the SQL, then restart:
 
