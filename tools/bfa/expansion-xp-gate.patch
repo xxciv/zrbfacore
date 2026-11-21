@@ -1,0 +1,205 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index 1fe13a5..e70ced6 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -2573,6 +2573,96 @@ void Player::SetXP(uint32 xp)
+     SetUpdateFieldValue(m_values.ModifyValue(&Player::m_activePlayerData).ModifyValue(&UF::ActivePlayerData::ScalingPlayerLevelDelta), playerLevelDelta);
+ }
+ 
++namespace
++{
++    // zrbfacore: expansion XP gates. At each old level cap, experience stops until the character turns
++    // in a quest in the next expansion's zones (or one of the quests that sends them there). Quests in
++    // a later expansion also open the earlier gates. Hidden tracking quests never count.
++    struct ExpansionXpGate
++    {
++        uint8 Level;
++        char const* Destination;
++        std::vector<int32> Zones;   // quest_template.QuestSortID (zone ids)
++        std::vector<uint32> Quests; // entry quests that are not sorted under one of the zones
++    };
++
++    std::vector<ExpansionXpGate> const ExpansionXpGates =
++    {
++        {  60, "Outland",                 { 3483, 3521, 3519, 3518, 3522, 3520, 3523, 3703 }, { 9407, 10119 } },
++        {  70, "Northrend",               { 3537, 495, 65, 394, 66, 3711, 67, 210, 4395 }, { } },
++        {  80, "the Cataclysm zones",     { 616, 5146, 4815, 5144, 5145, 5042, 5034, 4922, 5095, 5389 }, { 14482, 25924 } },
++        {  85, "Pandaria",                { 5785, 5805, 6134, 5841, 5842, 6138, 5840, 6507, 6757 }, { 29548, 29690 } },
++        {  90, "Draenor",                 { 6720, 6719, 6721, 6662, 6722, 6755, 6723, 7025, 6941 }, { 34398, 36881 } },
++        { 100, "the Broken Isles",        { 7334, 7558, 7503, 7541, 7637, 7502, 7543 }, { 40519, 43926 } },
++        { 110, "Kul Tiras or Zandalar",   { 8567, 8721, 9042, 8499, 8500, 8501, 9653 }, { 46727, 51443 } },
++    };
++
++    bool QuestOpensXpGate(Quest const* quest, ExpansionXpGate const& gate)
++    {
++        if (quest->HasFlag(QUEST_FLAGS_TRACKING))
++            return false;
++
++        if (std::find(gate.Quests.begin(), gate.Quests.end(), quest->GetQuestId()) != gate.Quests.end())
++            return true;
++
++        return std::find(gate.Zones.begin(), gate.Zones.end(), quest->GetZoneOrSort()) != gate.Zones.end();
++    }
++
++    // highest gate index this quest opens, -1 for none
++    int32 XpGateOpenedBy(Quest const* quest)
++    {
++        for (int32 i = int32(ExpansionXpGates.size()) - 1; i >= 0; --i)
++            if (QuestOpensXpGate(quest, ExpansionXpGates[i]))
++                return i;
++        return -1;
++    }
++}
++
++uint8 Player::GetLockedXpGateLevel(uint8 level) const
++{
++    if (!sConfigMgr->GetBoolDefault("ExpansionXpGate.Enable", true))
++        return 0;
++
++    // highest gate at or below this level
++    int32 gateIndex = -1;
++    for (int32 i = 0; i < int32(ExpansionXpGates.size()); ++i)
++        if (level >= ExpansionXpGates[i].Level)
++            gateIndex = i;
++
++    if (gateIndex < 0)
++        return 0;
++
++    if (m_xpGateCacheSize != m_RewardedQuests.size())
++    {
++        m_xpGateOpenIndex = -1;
++        for (uint32 questId : m_RewardedQuests)
++            if (Quest const* quest = sObjectMgr->GetQuestTemplate(questId))
++                m_xpGateOpenIndex = std::max(m_xpGateOpenIndex, XpGateOpenedBy(quest));
++        m_xpGateCacheSize = m_RewardedQuests.size();
++    }
++
++    int32 openIndex = m_xpGateOpenIndex;
++    if (m_xpGateRewardingQuest)
++        openIndex = std::max(openIndex, XpGateOpenedBy(m_xpGateRewardingQuest));
++
++    return openIndex >= gateIndex ? 0 : ExpansionXpGates[gateIndex].Level;
++}
++
++void Player::SendXpGateMessage(uint8 gateLevel, bool unlocked)
++{
++    for (ExpansionXpGate const& gate : ExpansionXpGates)
++    {
++        if (gate.Level != gateLevel)
++            continue;
++
++        if (unlocked)
++            ChatHandler(GetSession()).PSendSysMessage("|cff00ff00Experience unlocked:|r welcome to %s. You earn experience again everywhere.", gate.Destination);
++        else
++            ChatHandler(GetSession()).PSendSysMessage("|cffffd000Experience locked at level %u.|r Complete a quest in %s to keep earning experience. Quests elsewhere still give money, items and reputation.", uint32(gate.Level), gate.Destination);
++        return;
++    }
++}
++
+ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate)
+ {
+     if (xp < 1)
+@@ -2597,6 +2687,19 @@ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate)
+     if (level >= sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+         return;
+ 
++    // zrbfacore: expansion XP gate, no experience at an old level cap until the next expansion is started
++    if (uint8 gateLevel = GetLockedXpGateLevel(level))
++    {
++        if (m_xpGateNotifiedLevel != gateLevel)
++        {
++            m_xpGateNotifiedLevel = gateLevel;
++            SendXpGateMessage(gateLevel, false);
++        }
++        if (m_activePlayerData->XP)
++            SetXP(0);
++        return;
++    }
++
+     uint32 bonus_xp;
+     bool recruitAFriend = GetsRecruitAFriendBonus(true);
+ 
+@@ -2628,6 +2731,15 @@ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate)
+ 
+         level = getLevel();
+         nextLvlXP = m_activePlayerData->NextLevelXP;
++
++        // zrbfacore: expansion XP gate, stop at the cap and drop the leftover experience
++        if (uint8 gateLevel = GetLockedXpGateLevel(level))
++        {
++            newXP = 0;
++            m_xpGateNotifiedLevel = gateLevel;
++            SendXpGateMessage(gateLevel, false);
++            break;
++        }
+     }
+ 
+     SetXP(newXP);
+@@ -16762,7 +16874,18 @@ void Player::RewardQuest(Quest const* quest, uint32 reward, Object* questGiver,
+ 
+     int32 moneyRew = 0;
+     if (getLevel() < sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
++    {
++        // zrbfacore: expansion XP gate, a quest that opens the gate already pays its own experience
++        uint8 lockedGate = GetLockedXpGateLevel(getLevel());
++        m_xpGateRewardingQuest = quest;
++        if (lockedGate && !GetLockedXpGateLevel(getLevel()))
++        {
++            m_xpGateNotifiedLevel = 0;
++            SendXpGateMessage(lockedGate, true);
++        }
+         GiveXP(XP, nullptr);
++        m_xpGateRewardingQuest = nullptr;
++    }
+     else
+         moneyRew = int32(quest->GetRewMoneyMaxLevel() * sWorld->getRate(RATE_DROP_MONEY));
+ 
+diff --git a/src/server/game/Entities/Player/Player.h b/src/server/game/Entities/Player/Player.h
+index 388dc76..56ac790 100644
+--- a/src/server/game/Entities/Player/Player.h
++++ b/src/server/game/Entities/Player/Player.h
+@@ -1190,6 +1190,10 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
+ 
+         void SetXP(uint32 xp);
+         void GiveXP(uint32 xp, Unit* victim, float group_rate=1.0f);
++        // zrbfacore: expansion XP gate. Returns the gate level (60, 70, ...) when experience is
++        // locked at this level until a quest in the next expansion is done, 0 when it is not.
++        uint8 GetLockedXpGateLevel(uint8 level) const;
++        void SendXpGateMessage(uint8 gateLevel, bool unlocked);
+         void GiveLevel(uint8 level);
+ 
+         void InitStatsForLevel(bool reapplyMods = false);
+@@ -2962,6 +2966,11 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
+         QuestStatusSaveMap m_QuestStatusSave;
+ 
+         RewardedQuestSet m_RewardedQuests;
++        // zrbfacore: expansion XP gate cache (highest opened gate, recomputed when m_RewardedQuests changes size)
++        mutable int32 m_xpGateOpenIndex = -1;
++        mutable size_t m_xpGateCacheSize = size_t(-1);
++        Quest const* m_xpGateRewardingQuest = nullptr;
++        uint8 m_xpGateNotifiedLevel = 0;
+         QuestStatusSaveMap m_RewardedQuestsSave;
+ 
+         SkillStatusMap mSkillStatus;
+diff --git a/src/server/worldserver/worldserver.conf.dist b/src/server/worldserver/worldserver.conf.dist
+index c11dfa2..013a22b 100644
+--- a/src/server/worldserver/worldserver.conf.dist
++++ b/src/server/worldserver/worldserver.conf.dist
+@@ -850,6 +850,17 @@ SkipCinematics = 0
+ 
+ MaxPlayerLevel = 120
+ 
++#
++#    ExpansionXpGate.Enable  (zrbfacore)
++#        Description: Stop experience at the old level caps (60, 70, 80, 85, 90, 100, 110) until the
++#                     character turns in a quest in the next expansion (Outland, Northrend, the
++#                     Cataclysm zones, Pandaria, Draenor, the Broken Isles, Kul Tiras/Zandalar).
++#                     Quests elsewhere still give money, items and reputation.
++#        Default:     1 - (Enabled)
++#                     0 - (Disabled)
++
++ExpansionXpGate.Enable = 1
++
+ #
+ #    MinDualSpecLevel
+ #        Description: Level requirement for Dual Talent Specialization.

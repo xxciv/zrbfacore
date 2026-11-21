@@ -83,6 +83,9 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/battle-pet-trainers.patch`](tools/bfa/battle-pet-trainers.patch): pet tamers such as
   Julia Stevens can be battled ("Let's do battle!") and the win credits their quest; a capture with
   2 or 3 pets in the team no longer adds the pet 2 or 3 times.
+- [`tools/bfa/expansion-xp-gate.patch`](tools/bfa/expansion-xp-gate.patch): no experience at the
+  old level caps (60, 70, 80, 85, 90, 100, 110) until the character turns in a quest in the next
+  expansion; `ExpansionXpGate.Enable` in `worldserver.conf` turns it off.
 - [`tools/bfa/weapon-attack-power.patch`](tools/bfa/weapon-attack-power.patch): attack power
   includes the weapon's share (weapon DPS x 6) and flat attack power buffs, as in TrinityCore 8.3.7,
   so melee and hunter abilities that scale with attack power hit as hard as they should.
@@ -92,7 +95,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   `.debug attackpower [spell]` prints your attack power fields and, with a target selected, how a
   spell's attack power damage is computed against it.
 - [`tools/bfa/client-ticket-poll.patch`](tools/bfa/client-ticket-poll.patch): drops the WoW Circle
-  client's `.ticket CU...` ticket polls instead of posting them as chat (guild, say).
+  client's `.ticket CU...` ticket polls and `.addon load` polls instead of posting them as chat
+  (guild, say).
 - [`tools/bfa/core-branding.patch`](tools/bfa/core-branding.patch): the startup banner reads
   zrbfacore ("Based on HavenCore"), without the old BfaCore Discord link and email address.
 - [`tools/bfa/razorfen-downs.patch`](tools/bfa/razorfen-downs.patch): Razorfen Downs: Death Speaker
@@ -159,6 +163,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`client/ZRProfessions`](client/ZRProfessions/README.md): a client addon that lets trainers teach up to 4
   primary professions (the 8.3.7 client UI stops at 2 even when the server allows more) and lists them all
   with `/profs`.
+- [`client/ZRChatFilter`](client/ZRChatFilter/README.md): a client addon that hides the WoW Circle
+  client's own `.ticket CU...` and `.addon load` lines from chat (`/zrcf`).
 - [`client/ZRProximity`](client/ZRProximity/README.md): a client addon that shows nameplates only for units
   that are close, targeted, under the mouse or fighting you (`/zrp`).
 - `client/BugTabs`, `client/FishingBuddy`, `client/Sorted`: third-party addons patched to run without
