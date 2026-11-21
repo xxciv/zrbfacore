@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-21 (core: Pick Lock stuck at 120)
 
-Draft PR #99, not merged yet. Not tested in game yet.
+PR #99. Confirmed in game by Four on 2026-11-21.
 
 ### Core: Pick Lock says "up to 265" but a 125 lockbox fails with "Skill not high enough"
 
@@ -22,8 +22,8 @@ Draft PR #99, not merged yet. Not tested in game yet.
   `Spell::CanOpenLock` in `Spell.cpp`: `effect->CalcValue()` -> `effect->CalcValue(m_caster)`. Pick Lock
   now opens up to the tooltip's value. Skeleton keys and other item spells go through the same line;
   they have no per-level points, so they are unchanged.
-- **Status:** applies cleanly after the full chain on upstream 2c13546, `Spell.cpp` compiles. Not
-  checked in game yet.
+- **Status:** applies cleanly after the full chain on upstream 2c13546, `Spell.cpp` compiles.
+  Confirmed in game by Four on 2026-11-21 (Strong Iron Lockbox opens).
 - **Pick up** (until the PR is merged):
 
   ```
