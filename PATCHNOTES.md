@@ -5,6 +5,27 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-21 (Stratholme, Service Entrance)
 
+### DB: Service Entrance crusaders stood idle next to the Scourge
+
+- **Found** (Four, 2026-11-21: "Argent NPCs aren't fighting from the get go"): the mounted Argent
+  Crusader 45456 has SmartAI but no rows, and two creatures that both stand still never notice each
+  other. Its faction 2131 is hostile to faction 20 (most of the wing) but not to the monster group
+  (Plagued Insects). Several Service Entrance trash kinds lacked the staged battle flag, so a crusader
+  would kill them outright.
+- **Changed** (`sql/fixes/world/2026_11_21_06_stratholme_service_entrance_crusaders.sql`), as for the
+  Main Gate crusaders 45346:
+  - 45456 faction 2131 -> 2115.
+  - 45456 `smart_scripts` ids 0-13: out of combat, every 2-4 seconds, attack the closest Ravaged,
+    Mangled or Broken Cadaver, Skeletal Guardian or Berserker, Plague Ghoul (both entries), Ghoul
+    Ravener, Fleshflayer Ghoul, Thuzadin Shadowcaster or Necromancer, Rockwing Gargoyle, Shrieking
+    Banshee or Plagued Insect within 8 yards; id 14 defensive on reset. Bosses, sentries and
+    abominations are not targets. 7 of the visible crusaders have one within 8 yards; the rest stand
+    guard (the Slaughter Square group stays hidden until the abominations die).
+  - `flags_extra` |= 0x400 for 10398, 10399, 10400, 10405, 10406, 10407, 10408, 10416, 10417, 10461,
+    10463.
+- **Status:** not tested in game yet.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### Core and DB: the Service Entrance scenario could not be finished
 
 - **Found** (survey, 2026-11-21): scenario 637 runs in order: step 1150 destroy the three Ash'ari
