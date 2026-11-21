@@ -5,6 +5,17 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-21 (Stratholme, Service Entrance)
 
+### Core: Ramstein's Mindless Undead wave in two halves
+
+- **Found** (Four, 2026-11-21: "15 rush you, then another 15 after 30 seconds?"): when Ramstein dies,
+  `boss_ramstein_the_gorger.cpp` summons 30 Mindless Undead 11030 at once (around 3969, -3392), all
+  attacking. Too many for one player.
+- **Changed** (`tools/bfa/stratholme.patch`): Ramstein summons 15; `instance_stratholme.cpp` summons the
+  other 15 at the same spot 30 seconds after his death, each attacking the nearest player within 150
+  yards. Still 30 in total. A server restart inside those 30 seconds skips the second wave.
+- **Status:** not tested in game yet.
+- **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
+
 ### Core: the five Black Guard Sentries pulled together
 
 - **Found** (Four, 2026-11-21: "a bit too much for any solo player to pull at once", "all bunched up
