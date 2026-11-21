@@ -3,6 +3,44 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-21 (Zul'Farrak)
+
+### Core and DB: Zul'Farrak survey fixes
+
+- **Found** (survey, 2026-11-21):
+  - Scenario 644 step 1164 needs Shadowpriest Sezz'ziz, Nekrum Gutchewer (scenario events 23316 and
+    23315) and Chief Ukorz Sandscalp; five bonus steps (Antu'sul, Theka, Zum'rah, Velratha,
+    Gahz'rilla) count kills. Nothing sent the two events, so the main step could never finish.
+  - 81 pyramid trolls (Sandfury Slave 7787, Drudge 7788, Cretin 7789, Acolyte 8876, Zealot 8877)
+    stood at the foot of the pyramid and beside Bly before the event: the 8.x sniff caught the
+    event's summons. Pandaria 5.4.8 and AzerothCore have none of these entries in the world.
+  - Sergeant Bly's crew stood outside their cages (Weegli near the entrance at 1675, 841), and one
+    of the five cages was open.
+  - Nekrum and Sezz'ziz are spawned at the foot of the pyramid, and `instance_zulfarrak.cpp` also
+    summons them in wave 3, so there would have been two of each.
+  - The event's waves are sized for five players: 23 trolls, 24 trolls, then 5 trolls with Nekrum
+    and Sezz'ziz.
+  - Overspawn check: apart from the pyramid, every entry matches Pandaria 5.4.8 within 3 (Scarabs
+    68 everywhere). Zerillis 10082 (rare) had two spawns up at once (Pandaria one).
+  - Quests (all 7 checked): Into Zul'Farrak, Chief Ukorz Sandscalp and Wrath of the Sandfury (Mazoga's
+    Spirit 40712), Breaking and Entering (Tran'rek 44929: Nekrum and Sezz'ziz), A Fool's Errand
+    (Chief Engineer Bilgewhizzle 7407: Tiara of the Deep 9234 from Velratha, Gahz'rilla's Electrified
+    Scale 8707 from Gahz'rilla), and the two Adventurers Wanted. Their targets and item drops are in
+    place. Gahz'rilla is a fixed spawn in the pool (the gong has no script); the patch keeps it from
+    being sent away when its grid reloads.
+- **Changed:**
+  - New `tools/bfa/zulfarrak.patch` (after `pick-lock-level.patch`), `instance_zulfarrak.cpp`: sends
+    23315/23316 when Nekrum/Sezz'ziz die; the spawned pair stays hidden (passive, not attackable)
+    until wave 3, then comes down the stairs with it instead of a summoned pair (Pandaria 5.4.8);
+    waves 1 and 2 summon every second troll (12 and 12; `PyramidWaveStep`); only a summoned second
+    Gahz'rilla is sent away.
+  - `sql/fixes/world/2026_11_21_09_zulfarrak.sql`: the 81 pyramid trolls removed (backup
+    `zr_backup_zf_pyramid_creature`); Bly 326423, Raven 326425, Oro 326426, Murta 326427 and Weegli
+    326424 moved into their cages (AzerothCore positions); cage 141071 (guid 189749) closed; Zerillis
+    51510 and 327501 in pool 32901.
+- **Status:** not tested in game yet.
+- **Pick up:** apply the patch, rebuild, run the SQL, restart `worldserver`.
+
 ## 2026-11-21 (Stratholme, Service Entrance)
 
 ### Core: Ramstein's Mindless Undead wave halved
