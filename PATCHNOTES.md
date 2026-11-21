@@ -132,6 +132,19 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Status:** not tested in game yet. Runs cleanly twice on our copy of the world DB.
 - **Pick up:** run the SQL, restart `worldserver`.
 
+### Core: Balnazzar resets to full health on Domination
+
+- **Found** (Four, 2026-11-21, solo): Dreadlord Balnazzar leashes and heals to full when he casts
+  Domination.
+- **Cause:** `boss_dathrohan_balnazzar.cpp` casts Domination (15690, mind control) on his current target
+  every 15 seconds. Solo, the controlled player is the only one on his threat list, so he has nobody to
+  fight, evades, and his reset turns him back into Dathrohan at full health.
+- **Changed** (`tools/bfa/stratholme.patch`): he only casts Domination while another living, uncontrolled
+  player is on his threat list, so a group still sees it. His heal at 40% when Dathrohan turns into
+  Balnazzar is unchanged (that is the fight's second phase).
+- **Status:** compiles against the patch chain; not tested in game yet.
+- **Pick up:** swap the patch, rebuild, restart `worldserver`.
+
 ## 2026-11-20 (pet battles)
 
 ### Core: wild battle pets ignore their zone's level

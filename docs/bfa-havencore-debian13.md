@@ -565,9 +565,11 @@ Stratholme had no objectives at all. The instance now picks the scenario when th
 the dungeon the group queued for in the Dungeon Finder, otherwise the entrance the player came in by.
 The choice is saved with the instance. It also keeps the Brotherhood of the Light questgivers in
 Balnazzar's hall (Crusade Commander Eligor Dawnbringer, Master Craftsman Wilhelm, Packmaster
-Stonebruiser) hidden until Balnazzar dies; their copies at the entrance stay. It touches
-`ScenarioMgr.h/.cpp` (a function that creates a given scenario for an instance) and the Stratholme
-instance script.
+Stonebruiser) hidden until Balnazzar dies; their copies at the entrance stay. Balnazzar casts
+Domination (mind control on his target) only while another player is on his threat list: alone, the
+controlled player was his only target, so he evaded and reset to full health. It touches
+`ScenarioMgr.h/.cpp` (a function that creates a given scenario for an instance), the Stratholme
+instance script and `boss_dathrohan_balnazzar.cpp`.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at

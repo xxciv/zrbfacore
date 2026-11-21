@@ -34,6 +34,41 @@ index 4082639..9e9ddfb 100644
  
      void LoadDBData();
      void LoadDB2Data();
+diff --git a/src/server/scripts/EasternKingdoms/Stratholme/boss_dathrohan_balnazzar.cpp b/src/server/scripts/EasternKingdoms/Stratholme/boss_dathrohan_balnazzar.cpp
+index de738d4..1e613f3 100644
+--- a/src/server/scripts/EasternKingdoms/Stratholme/boss_dathrohan_balnazzar.cpp
++++ b/src/server/scripts/EasternKingdoms/Stratholme/boss_dathrohan_balnazzar.cpp
+@@ -117,6 +117,18 @@ public:
+                 me->UpdateEntry(NPC_DATHROHAN);
+         }
+ 
++        bool HasOtherPlayerToFight() const
++        {
++            Unit* victim = me->GetVictim();
++            for (ThreatReference const* ref : me->GetThreatManager().GetUnsortedThreatList())
++            {
++                Unit* target = ref->GetVictim();
++                if (target != victim && target->GetTypeId() == TYPEID_PLAYER && target->IsAlive() && !target->IsCharmed())
++                    return true;
++            }
++            return false;
++        }
++
+         void JustDied(Unit* /*killer*/) override
+         {
+             static uint32 uiCount = sizeof(m_aSummonPoint)/sizeof(SummonDef);
+@@ -216,7 +228,10 @@ public:
+                 //MindControl
+                 if (m_uiMindControl_Timer <= uiDiff)
+                 {
+-                    DoCastVictim(SPELL_MINDCONTROL);
++                    // Domination takes the victim away; with nobody else to fight he evades and
++                    // resets to full health, so only cast it while another player is on him.
++                    if (HasOtherPlayerToFight())
++                        DoCastVictim(SPELL_MINDCONTROL);
+                     m_uiMindControl_Timer = 15000;
+                 } else m_uiMindControl_Timer -= uiDiff;
+             }
 diff --git a/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp b/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp
 index 2bcf51a..51991ec 100644
 --- a/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp
