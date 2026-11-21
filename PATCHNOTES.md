@@ -5,6 +5,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-21 (Stratholme, Service Entrance)
 
+### Core: the five Black Guard Sentries pulled together
+
+- **Found** (Four, 2026-11-21: "a bit too much for any solo player to pull at once", "all bunched up
+  together"): the five sentries 10394 stand within 6 yards of each other (4030-4036, -3376..-3378),
+  so pulling one brings all five. Scenario step 1155 needs all five killed.
+- **Changed** (`tools/bfa/stratholme.patch`, `instance_stratholme.cpp`): when Ramstein dies the
+  sentries appear as before, but only one is active. The rest hold their post (passive, immune to
+  players) until the active one dies; then the next one steps up and engages the players in the
+  instance. Also holds after a server restart (one active sentry is picked when they load). The
+  spots are unchanged.
+- **Status:** not tested in game yet.
+- **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
+
 ### DB: Supply Crates would not open
 
 - **Found** (Four, 2026-11-21): right-clicking a Supply Crate 176224 says "You can't open that", so no

@@ -70,13 +70,14 @@ index de738d4..1e613f3 100644
                  } else m_uiMindControl_Timer -= uiDiff;
              }
 diff --git a/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp b/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp
-index 2bcf51a..7db25c0 100644
+index 2bcf51a..39c83bf 100644
 --- a/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp
 +++ b/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp
-@@ -24,12 +24,17 @@ EndScriptData */
+@@ -24,12 +24,18 @@ EndScriptData */
  
  #include "ScriptMgr.h"
  #include "Creature.h"
++#include "CreatureAI.h"
 +#include "DB2Stores.h"
  #include "EventMap.h"
  #include "GameObject.h"
@@ -91,7 +92,7 @@ index 2bcf51a..7db25c0 100644
  #include "stratholme.h"
  
  enum Misc
-@@ -37,6 +42,20 @@ enum Misc
+@@ -37,6 +43,20 @@ enum Misc
      MAX_ENCOUNTER           = 6
  };
  
@@ -112,7 +113,7 @@ index 2bcf51a..7db25c0 100644
  enum InstanceEvents
  {
      EVENT_BARON_RUN         = 1,
-@@ -58,6 +77,162 @@ class instance_stratholme : public InstanceMapScript
+@@ -58,6 +78,202 @@ class instance_stratholme : public InstanceMapScript
  
                  for (uint8 i = 0; i < 5; ++i)
                      IsSilverHandDead[i] = false;
@@ -137,6 +138,7 @@ index 2bcf51a..7db25c0 100644
 +            std::set<ObjectGuid::LowType> _abominationsKilledSpawns;
 +            ObjectGuid _ramsteinGUID;
 +            GuidVector _rivendareDomain;    // Black Guard Sentries and Lord Aurius Rivendare
++            GuidVector _sentries;           // the five Black Guard Sentries
 +            GuidVector _argentVanguard;     // the Argent Crusade copies in Slaughter Square
 +
 +            bool IsSlaughterhouseCleared() const { return _abominationsKilled >= MAX_SLAUGHTERHOUSE_ABOMINATIONS; }
@@ -163,6 +165,37 @@ index 2bcf51a..7db25c0 100644
 +            {
 +                creature->SetVisible(show);
 +                creature->SetReactState(show ? REACT_AGGRESSIVE : REACT_PASSIVE);
++            }
++
++            // Five Black Guard Sentries at once are too much for one player: they hold their post
++            // (passive, not attackable) and step up one at a time, the next when the last one dies.
++            static void HoldSentry(Creature* sentry)
++            {
++                sentry->SetReactState(REACT_PASSIVE);
++                sentry->AddUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
++            }
++
++            void ActivateNextSentry(bool engage)
++            {
++                Creature* next = nullptr;
++                for (ObjectGuid const& guid : _sentries)
++                {
++                    Creature* sentry = instance->GetCreature(guid);
++                    if (!sentry || !sentry->IsAlive())
++                        continue;
++                    if (!sentry->HasUnitFlag(UNIT_FLAG_IMMUNE_TO_PC))
++                        return; // one is already up
++                    if (!next)
++                        next = sentry;
++                }
++
++                if (!next)
++                    return;
++
++                next->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
++                next->SetReactState(REACT_AGGRESSIVE);
++                if (engage)
++                    next->AI()->DoZoneInCombat();
 +            }
 +
 +            static void ShowVanguard(Creature* creature, bool show)
@@ -249,6 +282,14 @@ index 2bcf51a..7db25c0 100644
 +                        for (ObjectGuid const& guid : _rivendareDomain)
 +                            if (Creature* guard = instance->GetCreature(guid))
 +                                ShowUnit(guard, true);
++                        for (ObjectGuid const& guid : _sentries)
++                            if (Creature* sentry = instance->GetCreature(guid))
++                                HoldSentry(sentry);
++                        ActivateNextSentry(false);
++                        return;
++                    case NPC_BLACK_GUARD:
++                        if (creature->GetSpawnId())
++                            ActivateNextSentry(true);
 +                        return;
 +                    default:
 +                        break;
@@ -275,7 +316,7 @@ index 2bcf51a..7db25c0 100644
              }
  
              uint32 EncounterState[MAX_ENCOUNTER];
-@@ -83,11 +258,10 @@ class instance_stratholme : public InstanceMapScript
+@@ -83,11 +299,10 @@ class instance_stratholme : public InstanceMapScript
  
              bool StartSlaugtherSquare()
              {
@@ -290,7 +331,7 @@ index 2bcf51a..7db25c0 100644
                      return true;
                  }
  
-@@ -127,6 +301,44 @@ class instance_stratholme : public InstanceMapScript
+@@ -127,6 +342,51 @@ class instance_stratholme : public InstanceMapScript
                      case NPC_ABOM_VENOM:
                          abomnationGUID.insert(creature->GetGUID());
                          break;
@@ -315,8 +356,15 @@ index 2bcf51a..7db25c0 100644
 +                        if (creature->GetSpawnId())
 +                        {
 +                            _rivendareDomain.push_back(creature->GetGUID());
++                            if (creature->GetEntry() == NPC_BLACK_GUARD)
++                                _sentries.push_back(creature->GetGUID());
 +                            if (GetData(TYPE_RAMSTEIN) != DONE)
 +                                ShowUnit(creature, false);
++                            else if (creature->GetEntry() == NPC_BLACK_GUARD)
++                            {
++                                HoldSentry(creature);
++                                ActivateNextSentry(false);
++                            }
 +                        }
 +                        break;
 +                    case NPC_ARGENT_CRUSADER_MOUNTED:
@@ -335,7 +383,7 @@ index 2bcf51a..7db25c0 100644
                  }
              }
  
-@@ -183,12 +395,12 @@ class instance_stratholme : public InstanceMapScript
+@@ -183,12 +443,12 @@ class instance_stratholme : public InstanceMapScript
                          break;
                      case GO_PORT_GAUNTLET:
                          portGauntletGUID = go->GetGUID();
@@ -350,7 +398,7 @@ index 2bcf51a..7db25c0 100644
                              HandleGameObject(ObjectGuid::Empty, true, go);
                          break;
                      case GO_PORT_ELDERS:
-@@ -346,7 +558,8 @@ class instance_stratholme : public InstanceMapScript
+@@ -346,7 +606,8 @@ class instance_stratholme : public InstanceMapScript
  
                  std::ostringstream saveStream;
                  saveStream << EncounterState[0] << ' ' << EncounterState[1] << ' ' << EncounterState[2] << ' '
@@ -360,7 +408,7 @@ index 2bcf51a..7db25c0 100644
  
                  OUT_SAVE_INST_DATA_COMPLETE;
                  return saveStream.str();
-@@ -366,6 +579,21 @@ class instance_stratholme : public InstanceMapScript
+@@ -366,6 +627,21 @@ class instance_stratholme : public InstanceMapScript
                  loadStream >> EncounterState[0] >> EncounterState[1] >> EncounterState[2] >> EncounterState[3]
                  >> EncounterState[4] >> EncounterState[5];
  
@@ -382,7 +430,7 @@ index 2bcf51a..7db25c0 100644
                  // Do not reset 1, 2 and 3. they are not set to done, yet .
                  if (EncounterState[0] == IN_PROGRESS)
                      EncounterState[0] = NOT_STARTED;
-@@ -397,6 +625,8 @@ class instance_stratholme : public InstanceMapScript
+@@ -397,6 +673,8 @@ class instance_stratholme : public InstanceMapScript
                            return EncounterState[4];
                        case TYPE_BARON:
                            return EncounterState[5];
