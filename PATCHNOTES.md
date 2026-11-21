@@ -3,6 +3,827 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-21 (Stratholme, Main Gate)
+
+### Core: Stratholme had no dungeon scenario
+
+- **Found** (survey, 2026-11-20): map 329 is two dungeons since Cataclysm, Main Gate (Dungeon Finder 40,
+  scenario 636: Balnazzar, plus bonus objectives for The Unforgiven, Hearthsinger Forresten, Timmy the
+  Cruel, Postmaster Malown, Commander Malor, Willey Hopebreaker and Instructor Galford) and Service
+  Entrance (274, scenario 637). The `scenarios` table can link only one scenario per map and difficulty,
+  so it had no row for 329 and Stratholme ran without any scenario (nothing for `.debug scenario`).
+  `ScenarioMgr::CreateInstanceScenarioByID` exists but always returns nothing (its last line is
+  commented out).
+- **Changed:** new `tools/bfa/stratholme.patch` (after `wild-pet-zone-level.patch`):
+  - `ScenarioMgr::CreateInstanceScenarioForMap(Map*, scenarioId)` creates a given scenario for an
+    instance (`ScenarioMgr.h/.cpp`).
+  - `instance_stratholme.cpp`: when the first player enters, the instance picks Main Gate or Service
+    Entrance from the group's Dungeon Finder dungeon (40 / 274), else from the nearer entrance
+    (front gate 3393, -3380 or back gate 3591, -3643), saves the choice with the instance (save data
+    gets two more numbers; older saves pick again) and creates scenario 636 or 637.
+  - The Brotherhood of the Light questgivers standing in Balnazzar's hall (Crusade Commander Eligor
+    Dawnbringer 45200, Master Craftsman Wilhelm 45201, Packmaster Stonebruiser 45323, the copies north
+    of y -3364) stay hidden, without gossip or quests, until Balnazzar 10813 dies, as in Pandaria
+    5.4.8. Their copies at the entrance are unchanged, so every quest stays available there.
+  - Compiles against the current patch chain, every Stratholme file included. The first version
+    (4d1199c) named the Balnazzar entry `NPC_BALNAZZAR` in `stratholme.h`, which clashes with the enum
+    in `boss_dathrohan_balnazzar.cpp` and broke the build; it is `NPC_DREADLORD_BALNAZZAR` now.
+- **Status:** confirmed in game 2026-11-21 (Four: "a clean run").
+- **Pick up:** apply the patch, rebuild, restart `worldserver`.
+
+### DB: Stratholme Main Gate, crusaders vs Scourge, Ravaged Cadavers, movement
+
+- **Found** (survey, 2026-11-20):
+  - 54 Argent Crusaders 45346 stand on top of the Scourge in the Main Gate streets (0-3 yards apart).
+    Since Cataclysm they fight the undead there as a backdrop (Pandaria 5.4.8 gives them a script that
+    attacks the nearest one and deals no damage). Here they have no script: two units that both stand
+    still never notice each other, and a fight that did start (a patrol walking by) was real, so
+    crusaders or Scourge died.
+  - Ravaged Cadaver 10381: `unit_flags` 294976 includes `UNIT_FLAG_STUNNED` (0x40000), so the 15
+    cadavers never fight back (same fault as Guard Slip'kik in Dire Maul). Pandaria 5.4.8 has 32832,
+    AzerothCore 64.
+  - Almost every mob in the wing stands still.
+  - Overspawn check: the Main Gate packs match Pandaria 5.4.8 (400 creatures here, 404 there, same
+    guids); AzerothCore has fewer because the 8.x layout added skeletons. Nothing removed.
+- **Changed** (`sql/fixes/world/2026_11_20_00_stratholme_main_gate.sql`):
+  - Our staged battle mechanism (`staged-npc-battles.patch`, `flags_extra` 0x400: no damage from other
+    creatures below 85% health) on both Argent Crusader templates (45346, and the Service Entrance's
+    mounted 45456) and 20 Scourge trash templates (10381, 10382, 10383, 10387, 10390, 10391, 10411,
+    10414, 10418-10426, 11043, 11120, 42975). Players and their pets do full damage, so a Scourge mob
+    pulled out of a fight has at least 85% health.
+  - Argent Crusader 45346 `smart_scripts` ids 0-11: out of combat, every 2-4 seconds, attack the
+    closest Risen Guardsman, Skeletal Guardian, Plague Ghoul, Risen Initiate, Risen Gallant, Risen
+    Priest, Risen Conjuror, Risen Defender, Risen Sorcerer, Skeletal Berserker, Mangled Cadaver or Risen
+    Hammersmith within 8 yards. 23 crusaders have none within 8 yards and stand guard.
+  - Ravaged Cadaver 10381 `unit_flags` &= ~0x40000.
+  - Movement: 26 Pandaria 5.4.8 patrol paths on the same guids (citizens' ghosts, Vengeful Phantoms,
+    cadavers, skeletons, a Risen Gallant, a Risen Monk, the Risen Hammersmith) and 3 AzerothCore patrols
+    (two Risen Monks, a Risen Guardsman), paths 329000001-329000029; 24 skeletons and cadavers wander
+    (AzerothCore radius, at most 5 yards). Bosses, crusaders, questgivers and Fras Siabi are left alone.
+- **Status:** confirmed in game 2026-11-21 (Four: "a clean run"). The SQL runs cleanly twice in a row on our copy of the world DB.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Stratholme Main Gate, densest packs thinned
+
+- **Found** (Four, 2026-11-20: "stratholme packs are pretty dense"): the Main Gate has 400 creatures,
+  AzerothCore 256. The packs match Pandaria 5.4.8 guid for guid (the 8.x layout): Skeletal Guardians
+  10390 and Skeletal Berserkers 10391 added to the classic packs, and Broken Cadavers 10383 standing on
+  the Ravaged Cadavers 10381 that summon them when they die. Eight packs (5-yard groups of 6+) are at
+  least twice the AzerothCore pack within 8 yards: three corpse piles in King's Square (15 vs 7, 13 vs 1,
+  12 vs 2), one in Market Row (8 vs 3), four in the Scarlet Bastion (9 vs 3, 9 vs 3, 8 vs 4, 6 vs 3).
+- **Changed** (`sql/fixes/world/2026_11_20_01_stratholme_main_gate_thinning.sql`, Four chose this on
+  2026-11-20): each of those packs cut to the AzerothCore count (at least 3), removing first the kinds
+  AzerothCore has fewer of, skeletons first, stacked spawns first. 51 removed: 15 Skeletal Berserkers,
+  12 Skeletal Guardians, 10 Broken Cadavers, 7 Ravaged Cadavers, 3 Mangled Cadavers, 2 Plague Ghouls,
+  1 Risen Inquisitor, 1 Risen Sorcerer. Bosses and The Unforgiven's phantoms, crusaders, rats, quest NPCs,
+  patrols and spawns with per-guid SmartAI, formation or pool rows are kept. Rows are copied first into
+  `zr_backup_strat_mg_creature` / `zr_backup_strat_mg_creature_addon` (restore lines in the file).
+- **Status:** confirmed in game 2026-11-21 (Four: "the pack density is way better").
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Stratholme Main Gate, crusaders idle next to the Risen
+
+- **Found** (Four, 2026-11-21, screenshots): Argent Crusaders 45346 standing right next to a Risen
+  Sorcerer, Gallant and Defenders without fighting, while others fought the undead.
+- **Cause:** the crusaders' faction template 2131 (Argent Crusade) is hostile only to faction 1107 and
+  the Scourge (20). The Risen are template 67 (Scarlet Crusade, faction 56), so the two are neutral, and
+  creature vs creature attacks need one side to be hostile (`Unit::_IsValidAttackTarget`). The start
+  rows from `2026_11_20_00` could not stick on a Risen; skeletons, cadavers and ghouls (Scourge) worked.
+- **Changed** (`sql/fixes/world/2026_11_21_00_stratholme_crusader_faction.sql`): crusader 45346 faction
+  2115 (Actor Good, as the Rageclaw allies in Zul'Drak: friendly to players, hostile to every monster
+  faction); defensive on spawn and after each fight, so they don't charge bosses or rats across the
+  street; start rows for the seven staged Main Gate kinds that had none (Risen Inquisitor, Battle Mage,
+  Monk, Ravaged and Broken Cadavers, Vengeful Phantom, Patchwork Horror). Crusaders with nothing within
+  8 yards still stand until something walks by.
+- **Status:** confirmed in game 2026-11-21 (Four: "a clean run").
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Stratholme Main Gate, Patchwork Horrors can't be clicked
+
+- **Found** (Four, 2026-11-21, screenshot): the Patchwork Horror 10414 abominations look see-through
+  green and can't be selected or attacked.
+- **Cause:** the dump's `creature_template.dynamicflags` for 10414 is 2 (`UNIT_DYNFLAG_HIDE_MODEL`); no
+  other Stratholme creature has it. Pandaria 5.4.8 and AzerothCore have 0.
+- **Changed** (`sql/fixes/world/2026_11_21_01_stratholme_patchwork_horror.sql`): `dynamicflags` 0.
+- **Status:** confirmed in game 2026-11-21 (Four: "a clean run").
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Stratholme postboxes do nothing
+
+- **Found** (Four, 2026-11-21): none of the postboxes summoned anything.
+- **Cause:** each postbox (176346, 176349-176353) runs action list 17634600 .. 17635300 when clicked,
+  and the dump has none of those lists. Since Cataclysm, Postmaster Malown 11143 is a normal boss standing
+  in Crusaders' Square (a static spawn here and in Pandaria 5.4.8); the postboxes only call three
+  Undead Postmen 11142 each.
+- **Changed** (`sql/fixes/world/2026_11_21_02_stratholme_postboxes.sql`): the six lists copied from
+  Pandaria 5.4.8 (three postmen per postbox, despawn after 5 minutes); each postbox calls them once.
+- **Status:** confirmed in game 2026-11-21 (Four: "a clean run").
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Stratholme Scarlet Cannons do nothing
+
+- **Found** (Four, 2026-11-21, screenshots): after Willey Hopebreaker dies, seven Risen Riflemen line up
+  down the hall. A Scarlet Cannonball loads into a Scarlet Cannon, and nothing happens.
+- **Cause:** the cannons 176216/176217 are set to SmartGameObjectAI with no rows (none in Pandaria 5.4.8
+  either). The blast spell Cannon Fire 17278 and its landing spot are in the DB; nothing cast it.
+- **Changed** (`sql/fixes/world/2026_11_21_03_stratholme_scarlet_cannons.sql`, as AzerothCore does it):
+  loading a cannon makes the player cast Cannon Fire; it only hits Risen Riflemen 11054 (condition, so
+  the Risen standing in that hall aren't pulled), and a rifleman it hits dies.
+- **Status:** confirmed in game 2026-11-21 (Four: "the cannons worked!").
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Balnazzar resets to full health on Domination
+
+- **Found** (Four, 2026-11-21, solo): Balnazzar 10813 casts Domination, leashes and heals to full.
+- **Cause:** his SmartAI row 0 casts Domination 17405 (mind control) on a random hostile target. Solo
+  that is the only player, so he has nobody left to fight, evades, and resets to full health.
+- **First try (wrong script):** `stratholme.patch` (406064d) changed `boss_dathrohan_balnazzar.cpp` to
+  cast Domination only while a second player is on him. That script belongs to Grand Crusader
+  Dathrohan 10812, who is not spawned since Cataclysm, so it changed nothing in game (Four,
+  2026-11-21: "that didn't stop him"). The code stays in the patch (harmless, and pulling it out
+  would cost another rebuild).
+- **Changed** (`sql/fixes/world/2026_11_21_04_stratholme_balnazzar_domination.sql`): Domination now
+  picks a random player other than his top-threat target (SmartAI target 6, players only). Solo
+  there is none, so he skips it; in a group it takes someone other than the tank.
+- **Status:** confirmed in game 2026-11-21 (Four: "a clean run").
+- **Pick up:** run the SQL, restart `worldserver`.
+
+## 2026-11-21 (core: Pick Lock stuck at 120)
+
+PR #99. Confirmed in game by Four on 2026-11-21.
+
+### Core: Pick Lock says "up to 265" but a 125 lockbox fails with "Skill not high enough"
+
+- **Found** (Four, 2026-11-21): level 53 rogue, Pick Lock tooltip "Allows opening of locked chests and
+  doors that require a skill level of up to 265", Strong Iron Lockbox (requires Lockpicking 125) fails
+  with "Skill not high enough".
+- **Cause:** Pick Lock (spell 1804) effect 0 is `OPEN_LOCK` (33) with base points 120 and
+  `EffectRealPointsPerLevel` 5, target 26 (`TARGET_GAMEOBJECT_ITEM_TARGET`). `Spell::CanOpenLock` adds
+  the effect's value with `effect->CalcValue()`, without the caster. `SpellEffectInfo::CalcValue` only
+  adds the per-level part when it has a caster, so the server always used 120. 120 is below 125, so the
+  lockbox failed (and every lock above 120 did, at any level). The client tooltip does include the
+  per-level part.
+- **Changed:** new `tools/bfa/pick-lock-level.patch` (after `expansion-xp-gate.patch`),
+  `Spell::CanOpenLock` in `Spell.cpp`: `effect->CalcValue()` -> `effect->CalcValue(m_caster)`. Pick Lock
+  now opens up to the tooltip's value. Skeleton keys and other item spells go through the same line;
+  they have no per-level points, so they are unchanged.
+- **Status:** applies cleanly after the full chain on upstream 2c13546, `Spell.cpp` compiles.
+  Confirmed in game by Four on 2026-11-21 (Strong Iron Lockbox opens).
+- **Pick up** (until the PR is merged):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/pick-lock-level.patch | git apply && echo "pick lock patch applied"
+  grep -c "CalcValue(m_caster); // zrbfacore" src/server/game/Spells/Spell.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The grep prints 1. Restart worldserver.
+
+## 2026-11-21 (client: ZRChatFilter addon)
+
+PR #95 (draft). Confirmed in game by Four on 2026-11-21.
+
+### Client: ".ticket CUticketGet" still shows in guild chat with the server patch running
+
+- **Found** (Four, 2026-11-21): with the looser server drop below built and running (worldserver
+  started 19:19:55), a fresh `[G] [52:Delotha]: .ticket CUticketGet` showed at 19:23:00 right after
+  queueing for the Dungeon Finder, and `Server.log` had no `dropped client poll` line.
+- **Cause:** the server never receives that text as a chat message, so the client prints it itself.
+  No addon in `Interface/AddOns` contains `CUticket` (grep on Four's client: only Ace library comments
+  and Prat's saved chat history matched), so it comes from the WoW Circle client.
+- **Changed:** new client addon `client/ZRChatFilter` (`ZRChatFilter.toc`, `ZRChatFilter.lua`,
+  `README.md`): `ChatFrame_AddMessageEventFilter` on the say, yell, guild, officer, party, raid,
+  instance, whisper, channel, system and emote chat events hides any line containing `ticket CU` or
+  `.addon load`. `/zrcf` prints how many lines were hidden this session. Guide (client addons) and
+  README list it.
+- **Status:** confirmed in game by Four on 2026-11-21 (the Dungeon Finder ticket line no longer shows).
+- **Install:** on the server VM:
+
+  ```
+  mkdir -p ~/ZRChatFilter
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-z3fwbh
+  for f in ZRChatFilter.toc ZRChatFilter.lua README.md; do git -C ~/bfa/tools-repo show FETCH_HEAD:client/ZRChatFilter/$f > ~/ZRChatFilter/$f; done
+  ```
+
+  Then on the PC with the client (WoW closed):
+
+  ```
+  scp -r void@192.168.5.246:ZRChatFilter "/mnt/1TB/WoWCircle 8.3.7 BFA/Interface/AddOns/"
+  ```
+
+  Enable ZRChatFilter in the AddOns list at character select.
+
+## 2026-11-21 (chat: ".addon load" and ".ticket CUticketGet" in guild chat)
+
+PR #95 (draft, together with the expansion XP gate). Not tested in game yet.
+
+### Chat: character posts ".addon load" and still ".ticket CUticketGet" in guild chat
+
+- **Found** (Four, 2026-11-21): guild chat shows the character saying `.addon load`, alternating with
+  `.ticket CUticketGet`. A fresh `.ticket CUticketGet` still showed up at 19:01 on a worldserver
+  started at 18:51 with the 2026-11-14 patch built in (checked with `strings` and `ps`), right when
+  the character queued for the Dungeon Finder.
+- **Cause:** same as the ticket polls (2026-11-14 below). The WoW Circle client sends its own chat
+  commands, which its home server answers. HavenCore has no top-level `.addon` command (only
+  `.ticket addon` and `.account addon`), so `ParseCommands` fails for a player and the text is
+  broadcast as a normal chat message. The ticket poll that got through did not start with exactly
+  `.ticket CU`. The exact bytes are not known yet; the new log line will show them.
+- **Changed:** `tools/bfa/client-ticket-poll.patch`, `WorldSession::HandleChatMessage` in
+  `ChatHandler.cpp`: a message that contains `ticket CU` or `addon load` anywhere is dropped (before:
+  only one that starts with `.ticket CU`). The first 5 drops after each worldserver start are logged
+  to the console and `Server.log` as `zrbfacore: dropped client poll (chat type .., lang ..) from ..:
+  '<text>' [<hex bytes>]`.
+- **Status:** applies cleanly in the full chain on upstream 2c13546, `ChatHandler.cpp` compiles (with
+  and without the precompiled header). Not checked in game yet.
+- **Pick up** (until PR #95 is merged):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo pull
+  git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
+  if grep -q 'ticket CU' src/server/game/Handlers/ChatHandler.cpp; then git apply -R ../tools-repo/tools/bfa/client-ticket-poll.patch && echo "old ticket patch removed"; fi
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/client-ticket-poll.patch | git apply && echo "chat poll patch applied"
+  grep -c 'dropped client poll (chat type' src/server/game/Handlers/ChatHandler.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The grep prints 1. Restart worldserver.
+
+## 2026-11-20 (pet battles)
+
+### Core: wild battle pets ignore their zone's level
+
+- **Found** (Four, 2026-11-20): a level 1 Blighthawk in Western Plaguelands, where wild pets are
+  level 10 to 11 (`AreaTable.db2` `WildBattlePetLevelMin/Max` for zone 28).
+- **Cause:** `WildBattlePetMgr::EnableWildBattle` picks the level from the pet's `battlepet_info`
+  range, raised to the zone's range looked up by `GetZoneId()`. Spawns loaded with their grid reach it
+  from `Creature::LoadFromDB` before `AddToWorld`, while their zone is still 0, so the zone lookup
+  found nothing and the pet rolled its `battlepet_info` range alone. Most wild pets are 1-1 there
+  (Blighthawk included, since `2026_11_04_50`), so every grid-loaded wild pet was level 1. Only
+  respawned pets got the zone's level. Low zones (1-2) hid it.
+- **Changed:** `tools/bfa/wild-pet-zone-level.patch` (after `zandalari-bwemba-spirit.patch`): when the creature
+  has no zone yet, `EnableWildBattle` looks it up from the spawn position with
+  `Map::GetZoneAndAreaId`, the same lookup `AddToWorld` uses. Only touches `WildBattlePet.cpp`.
+  No SQL.
+- **Status:** confirmed in game by Four (2026-11-20).
+- **Pick up:** apply the patch, rebuild and restart `worldserver`. Wild pets get their level when
+  their grid loads, so after the restart a Western Plaguelands pet should be 10 or 11.
+
+## 2026-11-20 (Quest fixes: Those That Couldn't Let Go, Uther's Blessing, spell focus objects)
+
+PR #97, merged 2026-11-20. Both quests confirmed in game.
+
+### DB: Uther's Blessing says "Requires Uther's Tomb Statue" inside the tomb (Western Plaguelands)
+- **Found** (Four, 2026-11-20): using the item for Uther's Blessing (27169) anywhere in Uther's Tomb,
+  right at the statue's feet included, says "Requires Uther's Tomb Statue".
+- **Cause:** the item's spell 85752 (kill credit 45194) needs spell focus 1323, the invisible Uther's
+  Tomb Statue object 1323 (guid 19147, 970.9 -1825.4 82.0, 5 yd radius). Its spawntimesecs was -600, and
+  a negative respawn time means the object stays unspawned until a script spawns it. Nothing does.
+- **Changed** (`sql/fixes/world/2026_11_20_78_uthers_blessing.sql`): guid 19147 spawntimesecs -600 -> 300.
+  A spell focus object is never used up, so it now stays.
+- **Status:** CONFIRMED in game by Four 2026-11-20.
+
+### DB: 278 more spell focus objects were never spawned (all zones)
+- **Found** (2026-11-20, while fixing Uther's Blessing): the same negative spawntimesecs is on 278
+  spawns of 155 invisible spell focus objects (type 8, display 0 or 299). These are the "TEMP <place>"
+  markers that quest items need nearby. Examples: TEMP Darrowshire Town Square (Western/Eastern
+  Plaguelands), TEMP Scarlet Crusade Forward Camp and the Northridge Lumber Mill crate (Western
+  Plaguelands), Andorhal Towers, TEMP Burning Troll Hut (Ghostlands), TEMP Legion Antenna and many more
+  in Outland, TEMP Farshire Grain and many more in Northrend. No SmartAI row spawns or respawns any of
+  them, so each of those quest items would say "Requires <place>" at the right spot.
+- **Changed** (`sql/fixes/world/2026_11_20_79_spell_focus_spawns.sql`): spawntimesecs -> its positive
+  value for every type 8 spawn with display 0 or 299 and a negative time. Left alone: the 10 visible
+  focus spawns (Bank, Witherbark Village, Preserved Threshadon Carcass, Earthbinder's Circle, First
+  Burning Blade Pyre), since spawning them would add a visible model.
+- **Status:** same fix as Uther's Blessing, which Four confirmed 2026-11-20; the other markers aren't tested one by one. Any quest item that said "Requires <place>" at the right spot
+  should now work.
+- **Pick up** (both entries above): SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_78_uthers_blessing.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_79_spell_focus_spawns.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+### DB: Holy Thurible counts every time on the same Withdrawn Soul (Western Plaguelands)
+- **Found** (Four, 2026-11-20): in Those That Couldn't Let Go (27168) the Holy Thurible on a Withdrawn
+  Soul 45166 doesn't make the soul go away, so you can use it over and over on the same soul.
+- **Cause:** the soul's hit script (from our dump; TDB 8.3.7 only has its Spirit Burst row) ran credit
+  -> say line 0 -> despawn as one linked chain. The soul has no creature_text, so the say row is dropped
+  when scripts load and the despawn after it never ran. The despawn also targeted the player instead of
+  the soul, and the rows reused id 0.
+- **Changed** (`sql/fixes/world/2026_11_20_77_those_that_couldnt_let_go.sql`): Withdrawn Soul 45166
+  smart_scripts rewritten: row 0 Spirit Burst 85424 in combat (unchanged); row 1 on Holy Thurible 84375
+  hit: kill credit 45166 to the player, now with a 10 s cooldown; row 2 (linked): despawn the soul after
+  2 s (it respawns on its normal timer). The say row is gone.
+- **Status:** CONFIRMED in game by Four 2026-11-20.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_77_those_that_couldnt_let_go.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+## 2026-11-20 (Quest fixes: Take Down Tethyr, Rise of the Zandalari, Explorers' League Digsite, vendor options, quest audit)
+
+PR #93, merged 2026-11-20. Digsite, camp doubles and Razorfen Downs confirmed; Tethyr cannon/fight-back
+retest pending; Zandalari chain to test when level appropriate.
+
+### DB: Razorfen Downs quests had no giver (correction to the audit entry below)
+- **Found** (Four, 2026-11-20): `.quest add 27024` / `.quest add 27009` showed nothing, while Loss
+  Reduction 25179 was added fine.
+- **Cause:** Partners in Crime 27024, The Coldbringer 27009, Cure the Scourge 27029, Scourge of the Downs
+  27019 and Extinguishing the Idol 27022 carry QUEST_FLAGS_UNAVAILABLE (0x4000) in 8.3.7: retired with the
+  Warlords revamp, the client hides them. The audit below wrongly counted them as lost. The live quests are
+  Blackthorn's Lieutenants 33513 (Aarux, Mordresh, Mushlump) and The Ritual 33514 (Amnennar), given by the
+  Warlords Koristrasza 74367, who is not spawned (nor in TDB 8.3.7). So the dungeon had no live quests.
+- **Changed** (`sql/fixes/world/2026_11_20_76_razorfen_downs_live_quests.sql`): the Koristrasza at the
+  entrance (44837, guid 325121) now starts and ends 33513 and 33514. Nothing removed. The kill credit
+  change in 2026_11_20_72 is harmless but only matters for the retired quests.
+- **Status:** CONFIRMED in game by Four 2026-11-20 (all Razorfen Downs quests).
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_76_razorfen_downs_live_quests.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver. Test: `.quest add 33513` and `.quest add 33514`, or talk to Koristrasza at
+  the entrance.
+
+### DB: Take Down Tethyr! can't be done (Theramore, Dustwallow Marsh)
+- **Found** (Four on Wayfarer's Theramore walk, 2026-11-20): Tethyr idles at the Theramore docks and
+  Take Down Tethyr! 27222 (Major Mills 23905) can't be done.
+- **Cause:** the quest has no objectives; an event completes it. Major Mills 23905 and Tethyr 23899 had
+  no script at all. TDB 8.3.7 has the event but keys it on the old quest id 11198 and on a Mills guid
+  that doesn't exist. Without SpecialFlags 2 a quest with no objectives also completes the moment it's
+  accepted. The Tethyr at the docks (guid 307657) and a wandering marksman (guid 307658) are leftover
+  summons from a sniff; TDB has neither.
+- **Changed** (`sql/fixes/world/2026_11_20_75_take_down_tethyr.sql`):
+  - TDB's event on 27222 and our Mills (guid 255200). Accept: Mills calls 12 Theramore Marksmen and his
+    lines play; Tethyr swims in from the sea to the docks. The marksmen shoot him. Each shot from one of
+    the three Cove Cannons 186432 (usable while you have the quest) now takes 10% of his health (spell
+    42576; TDB only cast a 62 damage Death Blast here). Tethyr casts 42576 on himself when a cannon
+    shot hits him: the shot comes from a level 1 invisible trigger, and 42576 cast by that trigger
+    missed him every time (Four 2026-11-20: "I dont think the cannons are taking anything off him").
+  - Tethyr dies: Mills says "We did it! We've defeated Tethyr!" and completes the quest for players
+    within 100 yd; the marksmen fire fireworks and leave. Five marksmen dead: the quest fails for
+    players within 90 yd, the marksmen and Tethyr despawn, and you can take it again.
+  - Tethyr fights back (Four, 2026-11-20: "Tethyr just sort of sits in the water and takes it"; TDB keeps
+    him passive): at the docks he is rooted in the water and aggressive, casts Water Bolt on a random
+    enemy every 4-5 s (was 8 s) and Spout at his current target every 7 s.
+  - 27222 SpecialFlags |= 2 (event). Tethyr faction 7 -> 1771 (TDB, the marksmen are 1770).
+  - Removed the leftover static Tethyr (307657) and marksman (307658). Neither starts, ends or is the
+    target of a quest; the quest's Tethyr is the one the event summons.
+- **Status:** Four tested 2026-11-20 on an admin character: event, fireworks, completion, reward and
+  achievement work. Tethyr was passive and the cannons did no damage; both fixed above, retest pending.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_75_take_down_tethyr.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+### DB: Doubled Lieutenant Doren and Nesingwary camp NPCs (Northern Stranglethorn)
+- **Found** (Four, 2026-11-20, chose "Remove the named copies"): the dump has the 4.1 (Rise of the
+  Zandalari) copies of named camp NPCs next to the camp's own.
+- **Changed** (`sql/fixes/world/2026_11_20_74_rebel_camp_nesingwary_doubles.sql`):
+  - Rebel Camp: the camp's Lieutenant Doren 469 now ends Warn the Rebel Camp 29124 and starts and ends
+    Defend the Rebel Camp 29131; the 4.1 Doren (52410, guid 307971, 49 yd away) is removed. 469's old
+    script row that completed 29131 on accept is removed (the quest now has its 3 minute event).
+  - Nesingwary's Expedition: removed the 4.1 Ajeck Rouack 52293 (guid 302758), Sir S. J. Erlgadin 52298
+    (302727), Barnil Stonepot 52291 (302702), Drizzlik 52295 (302699) and Jaquilina Dramet 52296 (302734).
+    They had no quests, shop, menu or script; the camp's own keep all quests and Jaquilina's shop.
+  - Not changed: Rebel Watchmen, Nesingwary Hired Guns, Injured Hired Guns and Razzashi Serpents (no
+    quest roles, the 4.1 "camp under attack" scene).
+- **Status:** CONFIRMED in game by Four on 2026-11-20.
+- **Pick up:** SQL only (after 2026_11_20_73):
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_74_rebel_camp_nesingwary_doubles.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+### Core + DB: Rise of the Zandalari chain playable for both factions (Stranglethorn)
+- **Found** (Four, 2026-11-20, review of the whole 4.1 intro chain: Alliance The Troll Incursion 29156 to
+  A Shiny Reward 29155, Horde The Zandalari Menace 29157 to 29253):
+  - Bwemba's spirit 52234 starts or ends 26 quests of the chain but never appeared. Only Vol'jin's
+    script summoned her (spell 96591), from his gossip menu 52767, which did not exist, so Bwemba's
+    Spirit 29100 / 29219 could not be done and nothing after it either. The spell also only summons her
+    once: a flight, teleport, relog or death would have lost her for good.
+  - To the Digsite 29133 starts at James Stillair 52753 and To Hardwrench Hideaway 29236 at the 4.1
+    Thysta 53008; their rides used menu options that did not exist (52753 was not even spawned).
+  - Hemet Nesingwary Jr. 52294 (ends Nesingwary Will Know, starts Track the Tracker / The Hunter's
+    Revenge) and Jungle Serpent 52224 (Serpents and Poison) had no spawns.
+  - The Horde's Injured Bambala Headhunters 52978 could not be clicked (no spellclick).
+  - Defend the Rebel Camp 29131 / Defend Grom'gol 29235 never started (event quests with no event).
+  - Direhammer's Boots 68937 (Bury Me With Me Boots... 29121 / 29232) had no source.
+  - The dump has 4.1 copies of camp NPCs on the spot of the camp's own: two Thystas at Grom'gol (0.5 yd
+    apart), two Commander Aggro'goshes (6.6 yd), and MaNGOS puts the 4.1 James Stillair exactly on the
+    Rebel Camp's James.
+- **Changed:**
+  - New `tools/bfa/zandalari-bwemba-spirit.patch` (after `smartai-passive-escort.patch`, only
+    `src/server/scripts/EasternKingdoms/zone_stranglethorn_vale.cpp`): spell script
+    `spell_zg_event_bwemba_spirit` on 96591. Every 3 seconds while you have the aura it keeps one
+    spirit, brings her to you when she is more than 40 yd away (not while flying, on a flight path or in
+    combat) and summons a new one when she is gone. The aura (and the spirit) ends when Making Contact
+    29152 / 29250 is turned in.
+  - `sql/fixes/world/2026_11_20_73_rise_of_the_zandalari.sql`:
+    - spell_area 96591 in Northern Stranglethorn (33) and the Cape (5287) from Bwemba's Spirit
+      (complete or turned in) until Making Contact is turned in, so she comes back after a death or when
+      you return to Stranglethorn. To Fort Livingston 29102 / To Bambala 29220 (also offered by Bwemba in
+      Stormwind / Orgrimmar) now need Bwemba's Spirit first.
+    - Vol'jin 52767 (Booty Bay): gossip flag, menu 52767 with "Bwemba sent me to speak with you." while
+      29100 or 29219 is in progress: credit 52930, his scene (5276700), and the spirit if you don't have
+      her. His and Bwemba's lines in that scene have no text in the DB, so the scene is silent.
+    - The Rebel Camp's James Stillair 43045 now starts To the Digsite 29133 and has menu 12783: the flight
+      master option plus "I need to get to the Explorers' League Digsite." while 29133 is in progress
+      (credit 52762, teleport). 52753 stays unspawned.
+    - Grom'gol's Thysta 1387 now starts To Hardwrench Hideaway 29236; flight master menu 6944 gets option
+      2 "I need to get to Hardwrench Hideaway." only on Thysta 1387 while 29236 is in progress (credit,
+      teleport). The stacked 4.1 Thysta spawn (53008, guid 300919) is removed.
+    - Grom'gol's Commander Aggro'gosh 2464 now ends Warn Grom'gol 29233 and starts and ends Defend Grom'gol
+      29235; the stacked 4.1 copy (52996, guid 300945) is removed.
+    - The camp's Hemet Nesingwary Jr. 715 ends 29105 / 29223 and starts 29114 / 29226 / 29227.
+    - 56 Jungle Serpents 52224 (MaNGOS 4.3.4 spawns, same guids) around Fort Livingston and Bambala in new
+      phase 314, seen only while Serpents and Poison 29103 / 29221 is in progress. Phase 169 added to
+      Northern Stranglethorn (33) so normal spawns stay visible.
+    - Injured Bambala Headhunter 52978: spellclick flag and 99467, like the Alliance's adventurers.
+    - Defend quests: SourceSpellID 96983 (29131) / 98003 (29235). Accepting brings Mandokir and
+      Ohgan'aka and the Defender bar (dying fails the quest); Mandokir 52411 completes it for you after 3
+      minutes. There are no attack waves, the event's spawning script is not in the data.
+    - Panther Cub 52374 next to Grent 52371: gossip "Let go of Grent's boots, little one." gives
+      Direhammer's Boots 68937 while 29121 / 29232 is in progress and you don't have them.
+- **Not changed:** the digsite zombies (Wayfarer's 2026_11_20_30). The unstacked doubles at the Rebel
+  Camp and Nesingwary's Expedition are the entry above.
+- **Status:** Vol'jin and his gossip window confirmed there by Four on 2026-11-20; the chain (level 85)
+  will be tested when a character is level appropriate. The SQL runs clean (twice) on my copy of the DB
+  and the script compiles.
+- **Pick up:** core patch (short build) plus SQL:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/zandalari-bwemba-spirit.patch | git apply
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_73_rise_of_the_zandalari.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver and delete the client's Cache folder (Vol'jin, James, Thysta, the cub and the
+  headhunters changed flags).
+
+### DB: Audit, nothing tied to a quest may be dropped; Razorfen Downs boss quests
+- **Found** (Four, 2026-11-20: "we never want to outright drop anything that is associated with a
+  quest", then "has anything else been dropped in that fashion?"): I loaded the clean world dump plus
+  the core updates, applied all 281 world fixes (main plus open PRs #82, #92, #93) and compared quest
+  starters, enders, kill/talk/object targets and quest item loot sources before and after.
+- **Result:**
+  - Lost for real: Partners in Crime 27024 and The Coldbringer 27009 (Razorfen Downs, from Koristrasza
+    44837). 2026_10_31_01_razorfen_downs swapped the classic bosses (Tuten'kash 7355, Mordresh 7357,
+    Glutton 8567, Amnennar 7358) for the Warlords ones the scenario needs, so the quests' kill targets
+    were gone. The Warlords versions of these quests come from a Koristrasza (74367) with no spawn.
+  - Colin Swifthammer's Making Contact 29152: already moved to the camp's Colin (entry below).
+  - Checked and fine: Mosh'Ogg Bounty 26783 (a duplicate of 26782, which Wulfred still gives), Zaetar's
+    Spirit 12238 (summoned where Princess Theradras dies; the static copy stood on the same spot),
+    Servants of Theradras starters on Razorlash/Noxxion (bogus rows, Zaetar keeps his), Rider on the Storm
+    starters on Nijel's Point NPCs (bogus rows), Necessary Roughness on 37114 (bogus row), Northwatch
+    Lugs/Supply Crates (now ride the caravans as accessories), Water Snakes turned into Moccasin battle
+    pets (No Dumping Allowed's Toxic Puddlefish is fished, not looted), and a DEPRECATED Darkmoon quest.
+  - Not covered by the audit: quest credit given by scripts (SAI/C++), spell clicks and quest start items.
+- **Changed** (`sql/fixes/world/2026_11_20_72_razorfen_downs_old_boss_quests.sql`): kill credit on the
+  Warlords bosses: Aarux 74412 -> 7355, Mordresh 74347 -> 7357, Mushlump 74435 -> 8567, Amnennar 74434
+  -> 7358. One kill now counts for both versions.
+- **Status:** not tested in game yet (Four will test Razorfen Downs).
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_72_razorfen_downs_old_boss_quests.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+### DB: Doubled Dask quests, Linzi's shop closes, two Colin Swifthammers (Cape of Stranglethorn)
+- **Found** (Four, 2026-11-20): Bronwyn Hewstrike and Dask "The Flask" Gobfizzle both list two quests
+  named 'Dask "The Flask" Gobfizzle'; Linzi Hewstrike's "I would like to buy from you." just closes the
+  window; two Colin Swifthammers stand at the camp, one of them on Dask's spot.
+- **Cause:**
+  - 26825 (text names Wulfred) and 26826 (after Hero's Call 28702) are two versions of the same
+    breadcrumb, both started by Bronwyn 44082 and, wrongly, by Dask 44099 too. Nothing kept a player
+    who did both earlier quests from seeing both.
+  - Linzi's menu option (11801) had OptionType 1 (gossip, no submenu, so it closes) instead of 3
+    (vendor). 98 vendor options in the dump have the same mistake.
+  - Colin 52646 (guid 307980) is the level 85 Rise of the Zandalari version (zombie outbreak, quest
+    29152 Making Contact), sniffed in that event's phase on the spot where Dask stands. The camp's
+    gryphon master is 43043 (guid 300879).
+- **Changed** (`sql/fixes/world/2026_11_20_71_explorers_league_digsite.sql`):
+  - Dask no longer starts 26825/26826. 26825 is offered only to players who have not done 28702
+    (quest-available condition), 26826 only to those who have; both in exclusive group 26825. Too Big
+    For His Britches 26823 still follows either.
+  - Every "I would like to buy from you." / "Let me browse your goods" option with OptionType 1,
+    OptionNpcFlag 1 and no submenu now has OptionType 3, OptionNpcFlag 128 (98 options, Linzi's among
+    them, vendors from Classic to BFA).
+  - Spawn 307980 (Colin 52646) removed. The camp's Colin 43043 now offers its quest 29152 Making
+    Contact instead (npcflag |= 2; level 85, so lower characters never see it).
+- **Status:** CONFIRMED in game by Four on 2026-11-20.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_71_explorers_league_digsite.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+## 2026-11-20 (core: expansion XP gate)
+
+Draft PR #95, not merged yet. Not tested in game yet.
+
+### Core: no experience at the old level caps until the next expansion is started
+
+- **Asked** (Four, 2026-11-20): when a character hits 60, the vanilla cap, stop all experience until
+  they do the quest that moves them into the next expansion. They can keep questing around Azeroth for
+  rewards, money and reputation only. Once they start the next expansion, experience comes back
+  everywhere (also when they return to Azeroth). The same at every later cap.
+- **Changed:** new `tools/bfa/expansion-xp-gate.patch` (after `archaeology.patch`):
+  - `Player.cpp`: new gate table above `Player::GiveXP`. A gate opens when the character has turned
+    in a quest whose `QuestSortID` is one of the zones, or one of the listed entry quests. Hidden
+    tracking quests (flag `0x400`) never count. A quest in a later expansion also opens the earlier
+    gates.
+
+    | Gate level | Next expansion | Zones (`QuestSortID`) | Extra entry quests |
+    |---|---|---|---|
+    | 60 | Outland | 3483 Hellfire, 3521 Zangarmarsh, 3519 Terokkar, 3518 Nagrand, 3522 Blade's Edge, 3520 Shadowmoon, 3523 Netherstorm, 3703 Shattrath | 9407, 10119 Through the Dark Portal |
+    | 70 | Northrend | 3537 Borean Tundra, 495 Howling Fjord, 65 Dragonblight, 394 Grizzly Hills, 66 Zul'Drak, 3711 Sholazar, 67 Storm Peaks, 210 Icecrown, 4395 Dalaran | none |
+    | 80 | Cataclysm zones | 616 Mount Hyjal, 5146/4815/5144/5145 Vashj'ir, 5042 Deepholm, 5034 Uldum, 4922 Twilight Highlands, 5095/5389 Tol Barad | 14482, 25924 Call of Duty |
+    | 85 | Pandaria | 5785 Jade Forest, 5805 Valley of the Four Winds, 6134 Krasarang, 5841 Kun-Lai, 5842 Townlong, 6138 Dread Wastes, 5840 Vale, 6507 Isle of Thunder, 6757 Timeless Isle | 29548 The Mission, 29690 Into the Mists |
+    | 90 | Draenor | 6720, 6719, 6721, 6662, 6722, 6755, 6723, 7025, 6941 | 34398, 36881 The Dark Portal |
+    | 100 | Broken Isles | 7334 Azsuna, 7558 Val'sharah, 7503 Highmountain, 7541 Stormheim, 7637 Suramar, 7502 Dalaran, 7543 Broken Shore | 40519, 43926 The Legion Returns |
+    | 110 | Kul Tiras / Zandalar | 8567 Tiragarde, 8721 Drustvar, 9042 Stormsong, 8499 Zuldazar, 8500 Nazmir, 8501 Vol'dun, 9653 | 46727 Tides of War, 51443 Mission Statement |
+
+    The Wandering Isle (monk start) and the blood elf and draenei starting zones are not in any list.
+  - `Player::GiveXP`: while the gate for the character's level is closed, experience is ignored (no
+    "You gain" message) and the bar is set to 0. A level-up that reaches a closed gate stops there and
+    drops the leftover experience. Chat message: "Experience locked at level 60. Complete a quest in
+    Outland to keep earning experience...", once per gate per session.
+  - `Player::RewardQuest`: the quest that opens the gate counts before its own experience is paid, so
+    it still gives its experience, with the message "Experience unlocked: welcome to Outland...".
+  - `Player.h`: `GetLockedXpGateLevel`, `SendXpGateMessage` and a small cache (rescanned only when
+    the rewarded quest list changes size).
+  - `worldserver.conf.dist`: `ExpansionXpGate.Enable = 1` (0 turns the gate off). Not needed in your
+    `worldserver.conf`: missing means on.
+- **Status:** applies cleanly after the full chain on upstream 2c13546, `Player.cpp` compiles. Not
+  checked in game yet.
+- **Pick up** (until the PR is merged):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/expansion-xp-gate.patch | git apply && echo "xp gate patch applied"
+  grep -c "zrbfacore: expansion XP gate" src/server/game/Entities/Player/Player.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The grep prints 4. Restart worldserver.
+
+## 2026-11-20 (Archaeology)
+
+PR #94, merged 2026-11-20. Confirmed in game 2026-11-20 except a rare pet solve and the daily rotation.
+
+### Core: Archaeology never gives dig sites, Survey does nothing, Solve can't complete
+
+- **Found** (2026-11-19, while checking the battle pets): learning Archaeology places no dig sites, so
+  Survey never finds one, no research projects show and the Archaeology pets (Fossilized Hatchling,
+  Pterrordax Hatchling, Crawling Claw) can't be made.
+- **Cause:** HavenCore's `src/server/game/Archaeology/` is AshamaneCore's Legion code, commented out
+  ("TODO MERGE") in their 8.0 merge because it used the old update fields. `InitBranch`,
+  `ChangeDigsite`, `AddDigsitesToMap`, `GetDigsite`, `IsCurrentArtifactSpell`, `CompleteArtifact` and the
+  dig site/project load and save were all stubs. On top of that: Survey read the site's race from an
+  empty list (always Night Elf), sites were only set up for Eastern Kingdoms, Kalimdor, Outland and
+  Northrend at the moment the skill was learned, Solve took the fragments while reading the cast packet
+  (before the cast was checked), projects were only handed out for the 9 Cataclysm races and only when
+  fewer than 8 fragments came in, the three archaeology packets were blocked (`STATUS_UNHANDLED`), and
+  the research history reply listed every project twice (empty copies first).
+- **Changed:** new `tools/bfa/archaeology.patch` (last in the chain, after `smartai-passive-escort.patch`):
+  - `ArchaeologyMgr`: loads the 403 `archaeology_digsites` rows with their outline from
+    `QuestPOIPoint.db2` (the site's QuestPOIBlob), the research branches and their projects (project
+    spell must exist), and `archaeology_artifacts` once instead of a query per project.
+  - `ArchaeologyPlayerMgr`, rewritten on `ActivePlayerData::ResearchSites` / `ResearchSiteProgress` /
+    `Research`:
+    - 4 dig sites per continent (maps 0, 1, 530, 571, 870, 1116, 1220), picked at random among the
+      sites whose `minLevel`/`minSkillLevel` you meet. Topped up on login, on learning the skill, on
+      level-up and after every find and solve. Saved in `character_archaeology_digsites` with the
+      current find position and find count.
+    - Survey (`SPELL_EFFECT_SURVEY`): only inside one of your sites (else the client's "You can't use that here" error, SPELL_FAILED_NOT_HERE). The
+      find is rolled inside the site's outline, within 120 yards of you, on dry loaded ground when it
+      can. Further than 8 yards: survey tool pointing at it, red (85+ yards), yellow (35-85), green
+      (under 35). Within 8 yards: the race's find object appears for 15 seconds (only to look at:
+      its loot, the race's keystone at about 7%, is rolled and given straight away), 5-9
+      fragments (Dwarves +1), skill as before (only under 50), and the progress bar updates
+      (`SMSG_ARCHAEOLOGY_SURVERY_CAST`: finds done, total finds, branch, success; the other
+      order, from the 5.5 classic packet parser, filled the bar after the first find). After 3 finds (6 on
+      Pandaria, Draenor and the Broken Isles) the site moves elsewhere on the continent.
+    - Projects: a race gets one with its first fragments (any race in ResearchBranch.db2), and on login
+      for races you already have fragments of. A rare you haven't solved yet is picked one time in four,
+      else a common; solved rares only come back if the race has nothing else. Saved in
+      `character_archaeology_branchs`.
+    - Solve: `HandleCastSpellOpcode` checks the keystones offered (at most the project's sockets, 12
+      fragments each for Cataclysm races, 20 for later ones) and that you have the remaining
+      fragments; they are taken only after the artifact item is in your bags (`DoCreateItem`), so a
+      failed cast or a full bag costs nothing. Then: history (first time, count), achievement criteria
+      (`COMPLETE_ARCHAEOLOGY_PROJECTS`), `SMSG_RESEARCH_COMPLETE`, skill +5 (common) / +15 (rare) from
+      SkillLineAbility, and a new project for that race.
+  - `UpdateField.h`: `ModifyDynamicArrayValue`, a setter for an element of an array of dynamic fields
+    (the project list is `Research[0]`; the core had no way to write it).
+  - `CriteriaHandler.cpp`: `SURVEY_GAMEOBJECT` (find object entry) and `CLEAR_DIGSITE` now count.
+  - `Opcodes.cpp`: `SMSG_ARCHAEOLOGY_SURVERY_CAST`, `SMSG_RESEARCH_COMPLETE`, `SMSG_SETUP_RESEARCH_HISTORY`
+    can be sent. `MiscHandler.cpp`: history list no longer doubled. `MiscPackets.cpp`: the history
+    request no longer writes into the client's packet.
+  - `.debug archaeology` (sites on this continent, `all`, `reset`, `go <n>`).
+- **Changed** (Four's request, 2026-11-20): dig sites rotate daily. At the daily reset
+  (`World::DailyReset` -> `Player::DailyReset`, hour `Quests.DailyResetTime`) every site with no finds dug
+  moves to another site on its continent; started sites stay until finished. A character offline over a
+  reset (logout before the last reset) rotates at login. New `worldserver.conf.dist` option
+  `Archaeology.DailyDigsiteRotation` (default 1; 0 = retail, sites only move when finished).
+- **Changed:** `sql/fixes/world/2026_11_20_80_archaeology_survey_tool.sql`: green Survey Tool 204272 was
+  named 'Pointeur de test d'archéologie'; now 'Survey Tool (Green)'.
+- **Not done:** the 47 Kul Tiras and Zandalar dig sites (Zandalari, Drust) aren't in
+  `archaeology_digsites` and have no find object; Legion find objects 246804, 268440, 268451 are empty
+  placeholders in the dump, so Legion sites give fragments without a find to loot. Broken Isles sites
+  don't need their unlock quests here. `archaeology_artifacts` is empty, so every project is open from
+  skill 1.
+- **Status:** confirmed in game 2026-11-20: dig sites on the map, Survey tool and finds, fragments,
+  dig site rotation, progress bar, Solve (fragments taken, item, skill, new project), rare project,
+  keystone drop and socket, relog. Not seen yet: a rare pet project solved.
+- **Pick up:** core rebuild (headers in the game library's precompiled header changed, so most of
+  the game library rebuilds), the SQL, then restart:
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-8d7v53
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/archaeology.patch | git apply
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_80_archaeology_survey_tool.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+## 2026-11-20 (Quest fixes: Be Raptor, Stranglethorn)
+
+Merged to `main` with PR #91 on 2026-11-20. Confirmed in game 2026-11-20 (the 8-second Burning Twig hotfix
+was merged before its in-game test).
+
+### DB: Be Raptor, the Mind Control ritual does nothing; Zul'Gurub courtyard trolls kill passers-by (26775)
+
+- **Found** (Four, 2026-11-19): Thaalia's "I am ready for the Mind Control ritual" option does nothing.
+  During the See Raptor test the trolls outside Zul'Gurub killed Four's character.
+- **Cause:** the minigame was never scripted (no SAI on the four Captured Lashtail Hatchlings, the elder
+  raptors, the tikis, the Shade of the Hexxer or Mandokir; the hatchlings had no action bar spells).
+  The courtyard trolls belong to the Mind Control vision (phase 235, spell 79975 Zul'Gurub Mind
+  Control) but were in the normal world: 76 Gurubashi Soldiers, 40 Crushers and about 120 level 81-82
+  workers, behemoths, raptors and bat riders. The dump also left 15 dropped-skull bunnies and 8 extra
+  soldiers standing on the two bridges. Teleport/summon destinations for raptor 3 had no row.
+- **Changed:** `sql/fixes/world/2026_11_20_70_be_raptor.sql`:
+  - Phase 235 for all courtyard troll/raptor/tiki/shade/Mandokir spawns (entries 42825, 42834, 42837,
+    42838, 42871, 42872, 42881-42884, 42888, 42922, 42941, 43351 inside the Zul'Gurub courtyard box)
+    and the Tiki 204112 / Gurubashi Brazier 204111 / Giant Skullpile 204113 objects. Players only see
+    them during the vision; the walk to the instance portal is empty again.
+  - Thaalia (SAI 44017 ids 10-27): option 1 -> close, line (our own wording), player immune to NPCs
+    (0x200), Thaalia becomes active (and stays so: net resets come back through her), player casts 79975 (phase 235) and teleports to the last elder raptor
+    reached (objective progress: Tian-kuyi start, Tan'shang, Tenjiyu or Chiyu, spells 80119-80122),
+    2.5 s later rides that raptor's hatchling (79952/80123/80124/80125).
+  - Hatchlings 42870/42930/42931/42932 (vehicle 928): action bar Dash 44531, then + Eat Through Net
+    80022, + Light Tiki Fire 80046, + Drop Skull 80049. SAI: friendly faction 35 and 0x200 on board,
+    active; netted and still in the net after 3 s -> teleport back to the last raptor, and Thaalia
+    (data N, guid 183124) gives the fresh hatchling 2.5 s later; in water, leaving the hatchling or
+    the hatchling dying -> the player casts 82399 back to Thaalia (clears 0x200 and phase 235);
+    Light Tiki Fire lights the closest tiki within 12 yards; leaving Zul'Gurub (area 19) also ends the
+    vision (Four ran out of the courtyard into an empty Stranglethorn during the first test).
+  - All courtyard trolls (soldiers, Crushers, workers, behemoths, raptors, bat riders, batlings, the
+    shade, Mandokir) are passive: only the vision script acts. Gurubashi Soldier 42871: hatchling within
+    7 yards -> Net 80021 on it. Gurubashi Crusher 42872: within 9 yards -> Ironweave Net 80074 (cannot
+    be bitten through); their Stealth-on-spawn rows are
+    removed (they are the visible blockers). A burning tiki pulls soldiers within 30 yards to it for
+    20 s (the closest yells), then they walk back. Six sitting soldiers in the second area sleep (stand
+    state 3, guids 317023, 317028, 316944, 317022, 316950, 316942): sneaking up to one with hatchling
+    2 gives the Raptor Food Pouch 58249. A soldier who walks onto a dropped skull yells, slides off into
+    the lake and respawns 8 s later.
+  - Elder raptors: Tan'shang (menu 11664) and Chiyu (11666) give their objective credit and the next
+    hatchling; Tenjiyu (11665) option 0 sends you for food, option 1 (needs 58249, taken) gives credit
+    and hatchling 3. Options are gated on the quest and objective progress.
+  - Bridges: one patrol per bridge (317116 path 3171160, 317110 path 3171100, respawn 8 s); extra
+    soldiers 317102, 317092, 317106, 317121, 317112, 317118, 317093, 317108 and all 42927 skull bunny
+    spawns deleted. Soldier patrol groups (3-4 standing copies in the dump) cut to one soldier (two per
+    tiki guard group), Crusher squads of 5 cut to 2: 26 soldiers and 18 Crushers deleted (50 soldiers
+    and 22 Crushers left). Second pass after Four's next test ("still waaaay too many"): keep a spawn
+    only if no kept spawn of its kind is closer than soldiers 28 y (tiki guards, sleepers, bridge patrols
+    always kept), Crushers 25, workers 22, behemoths and raptors 35, bat riders and batlings 40: 111
+    more deleted. Left: 32 soldiers, 10 Crushers, 19 workers, 11 behemoths, 9 raptors, 8 bat riders,
+    6 batlings (from 76/40/73/19/22/9/11).
+  - Escape: hatchling 4 within 30 yards of the Shade of the Hexxer 42884 at the portal -> hatchling
+    frozen (82646), Jin'do's shade and Mandokir 42941 (who walks up) play their scene, then the escape
+    credit (42884) and back to Thaalia. Their lines and the soldiers' fire/slip yells are the original
+    ones as quoted on warcraft.wiki.gg (Be Raptor); the food-sack message is our own wording.
+  - `spell_target_position` 80121/80124 (raptor 3, next to Tenjiyu). `sql/fixes/world/2026_11_19_71`
+    now only replaces Thaalia's text group 0, so rerunning it keeps this line.
+- **Fix after first test** (Four, 2026-11-19: spotted, chased and netted at once, about 40 trolls on
+  one screen, then "no longer a raptor" but still under Zul'Gurub Mind Control; water did nothing):
+  a hatchling a player controls counts as hostile to the trolls whatever its faction, and this core's
+  `Creature::CanStartAttack` only checks the attacker's immunity flags, so every aggressive troll
+  attacked the level 1 hatchling and killed it; the dead hatchling could not send the player home.
+  The core also despawns a player-owned vehicle the moment its owner leaves it (`Unit::_ExitVehicle`),
+  so the "new hatchling in 2.5 s" step on the old hatchling never ran. Fixed by the passive trolls,
+  the net/sight checks for both hostile and friendly hatchlings, the reset through Thaalia, the player
+  casting the way home, the death safety, and the thinning above.
+- **Second fix** (Four, 2026-11-20: the leave-vehicle button did not send him home): the passenger's
+  own cast of 82399 runs while the core is still taking him out of the hatchling, and that teleport is
+  lost. Leaving now tells Thaalia (data 9), who makes the player cast 82399 and clears the 0x200 flag
+  half a second later.
+- **Third fix** (Four, 2026-11-20: no way to get the Raptor Food Pouch for Tenjiyu): the sleeping
+  soldiers only handed the sack over when hatchling 2 walked within 5 yards, and only after the sight
+  check fired. Each of the six sleepers (one near -12222 -1900, two at -12246 -1944, three
+  at -12186 -1958) now also gives it when clicked (the soldiers' existing spellclick 80603 now fires
+  `SMART_EVENT_ON_SPELLCLICK`), once, only while Be Raptor is in progress and the player has no pouch.
+- **Fourth fix** (Four, 2026-11-20: the sleeping trolls still netted him and gave nothing): the trolls
+  that look asleep in the dump are four standing soldiers with the Zzz aura 78677 (near -12277 -1849,
+  -12341 -1945, -12364 -1854, -12383 -1818), and they still ran the normal soldier net script. They
+  now run the sleeper script (no net, food sack on approach or click). The six lying sleepers also
+  get the Zzz aura so they read as asleep.
+- **Fifth fix** (Four, 2026-11-20: food and Tenjiyu work, but the brazier says "You can't do that
+  right now", the skull piles can't be used, and nothing happens after Jin'do's last line):
+  - The player steers the hatchling, which makes the core treat it as charmed, and SAI skips every
+    event of a charmed creature unless the row has `SMART_EVENT_FLAG_WHILE_CHARMED` (0x200). So none of
+    the hatchling's own rows ran while ridden: no credit or trip home after the Shade's speech, no net
+    reset, no water or leaving-Zul'Gurub check, no tiki lighting. Every hatchling row now has the flag.
+  - The Gurubashi Brazier 204111 and Giant Skullpile 204113 make the player cast their spell (80083
+    Burning Twig, 80111 Gurubashi Skull), and a player in the hatchling's seat cannot cast. Their new
+    SAI casts the spell triggered on use (only while Be Raptor is in progress) and skips the default cast.
+  - The "left Zul'Gurub" check now also needs no Gurubashi Soldier within 200 yards, in case part of
+    the courtyard has an area id other than 19 (that check had never run before this fix).
+- **Sixth fix** (Four, 2026-11-20: the twig burns out before you reach a tiki): the Burning Twig 58250
+  now lasts 8 seconds instead of the client's 6, through a hotfix row (ItemSparse, hotfix id 9558250).
+  The brazier still shows "You can't do that right now" when used from the hatchling, but gives the
+  twig; the message seems to come from the client's own check and is left as it is.
+- **Status:** Be Raptor completed end to end in game by Four on 2026-11-20 (fourth and fifth fixes:
+  food from the Zzz soldiers, Tenjiyu, twig and tiki, Chiyu, skull piles, the Shade's scene, credit and
+  the way home). The 8-second twig is not tested yet. If you are stuck in the vision (world missing, buff
+  "Zul'Gurub Mind Control" still on), `.unaura 79975` and a relog fix it.
+- **Pick up:** SQL (world and hotfixes):
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_20_70_be_raptor.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/hotfixes/2026_11_20_70_be_raptor_burning_twig.sql | mysql -u root -p bfa_hotfixes
+  ```
+
+  Then restart worldserver and delete the client Cache folder.
+
 ## 2026-11-20 (World fixes: Cape of Stranglethorn, Duskwood, Redridge, Western Plaguelands)
 
 Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four walks Stranglethorn, Duskwood, Redridge, Ratchet and the Western Plaguelands and reports what is off.
@@ -97,6 +918,184 @@ Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four w
 - **Not changed:** the 3 Digsite Zombies at Gurubashi Arena (302820-302822) stay, because they are the quest's kill target. Bwemba's whole quest chain (29100-29238) has no quest giver in 8.3.7 either.
 - **Status:** confirmed in game by Four (2026-11-20): the standing survivors are gone.
 - **Pick up:** run the SQL, restart `worldserver`.
+
+## 2026-11-19 (Quest fixes: Stranglethorn)
+
+Merged to `main` with PR #91 on 2026-11-20. Confirmed in game 2026-11-20.
+
+### DB: The Mosh'Ogg Bounty offered twice, Robert Rhodes' free flight, Priestess Thaalia's options
+
+- **Found** (Four, 2026-11-19): Wulfred Harrys offers both 26782 and 26783 "The Mosh'Ogg Bounty".
+  Robert Rhodes always shows "Wulfred says that he paid for my trip..." and it should only show on
+  To the Cape! 26805 and fly you to the Explorers' League Digsite for free. Priestess Thaalia's two
+  ritual options always show, and the Mind Vision one does nothing.
+- **Cause:** 26782 and 26783 are the same quest (same giver, ender, objective Mosh'Ogg Bounty 58205,
+  text differs by one word) and both were in `creature_queststarter`. Robert Rhodes 43042's option
+  (menu 11791 option 1) had no condition, and his SAI listened for a menu 43042 that does not exist
+  and then ran a teleport with no destination. Thaalia's menu 11785 options had no conditions.
+- **Changed:** `sql/fixes/world/2026_11_19_70_stranglethorn_quest_fixes.sql`: 26783 no longer
+  offered by 44018 (still turned in there), 26782/26783 exclusive group 26782. Condition on 11791
+  option 1: 26805 in progress or complete (47, mask 10). SAI 43042 rewritten: option 1 -> close
+  window, the player casts 82504 "Explorer's League Digsite: Taxi Flight" (taxi path 2240, Fort
+  Livingston -> Explorers' League Digsite, no charge). Conditions on 11785: option 0 (Mind Vision)
+  only while See Raptor 26773 is in progress, option 1 (Mind Control) only while Be Raptor 26775 is.
+  Braddok's brain 58225 for Mind Control 26774 drops at 100% from Braddok 42858 (was 76.8%; he is
+  the only source and has one spawn).
+- **Status:** confirmed in game by Four on 2026-11-20 (Mosh'Ogg Bounty offered once, Robert Rhodes'
+  free flight, Thaalia's options shown only for the matching quest). The rituals themselves are scripted in their own entries (See Raptor below, Be Raptor above).
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_19_70_stranglethorn_quest_fixes.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+### DB: See Raptor, the Mind Vision ritual does nothing (26773)
+
+- **Found** (Four, 2026-11-19): picking "I am ready for the Mind Vision ritual, Thaalia." does nothing.
+- **Cause:** the ritual was never scripted: no SAI on Priestess Thaalia 44017, the Captured Lashtail
+  Hatchling 42840 or Bloodlord Mandokir 42842, and no texts. The spells exist in the game data:
+  79845 See Raptor: Teleport In (into Zul'Gurub), 79834 See Raptor: Summon Raptor (42840, vehicle 926
+  with a hidden, unselectable passenger), 79838 See Raptor: Summon Mandokir, 82399 See Raptor:
+  Teleport Out A (back to Thaalia). 79834 had no `spell_target_position` row.
+- **Changed:** `sql/fixes/world/2026_11_19_71_see_raptor.sql`: `spell_target_position` 79834 at the
+  79845 spot (-12161.7, -1818.5, 94.0). SAI 44017: Mind Vision option -> close window, Thaalia
+  speaks, you get unit flag 0x200 (immune to NPCs), Thaalia becomes an active object, you cast
+  79845, 2.5 s later you cast 79834 and ride the hatchling, and Thaalia stops being active. SAI
+  42840: when you board it sets itself to faction 35 and unit flag 0x200 (the summon gave it your
+  faction, which the Gurubashi attack), and 4 s later summons Mandokir (79838); when Mandokir is done
+  it gives you the 42840 credit, casts 82399 on you and despawns with Mandokir. When you leave the
+  hatchling (sent home, or early) it clears your 0x200 flag and sends you back. SAI 42842: faces the
+  hatchling and says four lines, then tells it he is done. Mandokir's lines are the original ones as
+  quoted on warcraft.wiki.gg (See Raptor); Thaalia's line is our own wording.
+- **Fix after first test** (Four, 2026-11-19: "She sent me to ZG, but I am me", then killed by the
+  Gurubashi): the 2 s timed event on Thaalia never ran. Once you are teleported 1,400 yards away no
+  player is near her, her grid cell stops updating (`Map::Update` only visits cells around players
+  and active objects), so she never made you cast 79834. Fixed by making her active for the ritual
+  (SAI action 48) and by the NPC immunity above for the moments before the hatchling arrives.
+- **Status:** confirmed in game 2026-11-19 (hatchling ride, Mandokir's lines, credit, return to Thaalia).
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_19_71_see_raptor.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
+## 2026-11-19 (pet battles)
+
+### Pet battles: wild pets missing from zones their pet card lists
+
+- **Found** (Four, 2026-11-19): the Mouse pet card says "Pet Battle: Duskwood, Dustwallow Marsh,
+  Grizzly Hills, Mulgore, Netherstorm, Westfall, Wetlands", but Mice only lived in Duskwood and
+  Dustwallow Marsh.
+- **Cause:** `battlepet_wild_zone_pool` (which zone gets which pet) has no row for many zones the pet
+  cards list. An audit of every capturable species (BattlePetSpecies flag 0x8) against the zones on its
+  card found 382 (species, zone) pairs with no pool row. Left alone:
+  - 171 Dragonflight / Shadowlands zones, species newer than 8.3.7, dungeons, raids and the Gilneas,
+    Kezan and Tol Barad instance maps;
+  - 65 pairs whose pet is already spawned directly in that zone;
+  - Young Mutant Warturtle, already spawned in the Dalaran Underbelly (its own map);
+  - 6 pairs with no usable critter spot (Lost Isles Strand Crab and Rat, Azjol-Nerub and Violet Hold
+    Spider and Rat, Great Sea Squirky).
+- **Changed:** `sql/fixes/world/2026_11_19_50_wild_battle_pet_card_zones.sql` adds 139 pool rows on
+  62 zones:
+  - 68 rows name a critter that lives in the zone. The file then converts up to Max of those critters
+    into the pet (the 2026_11_01_50 procedure, limited to the new rows; logged in
+    `zr_wild_battlepet_conversion`).
+  - 71 rows have no matching critter in the zone: 194 new spawns (guids 1000100039-1000100232), each
+    1 yard from a random unscripted, unphased critter of the zone, wandering 3 yards (as in
+    2026_11_10_52). Max = the species' usual Max elsewhere, capped at 3. These spots do not match
+    retail exactly.
+  - Levels: the zone's existing pool levels, else the AreaTable wild pet range.
+
+  | Zone | Pets added (Max, source) |
+  |---|---|
+  | Arathi Highlands | Cat (1, new spawn), Hare (3, new spawns) |
+  | Azshara | Rabbit (6, from Rabbit), Rat (5, from Rat), Squirrel (10, from Squirrel) |
+  | Azsuna | Garden Frog (1, new spawn) |
+  | Blade's Edge Mountains | Brown Marmot (3, new spawns), Rabbit (6, from Rabbit) |
+  | Blasted Lands | Adder (7, from Adder) |
+  | Bloodmyst Isle | Rat (5, from Rat) |
+  | Crystalsong Forest | Rabbit (3, new spawns), Rat (3, new spawns) |
+  | Darkshore | Rabbit (6, from Rabbit), Rat (5, from Rat), Squirrel (10, from Squirrel), Strand Crab (3, new spawns) |
+  | Dragonblight | Strand Crab (3, new spawns) |
+  | Dun Morogh | Long-tailed Mole (2, from Long-tailed Mole), Rabbit (6, from Rabbit), Rat (3, new spawns), Roach (3, new spawns), Spider (3, new spawns), Squirrel (3, new spawns), Strand Crab (3, new spawns) |
+  | Duskwood | Rabbit (6, from Rabbit) |
+  | Dustwallow Marsh | Chicken (2, from Chicken), Squirrel (10, from Squirrel) |
+  | Eastern Plaguelands | Beetle (46, from Beetle), Cockroach (25, from Cockroach), Scorpid (3, new spawns), Spider (3, from Spider) |
+  | Elwynn Forest | Spider (3, from Spider) |
+  | Eversong Woods | Cat (1, new spawn), Rabbit (6, from Rabbit) |
+  | Feralas | Rabbit (6, from Rabbit) |
+  | Frostfire Ridge | Fire-Proof Roach (3, new spawns) |
+  | Ghostlands | Rat (5, from Rat), Spider (3, from Spider) |
+  | Grizzly Hills | Mouse (1, new spawn) |
+  | Hellfire Peninsula | Flayer Youngling (3, new spawns) |
+  | Hillsbrad Foothills | Chicken (1, from Chicken), Rabbit (6, from Rabbit), Spider (3, from Spider), Squirrel (3, new spawns) |
+  | Howling Fjord | Rabbit (5, from Rabbit), Roach (8, from Roach), Spider (3, from Spider), Toad (3, new spawns) |
+  | Krasarang Wilds | Sea Gull (3, new spawns), Shore Crab (3, new spawns) |
+  | Loch Modan | Roach (3, new spawns), Small Frog (9, from Small Frog), Squirrel (10, from Squirrel) |
+  | Mechagon | Duskytooth Snooter (3, new spawns), Experimental Roach (3, new spawns), Fleeting Frog (3, new spawns), Motorized Croaker (3, new spawns), Rustbolt Clucker (3, new spawns), Rustyroot Snooter (3, new spawns), Scrapyard Tunneler (3, new spawns), Specimen 97 (3, new spawns), Yellow Junkhopper (3, new spawns) |
+  | Moonglade | Rabbit (6, from Rabbit), Silky Moth (3, new spawns), Squirrel (10, from Squirrel) |
+  | Mount Hyjal | Bat (11, from Bat), Forest Moth (3, new spawns), Rabbit (6, from Rabbit), Squirrel (3, new spawns) |
+  | Mulgore | Mouse (1, new spawn), Rabbit (6, from Rabbit) |
+  | Nagrand | Rabbit (6, from Rabbit), Rat (5, from Rat), Snake (2, from Snake) |
+  | Nazjatar | Bloodseeker (3, new spawns), Chitterspine Skitterling (3, new spawns), Deeptide Fingerling (3, new spawns), Hissing Chitterspine (3, new spawns), Sandclaw Sunshell (3, new spawns), Spireshell Snail (3, new spawns) |
+  | Nazmir | Spectral Raven (3, new spawns) |
+  | Netherstorm | Cat (1, new spawn), Mouse (1, new spawn) |
+  | Orgrimmar | Scorpid (3, new spawns), Spider (3, new spawns) |
+  | Ruins of Gilneas | Rat (3, new spawns), Spider (3, new spawns), Squirrel (3, new spawns) |
+  | Shadowmoon Valley | Forest Spiderling (3, new spawns) |
+  | Shattrath City | Rat (5, from Rat) |
+  | Sholazar Basin | Squirrel (10, from Squirrel) |
+  | Silvermoon City | Cat (1, from Cat), Rabbit (3, from Rabbit) |
+  | Silverpine Forest | Rabbit (6, from Rabbit), Rat (5, from Rat), Snake (19, from Snake), Squirrel (10, from Squirrel) |
+  | Stonetalon Mountains | Rat (5, from Rat) |
+  | Stormheim | Stormstruck Beaver (3, new spawns) |
+  | Stormsong Valley | Freshwater Crawler (3, new spawns) |
+  | Stormwind City | Rat (5, from Rat) |
+  | Swamp of Sorrows | Rat (5, from Rat), Small Frog (3, new spawns), Spider (3, from Spider) |
+  | Tanaan Jungle | Maggot (7, from Maggot) |
+  | Teldrassil | Spider (3, from Spider), Squirrel (3, new spawns), Toad (3, new spawns) |
+  | Terokkar Forest | Chicken (2, new spawns) |
+  | The Hinterlands | Spider (3, from Spider) |
+  | The Storm Peaks | Spider (3, new spawns) |
+  | Thunder Bluff | Prairie Dog (1, from Prairie Dog) |
+  | Tirisfal Glades | Chicken (2, from Chicken), Rabbit (6, from Rabbit), Roach (5, from Roach), Spider (3, from Spider), Undercity Rat (31, from Undercity Rat) |
+  | Twilight Highlands | Squirrel (3, new spawns), Toad (3, new spawns), Twilight Whelpling (3, new spawns) |
+  | Uldum | Oasis Void-Duster (3, new spawns), Void-Scarred Locust (3, new spawns) |
+  | Un'Goro Crater | Silky Moth (3, new spawns) |
+  | Val'sharah | Squirrel (7, from Squirrel) |
+  | Vale of Eternal Blossoms | Golden Chirper (3, new spawns), Voidglower (3, new spawns), Voidskimmer (3, new spawns) |
+  | Western Plaguelands | Rabbit (6, from Rabbit), Squirrel (10, from Squirrel) |
+  | Westfall | Mouse (1, new spawn), Rabbit (5, from Rabbit), Squirrel (4, from Squirrel) |
+  | Wetlands | Chicken (2, from Chicken), Mouse (1, new spawn), Rabbit (5, from Rabbit), Squirrel (10, from Squirrel) |
+  | Winterspring | Spider (3, from Spider) |
+  | Zul'Drak | Spider (3, new spawns) |
+  | Zuldazar | Baby Zandalari Raptor (3, new spawns) |
+
+- **Status:** confirmed in game by Four (2026-11-20): pets are now found in zones that had none.
+  Ran twice on a copy of the world DB with the earlier pet SQL applied (same result both times).
+  Expected output, give or take on your live DB:
+  `139 new pool rows, 194 new spawns, 664 pets now in those zones`.
+- **Pick up:**
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo pull
+  mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_11_19_50_wild_battle_pet_card_zones.sql
+  ```
+
+  Then restart `worldserver`.
 
 ## 2026-11-19 (World fixes: Northern Stranglethorn walk)
 
@@ -235,6 +1234,7 @@ Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time 
   - Class menu realigned: Druid marks Jabul and Mage marks Un'Thuwa (both now in Razor Hill, new markers 54200/54201); the others keep their texts and markers.
 - **Status:** confirmed in game by Four (2026-11-18).
 - **Pick up:** run the SQL, restart `worldserver`.
+
 
 ## 2026-11-18 (Quest fixes: Crossroads Caravan Pickup, Northern Barrens)
 

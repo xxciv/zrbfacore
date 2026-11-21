@@ -1,0 +1,2286 @@
+diff --git a/src/server/game/Achievements/CriteriaHandler.cpp b/src/server/game/Achievements/CriteriaHandler.cpp
+index 1feeb29..16bceac 100644
+--- a/src/server/game/Achievements/CriteriaHandler.cpp
++++ b/src/server/game/Achievements/CriteriaHandler.cpp
+@@ -829,6 +829,16 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
+                     continue;
+                 SetCriteriaProgress(criteria, 1, referencePlayer, PROGRESS_ACCUMULATE);
+                 break;
++            case CRITERIA_TYPE_SURVEY_GAMEOBJECT:             // zrbfacore: miscValue1 = find gameobject entry; Asset 0 = any
++                if (!miscValue1 || (criteria->Entry->Asset.ID && miscValue1 != uint64(criteria->Entry->Asset.ID)))
++                    continue;
++                SetCriteriaProgress(criteria, 1, referencePlayer, PROGRESS_ACCUMULATE);
++                break;
++            case CRITERIA_TYPE_CLEAR_DIGSITE:                 // zrbfacore: miscValue1 = 1 per finished dig site (modifiers decide)
++                if (!miscValue1)
++                    continue;
++                SetCriteriaProgress(criteria, 1, referencePlayer, PROGRESS_ACCUMULATE);
++                break;
+             case CRITERIA_TYPE_COMPLETE_SCENARIO_COUNT:       // miscValue1 = 1
+                 SetCriteriaProgress(criteria, miscValue1, referencePlayer, PROGRESS_ACCUMULATE);
+                 break;
+@@ -861,8 +871,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
+             case CRITERIA_TYPE_OWN_TOY:
+             case CRITERIA_TYPE_OWN_TOY_COUNT:
+             case CRITERIA_TYPE_OWN_HEIRLOOMS:
+-            case CRITERIA_TYPE_SURVEY_GAMEOBJECT:
+-            case CRITERIA_TYPE_CLEAR_DIGSITE:
+             case CRITERIA_TYPE_MANUAL_COMPLETE_CRITERIA:
+             case CRITERIA_TYPE_DEFEAT_CREATURE_GROUP:
+             case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE:
+@@ -1243,6 +1251,8 @@ bool CriteriaHandler::IsCompletedCriteria(Criteria const* criteria, uint64 requi
+         case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE_GUILD:
+         case CRITERIA_TYPE_CATCH_FROM_POOL:
+         case CRITERIA_TYPE_COMPLETE_ARCHAEOLOGY_PROJECTS:
++        case CRITERIA_TYPE_SURVEY_GAMEOBJECT:
++        case CRITERIA_TYPE_CLEAR_DIGSITE:
+         case CRITERIA_TYPE_COMPLETE_SCENARIO_COUNT:
+         case CRITERIA_TYPE_COMPLETE_SCENARIO:
+         case CRITERIA_TYPE_WIN_BG:
+diff --git a/src/server/game/Archaeology/ArchaeologyMgr.cpp b/src/server/game/Archaeology/ArchaeologyMgr.cpp
+index 97bc147..7879d68 100644
+--- a/src/server/game/Archaeology/ArchaeologyMgr.cpp
++++ b/src/server/game/Archaeology/ArchaeologyMgr.cpp
+@@ -16,14 +16,15 @@
+  */
+ 
+ #include "ArchaeologyMgr.h"
+-#include "Map.h"
+ #include "DatabaseEnv.h"
+ #include "DB2Stores.h"
+-#include "DBCEnums.h"
+-#include "Player.h"
+ #include "Log.h"
+-#include "Common.h"
+-#include <Random.h>
++#include "Random.h"
++#include "SpellMgr.h"
++#include "Timer.h"
++#include <algorithm>
++#include <cmath>
++#include <map>
+ 
+ ArchaeologyMgr::ArchaeologyMgr() { }
+ 
+@@ -34,260 +35,268 @@ void ArchaeologyMgr::LoadDigsites()
+     uint32 oldMSTime = getMSTime();
+ 
+     mResearchDigsitesMap.clear();
++    _digsitesByMap.clear();
++    _digsiteMaps.clear();
++    _branchByCurrency.clear();
++    _projectBySpell.clear();
++    _projectsByBranch.clear();
++    _artifactSkill.clear();
++
++    // Dig site outlines: QuestPOIPoint rows of the site's QuestPOIBlob, in id order
++    std::map<uint32, std::vector<std::pair<uint32, std::pair<float, float>>>> pointsByBlob;
++    for (QuestPOIPointEntry const* point : sQuestPOIPointStore)
++        pointsByBlob[point->QuestPoiBlobID].emplace_back(point->Id, std::make_pair(float(point->X), float(point->Y)));
+ 
+     WorldDatabasePreparedStatement* stmt = WorldDatabase.GetPreparedStatement(WORLD_SEL_ARCHAEOLOGY_DIGSITES);
+     PreparedQueryResult result = WorldDatabase.Query(stmt);
+ 
+-    if (!result)
+-    {
+-        TC_LOG_INFO("server.loading", ">> Loaded 0 archaeology digsites. DB table `archaeology_digsites` is empty.");
+-        return;
+-    }
+-
+     uint32 digCount = 0;
+-
+-    do
++    if (result)
+     {
+-        Field* fields = result->Fetch();
+-        uint32 digid = fields[0].GetUInt16();
+-
+-        if (!sResearchSiteStore.LookupEntry(digid))
++        do
+         {
+-            TC_LOG_INFO("server.loading", "ArchaeologyMgr: Digsite (id: %u) found in table `archaeology_digsites` but does not exist in DBC, skipped!.", digid);
+-            continue;
+-        }
+-
+-        ResearchSiteEntry const *rd = sResearchSiteStore.LookupEntry(digid);
+-        ResearchDigsitesEntry temp;
+-
+-        temp.id               = fields[0].GetUInt16();
+-        temp.mapId            = uint16(rd->MapId);
+-        temp.minLevel         = fields[1].GetUInt8();
+-        temp.minSkillLevel    = fields[2].GetUInt16();
+-        temp.currencyId       = fields[3].GetUInt16();
+-        temp.QuestPoitBlobId  = uint16(rd->QuestPoiBlobId);
++            Field* fields = result->Fetch();
++            uint16 digid = fields[0].GetUInt16();
+ 
+-        mResearchDigsitesMap.insert(DigsitesMap::value_type(digid, temp));
+-        ++digCount;
++            ResearchSiteEntry const* rd = sResearchSiteStore.LookupEntry(digid);
++            if (!rd)
++            {
++                TC_LOG_ERROR("sql.sql", "ArchaeologyMgr: Digsite (id: %u) found in table `archaeology_digsites` but does not exist in ResearchSite.db2, skipped.", digid);
++                continue;
++            }
+ 
+-    } while (result->NextRow());
++            ResearchDigsitesEntry temp;
++            temp.id               = digid;
++            temp.mapId            = uint16(rd->MapId);
++            temp.minLevel         = fields[1].GetUInt8();
++            temp.minSkillLevel    = fields[2].GetUInt16();
++            temp.currencyId       = fields[3].GetUInt16();
++            temp.QuestPoitBlobId  = uint32(rd->QuestPoiBlobId);
+ 
+-    TC_LOG_INFO("server.loading", ">> Loaded %u archaeology digsites in %u ms", digCount, GetMSTimeDiffToNow(oldMSTime));
+-}
++            auto points = pointsByBlob.find(temp.QuestPoitBlobId);
++            if (points == pointsByBlob.end() || points->second.size() < 3)
++            {
++                TC_LOG_ERROR("sql.sql", "ArchaeologyMgr: Digsite (id: %u) has no outline (QuestPOIBlob %u has fewer than 3 points), skipped.", digid, temp.QuestPoitBlobId);
++                continue;
++            }
+ 
+-void ArchaeologyMgr::InitBranch(Player* /*player*/, uint32 /*currencyId*/)
+-{
+-    // TODO MERGE
++            std::sort(points->second.begin(), points->second.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
++            for (auto const& point : points->second)
++                temp.polygon.push_back(point.second);
+ 
+-    /*if (!player->HasSkill(SKILL_ARCHAEOLOGY))
+-        return;
++            temp.minX = temp.maxX = temp.polygon[0].first;
++            temp.minY = temp.maxY = temp.polygon[0].second;
++            for (auto const& point : temp.polygon)
++            {
++                temp.minX = std::min(temp.minX, point.first);
++                temp.maxX = std::max(temp.maxX, point.first);
++                temp.minY = std::min(temp.minY, point.second);
++                temp.maxY = std::max(temp.maxY, point.second);
++            }
+ 
+-    if (IsActiveBranch(player, currencyId))
+-        return;
++            if (_digsitesByMap.find(temp.mapId) == _digsitesByMap.end())
++                _digsiteMaps.push_back(temp.mapId);
++            _digsitesByMap[temp.mapId].push_back(digid);
+ 
+-    uint16 selectProject = 0;
+-    uint32 count = 0;
+-    std::vector<uint16> BranchProjects;
++            mResearchDigsitesMap[digid] = std::move(temp);
++            ++digCount;
+ 
+-    for (uint32 i = 0; i < 9; ++i)
+-    {
+-        if (player->GetUInt16Value(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH + i / 2, i % 2))
+-            count = i + 1;
++        } while (result->NextRow());
+     }
+ 
+-    for(uint32 i = 0; i < sResearchBranchStore.GetNumRows(); ++i)
+-    {
+-        ResearchBranchEntry const* ab = sResearchBranchStore.LookupEntry(i);
+-        if (!ab || ab->CurrencyId != currencyId)
+-            continue;
+-
+-        for(uint32 i = 0; i < sResearchProjectStore.GetNumRows(); ++i)
+-        {
+-            ResearchProjectEntry const* rs = sResearchProjectStore.LookupEntry(i);
+-
+-            if (!rs || rs->ResearchBranchId != ab->Id || GetArtifactSkillReqLevel(uint32(rs->SpellId)) > player->GetBaseSkillValue(SKILL_ARCHAEOLOGY))
+-                continue;
++    std::sort(_digsiteMaps.begin(), _digsiteMaps.end());
+ 
+-            BranchProjects.push_back(rs->Id);
+-        }
+-
+-        selectProject = BranchProjects[urand(0, BranchProjects.size()-1)];
+-        player->SetUInt16Value(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH + count / 2, count % 2, selectProject);
+-        BranchProjects.clear();
+-    }*/
+-}
+-
+-void ArchaeologyMgr::ChangeDigsite(Player* /*player*/, uint8 /*memId*/)
+-{
+-    /*std::vector<uint16> SitesInMap;
+-    std::vector<uint32> digsites = player->GetDynamicValues(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH_SITE);
++    // Research branches (races) and their projects
++    for (ResearchBranchEntry const* branch : sResearchBranchStore)
++        if (branch->CurrencyId)
++            _branchByCurrency[branch->CurrencyId] = branch;
+ 
+-    for(DigsitesMap::iterator itr = mResearchDigsitesMap.begin(); itr != mResearchDigsitesMap.end(); ++itr)
++    uint32 projectCount = 0;
++    for (ResearchProjectEntry const* project : sResearchProjectStore)
+     {
+-        bool isActiveDigsite = false;
+-
+-        ArchaeologyMgr::ResearchDigsitesEntry DigsiteInfo = itr->second;
+-
+-        if (player->GetMapId() != DigsiteInfo.mapId || DigsiteInfo.minLevel > player->getLevel() || DigsiteInfo.minSkillLevel > player->GetSkillValue(SKILL_ARCHAEOLOGY))
++        if (!project->ResearchBranchId || !project->SpellId || !project->RequiredWeight)
+             continue;
+ 
+-        for (uint8 i = 0; i < 24; ++i)
+-        {
+-            if (DigsiteInfo.id != digsites[i])
+-                continue;
+-
+-            isActiveDigsite = true;
+-        }
++        if (!sResearchBranchStore.LookupEntry(project->ResearchBranchId))
++            continue;
+ 
+-        if (isActiveDigsite)
++        if (!sSpellMgr->GetSpellInfo(uint32(project->SpellId)))
+             continue;
+ 
+-        SitesInMap.push_back(DigsiteInfo.id);
++        _projectBySpell[uint32(project->SpellId)] = project;
++        _projectsByBranch[project->ResearchBranchId].push_back(project);
++        ++projectCount;
+     }
+ 
+-    uint16 selectDigsite = SitesInMap[urand(0, SitesInMap.size()-1)];
+-
+-    player->SetDynamicValue(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH_SITE, memId, selectDigsite);
+-    player->GetArchaeologyMgr().SetDigsiteId(memId, selectDigsite);
+-
+-    std::vector<uint32> tempContainer;
+-
+-    digsites.erase(digsites.begin()+memId);
+-    digsites.emplace(digsites.begin()+memId, selectDigsite);
+-
+-    digsites.swap(tempContainer);
+-
+-    player->ClearDynamicValue(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH_SITE);
+-
+-    for (uint32 i = 0; i < tempContainer.size(); ++i)
++    if (QueryResult artifacts = WorldDatabase.Query("SELECT spellId, minSkillValue FROM archaeology_artifacts"))
+     {
+-        player->AddDynamicValue(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH_SITE, tempContainer[i]);
+-        player->AddDynamicValue(ACTIVE_PLAYER_DYNAMIC_FIELD_RESEARCH_SITE_PROGRESS, 0);
+-
+-        player->GetArchaeologyMgr().SetDigsitePosition(i, 0, 0, 0);
++        do
++        {
++            Field* fields = artifacts->Fetch();
++            _artifactSkill[fields[0].GetUInt32()] = fields[1].GetUInt8();
++        } while (artifacts->NextRow());
+     }
+ 
+-    tempContainer.clear();
++    TC_LOG_INFO("server.loading", ">> Loaded %u archaeology digsites on %u maps and %u research projects in %u ms",
++        digCount, uint32(_digsiteMaps.size()), projectCount, GetMSTimeDiffToNow(oldMSTime));
++}
+ 
+-    SitesInMap.clear();*/
++ArchaeologyMgr::ResearchDigsitesEntry const* ArchaeologyMgr::GetDigsite(uint16 digsiteId) const
++{
++    auto itr = mResearchDigsitesMap.find(digsiteId);
++    return itr != mResearchDigsitesMap.end() ? &itr->second : nullptr;
+ }
+ 
+-void ArchaeologyMgr::AddDigsitesToMap(Player* /*player*/, uint32 /*mapId*/)
++std::vector<uint16> const* ArchaeologyMgr::GetDigsitesForMap(uint32 mapId) const
+ {
+-    /*if (!player->HasSkill(SKILL_ARCHAEOLOGY))
+-        return;
++    auto itr = _digsitesByMap.find(mapId);
++    return itr != _digsitesByMap.end() ? &itr->second : nullptr;
++}
+ 
+-    std::vector<uint16> SitesInMap;
+-    uint8 count;
++bool ArchaeologyMgr::IsInsideDigsite(uint16 digsiteId, float x, float y) const
++{
++    ResearchDigsitesEntry const* site = GetDigsite(digsiteId);
++    if (!site)
++        return false;
+ 
+-    switch(mapId)
++    if (x < site->minX || x > site->maxX || y < site->minY || y > site->maxY)
++        return false;
++
++    // even-odd ray casting
++    bool inside = false;
++    std::size_t count = site->polygon.size();
++    for (std::size_t i = 0, j = count - 1; i < count; j = i++)
+     {
+-        case 0:   count = 0; break;
+-        case 1:   count = 4; break;
+-        case 530: count = 8; break;
+-        case 571: count = 12; break;
+-        default:  return;
++        float xi = site->polygon[i].first, yi = site->polygon[i].second;
++        float xj = site->polygon[j].first, yj = site->polygon[j].second;
++        if (((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi))
++            inside = !inside;
+     }
+ 
+-    for(DigsitesMap::iterator itr = mResearchDigsitesMap.begin(); itr != mResearchDigsitesMap.end(); ++itr)
+-    {
+-        ArchaeologyMgr::ResearchDigsitesEntry DigsiteInfo = itr->second;
++    return inside;
++}
+ 
+-        if (DigsiteInfo.mapId != mapId || DigsiteInfo.minLevel > player->getLevel() || DigsiteInfo.minSkillLevel > player->GetSkillValue(SKILL_ARCHAEOLOGY))
+-            continue;
++bool ArchaeologyMgr::GetRandomPointInDigsite(uint16 digsiteId, float nearX, float nearY, float maxDist, float& x, float& y) const
++{
++    ResearchDigsitesEntry const* site = GetDigsite(digsiteId);
++    if (!site)
++        return false;
+ 
+-        SitesInMap.push_back(DigsiteInfo.id);
++    float minX = site->minX, maxX = site->maxX, minY = site->minY, maxY = site->maxY;
++    if (maxDist > 0.0f)
++    {
++        minX = std::max(minX, nearX - maxDist);
++        maxX = std::min(maxX, nearX + maxDist);
++        minY = std::max(minY, nearY - maxDist);
++        maxY = std::min(maxY, nearY + maxDist);
+     }
+ 
+-    if (!SitesInMap.size())
+-        return;
+-
+-    for(uint32 addedsites = 0; addedsites < 4; ++addedsites)
++    if (minX < maxX && minY < maxY)
+     {
+-        bool isActiveDigsite = false;
+-        uint16 selectDigsite = 0;
+-
+-        do
++        for (uint32 i = 0; i < 100; ++i)
+         {
+-            isActiveDigsite = false;
+-            selectDigsite = SitesInMap[urand(0, SitesInMap.size()-1)];
+-            std::vector<uint32> const& site_now = player->GetDynamicValues(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH_SITE);
+-            uint32 offset = std::find(site_now.begin(), site_now.end(), selectDigsite) - site_now.begin();
++            float px = frand(minX, maxX);
++            float py = frand(minY, maxY);
++            if (maxDist > 0.0f && std::hypot(px - nearX, py - nearY) > maxDist)
++                continue;
+ 
+-            for(uint32 i = 0; i < 16; ++i)
++            if (IsInsideDigsite(digsiteId, px, py))
+             {
+-                if (offset != selectDigsite)
+-                    continue;
+-
+-                isActiveDigsite = true;
++                x = px;
++                y = py;
++                return true;
+             }
+         }
+-        while (isActiveDigsite);
+-
+-        player->AddDynamicValue(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH_SITE, selectDigsite);
+-        player->AddDynamicValue(ACTIVE_PLAYER_DYNAMIC_FIELD_RESEARCH_SITE_PROGRESS, 0);
+-        ++count;
+     }
+ 
+-    SitesInMap.clear();*/
+-}
+-
+-bool ArchaeologyMgr::IsActiveBranch(Player* /*player*/, uint32 /*currencyId*/)
+-{
+-    /*for(uint32 i=0; i < 9; ++i)
++    // anywhere inside the site
++    for (uint32 i = 0; i < 200; ++i)
+     {
+-        if (player->GetUInt16Value(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH + i / 2, i % 2))
++        float px = frand(site->minX, site->maxX);
++        float py = frand(site->minY, site->maxY);
++        if (IsInsideDigsite(digsiteId, px, py))
+         {
+-            uint16 projectId = player->GetUInt16Value(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH + i / 2, i % 2);
+-
+-            if (ResearchProjectEntry const* rs = sResearchProjectStore.LookupEntry(projectId))
+-                if (ResearchBranchEntry const* ab = sResearchBranchStore.LookupEntry(rs->ResearchBranchId))
+-                    if (ab->CurrencyId == currencyId)
+-                        return true;
++            x = px;
++            y = py;
++            return true;
+         }
+-    }*/
++    }
++
+     return false;
+ }
+ 
+-void ArchaeologyMgr::GenerateRandomPosition(Player* player, uint8 count)
++uint8 ArchaeologyMgr::GetFindsPerDigsite(uint32 mapId)
+ {
+-    float x, y, z;
+-    Position treasurePos = player->GetPosition();
+-    uint8 memId = player->GetArchaeologyMgr().GetDigsite(player->GetPositionX(), player->GetPositionY());
+-
+-    do
++    switch (mapId)
+     {
+-        player->GetRandomPoint(treasurePos, 300.0f, x, y, z);
++        case 0:     // Eastern Kingdoms
++        case 1:     // Kalimdor
++        case 530:   // Outland
++        case 571:   // Northrend
++            return 3;
++        default:    // Pandaria and later
++            return 6;
+     }
+-    while (player->GetArchaeologyMgr().GetDigsite(x, y) == -1);
+-
+-    //std::vector<uint32> const& site_now = player->GetDynamicValues(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH_SITE);
+-
+-    player->GetArchaeologyMgr().SetDigsitePosition(memId, x, y, count);
+ }
+ 
+-int ArchaeologyMgr::GetCurrencyId(uint16 digsiteId)
++ResearchBranchEntry const* ArchaeologyMgr::GetBranchByCurrency(uint32 currencyId) const
+ {
+-    DigsitesMap::iterator itr = mResearchDigsitesMap.find(digsiteId);
+-    if (itr == mResearchDigsitesMap.end())
+-        return 0;
++    auto itr = _branchByCurrency.find(currencyId);
++    return itr != _branchByCurrency.end() ? itr->second : nullptr;
++}
+ 
+-    return uint16(itr->second.currencyId);
++ResearchProjectEntry const* ArchaeologyMgr::GetProjectBySpell(uint32 spellId) const
++{
++    auto itr = _projectBySpell.find(spellId);
++    return itr != _projectBySpell.end() ? itr->second : nullptr;
+ }
+ 
+-int ArchaeologyMgr::GetArtifactSkillReqLevel(uint32 spellId)
++std::vector<ResearchProjectEntry const*> const* ArchaeologyMgr::GetBranchProjects(uint32 branchId) const
+ {
+-    uint8 reqSkillLevel = 1;
++    auto itr = _projectsByBranch.find(branchId);
++    return itr != _projectsByBranch.end() ? &itr->second : nullptr;
++}
+ 
+-    WorldDatabasePreparedStatement* stmt = WorldDatabase.GetPreparedStatement(WORLD_SEL_ARCHAEOLOGY_ARTIFACT);
+-    stmt->setUInt32(0, spellId);
+-    PreparedQueryResult result = WorldDatabase.Query(stmt);
++uint32 ArchaeologyMgr::GetKeystoneWeight(uint32 branchId)
++{
++    // Cataclysm keystones (Dwarf ... Vrykul) count for 12 fragments, later ones for 20
++    return branchId <= 27 ? 12 : 20;
++}
+ 
+-    if (result)
++uint32 ArchaeologyMgr::GetFindGameObject(uint32 currencyId)
++{
++    switch (currencyId)
+     {
+-        Field* fields = result->Fetch();
+-        reqSkillLevel = fields[0].GetUInt8();
++        case 384:  return 204282; // Dwarf
++        case 385:  return 202655; // Troll
++        case 393:  return 206836; // Fossil
++        case 394:  return 203071; // Night Elf
++        case 397:  return 207187; // Orc
++        case 398:  return 207188; // Draenei
++        case 399:  return 207189; // Vrykul
++        case 400:  return 203078; // Nerubian
++        case 401:  return 207190; // Tol'vir
++        case 676:  return 211163; // Pandaren
++        case 677:  return 211174; // Mogu
++        case 754:  return 218950; // Mantid
++        case 821:  return 226521; // Draenor Clans
++        case 828:  return 234106; // Ogre
++        case 829:  return 234105; // Arakkoa
++        case 1172: return 268440; // Highborne
++        case 1173: return 246804; // Highmountain Tauren
++        case 1174: return 268451; // Demonic
++        default:   return 0;
+     }
++}
+ 
+-    return reqSkillLevel;
++int ArchaeologyMgr::GetCurrencyId(uint16 digsiteId) const
++{
++    ResearchDigsitesEntry const* site = GetDigsite(digsiteId);
++    return site ? site->currencyId : 0;
++}
++
++int ArchaeologyMgr::GetArtifactSkillReqLevel(uint32 spellId) const
++{
++    auto itr = _artifactSkill.find(spellId);
++    return itr != _artifactSkill.end() ? int(itr->second) : 1;
+ }
+diff --git a/src/server/game/Archaeology/ArchaeologyMgr.h b/src/server/game/Archaeology/ArchaeologyMgr.h
+index 083a70b..4541a71 100644
+--- a/src/server/game/Archaeology/ArchaeologyMgr.h
++++ b/src/server/game/Archaeology/ArchaeologyMgr.h
+@@ -18,49 +18,71 @@
+ #ifndef _ARCHAEOLOGY_MGR_H
+ #define _ARCHAEOLOGY_MGR_H
+ 
+-#include "DBCEnums.h"
+-#include "DB2Stores.h"
+-#include "Player.h"
++#include "Define.h"
++#include <unordered_map>
++#include <utility>
++#include <vector>
+ 
+-class Player;
++struct ResearchBranchEntry;
++struct ResearchProjectEntry;
+ 
+-class ArchaeologyMgr
++// zrbfacore: server side data for Archaeology (dig sites, their outlines, research projects).
++// Per character state lives in ArchaeologyPlayerMgr.
++class TC_GAME_API ArchaeologyMgr
+ {
+     private:
+         ArchaeologyMgr();
+         ~ArchaeologyMgr();
+ 
+     public:
++        static ArchaeologyMgr* instance()
++        {
++            static ArchaeologyMgr instance;
++            return &instance;
++        }
+ 
+-    static ArchaeologyMgr* instance()
+-    {
+-        static ArchaeologyMgr instance;
+-        return &instance;
+-    }
++        struct ResearchDigsitesEntry
++        {
++            uint16 id = 0;
++            uint16 mapId = 0;
++            uint8 minLevel = 0;
++            uint16 minSkillLevel = 0;
++            uint16 currencyId = 0;
++            uint32 QuestPoitBlobId = 0;
++            std::vector<std::pair<float, float>> polygon;   // QuestPOIPoint outline of the dig site
++            float minX = 0.0f, maxX = 0.0f, minY = 0.0f, maxY = 0.0f;
++        };
+ 
+-    struct ResearchDigsitesEntry
+-    {
+-        uint16 id;
+-        uint16 mapId;
+-        uint8 minLevel;
+-        uint16 minSkillLevel;
+-        uint16 currencyId;
+-        uint16 QuestPoitBlobId;
+-    };
++        static uint32 const SitesPerContinent = 4;
+ 
+-    public:
+         void LoadDigsites();
+-        void InitBranch(Player* player, uint32 currencyId);
+-        void ChangeDigsite(Player* player, uint8 memId);
+-        void AddDigsitesToMap(Player* player, uint32 mapId);
+-        bool IsActiveBranch(Player* player, uint32 currencyId);
+-        void GenerateRandomPosition(Player* player, uint8 count);
+-        int GetCurrencyId(uint16 digsiteId);
+-        int GetArtifactSkillReqLevel(uint32 spellId);
++
++        ResearchDigsitesEntry const* GetDigsite(uint16 digsiteId) const;
++        std::vector<uint16> const* GetDigsitesForMap(uint32 mapId) const;
++        std::vector<uint32> const& GetDigsiteMaps() const { return _digsiteMaps; }
++        bool IsInsideDigsite(uint16 digsiteId, float x, float y) const;
++        // random point inside the dig site, preferring points near (x, y)
++        bool GetRandomPointInDigsite(uint16 digsiteId, float nearX, float nearY, float maxDist, float& x, float& y) const;
++        static uint8 GetFindsPerDigsite(uint32 mapId);
++
++        ResearchBranchEntry const* GetBranchByCurrency(uint32 currencyId) const;
++        ResearchProjectEntry const* GetProjectBySpell(uint32 spellId) const;
++        std::vector<ResearchProjectEntry const*> const* GetBranchProjects(uint32 branchId) const;
++        static uint32 GetKeystoneWeight(uint32 branchId);
++        static uint32 GetFindGameObject(uint32 currencyId);
++
++        int GetCurrencyId(uint16 digsiteId) const;
++        int GetArtifactSkillReqLevel(uint32 spellId) const;
+ 
+     private:
+         typedef std::unordered_map<uint16, ResearchDigsitesEntry> DigsitesMap;
+         DigsitesMap mResearchDigsitesMap;
++        std::unordered_map<uint32, std::vector<uint16>> _digsitesByMap;
++        std::vector<uint32> _digsiteMaps;
++        std::unordered_map<uint32, ResearchBranchEntry const*> _branchByCurrency;
++        std::unordered_map<uint32, ResearchProjectEntry const*> _projectBySpell;
++        std::unordered_map<uint32, std::vector<ResearchProjectEntry const*>> _projectsByBranch;
++        std::unordered_map<uint32, uint32> _artifactSkill;
+ };
+ 
+ #define sArchaeologyMgr ArchaeologyMgr::instance()
+diff --git a/src/server/game/Archaeology/ArchaeologyPlayerMgr.cpp b/src/server/game/Archaeology/ArchaeologyPlayerMgr.cpp
+index 2fd009d..cad2178 100644
+--- a/src/server/game/Archaeology/ArchaeologyPlayerMgr.cpp
++++ b/src/server/game/Archaeology/ArchaeologyPlayerMgr.cpp
+@@ -15,55 +15,94 @@
+  * with this program. If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include "AchievementMgr.h"
+-#include "ArchaeologyMgr.h"
++// zrbfacore: Archaeology for 8.3.7. The original (AshamaneCore, Legion) used the old update field
++// API and was commented out in the 8.0 merge; this is a rewrite on ActivePlayerData::ResearchSites,
++// ResearchSiteProgress and Research.
++
+ #include "ArchaeologyPlayerMgr.h"
++#include "ArchaeologyMgr.h"
++#include "Config.h"
++#include "Containers.h"
++#include "DatabaseEnv.h"
++#include "DB2Stores.h"
++#include "GameObject.h"
++#include "Log.h"
++#include "Loot.h"
++#include "LootMgr.h"
++#include "Map.h"
+ #include "MiscPackets.h"
+ #include "ObjectMgr.h"
++#include "Player.h"
++#include "Random.h"
++#include "SpellMgr.h"
++#include "World.h"
++#include <algorithm>
++#include <set>
++
++namespace
++{
++    float const ArchaeologyFindRange = 8.0f;        // yards from the find to dig it up
++    float const ArchaeologyFindMaxRoll = 120.0f;    // new finds are rolled this close to the surveying player
++}
+ 
+ ArchaeologyPlayerMgr::ArchaeologyPlayerMgr(Player* player) : m_player(player) { }
+ 
+ void ArchaeologyPlayerMgr::LoadArchaeologyDigSites(PreparedQueryResult result)
+ {
++    m_digsites.clear();
+     if (!result)
+         return;
+ 
+-    /*uint8 mpos = 0;
++    std::unordered_map<uint32, uint32> perMap;
+ 
+     do
+     {
+         Field* fields = result->Fetch();
+-        uint16 digsite = fields[0].GetUInt16();
+-        float pos_x = fields[1].GetFloat();
+-        float pos_y = fields[2].GetFloat();
+-        uint8 count = fields[3].GetUInt8();
++        Digsite digsite;
++        digsite.digsiteId = fields[0].GetUInt16();
++        digsite.x = fields[1].GetFloat();
++        digsite.y = fields[2].GetFloat();
++        digsite.digCount = fields[3].GetUInt8();
++
++        ArchaeologyMgr::ResearchDigsitesEntry const* site = sArchaeologyMgr->GetDigsite(digsite.digsiteId);
++        if (!site)
++            continue;
+ 
+-        std::vector<uint32> digsites = GetPlayer()->GetDynamicValues(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH_SITE);
++        if (perMap[site->mapId] >= ArchaeologyMgr::SitesPerContinent)
++            continue;
+ 
+-        GetPlayer()->AddDynamicValue(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH_SITE, digsite);
+-        GetPlayer()->AddDynamicValue(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH_SITE, 0);
+-        SetDigsitePosition(mpos, pos_x, pos_y, count);
++        if (digsite.digCount >= ArchaeologyMgr::GetFindsPerDigsite(site->mapId))
++            digsite.digCount = 0;
+ 
+-        ++mpos;
++        ++perMap[site->mapId];
++        m_digsites.push_back(digsite);
+     }
+-    while (result->NextRow());*/
++    while (result->NextRow());
+ }
+ 
+ void ArchaeologyPlayerMgr::LoadArchaeologyBranchs(PreparedQueryResult result)
+ {
++    m_projects.clear();
+     if (!result)
+         return;
+ 
+-    /*uint32 mpos = 0;
++    std::set<uint32> branches;
+ 
+     do
+     {
+         Field* fields = result->Fetch();
+-        uint16 branch = fields[0].GetUInt16();
+-        GetPlayer()->SetDynamicValue(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH, mpos, branch);
+-        ++mpos;
++        uint16 projectId = fields[0].GetUInt16();
++
++        ResearchProjectEntry const* project = sResearchProjectStore.LookupEntry(projectId);
++        if (!project || sArchaeologyMgr->GetProjectBySpell(uint32(project->SpellId)) != project)
++            continue;
++
++        if (!branches.insert(project->ResearchBranchId).second)
++            continue;
++
++        m_projects.push_back(projectId);
+     }
+-    while (result->NextRow());*/
++    while (result->NextRow());
+ }
+ 
+ void ArchaeologyPlayerMgr::LoadArchaeologyHistory(PreparedQueryResult result)
+@@ -78,52 +117,42 @@ void ArchaeologyPlayerMgr::LoadArchaeologyHistory(PreparedQueryResult result)
+         ArchaeologyHistory artifact;
+         artifact.time = fields[1].GetUInt32();
+         artifact.count = fields[2].GetUInt16();
+-        m_ArchaeologyHistoryMap.insert(ArchaeologyHistoryMap::value_type(fields[0].GetUInt16(), artifact));
++        m_ArchaeologyHistoryMap[fields[0].GetUInt32()] = artifact;
+     }
+     while (result->NextRow());
+ }
+ 
+-void ArchaeologyPlayerMgr::SaveArchaeologyDigSites(CharacterDatabaseTransaction& /*trans*/)
++void ArchaeologyPlayerMgr::SaveArchaeologyDigSites(CharacterDatabaseTransaction& trans)
+ {
+-    /*PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_ARCHAEOLOGY_DIGSITES);
++    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_ARCHAEOLOGY_DIGSITES);
+     stmt->setUInt64(0, GetPlayer()->GetGUID().GetCounter());
+     trans->Append(stmt);
+-    std::vector<uint32> digsites = GetPlayer()->GetDynamicValues(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH_SITE);
+ 
+-    for (uint8 i = 0; i < digsites.size(); ++i)
++    for (Digsite const& digsite : m_digsites)
+     {
+-        uint16 digsiteId = digsites[i];
+-        Digsite digsite = GetDigsitePosition(i);
+-        PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ARCHAEOLOGY_DIGSITE);
+-
++        stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ARCHAEOLOGY_DIGSITE);
+         stmt->setUInt64(0, GetPlayer()->GetGUID().GetCounter());
+-        stmt->setUInt16(1, digsiteId);
++        stmt->setUInt16(1, digsite.digsiteId);
+         stmt->setFloat(2, digsite.x);
+         stmt->setFloat(3, digsite.y);
+         stmt->setUInt8(4, digsite.digCount);
+-
+         trans->Append(stmt);
+-    }*/
++    }
+ }
+ 
+-void ArchaeologyPlayerMgr::SaveArchaeologyBranchs(CharacterDatabaseTransaction& /*trans*/)
++void ArchaeologyPlayerMgr::SaveArchaeologyBranchs(CharacterDatabaseTransaction& trans)
+ {
+-    /*PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_ARCHAEOLOGY_BRANCHS);
++    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_ARCHAEOLOGY_BRANCHS);
+     stmt->setUInt64(0, GetPlayer()->GetGUID().GetCounter());
+     trans->Append(stmt);
+ 
+-    for(uint32 i=0; i < 9; ++i)
++    for (uint16 projectId : m_projects)
+     {
+-        uint16 projectId = GetPlayer()->GetDynamicValue(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH, i);
+-
+-        if (projectId)
+-        {
+-            PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ARCHAEOLOGY_BRANCH);
+-            stmt->setUInt64(0, GetPlayer()->GetGUID().GetCounter());
+-            stmt->setUInt16(1, projectId);
+-            trans->Append(stmt);
+-        }
+-    }*/
++        stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ARCHAEOLOGY_BRANCH);
++        stmt->setUInt64(0, GetPlayer()->GetGUID().GetCounter());
++        stmt->setUInt16(1, projectId);
++        trans->Append(stmt);
++    }
+ }
+ 
+ void ArchaeologyPlayerMgr::SaveArchaeologyHistory(CharacterDatabaseTransaction& trans)
+@@ -132,243 +161,463 @@ void ArchaeologyPlayerMgr::SaveArchaeologyHistory(CharacterDatabaseTransaction&
+     stmt->setUInt64(0, GetPlayer()->GetGUID().GetCounter());
+     trans->Append(stmt);
+ 
+-    if (!m_ArchaeologyHistoryMap.empty())
++    for (auto const& itr : m_ArchaeologyHistoryMap)
+     {
+-        for (ArchaeologyHistoryMap::iterator itr = m_ArchaeologyHistoryMap.begin(); itr != m_ArchaeologyHistoryMap.end(); ++itr)
+-        {
+-            stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ARCHAEOLOGY_HISTORY);
+-            stmt->setUInt64(0, GetPlayer()->GetGUID().GetCounter());
+-            stmt->setUInt16(1, itr->first);
+-            stmt->setUInt32(2, itr->second.time);
+-            stmt->setUInt16(3, itr->second.count);
+-            trans->Append(stmt);
+-        }
++        stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ARCHAEOLOGY_HISTORY);
++        stmt->setUInt64(0, GetPlayer()->GetGUID().GetCounter());
++        stmt->setUInt32(1, itr.first);
++        stmt->setUInt32(2, itr.second.time);
++        stmt->setUInt16(3, itr.second.count);
++        trans->Append(stmt);
+     }
+ }
+ 
+-Digsite ArchaeologyPlayerMgr::GetDigsitePosition(uint8 memId)
++void ArchaeologyPlayerMgr::OnLogin(time_t logoutTime)
+ {
+-    DigsiteMap::iterator itr = m_DigsiteMap.find(memId);
++    if (GetPlayer()->HasSkill(SKILL_ARCHAEOLOGY))
++    {
++        // offline over a daily reset: rotate as if online
++        time_t lastDailyReset = sWorld->GetNextDailyQuestsResetTime() - DAY;
++        if (logoutTime && logoutTime < lastDailyReset)
++            DailyRotate();
+ 
+-    Digsite digsite;
++        UpdateDigsites();
+ 
+-    if (itr == m_DigsiteMap.end())
+-    {
+-        digsite.x = float(0);
+-        digsite.y = float(0);
+-        digsite.digCount = uint8(0);
++        // races the character already has fragments of
++        for (ResearchBranchEntry const* branch : sResearchBranchStore)
++            if (branch->CurrencyId && GetPlayer()->GetCurrency(branch->CurrencyId))
++                InitBranch(branch->CurrencyId);
+     }
+-    else
++
++    SyncDigsiteFields();
++    SyncProjectFields();
++}
++
++bool ArchaeologyPlayerMgr::CanUseDigsite(uint16 digsiteId) const
++{
++    ArchaeologyMgr::ResearchDigsitesEntry const* site = sArchaeologyMgr->GetDigsite(digsiteId);
++    if (!site)
++        return false;
++
++    if (GetPlayer()->getLevel() < site->minLevel)
++        return false;
++
++    if (GetPlayer()->GetSkillValue(SKILL_ARCHAEOLOGY) < site->minSkillLevel)
++        return false;
++
++    return true;
++}
++
++uint16 ArchaeologyPlayerMgr::PickDigsite(uint32 mapId, uint16 excludeId) const
++{
++    std::vector<uint16> const* sites = sArchaeologyMgr->GetDigsitesForMap(mapId);
++    if (!sites)
++        return 0;
++
++    std::vector<uint16> candidates;
++    for (uint16 siteId : *sites)
+     {
+-        digsite.x = itr->second.x;
+-        digsite.y = itr->second.y;
+-        digsite.digCount = itr->second.digCount;
++        if (siteId == excludeId || !CanUseDigsite(siteId))
++            continue;
++
++        if (std::any_of(m_digsites.begin(), m_digsites.end(), [siteId](Digsite const& digsite) { return digsite.digsiteId == siteId; }))
++            continue;
++
++        candidates.push_back(siteId);
+     }
+ 
+-    return digsite;
++    if (candidates.empty())
++        return 0;
++
++    return Trinity::Containers::SelectRandomContainerElement(candidates);
+ }
+ 
+-void ArchaeologyPlayerMgr::SetDigsitePosition(uint8 memId, float x, float y, uint8 digCount)
++void ArchaeologyPlayerMgr::UpdateDigsites()
+ {
+-    DigsiteMap::iterator itr = m_DigsiteMap.find(memId);
++    if (!GetPlayer()->HasSkill(SKILL_ARCHAEOLOGY))
++        return;
++
++    bool changed = false;
++    for (uint32 mapId : sArchaeologyMgr->GetDigsiteMaps())
++    {
++        uint32 count = std::count_if(m_digsites.begin(), m_digsites.end(), [mapId](Digsite const& digsite)
++        {
++            ArchaeologyMgr::ResearchDigsitesEntry const* site = sArchaeologyMgr->GetDigsite(digsite.digsiteId);
++            return site && site->mapId == mapId;
++        });
+ 
+-    if (itr != m_DigsiteMap.end())
+-        m_DigsiteMap.erase(m_DigsiteMap.find(memId));
++        while (count < ArchaeologyMgr::SitesPerContinent)
++        {
++            uint16 siteId = PickDigsite(mapId, 0);
++            if (!siteId)
++                break;
++
++            Digsite digsite;
++            digsite.digsiteId = siteId;
++            m_digsites.push_back(digsite);
++            ++count;
++            changed = true;
++        }
++    }
+ 
+-    Digsite digsite;
++    if (changed)
++        SyncDigsiteFields();
++}
+ 
+-    digsite.x = x;
+-    digsite.y = y;
+-    digsite.digCount = digCount;
++void ArchaeologyPlayerMgr::DailyRotate()
++{
++    if (!sConfigMgr->GetBoolDefault("Archaeology.DailyDigsiteRotation", true))
++        return;
+ 
+-    m_DigsiteMap.insert(DigsiteMap::value_type(memId, digsite));
++    if (!GetPlayer()->HasSkill(SKILL_ARCHAEOLOGY))
++        return;
++
++    // sites with finds already dug stay until they are finished
++    for (uint32 i = 0; i < m_digsites.size(); ++i)
++        if (!m_digsites[i].digCount)
++            ReplaceDigsite(i);
++
++    SyncDigsiteFields();
+ }
+ 
+-void ArchaeologyPlayerMgr::SetDigsiteId(uint8 memId, uint16 digsiteId)
++void ArchaeologyPlayerMgr::ResetDigsites()
+ {
+-    uint16 digid = digsiteId;
++    m_digsites.clear();
++    SyncDigsiteFields();
++    UpdateDigsites();
++}
+ 
+-    DigsiteMap::iterator itr = m_DigsiteMap.find(memId);
++void ArchaeologyPlayerMgr::ReplaceDigsite(uint32 index)
++{
++    if (index >= m_digsites.size())
++        return;
+ 
+-    if (itr != m_DigsiteMap.end())
+-        m_DigsiteMap.erase(m_DigsiteMap.find(memId));
++    Digsite& digsite = m_digsites[index];
++    ArchaeologyMgr::ResearchDigsitesEntry const* site = sArchaeologyMgr->GetDigsite(digsite.digsiteId);
++    uint16 newSiteId = site ? PickDigsite(site->mapId, digsite.digsiteId) : 0;
+ 
+-    Digsite digsite;
++    if (newSiteId)
++        digsite.digsiteId = newSiteId;
+ 
+-    digsite.digsiteId = digid;
+-    digsite.x = 0;
+-    digsite.y = 0;
++    // no other site available: the same site starts over
++    digsite.x = 0.0f;
++    digsite.y = 0.0f;
+     digsite.digCount = 0;
++}
++
++int ArchaeologyPlayerMgr::GetDigsite(float x, float y) const
++{
++    uint32 mapId = GetPlayer()->GetMapId();
++    for (uint32 i = 0; i < m_digsites.size(); ++i)
++    {
++        ArchaeologyMgr::ResearchDigsitesEntry const* site = sArchaeologyMgr->GetDigsite(m_digsites[i].digsiteId);
++        if (!site || site->mapId != mapId)
++            continue;
+ 
+-    m_DigsiteMap.insert(DigsiteMap::value_type(memId, digsite));
++        if (sArchaeologyMgr->IsInsideDigsite(site->id, x, y))
++            return int(i);
++    }
++
++    return -1;
+ }
+ 
+-int ArchaeologyPlayerMgr::GetDigsite(int32 /*x*/, int32 /*y*/)
++void ArchaeologyPlayerMgr::SendSurveyCast(uint32 index, uint32 branchId, bool success)
+ {
+-    /*uint16 digsiteID = 0;
+-    std::vector<uint16> PlayerDigsites;
+-    std::vector<uint32> const& digsites = GetPlayer()->GetDynamicValues(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH_SITE);
++    if (index >= m_digsites.size())
++        return;
+ 
+-    for (uint32 memId = 0; memId < digsites.size(); ++memId)
+-    {
+-        digsiteID = digsites[memId];
++    ArchaeologyMgr::ResearchDigsitesEntry const* site = sArchaeologyMgr->GetDigsite(m_digsites[index].digsiteId);
++    if (!site)
++        return;
+ 
+-        if (digsiteID <= 0)
+-            continue;
++    WorldPackets::Misc::ArchaeologySurveryCast packet;
++    packet.TotalFinds = ArchaeologyMgr::GetFindsPerDigsite(site->mapId);
++    packet.NumFindsCompleted = m_digsites[index].digCount;
++    packet.ResearchBranchID = int32(branchId);
++    packet.SuccessfulFind = success;
++    GetPlayer()->SendDirectMessage(packet.Write());
++}
+ 
+-        ResearchSiteEntry const* site = sResearchSiteStore.LookupEntry(digsiteID);
++ArchaeologySurveyResult ArchaeologyPlayerMgr::Survey()
++{
++    ArchaeologySurveyResult result;
++    Player* player = GetPlayer();
+ 
+-        if (!site)
+-            continue;
++    int index = GetDigsite(player->GetPositionX(), player->GetPositionY());
++    if (index < 0)
++        return result;
+ 
+-        for (uint32 i = 0; i < sQuestPOIPointStore.GetNumRows(); i++)
+-        {
+-            QuestPOIPointEntry const* poi = sQuestPOIPointStore.LookupEntry(i);
++    result.InDigsite = true;
+ 
+-            if (!poi)
+-                continue;
++    Digsite& digsite = m_digsites[index];
++    ArchaeologyMgr::ResearchDigsitesEntry const* site = sArchaeologyMgr->GetDigsite(digsite.digsiteId);
++    if (!site)
++        return result;
+ 
+-            if (poi->QuestPoiBlobID != site->QuestPoiBlobId)
+-                continue;
++    // roll the next find: inside the site, on dry ground where the terrain is loaded
++    if ((digsite.x == 0.0f && digsite.y == 0.0f) || !sArchaeologyMgr->IsInsideDigsite(site->id, digsite.x, digsite.y))
++    {
++        Map* map = player->GetMap();
++        float x = player->GetPositionX(), y = player->GetPositionY();
++        for (uint32 i = 0; i < 15; ++i)
++        {
++            if (!sArchaeologyMgr->GetRandomPointInDigsite(site->id, player->GetPositionX(), player->GetPositionY(), ArchaeologyFindMaxRoll, x, y))
++                break;
+ 
+-            DigsitePolygon.push_back(std::make_pair(poi->X, poi->Y));
++            float z = map->GetHeight(player->GetPhaseShift(), x, y, MAX_HEIGHT);
++            if (z > INVALID_HEIGHT && !map->IsInWater(player->GetPhaseShift(), x, y, z))
++                break;
+         }
+ 
+-        float x1, x2, y2;
+-        int crs = 0;
++        digsite.x = x;
++        digsite.y = y;
++    }
+ 
+-        if (DigsitePolygon.size() == 0)
+-            continue;
++    ResearchBranchEntry const* branch = sArchaeologyMgr->GetBranchByCurrency(site->currencyId);
++    uint32 branchId = branch ? branch->Id : 0;
+ 
+-        for (int i = 0; i < (int)DigsitePolygon.size(); i++)
++    if (player->GetExactDist2d(digsite.x, digsite.y) > ArchaeologyFindRange)
++    {
++        result.FindX = digsite.x;
++        result.FindY = digsite.y;
++        SendSurveyCast(index, branchId, false);
++        return result;
++    }
++
++    // dug it up
++    result.Found = true;
++
++    // The find is only for show: its loot (the race's keystone, ~7%) is rolled and given right away,
++    // like the fragments, instead of leaving a mostly empty loot window to click.
++    if (uint32 findEntry = ArchaeologyMgr::GetFindGameObject(site->currencyId))
++    {
++        if (GameObjectTemplate const* goInfo = sObjectMgr->GetGameObjectTemplate(findEntry))
+         {
+-            if (DigsitePolygon[i].first < DigsitePolygon[(i + 1) % DigsitePolygon.size()].first)
+-            {
+-                x1 = DigsitePolygon[i].first;
+-                x2 = DigsitePolygon[(i + 1) % DigsitePolygon.size()].first;
+-            }
+-            else
++            if (goInfo->type == GAMEOBJECT_TYPE_CHEST)
+             {
+-                x1 = DigsitePolygon[(i + 1) % DigsitePolygon.size()].first;
+-                x2 = DigsitePolygon[i].first;
++                if (uint32 lootId = goInfo->GetLootId())
++                {
++                    Loot loot;
++                    loot.FillLoot(lootId, LootTemplates_Gameobject, player, true, true);
++                    for (auto const& playerItems : loot.items)
++                        for (LootItem const& item : playerItems.second)
++                            if (!item.currency && item.itemid)
++                                player->AddItem(item.itemid, item.count);
++                }
++
++                if (GameObject* find = player->SummonGameObject(findEntry, *player, QuaternionData::fromEulerAnglesZYX(player->GetOrientation(), 0.0f, 0.0f), 15))
++                    find->AddFlag(GO_FLAG_NOT_SELECTABLE);
+             }
++        }
++    }
+ 
+-            if (x > x1 && x <= x2 && (y < DigsitePolygon[i].second || y <= DigsitePolygon[(i + 1) % DigsitePolygon.size()].second))
+-            {
+-                float dx = DigsitePolygon[(i + 1) % DigsitePolygon.size()].first - DigsitePolygon[i].first;
+-                float dy = DigsitePolygon[(i + 1) % DigsitePolygon.size()].second - DigsitePolygon[i].second;
+-                float k;
++    ++digsite.digCount;
++    uint8 const findsPerSite = ArchaeologyMgr::GetFindsPerDigsite(site->mapId);
++    SendSurveyCast(index, branchId, true);
+ 
+-                if (fabs(dx) < 0.000001)
+-                    k = float(0xFFFFFFFF);
+-                else
+-                    k = dy / dx;
++    player->UpdateCriteria(CRITERIA_TYPE_SURVEY_GAMEOBJECT, ArchaeologyMgr::GetFindGameObject(site->currencyId));
++    player->UpdateGatherSkill(SKILL_ARCHAEOLOGY, player->GetPureSkillValue(SKILL_ARCHAEOLOGY), 0);
+ 
+-                float m = DigsitePolygon[i].second - k * DigsitePolygon[i].first;
+-                y2 = k * x + m;
++    if (digsite.digCount >= findsPerSite)
++    {
++        player->UpdateCriteria(CRITERIA_TYPE_CLEAR_DIGSITE, 1);
++        ReplaceDigsite(index);
++    }
++    else
++    {
++        digsite.x = 0.0f;
++        digsite.y = 0.0f;
++    }
+ 
+-                if (y <= y2)
+-                    crs++;
+-            }
+-        }
++    // the fragments also give the race a project (Player::ModifyCurrency -> InitBranch)
++    if (site->currencyId)
++    {
++        uint32 fragments = urand(5, 9);
++        if (player->getRace() == RACE_DWARF) // Explorer
++            ++fragments;
++        player->ModifyCurrency(site->currencyId, int32(fragments));
++    }
+ 
+-        DigsitePolygon.clear();
++    SyncDigsiteFields();
++    UpdateDigsites();
++    return result;
++}
+ 
+-        if (crs % 2)
+-            return memId;
+-    }*/
++uint16 ArchaeologyPlayerMgr::PickProject(ResearchBranchEntry const* branch, uint16 excludeId) const
++{
++    std::vector<ResearchProjectEntry const*> const* projects = sArchaeologyMgr->GetBranchProjects(branch->Id);
++    if (!projects)
++        return 0;
+ 
+-    return -1;
++    uint32 skill = GetPlayer()->GetBaseSkillValue(SKILL_ARCHAEOLOGY);
++    std::vector<uint16> commons, rares, completedRares;
++    for (ResearchProjectEntry const* project : *projects)
++    {
++        if (project->Id == excludeId)
++            continue;
++
++        if (uint32(sArchaeologyMgr->GetArtifactSkillReqLevel(uint32(project->SpellId))) > skill)
++            continue;
++
++        if (project->Rarity == 0)
++            commons.push_back(project->Id);
++        else if (m_ArchaeologyHistoryMap.find(project->Id) == m_ArchaeologyHistoryMap.end())
++            rares.push_back(project->Id);
++        else
++            completedRares.push_back(project->Id);
++    }
++
++    // rares that weren't solved yet turn up one time in four
++    if (!rares.empty() && (commons.empty() || roll_chance_i(25)))
++        return Trinity::Containers::SelectRandomContainerElement(rares);
++
++    if (!commons.empty())
++        return Trinity::Containers::SelectRandomContainerElement(commons);
++
++    if (!completedRares.empty())
++        return Trinity::Containers::SelectRandomContainerElement(completedRares);
++
++    return 0;
+ }
+ 
+-bool ArchaeologyPlayerMgr::IsCurrentArtifactSpell(int32 /*spellId*/)
++void ArchaeologyPlayerMgr::InitBranch(uint32 currencyId)
+ {
+-    /*for (uint32 i = 0; i < 9; ++i)
++    if (!GetPlayer()->HasSkill(SKILL_ARCHAEOLOGY))
++        return;
++
++    ResearchBranchEntry const* branch = sArchaeologyMgr->GetBranchByCurrency(currencyId);
++    if (!branch)
++        return;
++
++    for (uint16 projectId : m_projects)
++        if (ResearchProjectEntry const* project = sResearchProjectStore.LookupEntry(projectId))
++            if (project->ResearchBranchId == branch->Id)
++                return;
++
++    if (uint16 projectId = PickProject(branch, 0))
+     {
+-        if (GetPlayer()->GetDynamicValue(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH, i))
+-        {
+-            for (uint32 j = 0; j < sResearchProjectStore.GetNumRows(); ++j)
+-            {
+-                ResearchProjectEntry const* rs = sResearchProjectStore.LookupEntry(j);
++        m_projects.push_back(projectId);
++        SyncProjectFields();
++    }
++}
+ 
+-                if (!rs || rs->SpellId != spellId)
+-                    continue;
++bool ArchaeologyPlayerMgr::IsCurrentArtifactSpell(uint32 spellId) const
++{
++    ResearchProjectEntry const* project = sArchaeologyMgr->GetProjectBySpell(spellId);
++    if (!project)
++        return false;
+ 
+-                return true;
+-            }
+-        }
+-    }*/
+-    return false;
++    return std::find(m_projects.begin(), m_projects.end(), uint16(project->Id)) != m_projects.end();
+ }
+ 
+-void ArchaeologyPlayerMgr::CompleteArtifact(uint32 /*spellId*/)
++bool ArchaeologyPlayerMgr::PrepareSolve(uint32 spellId, std::vector<ArchaeologySolveWeight> const& weights)
+ {
+-    /*uint32 ftime = time(NULL);
+-    uint32 count = 0;
++    m_solveSpellId = 0;
++    m_solveFragments = 0;
++    m_solveKeystones = 0;
++
++    if (!IsCurrentArtifactSpell(spellId))
++        return false;
++
++    ResearchProjectEntry const* project = sArchaeologyMgr->GetProjectBySpell(spellId);
++    ResearchBranchEntry const* branch = sResearchBranchStore.LookupEntry(project->ResearchBranchId);
++    if (!branch)
++        return false;
++
++    uint32 keystones = 0;
++    for (ArchaeologySolveWeight const& weight : weights)
++        if (weight.Type == 2 && branch->ItemId && weight.ID == branch->ItemId)
++            keystones += weight.Quantity;
++
++    keystones = std::min<uint32>(keystones, project->NumSockets);
++    keystones = std::min<uint32>(keystones, GetPlayer()->GetItemCount(branch->ItemId));
++
++    uint32 keystoneWeight = keystones * ArchaeologyMgr::GetKeystoneWeight(branch->Id);
++    uint32 fragments = project->RequiredWeight > keystoneWeight ? project->RequiredWeight - keystoneWeight : 0;
+ 
+-    for (uint32 memId = 0; memId < 9; ++memId)
++    if (GetPlayer()->GetCurrency(branch->CurrencyId) < fragments)
+     {
+-        uint16 artifactId = GetPlayer()->GetDynamicValue(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH, memId);
++        TC_LOG_DEBUG("entities.player", "Archaeology: %s can't solve project %u: needs %u fragments of currency %u, has %u (keystones %u)",
++            GetPlayer()->GetName().c_str(), project->Id, fragments, branch->CurrencyId, GetPlayer()->GetCurrency(branch->CurrencyId), keystones);
++        return false;
++    }
+ 
+-        if (artifactId)
+-        {
+-            for (uint32 i = 0; i < sResearchProjectStore.GetNumRows(); ++i)
+-            {
+-                ResearchProjectEntry const* rs = sResearchProjectStore.LookupEntry(i);
++    m_solveSpellId = spellId;
++    m_solveFragments = fragments;
++    m_solveKeystones = keystones;
++    return true;
++}
+ 
+-                if (!rs || rs->Id != artifactId || rs->SpellId != int32(spellId))
+-                    continue;
++void ArchaeologyPlayerMgr::CompleteArtifact(uint32 spellId)
++{
++    Player* player = GetPlayer();
+ 
+-                for (uint32 i = 0; i < sResearchBranchStore.GetNumRows(); ++i)
+-                {
+-                    ResearchBranchEntry const* ab = sResearchBranchStore.LookupEntry(i);
+-
+-                    if (!ab || ab->Id != rs->ResearchBranchId)
+-                        continue;
+-
+-                    ArchaeologyHistoryMap::iterator itr = m_ArchaeologyHistoryMap.find(artifactId);
+-                    if (itr != m_ArchaeologyHistoryMap.end())
+-                    {
+-                        ftime = itr->second.time;
+-                        count = itr->second.count + 1;
+-                        m_ArchaeologyHistoryMap.erase(artifactId);
+-                    }
+-
+-                    ArchaeologyHistory artifact;
+-                    artifact.time = ftime;
+-                    artifact.count = count ? count : 1;
+-                    m_ArchaeologyHistoryMap.insert(ArchaeologyHistoryMap::value_type(artifactId, artifact));
+-
+-                    // Through Player::UpdateCriteria so the guild is credited too
+-                    // (Making History); the achievement manager alone skipped it.
+-                    GetPlayer()->UpdateCriteria(CRITERIA_TYPE_COMPLETE_ARCHAEOLOGY_PROJECTS, artifactId);
+-
+-                    WorldPackets::Misc::ResearchComplete researchComplete;
+-                    researchComplete.researchHistory.id = artifactId;
+-                    researchComplete.researchHistory.time = artifact.time;
+-                    researchComplete.researchHistory.count = artifact.count;
+-                    GetPlayer()->SendDirectMessage(researchComplete.Write());
+-
+-                    std::vector<uint16> BranchProjects;
+-
+-                    for (uint32 i = 0; i < sResearchProjectStore.GetNumRows(); ++i)
+-                    {
+-                        ResearchProjectEntry const* rs2 = sResearchProjectStore.LookupEntry(i);
+-
+-                        if (!rs2 || rs2->ResearchBranchId != ab->Id || rs2->Id == artifactId || sArchaeologyMgr->GetArtifactSkillReqLevel(uint32(rs2->SpellId)) > GetPlayer()->GetBaseSkillValue(SKILL_ARCHAEOLOGY))
+-                            continue;
+-
+-                        BranchProjects.push_back(rs2->Id);
+-                    }
+-
+-                    uint16 selectProject = BranchProjects[urand(0, BranchProjects.size() - 1)];
+-                    GetPlayer()->SetDynamicValue(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH, memId, selectProject);
+-                    BranchProjects.clear();
+-                    return;
+-                }
+-            }
++    ResearchProjectEntry const* project = sArchaeologyMgr->GetProjectBySpell(spellId);
++    if (!project || !IsCurrentArtifactSpell(spellId))
++        return;
++
++    ResearchBranchEntry const* branch = sResearchBranchStore.LookupEntry(project->ResearchBranchId);
++    if (!branch)
++        return;
++
++    // the cost: what the Solve cast offered, or plain fragments
++    uint32 fragments = project->RequiredWeight;
++    uint32 keystones = 0;
++    if (m_solveSpellId == spellId)
++    {
++        fragments = m_solveFragments;
++        keystones = m_solveKeystones;
++    }
++
++    m_solveSpellId = 0;
++    m_solveFragments = 0;
++    m_solveKeystones = 0;
++
++    if (keystones)
++        player->DestroyItemCount(branch->ItemId, keystones, true);
++
++    if (fragments)
++        player->ModifyCurrency(branch->CurrencyId, -int32(std::min(fragments, player->GetCurrency(branch->CurrencyId))), false);
++
++    // history
++    ArchaeologyHistory& history = m_ArchaeologyHistoryMap[project->Id];
++    if (!history.count)
++        history.time = uint32(time(nullptr));
++    ++history.count;
++
++    // Through Player::UpdateCriteria so the guild is credited too (Making History)
++    player->UpdateCriteria(CRITERIA_TYPE_COMPLETE_ARCHAEOLOGY_PROJECTS, project->Id);
++
++    WorldPackets::Misc::ResearchComplete researchComplete;
++    researchComplete.researchHistory.id = project->Id;
++    researchComplete.researchHistory.time = history.time;
++    researchComplete.researchHistory.count = history.count;
++    player->SendDirectMessage(researchComplete.Write());
++
++    // skill: SkillLineAbility.NumSkillUps of the project spell (common 5, rare 15)
++    SkillLineAbilityMapBounds bounds = sSpellMgr->GetSkillLineAbilityMapBounds(spellId);
++    for (SkillLineAbilityMap::const_iterator itr = bounds.first; itr != bounds.second; ++itr)
++    {
++        if (itr->second->SkillLine == SKILL_ARCHAEOLOGY && itr->second->NumSkillUps)
++        {
++            player->UpdateSkillPro(SKILL_ARCHAEOLOGY, 1000, itr->second->NumSkillUps);
++            break;
+         }
+-    }*/
++    }
++
++    // next project of the same race
++    auto current = std::find(m_projects.begin(), m_projects.end(), uint16(project->Id));
++    uint16 nextProject = PickProject(branch, project->Id);
++    if (current != m_projects.end())
++    {
++        if (nextProject)
++            *current = nextProject;
++        else
++            m_projects.erase(current);
++    }
++
++    SyncProjectFields();
++    UpdateDigsites();
+ }
+ 
+ bool ArchaeologyPlayerMgr::IsFirstProjectComplete(uint32 artifactId)
+@@ -380,3 +629,38 @@ bool ArchaeologyPlayerMgr::IsFirstProjectComplete(uint32 artifactId)
+ 
+     return false;
+ }
++
++void ArchaeologyPlayerMgr::SyncDigsiteFields()
++{
++    std::vector<std::pair<uint16, uint32>> sites;
++    for (Digsite const& digsite : m_digsites)
++        sites.emplace_back(digsite.digsiteId, digsite.digCount);
++
++    GetPlayer()->SetArchaeologyDigsiteFields(sites);
++}
++
++void ArchaeologyPlayerMgr::SyncProjectFields()
++{
++    GetPlayer()->SetArchaeologyProjectFields(m_projects);
++}
++
++// Player side of the update fields (m_values is only reachable from Player)
++void Player::SetArchaeologyDigsiteFields(std::vector<std::pair<uint16, uint32>> const& sites)
++{
++    ClearDynamicUpdateFieldValues(m_values.ModifyValue(&Player::m_activePlayerData).ModifyValue(&UF::ActivePlayerData::ResearchSites));
++    ClearDynamicUpdateFieldValues(m_values.ModifyValue(&Player::m_activePlayerData).ModifyValue(&UF::ActivePlayerData::ResearchSiteProgress));
++
++    for (auto const& site : sites)
++    {
++        AddDynamicUpdateFieldValue(m_values.ModifyValue(&Player::m_activePlayerData).ModifyValue(&UF::ActivePlayerData::ResearchSites)) = site.first;
++        AddDynamicUpdateFieldValue(m_values.ModifyValue(&Player::m_activePlayerData).ModifyValue(&UF::ActivePlayerData::ResearchSiteProgress)) = site.second;
++    }
++}
++
++void Player::SetArchaeologyProjectFields(std::vector<uint16> const& projects)
++{
++    ClearDynamicUpdateFieldValues(m_values.ModifyValue(&Player::m_activePlayerData).ModifyDynamicArrayValue(&UF::ActivePlayerData::Research, 0));
++
++    for (uint16 projectId : projects)
++        AddDynamicUpdateFieldValue(m_values.ModifyValue(&Player::m_activePlayerData).ModifyDynamicArrayValue(&UF::ActivePlayerData::Research, 0)).ResearchProjectID = int16(projectId);
++}
+diff --git a/src/server/game/Archaeology/ArchaeologyPlayerMgr.h b/src/server/game/Archaeology/ArchaeologyPlayerMgr.h
+index 52a033f..d1061f0 100644
+--- a/src/server/game/Archaeology/ArchaeologyPlayerMgr.h
++++ b/src/server/game/Archaeology/ArchaeologyPlayerMgr.h
+@@ -18,26 +18,24 @@
+ #ifndef _ARCHAEOLOGY_PLAYER_MGR_H
+ #define _ARCHAEOLOGY_PLAYER_MGR_H
+ 
++#include "DatabaseEnvFwd.h"
++#include "Define.h"
++#include <unordered_map>
++#include <vector>
++
+ class Player;
++struct ResearchBranchEntry;
+ 
++// One of the character's active dig sites (4 per continent)
+ struct Digsite
+ {
+-    uint8     memId;       // Posicion en memoria
+-    uint16    digsiteId;   // Id del digsite
+-    float     x;           // Coordenada X
+-    float     y;           // Coordenada Y
+-    uint8     digCount;    // Contador de exploraciones
+-};
+-
+-struct ArchaeologyArtifactCost
+-{
+-    uint32 kcount;
+-    uint32 kentry;
+-    uint32 fcount;
+-    uint32 fentry;
++    uint16    digsiteId = 0;   // ResearchSite.db2 id
++    float     x = 0.0f;        // current find position (0, 0 = not rolled yet)
++    float     y = 0.0f;
++    uint8     digCount = 0;    // finds already dug up at this site
+ };
+ 
+-typedef std::unordered_map<uint32, Digsite> DigsiteMap;
++typedef std::vector<Digsite> DigsiteList;
+ 
+ struct ArchaeologyHistory
+ {
+@@ -47,12 +45,29 @@ struct ArchaeologyHistory
+ 
+ typedef std::unordered_map<uint32, ArchaeologyHistory> ArchaeologyHistoryMap;
+ 
+-class ArchaeologyPlayerMgr
++// One weight of a Solve cast (type 1 = fragments currency, type 2 = keystone item)
++struct ArchaeologySolveWeight
++{
++    uint32 Type = 0;
++    int32 ID = 0;
++    uint32 Quantity = 0;
++};
++
++struct ArchaeologySurveyResult
++{
++    bool InDigsite = false;
++    bool Found = false;
++    float FindX = 0.0f;
++    float FindY = 0.0f;
++};
++
++class TC_GAME_API ArchaeologyPlayerMgr
+ {
+ public:
+     ArchaeologyPlayerMgr(Player* player);
+ 
+     Player* GetPlayer() { return m_player; }
++    Player const* GetPlayer() const { return m_player; }
+ 
+     void LoadArchaeologyDigSites(PreparedQueryResult result);
+     void LoadArchaeologyBranchs(PreparedQueryResult result);
+@@ -61,22 +76,49 @@ public:
+     void SaveArchaeologyBranchs(CharacterDatabaseTransaction& trans);
+     void SaveArchaeologyHistory(CharacterDatabaseTransaction& trans);
+ 
++    // after loading: top up dig sites, give projects to races with fragments, fill update fields;
++    // sites are rotated first if the character was offline over a daily reset
++    void OnLogin(time_t logoutTime);
++    // daily reset (Archaeology.DailyDigsiteRotation): every site without finds dug yet moves elsewhere
++    void DailyRotate();
++    // gives every continent its 4 dig sites (call after learning the skill, level-ups, skill-ups)
++    void UpdateDigsites();
++    // makes sure the race of this fragment currency has a project
++    void InitBranch(uint32 currencyId);
++    // drops all dig sites and rolls new ones (.debug archaeology reset)
++    void ResetDigsites();
++
+     ArchaeologyHistoryMap& GetHistory() { return m_ArchaeologyHistoryMap; }
++    DigsiteList const& GetDigsites() const { return m_digsites; }
++    std::vector<uint16> const& GetProjects() const { return m_projects; }
+ 
+-    Digsite GetDigsitePosition(uint8 memId);
+-    void SetDigsitePosition(uint8 memId, float x, float y, uint8 digCount);
+-    void SetDigsiteId(uint8 memId, uint16 digsiteId);
+-    std::vector<std::pair<int32, int32>> DigsitePolygon;
+-    int GetDigsite(int32 x, int32 y);
+-    bool IsCurrentArtifactSpell(int32 spellId);
++    // index into GetDigsites() of the active dig site at this position on the player's map, -1 if none
++    int GetDigsite(float x, float y) const;
++    ArchaeologySurveyResult Survey();
++
++    bool IsCurrentArtifactSpell(uint32 spellId) const;
++    // checks the fragments/keystones a Solve cast offers and remembers them for CompleteArtifact
++    bool PrepareSolve(uint32 spellId, std::vector<ArchaeologySolveWeight> const& weights);
+     void CompleteArtifact(uint32 spellId);
+     bool IsFirstProjectComplete(uint32 artifactId);
+-    ArchaeologyArtifactCost* _artifactCost;
+ 
+ private:
++    bool CanUseDigsite(uint16 digsiteId) const;
++    uint16 PickDigsite(uint32 mapId, uint16 excludeId) const;
++    uint16 PickProject(ResearchBranchEntry const* branch, uint16 excludeId) const;
++    void ReplaceDigsite(uint32 index);
++    void SendSurveyCast(uint32 index, uint32 branchId, bool success);
++    void SyncDigsiteFields();
++    void SyncProjectFields();
++
+     Player* m_player;
+-    DigsiteMap m_DigsiteMap;
++    DigsiteList m_digsites;
++    std::vector<uint16> m_projects;
+     ArchaeologyHistoryMap m_ArchaeologyHistoryMap;
++
++    uint32 m_solveSpellId = 0;
++    uint32 m_solveFragments = 0;
++    uint32 m_solveKeystones = 0;
+ };
+ 
+ #endif
+diff --git a/src/server/game/Entities/Object/Updates/UpdateField.h b/src/server/game/Entities/Object/Updates/UpdateField.h
+index 01ff0de..34f2b3e 100644
+--- a/src/server/game/Entities/Object/Updates/UpdateField.h
++++ b/src/server/game/Entities/Object/Updates/UpdateField.h
+@@ -257,6 +257,17 @@ namespace UF
+             return { (_value.*field)._values[index] };
+         }
+ 
++        // zrbfacore: element of an array of dynamic fields (ActivePlayerData::Research)
++        template<typename V, uint32 DynamicBlockBit, uint32 DynamicBit, std::size_t Size, uint32 Bit, uint32 FirstElementBit, typename U = T>
++        std::enable_if_t<std::is_base_of<HasChangesMaskTag, U>::value, DynamicUpdateFieldSetter<V>>
++            ModifyDynamicArrayValue(UpdateFieldArray<DynamicUpdateField<V, DynamicBlockBit, DynamicBit>, Size, Bit, FirstElementBit>(T::* field), uint32 index)
++        {
++            _value._changesMask.Set(Bit);
++            _value._changesMask.Set(FirstElementBit + index);
++            DynamicUpdateField<V, DynamicBlockBit, DynamicBit>& dynamicField = (_value.*field)._values[index];
++            return { dynamicField._values, dynamicField._updateMask };
++        }
++
+         template<typename V, uint32 BlockBit, uint32 Bit, typename U = T>
+         std::enable_if_t<std::is_base_of<HasChangesMaskTag, U>::value, DynamicUpdateFieldSetter<V>>
+             ModifyValue(DynamicUpdateField<V, BlockBit, Bit>(T::* field))
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index 527176a..1fe13a5 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -2726,6 +2726,9 @@ void Player::GiveLevel(uint8 level)
+ 
+     UpdateCriteria(CRITERIA_TYPE_REACH_LEVEL);
+ 
++    // zrbfacore: higher level dig sites
++    GetArchaeologyMgr().UpdateDigsites();
++
+     sScriptMgr->OnPlayerLevelChanged(this, oldLevel);
+ }
+ 
+@@ -3531,10 +3534,8 @@ void Player::LearnSpell(uint32 spell_id, bool dependent, int32 fromSkill /*= 0*/
+         }
+     }
+ 
+-    if (spell_id == 89720)
+-        sArchaeologyMgr->AddDigsitesToMap(this, 530);
+-    if (spell_id == 89721)
+-        sArchaeologyMgr->AddDigsitesToMap(this, 571);
++    if (spell_id == 89720 || spell_id == 89721)
++        GetArchaeologyMgr().UpdateDigsites();
+ }
+ 
+ void Player::RemoveSpell(uint32 spell_id, bool disabled /*= false*/, bool learn_low_rank /*= true*/, bool suppressMessaging /*= false*/)
+@@ -6158,10 +6159,7 @@ SetSkill(skillEntry->ParentSkillLineID, skillEntry->ParentTierIndex, std::max<ui
+                 }
+ 
+             if (id == SKILL_ARCHAEOLOGY)
+-            {
+-                sArchaeologyMgr->AddDigsitesToMap(this, 0);
+-                sArchaeologyMgr->AddDigsitesToMap(this, 1);
+-            }
++                GetArchaeologyMgr().UpdateDigsites();
+ 
+             // Learn all spells for skill
+             LearnSkillRewardedSpells(id, newVal);
+@@ -7522,23 +7520,9 @@ void Player::ModifyCurrency(uint32 id, int32 count, bool printLog/* = true*/, bo
+ 
+         CurrencyChanged(id, count);
+ 
+-        if (count <= 7)
+-        {
+-            switch (id)
+-            {
+-                case CURRENCY_TYPE_ARCHAEOLOGY_DRAENEI:
+-                case CURRENCY_TYPE_ARCHAEOLOGY_DWARF:
+-                case CURRENCY_TYPE_ARCHAEOLOGY_FOSSIL:
+-                case CURRENCY_TYPE_ARCHAEOLOGY_NERUBIAN:
+-                case CURRENCY_TYPE_ARCHAEOLOGY_NIGHT_ELF:
+-                case CURRENCY_TYPE_ARCHAEOLOGY_ORC:
+-                case CURRENCY_TYPE_ARCHAEOLOGY_TOLVIR:
+-                case CURRENCY_TYPE_ARCHAEOLOGY_TROLL:
+-                case CURRENCY_TYPE_ARCHAEOLOGY_VRYKUL:
+-                    sArchaeologyMgr->InitBranch(this, id);
+-                    break;
+-            }
+-        }
++        // zrbfacore: the first fragments of a race give it a research project (every race, not only Cataclysm's)
++        if (count > 0 && sArchaeologyMgr->GetBranchByCurrency(id))
++            GetArchaeologyMgr().InitBranch(id);
+ 
+         WorldPackets::Misc::SetCurrency packet;
+         packet.Type = id;
+@@ -19833,6 +19817,7 @@ SetNumRespecs(fields[77].GetUInt8());
+     GetArchaeologyMgr().LoadArchaeologyDigSites(holder->GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_ARCHAEOLOGY_DIGSITES));
+     GetArchaeologyMgr().LoadArchaeologyBranchs(holder->GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_ARCHAEOLOGY_BRANCHS));
+     GetArchaeologyMgr().LoadArchaeologyHistory(holder->GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_ARCHAEOLOGY_HISTORY));
++    GetArchaeologyMgr().OnLogin(logoutTime);
+ 
+     _LoadCompletedChallenges(holder->GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_COMPLETED_CHALLENGES));
+ 
+@@ -26213,6 +26198,9 @@ void Player::SetMonthlyQuestStatus(uint32 quest_id)
+ 
+ void Player::DailyReset()
+ {
++    // zrbfacore: Archaeology dig sites move every day
++    GetArchaeologyMgr().DailyRotate();
++
+     for (int32 questId : m_activePlayerData->DailyQuestsCompleted)
+         if (uint32 questBit = sDB2Manager.GetQuestUniqueBitFlag(questId))
+             SetQuestCompletedBit(questBit, false);
+diff --git a/src/server/game/Entities/Player/Player.h b/src/server/game/Entities/Player/Player.h
+index 3bc2fae..388dc76 100644
+--- a/src/server/game/Entities/Player/Player.h
++++ b/src/server/game/Entities/Player/Player.h
+@@ -2660,6 +2660,8 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
+         void AddToPlayerPetDataStore(PlayerPetData* playerPetData);
+ 
+         ArchaeologyPlayerMgr& GetArchaeologyMgr() { return m_archaeologyPlayerMgr; }
++        void SetArchaeologyDigsiteFields(std::vector<std::pair<uint16, uint32>> const& sites);
++        void SetArchaeologyProjectFields(std::vector<uint16> const& projects);
+ 
+         bool MeetPlayerCondition(uint32 conditionId) const;
+ 
+diff --git a/src/server/game/Handlers/MiscHandler.cpp b/src/server/game/Handlers/MiscHandler.cpp
+index ae0d250..22ed603 100644
+--- a/src/server/game/Handlers/MiscHandler.cpp
++++ b/src/server/game/Handlers/MiscHandler.cpp
+@@ -1125,7 +1125,7 @@ void WorldSession::HandleResearchHistory(WorldPackets::Misc::ResearchHistory& /*
+ 
+     WorldPackets::Misc::ResearchSetupHistory rHistory;
+ 
+-    rHistory.ResearchHistory.resize(history.size());
++    rHistory.ResearchHistory.reserve(history.size());
+ 
+     for (auto itr : history)
+     {
+diff --git a/src/server/game/Handlers/SpellHandler.cpp b/src/server/game/Handlers/SpellHandler.cpp
+index 0627730..8e971af 100644
+--- a/src/server/game/Handlers/SpellHandler.cpp
++++ b/src/server/game/Handlers/SpellHandler.cpp
+@@ -309,6 +309,23 @@ void WorldSession::HandleCastSpellOpcode(WorldPackets::Spells::CastSpell& cast)
+     if (caster->GetTypeId() == TYPEID_PLAYER && !caster->ToPlayer()->HasActiveSpell(spellInfo->Id) && !spellInfo->HasEffect(SPELL_EFFECT_CHANGE_RAID_MARKER) && !spellInfo->HasAttribute(SPELL_ATTR8_RAID_MARKER) && !caster->ToPlayer()->GetArchaeologyMgr().IsCurrentArtifactSpell(spellInfo->Id))
+         return;
+ 
++    // zrbfacore: Archaeology Solve: check the offered fragments/keystones now, take them on completion
++    if (caster->GetTypeId() == TYPEID_PLAYER && !caster->ToPlayer()->HasActiveSpell(spellInfo->Id) && caster->ToPlayer()->GetArchaeologyMgr().IsCurrentArtifactSpell(spellInfo->Id))
++    {
++        std::vector<ArchaeologySolveWeight> weights;
++        for (WorldPackets::Spells::SpellWeight const& weight : cast.Cast.Weight)
++        {
++            ArchaeologySolveWeight solveWeight;
++            solveWeight.Type = weight.Type;
++            solveWeight.ID = weight.ID;
++            solveWeight.Quantity = weight.Quantity;
++            weights.push_back(solveWeight);
++        }
++
++        if (!caster->ToPlayer()->GetArchaeologyMgr().PrepareSolve(spellInfo->Id, weights))
++            return;
++    }
++
+     // Check possible spell cast overrides
+     spellInfo = caster->GetCastSpellInfo(spellInfo);
+ 
+diff --git a/src/server/game/Server/Packets/MiscPackets.cpp b/src/server/game/Server/Packets/MiscPackets.cpp
+index ad790e3..d0902c5 100644
+--- a/src/server/game/Server/Packets/MiscPackets.cpp
++++ b/src/server/game/Server/Packets/MiscPackets.cpp
+@@ -656,7 +656,7 @@ WorldPacket const* WorldPackets::Misc::StopElapsedTimer::Write()
+ 
+ void WorldPackets::Misc::ResearchHistory::Read()
+ {
+-    _worldPacket << resHistory;
++    // zrbfacore: the request has no payload (this used to append to the client packet)
+ }
+ 
+ WorldPacket const* WorldPackets::Misc::ResearchSetupHistory::Write()
+@@ -669,6 +669,18 @@ WorldPacket const* WorldPackets::Misc::ResearchSetupHistory::Write()
+     return &_worldPacket;
+ }
+ 
++WorldPacket const* WorldPackets::Misc::ArchaeologySurveryCast::Write()
++{
++    // zrbfacore: 8.3.7 reads finds done first (with total first the bar was full after one find)
++    _worldPacket << uint32(NumFindsCompleted);
++    _worldPacket << uint32(TotalFinds);
++    _worldPacket << int32(ResearchBranchID);
++    _worldPacket.WriteBit(SuccessfulFind);
++    _worldPacket.FlushBits();
++
++    return &_worldPacket;
++}
++
+ WorldPacket const* WorldPackets::Misc::ResearchComplete::Write()
+ {
+     _worldPacket << researchHistory;
+diff --git a/src/server/game/Server/Packets/MiscPackets.h b/src/server/game/Server/Packets/MiscPackets.h
+index 53f9a49..7d1f226 100644
+--- a/src/server/game/Server/Packets/MiscPackets.h
++++ b/src/server/game/Server/Packets/MiscPackets.h
+@@ -879,6 +879,20 @@ namespace WorldPackets
+             std::vector<ReqResearchHistory> ResearchHistory;
+         };
+ 
++        // zrbfacore: progress bar update after each Survey (ARCHAEOLOGY_SURVEY_CAST)
++        class ArchaeologySurveryCast final : public ServerPacket
++        {
++        public:
++            ArchaeologySurveryCast() : ServerPacket(SMSG_ARCHAEOLOGY_SURVERY_CAST, 4 + 4 + 4 + 1) { }
++
++            WorldPacket const* Write() override;
++
++            uint32 TotalFinds = 0;
++            uint32 NumFindsCompleted = 0;
++            int32 ResearchBranchID = 0;
++            bool SuccessfulFind = false;
++        };
++
+         class MountSpecial final : public ClientPacket
+         {
+         public:
+diff --git a/src/server/game/Server/Protocol/Opcodes.cpp b/src/server/game/Server/Protocol/Opcodes.cpp
+index e03efae..a63b31e 100644
+--- a/src/server/game/Server/Protocol/Opcodes.cpp
++++ b/src/server/game/Server/Protocol/Opcodes.cpp
+@@ -936,7 +936,7 @@ void OpcodeTable::Initialize()
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_ALL_ACHIEVEMENT_DATA,                    STATUS_NEVER,        CONNECTION_TYPE_INSTANCE);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_ALL_GUILD_ACHIEVEMENTS,                  STATUS_NEVER,        CONNECTION_TYPE_REALM);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_APPLY_MOUNT_EQUIPMENT_RESULT,            STATUS_UNHANDLED,    CONNECTION_TYPE_INSTANCE);
+-    DEFINE_SERVER_OPCODE_HANDLER(SMSG_ARCHAEOLOGY_SURVERY_CAST,                STATUS_UNHANDLED,    CONNECTION_TYPE_REALM);
++    DEFINE_SERVER_OPCODE_HANDLER(SMSG_ARCHAEOLOGY_SURVERY_CAST,                STATUS_NEVER,        CONNECTION_TYPE_REALM);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_AREA_POI_UPDATE_RESPONSE,                STATUS_UNHANDLED,    CONNECTION_TYPE_INSTANCE);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_AREA_SPIRIT_HEALER_TIME,                 STATUS_NEVER,        CONNECTION_TYPE_REALM);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_AREA_TRIGGER_DENIED,                     STATUS_NEVER,        CONNECTION_TYPE_REALM);
+@@ -1751,7 +1751,7 @@ void OpcodeTable::Initialize()
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_REQUEST_CEMETERY_LIST_RESPONSE,          STATUS_NEVER,        CONNECTION_TYPE_INSTANCE);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_REQUEST_PVP_REWARDS_RESPONSE,            STATUS_NEVER,        CONNECTION_TYPE_REALM);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_REQUEST_SCHEDULED_PVP_INFO_RESPONSE,     STATUS_UNHANDLED,    CONNECTION_TYPE_REALM);
+-    DEFINE_SERVER_OPCODE_HANDLER(SMSG_RESEARCH_COMPLETE,                       STATUS_UNHANDLED,    CONNECTION_TYPE_REALM);
++    DEFINE_SERVER_OPCODE_HANDLER(SMSG_RESEARCH_COMPLETE,                       STATUS_NEVER,        CONNECTION_TYPE_REALM);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_RESET_COMPRESSION_CONTEXT,               STATUS_UNHANDLED,    CONNECTION_TYPE_REALM);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_RESET_FAILED_NOTIFY,                     STATUS_NEVER,        CONNECTION_TYPE_REALM);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_RESET_RANGED_COMBAT_TIMER,               STATUS_UNHANDLED,    CONNECTION_TYPE_REALM);
+@@ -1799,7 +1799,7 @@ void OpcodeTable::Initialize()
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_SERVER_TIME,                             STATUS_UNHANDLED,    CONNECTION_TYPE_REALM);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_SERVER_TIME_OFFSET,                      STATUS_NEVER,        CONNECTION_TYPE_REALM);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_SETUP_CURRENCY,                          STATUS_NEVER,        CONNECTION_TYPE_INSTANCE);
+-    DEFINE_SERVER_OPCODE_HANDLER(SMSG_SETUP_RESEARCH_HISTORY,                  STATUS_UNHANDLED,    CONNECTION_TYPE_INSTANCE);
++    DEFINE_SERVER_OPCODE_HANDLER(SMSG_SETUP_RESEARCH_HISTORY,                  STATUS_NEVER,        CONNECTION_TYPE_INSTANCE);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_SET_AI_ANIM_KIT,                         STATUS_NEVER,        CONNECTION_TYPE_INSTANCE);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_SET_ALL_TASK_PROGRESS,                   STATUS_UNHANDLED,    CONNECTION_TYPE_INSTANCE);
+     DEFINE_SERVER_OPCODE_HANDLER(SMSG_SET_ANIM_TIER,                           STATUS_NEVER,        CONNECTION_TYPE_INSTANCE);
+diff --git a/src/server/game/Spells/Spell.cpp b/src/server/game/Spells/Spell.cpp
+index 93cc090..0d1cfad 100644
+--- a/src/server/game/Spells/Spell.cpp
++++ b/src/server/game/Spells/Spell.cpp
+@@ -162,33 +162,8 @@ SpellCastTargets::SpellCastTargets(Unit* caster, WorldPackets::Spells::SpellCast
+     SetPitch(spellCastRequest.MissileTrajectory.Pitch);
+     SetSpeed(spellCastRequest.MissileTrajectory.Speed);
+ 
+-    if (spellCastRequest.SendCastFlags == 8)   // Archaeology
+-    {
+-        uint32 kEntry = 0, kCount = 0, fEntry = 0, fCount = 0;
+-        uint8 type;
+-
+-        for (auto const& weight : spellCastRequest.Weight)
+-        {
+-            type = weight.Type;
+-            switch (type)
+-            {
+-                case 1: // Fragments
+-                    fEntry = weight.ID;        // Currency id
+-                    fCount = weight.Quantity;        // Currency count
+-                    break;
+-                case 2: // Keystones
+-                    kEntry = weight.ID;        // Item id
+-                    kCount = weight.Quantity;        // Item count
+-                    break;
+-            }
+-        }
+-
+-        if (kCount > 0 && caster->GetTypeId() == TYPEID_PLAYER)
+-            caster->ToPlayer()->DestroyItemCount(kEntry, -(int32(kCount)), true, false);
+-
+-        if (fCount > 0 && caster->GetTypeId() == TYPEID_PLAYER)
+-            caster->ToPlayer()->ModifyCurrency(fEntry, -(int32(fCount)), false);
+-    }
++    // zrbfacore: Archaeology Solve weights (fragments/keystones) are checked in HandleCastSpellOpcode
++    // and only taken when the project is completed (ArchaeologyPlayerMgr::CompleteArtifact)
+ 
+     Update(caster);
+ }
+@@ -5360,6 +5335,14 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* param1 /*= nullptr*/, uint
+         // for effects of spells that have only one target
+         switch (effect->Effect)
+         {
++            case SPELL_EFFECT_SURVEY:
++            {
++                // zrbfacore: Survey only works inside one of the character's dig sites
++                if (Player* player = m_caster->ToPlayer())
++                    if (player->GetArchaeologyMgr().GetDigsite(player->GetPositionX(), player->GetPositionY()) < 0)
++                        return SPELL_FAILED_NOT_HERE;
++                break;
++            }
+             case SPELL_EFFECT_DUMMY:
+             {
+                 if (m_spellInfo->Id == 19938)          // Awaken Peon
+diff --git a/src/server/game/Spells/SpellEffects.cpp b/src/server/game/Spells/SpellEffects.cpp
+index e8001c8..a6aacac 100644
+--- a/src/server/game/Spells/SpellEffects.cpp
++++ b/src/server/game/Spells/SpellEffects.cpp
+@@ -1458,10 +1458,6 @@ void Spell::DoCreateItem(uint32 /*i*/, uint32 itemtype, ItemContext context /*=
+         return;
+     }
+ 
+-    // Archaeology research project
+-    if (player->GetArchaeologyMgr().IsCurrentArtifactSpell(m_spellInfo->Id))
+-        player->GetArchaeologyMgr().CompleteArtifact(m_spellInfo->Id);
+-
+     uint32 num_to_add = damage;
+ 
+     if (num_to_add < 1)
+@@ -1540,6 +1536,10 @@ void Spell::DoCreateItem(uint32 /*i*/, uint32 itemtype, ItemContext context /*=
+         // send info to the client
+         player->SendNewItem(pItem, num_to_add, true, true);
+ 
++        // zrbfacore: Archaeology research project solved (fragments/keystones are only taken now)
++        if (player->GetArchaeologyMgr().IsCurrentArtifactSpell(m_spellInfo->Id))
++            player->GetArchaeologyMgr().CompleteArtifact(m_spellInfo->Id);
++
+         if (pItem->GetQuality() > ITEM_QUALITY_EPIC || (pItem->GetQuality() == ITEM_QUALITY_EPIC && pItem->GetItemLevel(player) >= MinNewsItemLevel))
+             if (Guild* guild = player->GetGuild())
+                 guild->AddGuildNews(GUILD_NEWS_ITEM_CRAFTED, player->GetGUID(), 0, pProto->GetId());
+@@ -4280,133 +4280,49 @@ void Spell::EffectSummonSurveyTools(SpellEffIndex /*effIndex*/)
+     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT)
+         return;
+ 
+-    if (Player* player = m_caster->ToPlayer())
+-    {
+-        if (player->HasSkill(SKILL_ARCHAEOLOGY))
+-        {
+-            ObjectGuid guid = m_caster->m_ObjectSlot[1];
+-            uint32 SurveyGoEntry, FindGoEntry = 0;
+-            GameObject* obj = nullptr;
+-
+-            if (m_caster)
+-                obj = m_caster->GetMap()->GetGameObject(guid);
+-
+-            if (obj)
+-            {
+-                // Recast case - null spell id to make auras not be removed on object remove from world
+-                if (m_spellInfo->Id == obj->GetSpellId())
+-                    obj->SetSpellId(0);
+-                m_caster->RemoveGameObject(obj, true);
+-            }
+-
+-            m_caster->m_ObjectSlot[1] = ObjectGuid::Empty;
+-
+-            // Read digsite info
+-            int memId = player->GetArchaeologyMgr().GetDigsite(player->GetPositionX(), player->GetPositionY());
+-            uint32 digsiteId = 0;
+-
+-            std::vector<uint32> const/*&*/ digsites;// = player->GetDynamicValues(ACTIVE_PLAYER_DYNAMIC_FIELD_RESERACH_SITE);
+-
+-            for (auto const& digSite : digsites)
+-                digsiteId = digSite;
+-
+-            if (memId < 0 || memId > 16)
+-                return;
+-
+-            Digsite digsite = player->GetArchaeologyMgr().GetDigsitePosition(memId);
+-
+-            // If digsite info is empty, generate new position and read data
+-            if (digsite.x == 0 && digsite.y == 0)
+-            {
+-                sArchaeologyMgr->GenerateRandomPosition(player, digsite.digCount);
+-                digsite = player->GetArchaeologyMgr().GetDigsitePosition(memId); // Refresh the digsite now that we have coordinates
+-            }
+-
+-            // Spawn Find GameObject
+-            if (player->GetDistance2d(digsite.x, digsite.y) < 15.0f) // Hack fix should be 5.0f
+-            {
+-                // Set FindGoEntry for treasure
+-                auto currencyId = sArchaeologyMgr->GetCurrencyId(digsiteId);
+-                switch (currencyId)
+-                {
+-                    case 384: FindGoEntry = 204282; break; // Dwarf
+-                    case 398: FindGoEntry = 207188; break; // Draenei
+-                    case 393: FindGoEntry = 206836; break; // Fossil
+-                    case 394: FindGoEntry = 203071; break; // Night Elf
+-                    case 400: FindGoEntry = 203078; break; // Nerubian
+-                    case 397: FindGoEntry = 207187; break; // Orc
+-                    case 401: FindGoEntry = 207190; break; // Tol'vir
+-                    case 385: FindGoEntry = 202655; break; // Troll
+-                    case 399: FindGoEntry = 207189; break; // Vrykul
+-                    case 754: FindGoEntry = 218950; break; // Mantid
+-                    case 676: FindGoEntry = 211163; break; // Pandaren
+-                    case 677: FindGoEntry = 211174; break; // Mogu
+-                    case 829: FindGoEntry = 234105; break; // Arakkoa
+-                    case 821: FindGoEntry = 226521; break; // Draenor Clans
+-                    case 828: FindGoEntry = 234106; break; // Ogre
+-                    case 1172: FindGoEntry = 268440; break; // Highborne
+-                    case 1173: FindGoEntry = 246804; break; // Highmountain Tauren
+-                    case 1174: FindGoEntry = 268451; break; // Demonic
+-                    default:
+-                        TC_LOG_ERROR("spells", "EffectSummonSurveyTools: unknown currency ID %u for digsite %u, defaulting to Night Elf", currencyId, digsiteId);
+-                        currencyId = 394;
+-                        FindGoEntry = 203071;
+-                        break;
+-                }
+-
+-                player->SummonGameObject(FindGoEntry, *player, QuaternionData(), 0);
+-
+-                if (player->getRace() == RACE_DWARF)
+-                    player->ModifyCurrency(currencyId, urand(6, 10));
+-                else
+-                    player->ModifyCurrency(currencyId, urand(5, 9));
+-
+-                // Count search or change digsite
+-                if (digsite.digCount + 1 < 3)
+-                {
+-                    player->GetArchaeologyMgr().SetDigsitePosition(memId, 0, 0, digsite.digCount + 1);
+-                    //player->AddDynamicValue(ACTIVE_PLAYER_DYNAMIC_FIELD_RESEARCH_SITE_PROGRESS, digsite.digCount + 1);
+-                }
+-                else
+-                    sArchaeologyMgr->ChangeDigsite(player, memId);
+-
+-                uint32 SkillValue = player->GetPureSkillValue(SKILL_ARCHAEOLOGY);
++    Player* player = m_caster->ToPlayer();
++    if (!player || !player->HasSkill(SKILL_ARCHAEOLOGY))
++        return;
+ 
+-                if (SkillValue < 50)
+-                    player->UpdateGatherSkill(SKILL_ARCHAEOLOGY, SkillValue, 0);
++    // remove the previous survey tool
++    if (GameObject* obj = player->GetMap()->GetGameObject(player->m_ObjectSlot[1]))
++    {
++        // Recast case - null spell id to make auras not be removed on object remove from world
++        if (m_spellInfo->Id == obj->GetSpellId())
++            obj->SetSpellId(0);
++        player->RemoveGameObject(obj, true);
++    }
+ 
+-                return;
+-            }
++    player->m_ObjectSlot[1] = ObjectGuid::Empty;
+ 
+-            // Set SurveyGoEntry for distance
+-            if (player->GetDistance2d(digsite.x, digsite.y) < 35.0f)
+-                SurveyGoEntry = 204272;
+-            else if (player->GetDistance2d(digsite.x, digsite.y) < 85.0f)
+-                SurveyGoEntry = 206589;
+-            else
+-                SurveyGoEntry = 206590;
+-
+-            // Spawn Survey Tools
+-            Map* map = player->GetMap();
++    // zrbfacore: dig site lookup, find roll, fragments and site rotation live in ArchaeologyPlayerMgr
++    ArchaeologySurveyResult result = player->GetArchaeologyMgr().Survey();
++    if (!result.InDigsite || result.Found)
++        return;
+ 
+-            QuaternionData rot = QuaternionData::fromEulerAnglesZYX(player->GetAngle(digsite.x, digsite.y), 0.f, 0.f);
+-            GameObject* go = GameObject::CreateGameObject(SurveyGoEntry, map, Position(player->GetPositionX() + 2, player->GetPositionY() + 2, player->GetPositionZ()), rot, 255, GO_STATE_READY);
++    // survey tool: green under 35 yards, yellow under 85, red further away, pointing at the find
++    float distance = player->GetExactDist2d(result.FindX, result.FindY);
++    uint32 surveyGoEntry = 206590;
++    if (distance < 35.0f)
++        surveyGoEntry = 204272;
++    else if (distance < 85.0f)
++        surveyGoEntry = 206589;
+ 
+-            if (!go)
+-            {
+-                delete go;
+-                return;
+-            }
++    Map* map = player->GetMap();
++    float angle = player->GetAngle(result.FindX, result.FindY);
++    Position toolPos(player->GetPositionX() + 2.0f * std::cos(angle), player->GetPositionY() + 2.0f * std::sin(angle), player->GetPositionZ(), angle);
++    QuaternionData rot = QuaternionData::fromEulerAnglesZYX(angle, 0.f, 0.f);
++    GameObject* go = GameObject::CreateGameObject(surveyGoEntry, map, toolPos, rot, 255, GO_STATE_READY);
++    if (!go)
++        return;
+ 
+-            PhasingHandler::InheritPhaseShift(go, m_caster);
++    PhasingHandler::InheritPhaseShift(go, player);
+ 
+-            go->SetRespawnTime(60);
+-            go->SetSpellId(m_spellInfo->Id);
+-            m_caster->AddGameObject(go);
+-            map->AddToMap(go);
+-            m_caster->m_ObjectSlot[1] = go->GetGUID();
+-        }
+-    }
++    go->SetRespawnTime(60);
++    go->SetSpellId(m_spellInfo->Id);
++    player->AddGameObject(go);
++    map->AddToMap(go);
++    player->m_ObjectSlot[1] = go->GetGUID();
+ }
+ 
+ void Spell::EffectResurrect(SpellEffIndex effIndex)
+diff --git a/src/server/scripts/Commands/cs_debug.cpp b/src/server/scripts/Commands/cs_debug.cpp
+index 91c3534..cfdc53b 100644
+--- a/src/server/scripts/Commands/cs_debug.cpp
++++ b/src/server/scripts/Commands/cs_debug.cpp
+@@ -23,6 +23,8 @@ Category: commandscripts
+ EndScriptData */
+ 
+ #include "ScriptMgr.h"
++#include "ArchaeologyMgr.h"
++#include "ArchaeologyPlayerMgr.h"
+ #include "Bag.h"
+ #include "BattlefieldMgr.h"
+ #include "BattlegroundMgr.h"
+@@ -43,6 +45,7 @@ EndScriptData */
+ #include "MotionMaster.h"
+ #include "ObjectMgr.h"
+ #include "PhasingHandler.h"
++#include "Player.h"
+ #include "Scenario.h"
+ #include "ScenarioMgr.h"
+ #include "RBAC.h"
+@@ -125,6 +128,7 @@ public:
+             { "wsexpression" , rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugWSExpressionCommand,     "" },
+             { "transmog",      rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugTransmogCommand,         "" },
+             { "scenario",      rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugScenarioCommand,         "" },
++            { "archaeology",   rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugArchaeologyCommand,      "" },
+             { "attackpower",   rbac::RBAC_PERM_COMMAND_DEBUG,               false, &HandleDebugAttackPowerCommand,      "" },
+         };
+         static std::vector<ChatCommand> commandTable =
+@@ -1563,6 +1567,111 @@ public:
+     }
+ 
+     // .debug scenario: lists every step and criteria of the instance scenario you are in, with its progress
++    // zrbfacore: .debug archaeology            dig sites on this continent, research projects
++    //            .debug archaeology all        every dig site of the character
++    //            .debug archaeology reset      drop all dig sites and roll new ones
++    //            .debug archaeology go <n>     teleport into dig site <n> of the list
++    static bool HandleDebugArchaeologyCommand(ChatHandler* handler, char const* args)
++    {
++        Player* player = handler->GetSession()->GetPlayer();
++        ArchaeologyPlayerMgr& archaeology = player->GetArchaeologyMgr();
++        LocaleConstant locale = handler->GetSessionDbcLocale();
++
++        std::string option = args ? args : "";
++        std::string argument;
++        std::size_t space = option.find(' ');
++        if (space != std::string::npos)
++        {
++            argument = option.substr(space + 1);
++            option = option.substr(0, space);
++        }
++
++        if (!player->HasSkill(SKILL_ARCHAEOLOGY))
++            handler->PSendSysMessage("You don't have the Archaeology skill: no dig sites.");
++
++        if (option == "reset")
++        {
++            archaeology.ResetDigsites();
++            handler->PSendSysMessage("Dig sites rolled again: %u active.", uint32(archaeology.GetDigsites().size()));
++            return true;
++        }
++
++        DigsiteList const& digsites = archaeology.GetDigsites();
++
++        if (option == "go")
++        {
++            uint32 index = uint32(atoul(argument.c_str()));
++            if (index >= digsites.size())
++            {
++                handler->PSendSysMessage("No dig site %u (the list has %u).", index, uint32(digsites.size()));
++                return true;
++            }
++
++            ArchaeologyMgr::ResearchDigsitesEntry const* site = sArchaeologyMgr->GetDigsite(digsites[index].digsiteId);
++            float x = 0.0f, y = 0.0f;
++            if (!site || !sArchaeologyMgr->GetRandomPointInDigsite(site->id, 0.0f, 0.0f, 0.0f, x, y))
++                return false;
++
++            Map* map = sMapMgr->CreateBaseMap(site->mapId);
++            float z = std::max(map->GetStaticHeight(PhasingHandler::GetEmptyPhaseShift(), x, y, MAX_HEIGHT), map->GetWaterLevel(PhasingHandler::GetEmptyPhaseShift(), x, y));
++            if (player->IsInFlight())
++            {
++                player->GetMotionMaster()->MovementExpired();
++                player->CleanupAfterTaxiFlight();
++            }
++            else
++                player->SaveRecallPosition();
++            player->TeleportTo(site->mapId, x, y, z + 1.0f, player->GetOrientation());
++            return true;
++        }
++
++        bool all = option == "all";
++        int current = archaeology.GetDigsite(player->GetPositionX(), player->GetPositionY());
++
++        handler->PSendSysMessage("Archaeology skill %u/%u, %u dig sites in all, standing in: %s",
++            player->GetSkillValue(SKILL_ARCHAEOLOGY), player->GetMaxSkillValue(SKILL_ARCHAEOLOGY), uint32(digsites.size()),
++            current >= 0 ? std::to_string(current).c_str() : "none");
++
++        for (uint32 i = 0; i < digsites.size(); ++i)
++        {
++            ArchaeologyMgr::ResearchDigsitesEntry const* site = sArchaeologyMgr->GetDigsite(digsites[i].digsiteId);
++            if (!site || (!all && site->mapId != player->GetMapId()))
++                continue;
++
++            ResearchSiteEntry const* siteEntry = sResearchSiteStore.LookupEntry(site->id);
++            ResearchBranchEntry const* branch = sArchaeologyMgr->GetBranchByCurrency(site->currencyId);
++            std::string findText = "not rolled";
++            if (digsites[i].x != 0.0f || digsites[i].y != 0.0f)
++            {
++                std::ostringstream find;
++                find << "find at " << int32(digsites[i].x) << " " << int32(digsites[i].y);
++                if (site->mapId == player->GetMapId())
++                    find << " (" << int32(player->GetExactDist2d(digsites[i].x, digsites[i].y)) << " yd)";
++                findText = find.str();
++            }
++
++            handler->PSendSysMessage("[%u] site %u \"%s\" map %u, %s, finds %u/%u, %s", i, site->id,
++                siteEntry ? siteEntry->Name->Str[locale] : "?", site->mapId,
++                branch ? branch->Name->Str[locale] : "?", digsites[i].digCount,
++                uint32(ArchaeologyMgr::GetFindsPerDigsite(site->mapId)), findText.c_str());
++        }
++
++        for (uint16 projectId : archaeology.GetProjects())
++        {
++            ResearchProjectEntry const* project = sResearchProjectStore.LookupEntry(projectId);
++            if (!project)
++                continue;
++
++            ResearchBranchEntry const* branch = sResearchBranchStore.LookupEntry(project->ResearchBranchId);
++            handler->PSendSysMessage("Project %u \"%s\" (%s, %s), spell %d, needs %u fragments, has %u",
++                project->Id, project->Name->Str[locale], branch ? branch->Name->Str[locale] : "?",
++                project->Rarity ? "rare" : "common", project->SpellId, project->RequiredWeight,
++                branch ? player->GetCurrency(branch->CurrencyId) : 0);
++        }
++
++        return true;
++    }
++
+     static bool HandleDebugScenarioCommand(ChatHandler* handler, char const* /*args*/)
+     {
+         Player* player = handler->GetSession()->GetPlayer();
+diff --git a/src/server/worldserver/worldserver.conf.dist b/src/server/worldserver/worldserver.conf.dist
+index d3b2f28..c11dfa2 100644
+--- a/src/server/worldserver/worldserver.conf.dist
++++ b/src/server/worldserver/worldserver.conf.dist
+@@ -16,6 +16,7 @@
+ #    HOTSWAP SETTINGS
+ #    WARDEN SETTINGS
+ #    TRANSMOG COLLECTION
++#    ARCHAEOLOGY
+ #    PLAYER INTERACTION
+ #    CREATURE SETTINGS
+ #    SPAWN/RESPAWN SETTINGS
+@@ -1575,6 +1576,23 @@ Transmog.CollectIgnoreLevel = 1
+ #
+ ###################################################################################################
+ 
++###################################################################################################
++# ARCHAEOLOGY
++#
++#    Archaeology.DailyDigsiteRotation
++#        Description: At the daily reset (Quests.DailyResetTime) every dig site with no finds
++#                     dug yet moves to another site on its continent. Sites you have started
++#                     stay until their finds are done. Characters offline over a reset get
++#                     new sites at their next login. Off follows retail, where a site only
++#                     moves once its finds are done.
++#        Default:     1 - (Enabled)
++#                     0 - (Disabled, retail)
++
++Archaeology.DailyDigsiteRotation = 1
++
++#
++###################################################################################################
++
+ ###################################################################################################
+ # PLAYER INTERACTION
+ #

@@ -1,0 +1,268 @@
+diff --git a/src/server/game/Scenarios/ScenarioMgr.cpp b/src/server/game/Scenarios/ScenarioMgr.cpp
+index 55fcf0f..384b8b9 100644
+--- a/src/server/game/Scenarios/ScenarioMgr.cpp
++++ b/src/server/game/Scenarios/ScenarioMgr.cpp
+@@ -79,6 +79,18 @@ InstanceScenario* ScenarioMgr::CreateInstanceScenarioByID(Map const* map, uint32
+    // return new InstanceScenario(map, &itr->second);
+ }
+ 
++InstanceScenario* ScenarioMgr::CreateInstanceScenarioForMap(Map* map, uint32 scenarioID) const
++{
++    auto itr = _scenarioData.find(scenarioID);
++    if (itr == _scenarioData.end())
++    {
++        TC_LOG_ERROR("scenario", "ScenarioMgr::CreateInstanceScenarioForMap: no scenario data for scenario %u (map %u).", scenarioID, map->GetId());
++        return nullptr;
++    }
++
++    return new InstanceScenario(map, &itr->second);
++}
++
+ void ScenarioMgr::LoadDBData()
+ {
+     _scenarioDBData.clear();
+diff --git a/src/server/game/Scenarios/ScenarioMgr.h b/src/server/game/Scenarios/ScenarioMgr.h
+index 4082639..9e9ddfb 100644
+--- a/src/server/game/Scenarios/ScenarioMgr.h
++++ b/src/server/game/Scenarios/ScenarioMgr.h
+@@ -107,6 +107,8 @@ public:
+ 
+     InstanceScenario* CreateInstanceScenario(Map* map, TeamId team) const;
+     InstanceScenario* CreateInstanceScenarioByID(Map const* map, uint32 scenarioID);
++    // Creates the given scenario for an instance whose map has more than one (Stratholme: Main Gate / Service Entrance)
++    InstanceScenario* CreateInstanceScenarioForMap(Map* map, uint32 scenarioID) const;
+ 
+     void LoadDBData();
+     void LoadDB2Data();
+diff --git a/src/server/scripts/EasternKingdoms/Stratholme/boss_dathrohan_balnazzar.cpp b/src/server/scripts/EasternKingdoms/Stratholme/boss_dathrohan_balnazzar.cpp
+index de738d4..1e613f3 100644
+--- a/src/server/scripts/EasternKingdoms/Stratholme/boss_dathrohan_balnazzar.cpp
++++ b/src/server/scripts/EasternKingdoms/Stratholme/boss_dathrohan_balnazzar.cpp
+@@ -117,6 +117,18 @@ public:
+                 me->UpdateEntry(NPC_DATHROHAN);
+         }
+ 
++        bool HasOtherPlayerToFight() const
++        {
++            Unit* victim = me->GetVictim();
++            for (ThreatReference const* ref : me->GetThreatManager().GetUnsortedThreatList())
++            {
++                Unit* target = ref->GetVictim();
++                if (target != victim && target->GetTypeId() == TYPEID_PLAYER && target->IsAlive() && !target->IsCharmed())
++                    return true;
++            }
++            return false;
++        }
++
+         void JustDied(Unit* /*killer*/) override
+         {
+             static uint32 uiCount = sizeof(m_aSummonPoint)/sizeof(SummonDef);
+@@ -216,7 +228,10 @@ public:
+                 //MindControl
+                 if (m_uiMindControl_Timer <= uiDiff)
+                 {
+-                    DoCastVictim(SPELL_MINDCONTROL);
++                    // Domination takes the victim away; with nobody else to fight he evades and
++                    // resets to full health, so only cast it while another player is on him.
++                    if (HasOtherPlayerToFight())
++                        DoCastVictim(SPELL_MINDCONTROL);
+                     m_uiMindControl_Timer = 15000;
+                 } else m_uiMindControl_Timer -= uiDiff;
+             }
+diff --git a/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp b/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp
+index 2bcf51a..51991ec 100644
+--- a/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp
++++ b/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp
+@@ -24,12 +24,17 @@ EndScriptData */
+ 
+ #include "ScriptMgr.h"
+ #include "Creature.h"
++#include "DB2Stores.h"
+ #include "EventMap.h"
+ #include "GameObject.h"
++#include "Group.h"
++#include "InstanceScenario.h"
+ #include "InstanceScript.h"
++#include "LFGMgr.h"
+ #include "Log.h"
+ #include "Map.h"
+ #include "Player.h"
++#include "ScenarioMgr.h"
+ #include "stratholme.h"
+ 
+ enum Misc
+@@ -37,6 +42,13 @@ enum Misc
+     MAX_ENCOUNTER           = 6
+ };
+ 
++// Instance entrances (world_safe_locs 3653/3654 front, 3652 back)
++Position const MainGateEntrance        = { 3393.1f, -3380.0f, 143.0f };
++Position const ServiceEntranceEntrance = { 3590.9f, -3643.2f, 138.5f };
++
++// The Brotherhood of the Light questgivers that wait in Balnazzar's hall (the others stand at the entrance)
++float const BalnazzarQuestgiverMinY    = -3364.41f;
++
+ enum InstanceEvents
+ {
+     EVENT_BARON_RUN         = 1,
+@@ -58,6 +70,72 @@ class instance_stratholme : public InstanceMapScript
+ 
+                 for (uint8 i = 0; i < 5; ++i)
+                     IsSilverHandDead[i] = false;
++
++                _wing = WING_UNKNOWN;
++                _balnazzarDead = false;
++            }
++
++            uint32 _wing;
++            bool _balnazzarDead;
++            GuidVector _balnazzarQuestgivers;
++
++            // Map 329 has two scenarios: 636 (Main Gate, Balnazzar) and 637 (Service Entrance, Rivendare).
++            // The `scenarios` table can only link one per map, so the instance picks it when the first
++            // player enters: the queued Dungeon Finder dungeon, else the entrance the player came in by.
++            void OnPlayerEnter(Player* player) override
++            {
++                InstanceMap* map = instance->ToInstanceMap();
++                if (!map || map->GetInstanceScenario())
++                    return;
++
++                if (_wing == WING_UNKNOWN)
++                {
++                    if (Group* group = player->GetGroup())
++                    {
++                        if (group->isLFGGroup())
++                        {
++                            uint32 dungeonId = sLFGMgr->GetDungeon(group->GetGUID());
++                            if (dungeonId == LFG_DUNGEON_MAIN_GATE)
++                                _wing = WING_MAIN_GATE;
++                            else if (dungeonId == LFG_DUNGEON_SERVICE_ENTRANCE)
++                                _wing = WING_SERVICE_ENTRANCE;
++                        }
++                    }
++
++                    if (_wing == WING_UNKNOWN)
++                        _wing = player->GetExactDist2d(&MainGateEntrance) <= player->GetExactDist2d(&ServiceEntranceEntrance)
++                            ? WING_MAIN_GATE : WING_SERVICE_ENTRANCE;
++
++                    TC_LOG_DEBUG("scripts", "Instance Stratholme: instance %u is the %s.", instance->GetInstanceId(),
++                        _wing == WING_MAIN_GATE ? "Main Gate" : "Service Entrance");
++                    SaveToDB();
++                }
++
++                if (InstanceScenario* scenario = sScenarioMgr->CreateInstanceScenarioForMap(instance,
++                    _wing == WING_MAIN_GATE ? SCENARIO_MAIN_GATE : SCENARIO_SERVICE_ENTRANCE))
++                    map->SetInstanceScenario(scenario);
++            }
++
++            void OnUnitDeath(Unit* unit) override
++            {
++                if (unit->GetEntry() != NPC_DREADLORD_BALNAZZAR || !unit->ToCreature() || _balnazzarDead)
++                    return;
++
++                // Balnazzar is dead: the Brotherhood of the Light comes in to take the quests
++                _balnazzarDead = true;
++                for (ObjectGuid const& guid : _balnazzarQuestgivers)
++                    if (Creature* questgiver = instance->GetCreature(guid))
++                        ShowQuestgiver(questgiver, true);
++                SaveToDB();
++            }
++
++            static void ShowQuestgiver(Creature* creature, bool show)
++            {
++                creature->SetVisible(show);
++                if (show)
++                    creature->AddNpcFlag(NPCFlags(UNIT_NPC_FLAG_GOSSIP | UNIT_NPC_FLAG_QUESTGIVER));
++                else
++                    creature->RemoveNpcFlag(NPCFlags(UNIT_NPC_FLAG_GOSSIP | UNIT_NPC_FLAG_QUESTGIVER));
+             }
+ 
+             uint32 EncounterState[MAX_ENCOUNTER];
+@@ -127,6 +205,16 @@ class instance_stratholme : public InstanceMapScript
+                     case NPC_ABOM_VENOM:
+                         abomnationGUID.insert(creature->GetGUID());
+                         break;
++                    case NPC_COMMANDER_ELIGOR:
++                    case NPC_MASTER_CRAFTSMAN_WILHELM:
++                    case NPC_PACKMASTER_STONEBRUISER:
++                        if (creature->GetPositionY() > BalnazzarQuestgiverMinY)
++                        {
++                            _balnazzarQuestgivers.push_back(creature->GetGUID());
++                            if (!_balnazzarDead)
++                                ShowQuestgiver(creature, false);
++                        }
++                        break;
+                 }
+             }
+ 
+@@ -346,7 +434,8 @@ class instance_stratholme : public InstanceMapScript
+ 
+                 std::ostringstream saveStream;
+                 saveStream << EncounterState[0] << ' ' << EncounterState[1] << ' ' << EncounterState[2] << ' '
+-                    << EncounterState[3] << ' ' << EncounterState[4] << ' ' << EncounterState[5];
++                    << EncounterState[3] << ' ' << EncounterState[4] << ' ' << EncounterState[5] << ' '
++                    << _wing << ' ' << uint32(_balnazzarDead);
+ 
+                 OUT_SAVE_INST_DATA_COMPLETE;
+                 return saveStream.str();
+@@ -366,6 +455,14 @@ class instance_stratholme : public InstanceMapScript
+                 loadStream >> EncounterState[0] >> EncounterState[1] >> EncounterState[2] >> EncounterState[3]
+                 >> EncounterState[4] >> EncounterState[5];
+ 
++                // Saves made before the Main Gate / Service Entrance split have no wing: it is picked again
++                uint32 wing = WING_UNKNOWN, balnazzarDead = 0;
++                if (loadStream >> wing >> balnazzarDead)
++                {
++                    _wing = wing <= WING_SERVICE_ENTRANCE ? wing : uint32(WING_UNKNOWN);
++                    _balnazzarDead = balnazzarDead != 0;
++                }
++
+                 // Do not reset 1, 2 and 3. they are not set to done, yet .
+                 if (EncounterState[0] == IN_PROGRESS)
+                     EncounterState[0] = NOT_STARTED;
+@@ -397,6 +494,8 @@ class instance_stratholme : public InstanceMapScript
+                           return EncounterState[4];
+                       case TYPE_BARON:
+                           return EncounterState[5];
++                      case DATA_WING:
++                          return _wing;
+                   }
+                   return 0;
+             }
+diff --git a/src/server/scripts/EasternKingdoms/Stratholme/stratholme.h b/src/server/scripts/EasternKingdoms/Stratholme/stratholme.h
+index 104d4c2..de5fd11 100644
+--- a/src/server/scripts/EasternKingdoms/Stratholme/stratholme.h
++++ b/src/server/scripts/EasternKingdoms/Stratholme/stratholme.h
+@@ -36,6 +36,7 @@ enum STRDataTypes
+ 
+     DATA_BARON                          = 10,
+     DATA_YSIDA_TRIGGER                  = 11,
++    DATA_WING                           = 12,
+ 
+     TYPE_SH_QUEST                       = 20,
+     TYPE_SH_CATHELA                     = 21,
+@@ -56,6 +57,24 @@ enum STRCreatureIds
+     NPC_ABOM_VENOM                      = 10417,
+     NPC_BLACK_GUARD                     = 10394,
+     NPC_YSIDA                           = 16031,
++    NPC_DREADLORD_BALNAZZAR             = 10813, // boss_dathrohan_balnazzar.cpp has its own NPC_BALNAZZAR
++    NPC_COMMANDER_ELIGOR                = 45200, // Crusade Commander Eligor Dawnbringer
++    NPC_MASTER_CRAFTSMAN_WILHELM        = 45201,
++    NPC_PACKMASTER_STONEBRUISER         = 45323
++};
++
++// Map 329 holds two dungeons since Cataclysm, each with its own scenario
++enum STRWings
++{
++    WING_UNKNOWN                        = 0,
++    WING_MAIN_GATE                      = 1,
++    WING_SERVICE_ENTRANCE               = 2,
++
++    LFG_DUNGEON_MAIN_GATE               = 40,
++    LFG_DUNGEON_SERVICE_ENTRANCE        = 274,
++
++    SCENARIO_MAIN_GATE                  = 636,
++    SCENARIO_SERVICE_ENTRANCE           = 637
+ };
+ 
+ enum STRGameobjectIds

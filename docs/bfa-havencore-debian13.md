@@ -150,6 +150,12 @@ git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
 git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
+git apply ../tools-repo/tools/bfa/archaeology.patch
+git apply ../tools-repo/tools/bfa/zandalari-bwemba-spirit.patch
+git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
+git apply ../tools-repo/tools/bfa/stratholme.patch
+git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
+git apply ../tools-repo/tools/bfa/pick-lock-level.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -527,6 +533,61 @@ entered combat. A passive creature on a waypoint path now keeps going, and when 
 carries on to its next waypoint instead of walking back to where the path started. It only touches
 `SmartAI.cpp`.
 
+`archaeology.patch` makes Archaeology work. HavenCore took its archaeology code from AshamaneCore,
+where it was commented out during the 8.0 merge because it used the old update fields, so no character
+ever got a dig site and Survey did nothing. The patch rewrites `src/server/game/Archaeology/` on the
+8.3.7 fields (`ResearchSites`, `ResearchSiteProgress`, `Research`): every continent with dig sites in
+`archaeology_digsites` (Eastern Kingdoms, Kalimdor, Outland, Northrend, Pandaria, Draenor, Broken Isles)
+gets 4 sites, checked against the site outlines in `QuestPOIPoint.db2`; Survey points to a find and
+gives the site's race fragments; a site moves on after 3 finds (6 from Pandaria on); a race gets a
+research project with its first fragments; Solve only takes fragments and keystones once the artifact
+is made. It also adds `.debug archaeology`. The rest of the files it touches: `SpellEffects.cpp`
+(Survey), `Spell.cpp` and `SpellHandler.cpp` (Solve), `Player.cpp/.h`, `UpdateField.h` (a setter for
+the project list), `MiscPackets`, `Opcodes.cpp`, `MiscHandler.cpp`, `CriteriaHandler.cpp` and
+`cs_debug.cpp`, plus `worldserver.conf.dist` (`Archaeology.DailyDigsiteRotation`, see the Archaeology section below).
+
+`zandalari-bwemba-spirit.patch` adds a spell script for 96591 (Rise of the Zandalari, Stranglethorn):
+Bwemba's spirit follows you through the chain and gives most of its quests, but the spell only
+summons her once. While the aura is on you the script checks every 3 seconds, keeps one spirit, brings
+her back to you when she was left behind (flight, teleport) and summons her again when she is gone
+(relog, death). It only touches `zone_stranglethorn_vale.cpp` and needs the SQL
+`2026_11_20_73_rise_of_the_zandalari.sql`.
+
+`wild-pet-zone-level.patch` gives wild battle pets their zone's level. The core picks a wild pet's
+level from its `battlepet_info` range, raised to the zone's `WildBattlePetLevelMin/Max` from
+`AreaTable.db2`. A spawn loaded with its grid is set up before it is added to the world, when it has
+no zone yet, so it skipped the zone range and came out at its `battlepet_info` level (1 for most wild
+pets). Only respawns got the zone's level. It now looks the zone up from the spawn position when the
+creature has none yet. It only touches `WildBattlePet.cpp`.
+
+`stratholme.patch` gives Stratholme its dungeon scenario. Since Cataclysm map 329 holds two dungeons,
+Main Gate (scenario 636, ends with Balnazzar) and Service Entrance (scenario 637, ends with Lord Aurius
+Rivendare), and the `scenarios` table can link only one scenario to a map, so it linked none and
+Stratholme had no objectives at all. The instance now picks the scenario when the first player enters:
+the dungeon the group queued for in the Dungeon Finder, otherwise the entrance the player came in by.
+The choice is saved with the instance. It also keeps the Brotherhood of the Light questgivers in
+Balnazzar's hall (Crusade Commander Eligor Dawnbringer, Master Craftsman Wilhelm, Packmaster
+Stonebruiser) hidden until Balnazzar dies; their copies at the entrance stay. It touches
+`ScenarioMgr.h/.cpp` (a function that creates a given scenario for an instance), the Stratholme
+instance script and `boss_dathrohan_balnazzar.cpp` (the classic Dathrohan script, which casts
+Domination only while a second player is on him; Dathrohan is not spawned since Cataclysm, so this
+changes nothing in game today).
+
+`expansion-xp-gate.patch` stops experience at the old level caps until the character moves on to the
+next expansion. At 60 a character gets no more experience until they turn in a quest in Outland (or
+Through the Dark Portal), at 70 a quest in Northrend, at 80 one in the Cataclysm zones (Mount Hyjal,
+Vashj'ir, Deepholm, Uldum, Twilight Highlands, Tol Barad), at 85 Pandaria, at 90 Draenor, at 100 the
+Broken Isles and at 110 Kul Tiras or Zandalar. Quests elsewhere still give money, items and
+reputation. The quest that opens the gate pays its own experience, and a quest in a later expansion
+also opens the earlier gates. Leftover experience past the cap is dropped. The player gets a chat
+message when experience locks and when it unlocks. It only touches `Player.cpp/.h` and
+`worldserver.conf.dist` (`ExpansionXpGate.Enable`, default 1; set it to 0 to turn the gate off).
+
+`pick-lock-level.patch` makes Pick Lock open what its tooltip says. Pick Lock (1804) opens locks up to
+120 plus 5 per level above the spell's level (265 at level 53), but `Spell::CanOpenLock` computed the
+spell's value without the caster, so the per-level part was skipped and every rogue stayed at 120: a
+Strong Iron Lockbox (125) failed with "Skill not high enough". It only touches `Spell.cpp`.
+
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
 80% health. When a player or a pet hits an invader, the invader drops the braves and fights only
@@ -778,6 +839,13 @@ are known, whatever the server allows, and its Professions tab only shows 2. The
 puts the unit's name on every plate it shows. Copy `client/ZRProximity` into `_retail_/Interface/AddOns/`;
 `/zrp` opens its settings. Confirmed in game.
 
+### Client chat polls (ZRChatFilter)
+
+[ZRChatFilter](../client/ZRChatFilter/README.md) hides the `.ticket CUticketGet` and `.addon load` lines
+that the WoW Circle client prints into chat by itself (for example in guild chat when you queue for the
+Dungeon Finder). The server never gets them as chat, so `client-ticket-poll.patch` can't drop them. Copy
+`client/ZRChatFilter` into `Interface/AddOns/`; `/zrcf` shows how many lines it hid.
+
 ### Patched third-party addons
 
 `client/` also holds three third-party addons with fixes for the 8.3.7 client (all confirmed in game
@@ -912,6 +980,14 @@ Brewfest event. This ties them to Brewfest:
 ```sh
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_18_51_brewfest_display_pets.sql
 ```
+
+Many pet cards name zones where the world DB never spawns that pet (the Mouse card lists Westfall,
+Wetlands, Mulgore and more; only Duskwood and Dustwallow Marsh had Mice). This adds 139 zone rows,
+converts local critters where they exist and spawns the rest next to existing critters:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_19_50_wild_battle_pet_card_zones.sql
+```
 #### Legion and BFA pet tamers
 
 Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest
@@ -931,6 +1007,36 @@ Algalon, and gives the five that had none the gossip flag. The Shipwrecked Capti
 no spawn. Their world quests follow the normal rotation; to test one now, use
 `.quest add <quest id>` (Kwint is 52430), then right-click the tamer. If the client shows the talk
 cursor but nothing opens, you are probably more than about 5 yards away (easy underwater).
+
+### Archaeology
+
+Learn Archaeology from an Archaeology trainer (Harrison Jones in Stormwind, Belloc Brightblade in
+Orgrimmar). Each continent then shows 4 dig sites (shovel icons) on the world map. Inside one, cast
+Survey: the telescope points to the find, red is far, yellow closer, green under 35 yards. Standing on
+it, Survey digs it up and gives that race's fragments. Open the Archaeology window from your
+professions to see the race's project and press Solve when you have enough fragments (keystones from
+finds lower the cost).
+
+Every day at the daily quest reset (`Quests.DailyResetTime`), each dig site you haven't started moves
+somewhere else on its continent; sites with finds dug stay until they're done, and a character that was
+offline over a reset gets its new sites at login. To turn that off (retail: sites only move once their
+finds are done), copy the block into `worldserver.conf` once and set it to 0:
+
+```sh
+grep -q '^Archaeology.DailyDigsiteRotation' ~/bfa/server/etc/worldserver.conf || sed -n '/^# ARCHAEOLOGY$/,/^####/p' ~/bfa/server/etc/worldserver.conf.dist >> ~/bfa/server/etc/worldserver.conf
+```
+
+`.debug archaeology` lists your dig sites on this continent (`all` for every continent), the find
+position and distance, and your projects. `.debug archaeology go <n>` teleports you into site `n` of
+the list, and `.debug archaeology reset` rolls new sites. Fragments for testing:
+`.modify currency <id> <amount>` (Fossil 393, Tol'vir 401, Dwarf 384, Night Elf 394, Troll 385).
+
+The Cataclysm pets are rare projects: Fossilized Hatchling and Pterrordax Hatchling (Fossil),
+Crawling Claw (Tol'vir, from the Mummified Monkey Paw). A rare that you haven't solved yet comes up
+one time in four when a race gets a new project.
+
+Run `sql/fixes/world/2026_11_20_80_archaeology_survey_tool.sql` once for the green survey tool's
+name.
 
 ## 10. Updating
 
@@ -1002,6 +1108,12 @@ git apply ../tools-repo/tools/bfa/weapon-slot-attack-power.patch
 git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
+git apply ../tools-repo/tools/bfa/archaeology.patch
+git apply ../tools-repo/tools/bfa/zandalari-bwemba-spirit.patch
+git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
+git apply ../tools-repo/tools/bfa/stratholme.patch
+git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
+git apply ../tools-repo/tools/bfa/pick-lock-level.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -1100,6 +1212,13 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_13_04_dire_maul_slipkik_trap.sql` | Dire Maul, Gordok Commons: repairing the Broken Trap (quest A Broken Trap, now repeatable) makes Guard Slip'kik walk into the Fixed Trap and freeze, so you can walk past him |
 | `2026_11_13_05_dire_maul_ogre_suit_quests.sql` | Dire Maul, Gordok Commons: Knot Thimblejack offers the repeatable The Gordok Ogre Suit only after the first one is done, instead of both at once |
 | `2026_11_13_06_dire_maul_gordok_tribute.sql` | Dire Maul, Gordok Commons: the tribute run ending. King Gordok's death brings in Mizzle the Crafty and makes a living Cho'Rush stand down; Mizzle crowns you and gives the Gordok Tribute once, with one extra roll per guard left alive (needs `dire-maul-north.patch`) |
+| `2026_11_20_00_stratholme_main_gate.sql` | Stratholme, Main Gate: the Argent Crusaders fight the Scourge in the streets as a backdrop (nobody dies, needs `staged-npc-battles.patch`), Ravaged Cadavers no longer permanently stunned, 29 patrols and 24 wanderers |
+| `2026_11_20_01_stratholme_main_gate_thinning.sql` | Stratholme, Main Gate: the eight densest packs cut to AzerothCore's size, 51 mobs removed (mostly the 8.x skeletons and stacked cadavers; backup tables `zr_backup_strat_mg_*`) |
+| `2026_11_21_00_stratholme_crusader_faction.sql` | Stratholme, Main Gate: Argent Crusaders fight the Risen too (faction 2115, defensive, start rows for seven more kinds) |
+| `2026_11_21_01_stratholme_patchwork_horror.sql` | Stratholme, Main Gate: Patchwork Horrors selectable again (dump had `dynamicflags` 2, hide model) |
+| `2026_11_21_02_stratholme_postboxes.sql` | Stratholme: postboxes call their three Undead Postmen again (action lists missing from the dump, copied from Pandaria 5.4.8) |
+| `2026_11_21_03_stratholme_scarlet_cannons.sql` | Stratholme, Main Gate: loaded Scarlet Cannons fire Cannon Fire and kill Willey's Risen Riflemen |
+| `2026_11_21_04_stratholme_balnazzar_domination.sql` | Stratholme, Main Gate: Balnazzar's Domination only takes a player other than his top-threat target (solo he no longer resets to full health) |
 | `2026_11_14_70_guild_vendor_locks.sql` | Guild vendors: all 12 sell the BFA guild reward list (Dalaran and Shattrath sell both factions' items) and lock each item like the guild Rewards tab: guild reputation rank + guild achievements + faction. Removes the dead 'Guild Level' locks (needs `guild-progression.patch`; backups `zr_guild_vendor_backup_npc_vendor` / `zr_guild_vendor_backup_conditions`) |
 | `2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` | 854 old-world NPCs that only meleed get their SmartAI scripts from TDB 7.3.5 (casts, gossip and quest events); Ghostclaw Lynx Rake verified in game 2026-11-12 |
 | `2026_11_12_31_tdb735_patrols.sql` | 733 open-world NPCs that stood still walk their TDB 7.3.5 patrol paths, 8 followers in formation (Orgrimmar Grunts verified in game 2026-11-12) |

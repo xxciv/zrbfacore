@@ -1,0 +1,13 @@
+diff --git a/src/server/game/Spells/Spell.cpp b/src/server/game/Spells/Spell.cpp
+index 0d1cfad..c655e58 100644
+--- a/src/server/game/Spells/Spell.cpp
++++ b/src/server/game/Spells/Spell.cpp
+@@ -7704,7 +7704,7 @@ SpellCastResult Spell::CanOpenLock(uint32 effIndex, uint32 lockId, SkillType& sk
+                     // skill bonus provided by casting spell (mostly item spells)
+                     // add the effect base points modifier from the spell cast (cheat lock / skeleton key etc.)
+                     if (effect->TargetA.GetTarget() == TARGET_GAMEOBJECT_ITEM_TARGET || effect->TargetB.GetTarget() == TARGET_GAMEOBJECT_ITEM_TARGET)
+-                        skillValue += effect->CalcValue();
++                        skillValue += effect->CalcValue(m_caster); // zrbfacore: pass the caster, or RealPointsPerLevel (Pick Lock: 5 per level) is skipped
+ 
+                     if (skillValue < reqSkillValue)
+                         return SPELL_FAILED_LOW_CASTLEVEL;
