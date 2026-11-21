@@ -25,7 +25,9 @@ to do to pick it up (rebuild, restart, run SQL).
     Dawnbringer 45200, Master Craftsman Wilhelm 45201, Packmaster Stonebruiser 45323, the copies north
     of y -3364) stay hidden, without gossip or quests, until Balnazzar 10813 dies, as in Pandaria
     5.4.8. Their copies at the entrance are unchanged, so every quest stays available there.
-  - Compiles against the current patch chain.
+  - Compiles against the current patch chain, every Stratholme file included. The first version
+    (4d1199c) named the Balnazzar entry `NPC_BALNAZZAR` in `stratholme.h`, which clashes with the enum
+    in `boss_dathrohan_balnazzar.cpp` and broke the build; it is `NPC_DREADLORD_BALNAZZAR` now.
 - **Status:** not tested in game yet.
 - **Pick up:** apply the patch, rebuild, restart `worldserver`.
 

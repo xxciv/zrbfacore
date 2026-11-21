@@ -35,7 +35,7 @@ index 4082639..9e9ddfb 100644
      void LoadDBData();
      void LoadDB2Data();
 diff --git a/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp b/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp
-index 2bcf51a..1c0423c 100644
+index 2bcf51a..51991ec 100644
 --- a/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp
 +++ b/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp
 @@ -24,12 +24,17 @@ EndScriptData */
@@ -122,7 +122,7 @@ index 2bcf51a..1c0423c 100644
 +
 +            void OnUnitDeath(Unit* unit) override
 +            {
-+                if (unit->GetEntry() != NPC_BALNAZZAR || !unit->ToCreature() || _balnazzarDead)
++                if (unit->GetEntry() != NPC_DREADLORD_BALNAZZAR || !unit->ToCreature() || _balnazzarDead)
 +                    return;
 +
 +                // Balnazzar is dead: the Brotherhood of the Light comes in to take the quests
@@ -195,7 +195,7 @@ index 2bcf51a..1c0423c 100644
                    return 0;
              }
 diff --git a/src/server/scripts/EasternKingdoms/Stratholme/stratholme.h b/src/server/scripts/EasternKingdoms/Stratholme/stratholme.h
-index 104d4c2..9658666 100644
+index 104d4c2..de5fd11 100644
 --- a/src/server/scripts/EasternKingdoms/Stratholme/stratholme.h
 +++ b/src/server/scripts/EasternKingdoms/Stratholme/stratholme.h
 @@ -36,6 +36,7 @@ enum STRDataTypes
@@ -210,7 +210,7 @@ index 104d4c2..9658666 100644
      NPC_ABOM_VENOM                      = 10417,
      NPC_BLACK_GUARD                     = 10394,
      NPC_YSIDA                           = 16031,
-+    NPC_BALNAZZAR                       = 10813,
++    NPC_DREADLORD_BALNAZZAR             = 10813, // boss_dathrohan_balnazzar.cpp has its own NPC_BALNAZZAR
 +    NPC_COMMANDER_ELIGOR                = 45200, // Crusade Commander Eligor Dawnbringer
 +    NPC_MASTER_CRAFTSMAN_WILHELM        = 45201,
 +    NPC_PACKMASTER_STONEBRUISER         = 45323
