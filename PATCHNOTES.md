@@ -5,6 +5,17 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-21 (Stratholme, Service Entrance)
 
+### DB: Supply Crates would not open
+
+- **Found** (Four, 2026-11-21): right-clicking a Supply Crate 176224 says "You can't open that", so no
+  Stratholme Holy Water. The server never sends that message (`ERR_USE_CANT_OPEN` is unused in the
+  core), so the client refuses before casting Opening. Lock 57, loot 13646 (Holy Water 100%) and the
+  spawns are fine; the Gordok Tribute in Dire Maul opens with the same lock. The only difference is
+  `Data10` (require line of sight) = 1, which the server ignores. This cause is inferred, not proven.
+- **Changed** (`sql/fixes/world/2026_11_21_07_stratholme_supply_crate.sql`): 176224 `Data10` 1 -> 0.
+- **Status:** not tested in game yet.
+- **Pick up:** run the SQL, restart `worldserver`, delete the client's Cache folder.
+
 ### DB: Service Entrance crusaders stood idle next to the Scourge
 
 - **Found** (Four, 2026-11-21: "Argent NPCs aren't fighting from the get go"): the mounted Argent
