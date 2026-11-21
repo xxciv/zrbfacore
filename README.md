@@ -95,7 +95,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   `.debug attackpower [spell]` prints your attack power fields and, with a target selected, how a
   spell's attack power damage is computed against it.
 - [`tools/bfa/client-ticket-poll.patch`](tools/bfa/client-ticket-poll.patch): drops the WoW Circle
-  client's `.ticket CU...` ticket polls instead of posting them as chat (guild, say).
+  client's `.ticket CU...` ticket polls and `.addon load` polls instead of posting them as chat
+  (guild, say).
 - [`tools/bfa/core-branding.patch`](tools/bfa/core-branding.patch): the startup banner reads
   zrbfacore ("Based on HavenCore"), without the old BfaCore Discord link and email address.
 - [`tools/bfa/razorfen-downs.patch`](tools/bfa/razorfen-downs.patch): Razorfen Downs: Death Speaker

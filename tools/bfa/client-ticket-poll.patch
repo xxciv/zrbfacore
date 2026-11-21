@@ -1,18 +1,18 @@
 diff --git a/src/server/game/Handlers/ChatHandler.cpp b/src/server/game/Handlers/ChatHandler.cpp
-index 9a0593b..ef49f2e 100644
+index 9a0593b..a19552e 100644
 --- a/src/server/game/Handlers/ChatHandler.cpp
 +++ b/src/server/game/Handlers/ChatHandler.cpp
 @@ -97,6 +97,16 @@ void WorldSession::HandleChatMessage(ChatMsg type, uint32 lang, std::string msg,
  {
      Player* sender = GetPlayer();
  
-+    // zrbfacore: the WoW Circle client's built-in ticket UI polls with chat commands
-+    // like ".ticket CUticketGet". HavenCore has no such command, so for a player
-+    // ParseCommands fails and the text was broadcast as chat (guild, say, ...).
-+    // Drop these silently.
-+    if (msg.compare(0, 10, ".ticket CU") == 0)
++    // zrbfacore: the WoW Circle client polls the server with chat commands of its own:
++    // its built-in ticket UI sends ".ticket CUticketGet" and its addon loader ".addon load".
++    // HavenCore has no such commands, so for a player ParseCommands fails and the text was
++    // broadcast as chat (guild, say, ...). Drop these silently.
++    if (msg.compare(0, 10, ".ticket CU") == 0 || msg.compare(0, 11, ".addon load") == 0)
 +    {
-+        TC_LOG_DEBUG("network", "CMSG_CHAT_MESSAGE: dropped client ticket poll '%s' from %s", msg.c_str(), GetPlayerInfo().c_str());
++        TC_LOG_DEBUG("network", "CMSG_CHAT_MESSAGE: dropped client poll '%s' from %s", msg.c_str(), GetPlayerInfo().c_str());
 +        return;
 +    }
 +
