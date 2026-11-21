@@ -63,6 +63,24 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Status:** not tested in game yet. The SQL runs cleanly twice in a row on our copy of the world DB.
 - **Pick up:** run the SQL, restart `worldserver`.
 
+### DB: Stratholme Main Gate, densest packs thinned
+
+- **Found** (Four, 2026-11-20: "stratholme packs are pretty dense"): the Main Gate has 400 creatures,
+  AzerothCore 256. The packs match Pandaria 5.4.8 guid for guid (the 8.x layout): Skeletal Guardians
+  10390 and Skeletal Berserkers 10391 added to the classic packs, and Broken Cadavers 10383 standing on
+  the Ravaged Cadavers 10381 that summon them when they die. Eight packs (5-yard groups of 6+) are at
+  least twice the AzerothCore pack within 8 yards: three corpse piles in King's Square (15 vs 7, 13 vs 1,
+  12 vs 2), one in Market Row (8 vs 3), four in the Scarlet Bastion (9 vs 3, 9 vs 3, 8 vs 4, 6 vs 3).
+- **Changed** (`sql/fixes/world/2026_11_20_01_stratholme_main_gate_thinning.sql`, Four chose this on
+  2026-11-20): each of those packs cut to the AzerothCore count (at least 3), removing first the kinds
+  AzerothCore has fewer of, skeletons first, stacked spawns first. 51 removed: 15 Skeletal Berserkers,
+  12 Skeletal Guardians, 10 Broken Cadavers, 7 Ravaged Cadavers, 3 Mangled Cadavers, 2 Plague Ghouls,
+  1 Risen Inquisitor, 1 Risen Sorcerer. Bosses and The Unforgiven's phantoms, crusaders, rats, quest NPCs,
+  patrols and spawns with per-guid SmartAI, formation or pool rows are kept. Rows are copied first into
+  `zr_backup_strat_mg_creature` / `zr_backup_strat_mg_creature_addon` (restore lines in the file).
+- **Status:** not tested in game yet. Runs cleanly twice on our copy of the world DB.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-20 (pet battles)
 
 ### Core: wild battle pets ignore their zone's level
