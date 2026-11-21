@@ -83,6 +83,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/battle-pet-trainers.patch`](tools/bfa/battle-pet-trainers.patch): pet tamers such as
   Julia Stevens can be battled ("Let's do battle!") and the win credits their quest; a capture with
   2 or 3 pets in the team no longer adds the pet 2 or 3 times.
+- [`tools/bfa/pick-lock-level.patch`](tools/bfa/pick-lock-level.patch): Pick Lock opens locks up to
+  the skill its tooltip shows (5 per level) instead of stopping at 120.
 - [`tools/bfa/expansion-xp-gate.patch`](tools/bfa/expansion-xp-gate.patch): no experience at the
   old level caps (60, 70, 80, 85, 90, 100, 110) until the character turns in a quest in the next
   expansion; `ExpansionXpGate.Enable` in `worldserver.conf` turns it off.
