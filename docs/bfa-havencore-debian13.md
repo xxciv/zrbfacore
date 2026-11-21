@@ -154,6 +154,7 @@ git apply ../tools-repo/tools/bfa/archaeology.patch
 git apply ../tools-repo/tools/bfa/zandalari-bwemba-spirit.patch
 git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
 git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
+git apply ../tools-repo/tools/bfa/pick-lock-level.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -567,6 +568,11 @@ reputation. The quest that opens the gate pays its own experience, and a quest i
 also opens the earlier gates. Leftover experience past the cap is dropped. The player gets a chat
 message when experience locks and when it unlocks. It only touches `Player.cpp/.h` and
 `worldserver.conf.dist` (`ExpansionXpGate.Enable`, default 1; set it to 0 to turn the gate off).
+
+`pick-lock-level.patch` makes Pick Lock open what its tooltip says. Pick Lock (1804) opens locks up to
+120 plus 5 per level above the spell's level (265 at level 53), but `Spell::CanOpenLock` computed the
+spell's value without the caster, so the per-level part was skipped and every rogue stayed at 120: a
+Strong Iron Lockbox (125) failed with "Skill not high enough". It only touches `Spell.cpp`.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -1092,6 +1098,7 @@ git apply ../tools-repo/tools/bfa/archaeology.patch
 git apply ../tools-repo/tools/bfa/zandalari-bwemba-spirit.patch
 git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
 git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
+git apply ../tools-repo/tools/bfa/pick-lock-level.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

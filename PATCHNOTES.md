@@ -3,6 +3,39 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-21 (core: Pick Lock stuck at 120)
+
+Draft PR, not merged yet. Not tested in game yet.
+
+### Core: Pick Lock says "up to 265" but a 125 lockbox fails with "Skill not high enough"
+
+- **Found** (Four, 2026-11-21): level 53 rogue, Pick Lock tooltip "Allows opening of locked chests and
+  doors that require a skill level of up to 265", Strong Iron Lockbox (requires Lockpicking 125) fails
+  with "Skill not high enough".
+- **Cause:** Pick Lock (spell 1804) effect 0 is `OPEN_LOCK` (33) with base points 120 and
+  `EffectRealPointsPerLevel` 5, target 26 (`TARGET_GAMEOBJECT_ITEM_TARGET`). `Spell::CanOpenLock` adds
+  the effect's value with `effect->CalcValue()`, without the caster. `SpellEffectInfo::CalcValue` only
+  adds the per-level part when it has a caster, so the server always used 120. 120 is below 125, so the
+  lockbox failed (and every lock above 120 did, at any level). The client tooltip does include the
+  per-level part.
+- **Changed:** new `tools/bfa/pick-lock-level.patch` (after `expansion-xp-gate.patch`),
+  `Spell::CanOpenLock` in `Spell.cpp`: `effect->CalcValue()` -> `effect->CalcValue(m_caster)`. Pick Lock
+  now opens up to the tooltip's value. Skeleton keys and other item spells go through the same line;
+  they have no per-level points, so they are unchanged.
+- **Status:** applies cleanly after the full chain on upstream 2c13546, `Spell.cpp` compiles. Not
+  checked in game yet.
+- **Pick up** (until the PR is merged):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/pick-lock-level.patch | git apply && echo "pick lock patch applied"
+  grep -c "CalcValue(m_caster); // zrbfacore" src/server/game/Spells/Spell.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The grep prints 1. Restart worldserver.
+
 ## 2026-11-21 (client: ZRChatFilter addon)
 
 PR #95 (draft). Confirmed in game by Four on 2026-11-21.
