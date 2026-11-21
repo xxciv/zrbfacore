@@ -120,6 +120,18 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Status:** not tested in game yet. Runs cleanly twice on our copy of the world DB.
 - **Pick up:** run the SQL, restart `worldserver`.
 
+### DB: Stratholme Scarlet Cannons do nothing
+
+- **Found** (Four, 2026-11-21, screenshots): after Willey Hopebreaker dies, seven Risen Riflemen line up
+  down the hall. A Scarlet Cannonball loads into a Scarlet Cannon, and nothing happens.
+- **Cause:** the cannons 176216/176217 are set to SmartGameObjectAI with no rows (none in Pandaria 5.4.8
+  either). The blast spell Cannon Fire 17278 and its landing spot are in the DB; nothing cast it.
+- **Changed** (`sql/fixes/world/2026_11_21_03_stratholme_scarlet_cannons.sql`, as AzerothCore does it):
+  loading a cannon makes the player cast Cannon Fire; it only hits Risen Riflemen 11054 (condition, so
+  the Risen standing in that hall aren't pulled), and a rifleman it hits dies.
+- **Status:** not tested in game yet. Runs cleanly twice on our copy of the world DB.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-20 (pet battles)
 
 ### Core: wild battle pets ignore their zone's level

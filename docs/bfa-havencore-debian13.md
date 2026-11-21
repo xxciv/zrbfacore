@@ -1189,6 +1189,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_21_00_stratholme_crusader_faction.sql` | Stratholme, Main Gate: Argent Crusaders fight the Risen too (faction 2115, defensive, start rows for seven more kinds) |
 | `2026_11_21_01_stratholme_patchwork_horror.sql` | Stratholme, Main Gate: Patchwork Horrors selectable again (dump had `dynamicflags` 2, hide model) |
 | `2026_11_21_02_stratholme_postboxes.sql` | Stratholme: postboxes call their three Undead Postmen again (action lists missing from the dump, copied from Pandaria 5.4.8) |
+| `2026_11_21_03_stratholme_scarlet_cannons.sql` | Stratholme, Main Gate: loaded Scarlet Cannons fire Cannon Fire and kill Willey's Risen Riflemen |
 | `2026_11_14_70_guild_vendor_locks.sql` | Guild vendors: all 12 sell the BFA guild reward list (Dalaran and Shattrath sell both factions' items) and lock each item like the guild Rewards tab: guild reputation rank + guild achievements + faction. Removes the dead 'Guild Level' locks (needs `guild-progression.patch`; backups `zr_guild_vendor_backup_npc_vendor` / `zr_guild_vendor_backup_conditions`) |
 | `2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` | 854 old-world NPCs that only meleed get their SmartAI scripts from TDB 7.3.5 (casts, gossip and quest events); Ghostclaw Lynx Rake verified in game 2026-11-12 |
 | `2026_11_12_31_tdb735_patrols.sql` | 733 open-world NPCs that stood still walk their TDB 7.3.5 patrol paths, 8 followers in formation (Orgrimmar Grunts verified in game 2026-11-12) |
