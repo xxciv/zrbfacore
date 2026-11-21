@@ -28,7 +28,7 @@ to do to pick it up (rebuild, restart, run SQL).
   - Compiles against the current patch chain, every Stratholme file included. The first version
     (4d1199c) named the Balnazzar entry `NPC_BALNAZZAR` in `stratholme.h`, which clashes with the enum
     in `boss_dathrohan_balnazzar.cpp` and broke the build; it is `NPC_DREADLORD_BALNAZZAR` now.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game 2026-11-21 (Four: "a clean run").
 - **Pick up:** apply the patch, rebuild, restart `worldserver`.
 
 ### DB: Stratholme Main Gate, crusaders vs Scourge, Ravaged Cadavers, movement
@@ -60,7 +60,7 @@ to do to pick it up (rebuild, restart, run SQL).
     cadavers, skeletons, a Risen Gallant, a Risen Monk, the Risen Hammersmith) and 3 AzerothCore patrols
     (two Risen Monks, a Risen Guardsman), paths 329000001-329000029; 24 skeletons and cadavers wander
     (AzerothCore radius, at most 5 yards). Bosses, crusaders, questgivers and Fras Siabi are left alone.
-- **Status:** not tested in game yet. The SQL runs cleanly twice in a row on our copy of the world DB.
+- **Status:** confirmed in game 2026-11-21 (Four: "a clean run"). The SQL runs cleanly twice in a row on our copy of the world DB.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### DB: Stratholme Main Gate, densest packs thinned
@@ -95,7 +95,7 @@ to do to pick it up (rebuild, restart, run SQL).
   street; start rows for the seven staged Main Gate kinds that had none (Risen Inquisitor, Battle Mage,
   Monk, Ravaged and Broken Cadavers, Vengeful Phantom, Patchwork Horror). Crusaders with nothing within
   8 yards still stand until something walks by.
-- **Status:** not tested in game yet. Runs cleanly twice on our copy of the world DB.
+- **Status:** confirmed in game 2026-11-21 (Four: "a clean run").
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### DB: Stratholme Main Gate, Patchwork Horrors can't be clicked
@@ -105,7 +105,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Cause:** the dump's `creature_template.dynamicflags` for 10414 is 2 (`UNIT_DYNFLAG_HIDE_MODEL`); no
   other Stratholme creature has it. Pandaria 5.4.8 and AzerothCore have 0.
 - **Changed** (`sql/fixes/world/2026_11_21_01_stratholme_patchwork_horror.sql`): `dynamicflags` 0.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game 2026-11-21 (Four: "a clean run").
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### DB: Stratholme postboxes do nothing
@@ -117,7 +117,7 @@ to do to pick it up (rebuild, restart, run SQL).
   Undead Postmen 11142 each.
 - **Changed** (`sql/fixes/world/2026_11_21_02_stratholme_postboxes.sql`): the six lists copied from
   Pandaria 5.4.8 (three postmen per postbox, despawn after 5 minutes); each postbox calls them once.
-- **Status:** not tested in game yet. Runs cleanly twice on our copy of the world DB.
+- **Status:** confirmed in game 2026-11-21 (Four: "a clean run").
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### DB: Stratholme Scarlet Cannons do nothing
@@ -145,7 +145,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`sql/fixes/world/2026_11_21_04_stratholme_balnazzar_domination.sql`): Domination now
   picks a random player other than his top-threat target (SmartAI target 6, players only). Solo
   there is none, so he skips it; in a group it takes someone other than the tank.
-- **Status:** not tested in game yet. Runs cleanly twice on our copy of the world DB.
+- **Status:** confirmed in game 2026-11-21 (Four: "a clean run").
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ## 2026-11-20 (pet battles)
