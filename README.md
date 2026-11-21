@@ -160,6 +160,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`client/ZRProfessions`](client/ZRProfessions/README.md): a client addon that lets trainers teach up to 4
   primary professions (the 8.3.7 client UI stops at 2 even when the server allows more) and lists them all
   with `/profs`.
+- [`client/ZRChatFilter`](client/ZRChatFilter/README.md): a client addon that hides the WoW Circle
+  client's own `.ticket CU...` and `.addon load` lines from chat (`/zrcf`).
 - [`client/ZRProximity`](client/ZRProximity/README.md): a client addon that shows nameplates only for units
   that are close, targeted, under the mouse or fighting you (`/zrp`).
 - `client/BugTabs`, `client/FishingBuddy`, `client/Sorted`: third-party addons patched to run without

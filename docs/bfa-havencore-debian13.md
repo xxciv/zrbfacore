@@ -819,6 +819,13 @@ are known, whatever the server allows, and its Professions tab only shows 2. The
 puts the unit's name on every plate it shows. Copy `client/ZRProximity` into `_retail_/Interface/AddOns/`;
 `/zrp` opens its settings. Confirmed in game.
 
+### Client chat polls (ZRChatFilter)
+
+[ZRChatFilter](../client/ZRChatFilter/README.md) hides the `.ticket CUticketGet` and `.addon load` lines
+that the WoW Circle client prints into chat by itself (for example in guild chat when you queue for the
+Dungeon Finder). The server never gets them as chat, so `client-ticket-poll.patch` can't drop them. Copy
+`client/ZRChatFilter` into `Interface/AddOns/`; `/zrcf` shows how many lines it hid.
+
 ### Patched third-party addons
 
 `client/` also holds three third-party addons with fixes for the 8.3.7 client (all confirmed in game

@@ -3,6 +3,40 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-21 (client: ZRChatFilter addon)
+
+PR #95 (draft). Not tested in game yet.
+
+### Client: ".ticket CUticketGet" still shows in guild chat with the server patch running
+
+- **Found** (Four, 2026-11-21): with the looser server drop below built and running (worldserver
+  started 19:19:55), a fresh `[G] [52:Delotha]: .ticket CUticketGet` showed at 19:23:00 right after
+  queueing for the Dungeon Finder, and `Server.log` had no `dropped client poll` line.
+- **Cause:** the server never receives that text as a chat message, so the client prints it itself.
+  No addon in `Interface/AddOns` contains `CUticket` (grep on Four's client: only Ace library comments
+  and Prat's saved chat history matched), so it comes from the WoW Circle client.
+- **Changed:** new client addon `client/ZRChatFilter` (`ZRChatFilter.toc`, `ZRChatFilter.lua`,
+  `README.md`): `ChatFrame_AddMessageEventFilter` on the say, yell, guild, officer, party, raid,
+  instance, whisper, channel, system and emote chat events hides any line containing `ticket CU` or
+  `.addon load`. `/zrcf` prints how many lines were hidden this session. Guide (client addons) and
+  README list it.
+- **Status:** not tested in game yet.
+- **Install:** on the server VM:
+
+  ```
+  mkdir -p ~/ZRChatFilter
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-z3fwbh
+  for f in ZRChatFilter.toc ZRChatFilter.lua README.md; do git -C ~/bfa/tools-repo show FETCH_HEAD:client/ZRChatFilter/$f > ~/ZRChatFilter/$f; done
+  ```
+
+  Then on the PC with the client (WoW closed):
+
+  ```
+  scp -r void@192.168.5.246:ZRChatFilter "/mnt/1TB/WoWCircle 8.3.7 BFA/Interface/AddOns/"
+  ```
+
+  Enable ZRChatFilter in the AddOns list at character select.
+
 ## 2026-11-21 (chat: ".addon load" and ".ticket CUticketGet" in guild chat)
 
 PR #95 (draft, together with the expansion XP gate). Not tested in game yet.
