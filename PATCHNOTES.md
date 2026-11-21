@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-21 (core: Pick Lock stuck at 120)
 
-Draft PR, not merged yet. Not tested in game yet.
+Draft PR #99, not merged yet. Not tested in game yet.
 
 ### Core: Pick Lock says "up to 265" but a 125 lockbox fails with "Skill not high enough"
 
