@@ -78,7 +78,7 @@ to do to pick it up (rebuild, restart, run SQL).
   1 Risen Inquisitor, 1 Risen Sorcerer. Bosses and The Unforgiven's phantoms, crusaders, rats, quest NPCs,
   patrols and spawns with per-guid SmartAI, formation or pool rows are kept. Rows are copied first into
   `zr_backup_strat_mg_creature` / `zr_backup_strat_mg_creature_addon` (restore lines in the file).
-- **Status:** not tested in game yet. Runs cleanly twice on our copy of the world DB.
+- **Status:** confirmed in game 2026-11-21 (Four: "the pack density is way better").
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### DB: Stratholme Main Gate, crusaders idle next to the Risen
