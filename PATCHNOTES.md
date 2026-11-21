@@ -3,25 +3,28 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-21 (chat: ".addon load" in guild chat)
+## 2026-11-21 (chat: ".addon load" and ".ticket CUticketGet" in guild chat)
 
 PR #95 (draft, together with the expansion XP gate). Not tested in game yet.
 
-### Chat: character posts ".addon load" in guild chat
+### Chat: character posts ".addon load" and still ".ticket CUticketGet" in guild chat
 
 - **Found** (Four, 2026-11-21): guild chat shows the character saying `.addon load`, alternating with
-  `.ticket CUticketGet`.
-- **Cause:** same as the ticket polls (2026-11-14 below). The WoW Circle client sends its own
-  `.addon load` chat command, which its home server answers. HavenCore has no top-level `.addon`
-  command (only `.ticket addon` and `.account addon`), so `ParseCommands` fails for a player and the
-  text is broadcast as a normal chat message.
+  `.ticket CUticketGet`. A fresh `.ticket CUticketGet` still showed up at 19:01 on a worldserver
+  started at 18:51 with the 2026-11-14 patch built in (checked with `strings` and `ps`), right when
+  the character queued for the Dungeon Finder.
+- **Cause:** same as the ticket polls (2026-11-14 below). The WoW Circle client sends its own chat
+  commands, which its home server answers. HavenCore has no top-level `.addon` command (only
+  `.ticket addon` and `.account addon`), so `ParseCommands` fails for a player and the text is
+  broadcast as a normal chat message. The ticket poll that got through did not start with exactly
+  `.ticket CU`. The exact bytes are not known yet; the new log line will show them.
 - **Changed:** `tools/bfa/client-ticket-poll.patch`, `WorldSession::HandleChatMessage` in
-  `ChatHandler.cpp`: a message starting with `.addon load` is now dropped the same way as one starting
-  with `.ticket CU` (debug log line "dropped client poll"). Same patch file, same place in the chain.
-  If `.ticket CUticketGet` still shows up too, the old patch was not applied; the commands below
-  handle both cases.
-- **Status:** applies cleanly in the full chain on upstream 2c13546, `ChatHandler.cpp` compiles. Not
-  checked in game yet.
+  `ChatHandler.cpp`: a message that contains `ticket CU` or `addon load` anywhere is dropped (before:
+  only one that starts with `.ticket CU`). The first 5 drops after each worldserver start are logged
+  to the console and `Server.log` as `zrbfacore: dropped client poll (chat type .., lang ..) from ..:
+  '<text>' [<hex bytes>]`.
+- **Status:** applies cleanly in the full chain on upstream 2c13546, `ChatHandler.cpp` compiles (with
+  and without the precompiled header). Not checked in game yet.
 - **Pick up** (until PR #95 is merged):
 
   ```
@@ -30,11 +33,11 @@ PR #95 (draft, together with the expansion XP gate). Not tested in game yet.
   git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
   if grep -q 'ticket CU' src/server/game/Handlers/ChatHandler.cpp; then git apply -R ../tools-repo/tools/bfa/client-ticket-poll.patch && echo "old ticket patch removed"; fi
   git -C ../tools-repo show FETCH_HEAD:tools/bfa/client-ticket-poll.patch | git apply && echo "chat poll patch applied"
-  grep -c 'addon load' src/server/game/Handlers/ChatHandler.cpp
+  grep -c 'dropped client poll (chat type' src/server/game/Handlers/ChatHandler.cpp
   sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
   ```
 
-  The grep prints 2. Restart worldserver.
+  The grep prints 1. Restart worldserver.
 
 ## 2026-11-20 (pet battles)
 
