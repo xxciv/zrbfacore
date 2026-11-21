@@ -44,7 +44,7 @@ to do to pick it up (rebuild, restart, run SQL).
   - The vermin crates' `Data7` (linked trap) 0, and AzerothCore's script in `smart_scripts`
     (source type 1, ids 0-3): opening one casts its spell on the player (Bugs 16369, Maggots 16370,
     Rats 16371, Plague Mist 16432), opens the lid and despawns the crate 5 seconds later.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game 2026-11-21 (Four: "the crate was good", Holy Water quest turned in).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### DB: Service Entrance crusaders stood idle next to the Scourge
