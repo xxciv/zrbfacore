@@ -570,7 +570,13 @@ Stonebruiser) hidden until Balnazzar dies; their copies at the entrance stay. It
 `ScenarioMgr.h/.cpp` (a function that creates a given scenario for an instance), the Stratholme
 instance script and `boss_dathrohan_balnazzar.cpp` (the classic Dathrohan script, which casts
 Domination only while a second player is on him; Dathrohan is not spawned since Cataclysm, so this
-changes nothing in game today).
+changes nothing in game today). For the Service Entrance it sends the scenario events the dump's
+scripts never could: one per Ash'ari Crystal destroyed (5167) and one per abomination killed in
+Slaughter Square (5211). The Slaughter Square portcullises open after the third crystal. Ramstein
+the Gorger appears once the nine abominations are dead, together with the Argent Crusade's forward
+group in the square (Crusade Commander Korfax, the mounted crusaders and the second set of
+questgivers). The Black Guard Sentries and Lord Aurius Rivendare appear once Ramstein dies. The
+counts are saved with the instance.
 
 `expansion-xp-gate.patch` stops experience at the old level caps until the character moves on to the
 next expansion. At 60 a character gets no more experience until they turn in a quest in Outland (or
@@ -1212,6 +1218,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_21_02_stratholme_postboxes.sql` | Stratholme: postboxes call their three Undead Postmen again (action lists missing from the dump, copied from Pandaria 5.4.8) |
 | `2026_11_21_03_stratholme_scarlet_cannons.sql` | Stratholme, Main Gate: loaded Scarlet Cannons fire Cannon Fire and kill Willey's Risen Riflemen |
 | `2026_11_21_04_stratholme_balnazzar_domination.sql` | Stratholme, Main Gate: Balnazzar's Domination only takes a player other than his top-threat target (solo he no longer resets to full health) |
+| `2026_11_21_05_stratholme_service_entrance.sql` | Stratholme, Service Entrance: Ash'ari Crystals break when their five Thuzadin Acolytes die, Slaughter Square portcullises spawned, Dungeon Finder credit on Lord Aurius Rivendare, bosses and sentries staged against the crusaders, Stonespine pooled to one spawn, 26 pre-placed Mindless Undead removed (backup `zr_backup_strat_se_*`; needs `stratholme.patch`) |
 | `2026_11_14_70_guild_vendor_locks.sql` | Guild vendors: all 12 sell the BFA guild reward list (Dalaran and Shattrath sell both factions' items) and lock each item like the guild Rewards tab: guild reputation rank + guild achievements + faction. Removes the dead 'Guild Level' locks (needs `guild-progression.patch`; backups `zr_guild_vendor_backup_npc_vendor` / `zr_guild_vendor_backup_conditions`) |
 | `2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` | 854 old-world NPCs that only meleed get their SmartAI scripts from TDB 7.3.5 (casts, gossip and quest events); Ghostclaw Lynx Rake verified in game 2026-11-12 |
 | `2026_11_12_31_tdb735_patrols.sql` | 733 open-world NPCs that stood still walk their TDB 7.3.5 patrol paths, 8 followers in formation (Orgrimmar Grunts verified in game 2026-11-12) |

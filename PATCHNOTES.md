@@ -3,6 +3,54 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-21 (Stratholme, Service Entrance)
+
+### Core and DB: the Service Entrance scenario could not be finished
+
+- **Found** (survey, 2026-11-21): scenario 637 runs in order: step 1150 destroy the three Ash'ari
+  Crystals (scenario event 5167) and kill Baroness Anastari, Nerub'enkan and Maleki the Pallid; 1151
+  kill the nine abominations in Slaughter Square (event 5211, seven Venom Belchers 10417 and two Bile
+  Spewers 10416); 1152 Ramstein the Gorger; 1155 the five Black Guard Sentries and Lord Aurius
+  Rivendare 45412; Magistrate Barthilas is a bonus kill.
+  - The Ash'ari Crystals 10415 wait for five made-up auras and then use SAI action 205 as "update
+    scenario" (205 is SET_OVERRIDE_ZONE_LIGHT here), so no crystal ever broke and no event was sent.
+    The Bile Spewer and Timmy the Cruel had the same action 205 row, and the Bile Spewer also set
+    Ramstein's instance data to IN_PROGRESS, which shut the gauntlet portcullis behind you.
+  - The Slaughter Square portcullises 175373 and 175374 are missing from the 8.x spawns, so
+    abominations killed before the crystals never counted (scenario steps count only while active).
+  - Ramstein, the sentries and Rivendare stand from the start. The classic script summoned them, but
+    it waits for Baron Rivendare 10440, who is no longer spawned.
+  - The Dungeon Finder completion (instance encounter 484) still pointed at Baron Rivendare 10440.
+  - Mounted Argent Crusaders 45456 stand 1-4 yards from the ziggurat bosses, Ramstein and the
+    sentries, and a stacked group of 15 of them with Crusade Commander Korfax stands in Slaughter
+    Square from the start.
+  - Overspawn check: Stonespine 10809 (rare) had four spawn points all standing at once (Pandaria 5.4.8
+    too). 26 Mindless Undead 11030 stood at the Slaughter Square gate from the start; they are the
+    wave Ramstein's script summons when he dies (30 of them), caught by a sniff.
+- **Changed:**
+  - `tools/bfa/stratholme.patch` (`instance_stratholme.cpp`, `stratholme.h`): sends event 5167 when
+    an Ash'ari Crystal dies and 5211 for each Bile Spewer or Venom Belcher killed (each spawn counts
+    once), opens the Slaughter Square portcullises after the third crystal, keeps Ramstein and the
+    Argent forward group in Slaughter Square (Korfax 45206, the mounted crusaders, Eligor 45329,
+    Dosantos 45330, Wilhelm 45331, Stonebruiser 45328) hidden until the nine abominations are dead,
+    and the Black Guard Sentries and Lord Aurius Rivendare hidden until Ramstein dies. Crystal and
+    abomination counts are saved with the instance. The Argent copies at the entrance are unchanged.
+    Every Stratholme file compiles.
+  - `sql/fixes/world/2026_11_21_05_stratholme_service_entrance.sql`:
+    - Ash'ari Crystal 10415 `smart_scripts` replaced: each Thuzadin Acolyte 10399 death tells the
+      nearest crystal (80 yards), and the crystal dies on the fifth, as in AzerothCore.
+    - Bile Spewer 10416 ids 2 and 3 and Timmy the Cruel's action 205 row deleted.
+    - Portcullises 175373 (guid 187780) and 175374 (guid 187797) spawned as in Pandaria 5.4.8.
+    - `instance_encounters` 484 credit entry 10440 -> 45412.
+    - `flags_extra` |= 0x400 (staged battle: creatures can't bring them below 85%, players deal full
+      damage) for the sentries 10394, Barthilas 10435, Anastari 10436, Nerub'enkan 10437, Maleki
+      10438, Ramstein 10439, Stonespine 10809 and Rivendare 45412.
+    - Stonespine's four spawns in pool 32900, one per server start.
+    - The 26 pre-placed Mindless Undead removed, backed up in `zr_backup_strat_se_creature` and
+      `zr_backup_strat_se_creature_addon`. Not tied to any quest.
+- **Status:** not tested in game yet.
+- **Pick up:** swap in the new patch, rebuild, run the SQL, restart `worldserver`.
+
 ## 2026-11-21 (Stratholme, Main Gate)
 
 ### Core: Stratholme had no dungeon scenario
