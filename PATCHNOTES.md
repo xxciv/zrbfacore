@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-21 (client: ZRChatFilter addon)
 
-PR #95 (draft). Not tested in game yet.
+PR #95 (draft). Confirmed in game by Four on 2026-11-21.
 
 ### Client: ".ticket CUticketGet" still shows in guild chat with the server patch running
 
@@ -20,7 +20,7 @@ PR #95 (draft). Not tested in game yet.
   instance, whisper, channel, system and emote chat events hides any line containing `ticket CU` or
   `.addon load`. `/zrcf` prints how many lines were hidden this session. Guide (client addons) and
   README list it.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game by Four on 2026-11-21 (the Dungeon Finder ticket line no longer shows).
 - **Install:** on the server VM:
 
   ```
