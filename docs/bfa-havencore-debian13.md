@@ -151,6 +151,8 @@ git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 git apply ../tools-repo/tools/bfa/archaeology.patch
+git apply ../tools-repo/tools/bfa/zandalari-bwemba-spirit.patch
+git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
 git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 ```
 
@@ -541,6 +543,20 @@ is made. It also adds `.debug archaeology`. The rest of the files it touches: `S
 (Survey), `Spell.cpp` and `SpellHandler.cpp` (Solve), `Player.cpp/.h`, `UpdateField.h` (a setter for
 the project list), `MiscPackets`, `Opcodes.cpp`, `MiscHandler.cpp`, `CriteriaHandler.cpp` and
 `cs_debug.cpp`, plus `worldserver.conf.dist` (`Archaeology.DailyDigsiteRotation`, see the Archaeology section below).
+
+`zandalari-bwemba-spirit.patch` adds a spell script for 96591 (Rise of the Zandalari, Stranglethorn):
+Bwemba's spirit follows you through the chain and gives most of its quests, but the spell only
+summons her once. While the aura is on you the script checks every 3 seconds, keeps one spirit, brings
+her back to you when she was left behind (flight, teleport) and summons her again when she is gone
+(relog, death). It only touches `zone_stranglethorn_vale.cpp` and needs the SQL
+`2026_11_20_73_rise_of_the_zandalari.sql`.
+
+`wild-pet-zone-level.patch` gives wild battle pets their zone's level. The core picks a wild pet's
+level from its `battlepet_info` range, raised to the zone's `WildBattlePetLevelMin/Max` from
+`AreaTable.db2`. A spawn loaded with its grid is set up before it is added to the world, when it has
+no zone yet, so it skipped the zone range and came out at its `battlepet_info` level (1 for most wild
+pets). Only respawns got the zone's level. It now looks the zone up from the spawn position when the
+creature has none yet. It only touches `WildBattlePet.cpp`.
 
 `expansion-xp-gate.patch` stops experience at the old level caps until the character moves on to the
 next expansion. At 60 a character gets no more experience until they turn in a quest in Outland (or
@@ -937,6 +953,14 @@ Brewfest event. This ties them to Brewfest:
 ```sh
 mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_18_51_brewfest_display_pets.sql
 ```
+
+Many pet cards name zones where the world DB never spawns that pet (the Mouse card lists Westfall,
+Wetlands, Mulgore and more; only Duskwood and Dustwallow Marsh had Mice). This adds 139 zone rows,
+converts local critters where they exist and spawns the rest next to existing critters:
+
+```sh
+mysql -u root -p bfa_world < ~/bfa/tools-repo/sql/fixes/world/2026_11_19_50_wild_battle_pet_card_zones.sql
+```
 #### Legion and BFA pet tamers
 
 Pet tamers start a battle from a "Let's do battle!" gossip option while you have their quest
@@ -1058,6 +1082,8 @@ git apply ../tools-repo/tools/bfa/staged-npc-battles.patch
 git apply ../tools-repo/tools/bfa/lost-isles-zapnozzle.patch
 git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 git apply ../tools-repo/tools/bfa/archaeology.patch
+git apply ../tools-repo/tools/bfa/zandalari-bwemba-spirit.patch
+git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
 git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
