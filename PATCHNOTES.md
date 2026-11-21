@@ -129,21 +129,24 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`sql/fixes/world/2026_11_21_03_stratholme_scarlet_cannons.sql`, as AzerothCore does it):
   loading a cannon makes the player cast Cannon Fire; it only hits Risen Riflemen 11054 (condition, so
   the Risen standing in that hall aren't pulled), and a rifleman it hits dies.
-- **Status:** not tested in game yet. Runs cleanly twice on our copy of the world DB.
+- **Status:** confirmed in game 2026-11-21 (Four: "the cannons worked!").
 - **Pick up:** run the SQL, restart `worldserver`.
 
-### Core: Balnazzar resets to full health on Domination
+### DB: Balnazzar resets to full health on Domination
 
-- **Found** (Four, 2026-11-21, solo): Dreadlord Balnazzar leashes and heals to full when he casts
-  Domination.
-- **Cause:** `boss_dathrohan_balnazzar.cpp` casts Domination (15690, mind control) on his current target
-  every 15 seconds. Solo, the controlled player is the only one on his threat list, so he has nobody to
-  fight, evades, and his reset turns him back into Dathrohan at full health.
-- **Changed** (`tools/bfa/stratholme.patch`): he only casts Domination while another living, uncontrolled
-  player is on his threat list, so a group still sees it. His heal at 40% when Dathrohan turns into
-  Balnazzar is unchanged (that is the fight's second phase).
-- **Status:** compiles against the patch chain; not tested in game yet.
-- **Pick up:** swap the patch, rebuild, restart `worldserver`.
+- **Found** (Four, 2026-11-21, solo): Balnazzar 10813 casts Domination, leashes and heals to full.
+- **Cause:** his SmartAI row 0 casts Domination 17405 (mind control) on a random hostile target. Solo
+  that is the only player, so he has nobody left to fight, evades, and resets to full health.
+- **First try (wrong script):** `stratholme.patch` (406064d) changed `boss_dathrohan_balnazzar.cpp` to
+  cast Domination only while a second player is on him. That script belongs to Grand Crusader
+  Dathrohan 10812, who is not spawned since Cataclysm, so it changed nothing in game (Four,
+  2026-11-21: "that didn't stop him"). The code stays in the patch (harmless, and pulling it out
+  would cost another rebuild).
+- **Changed** (`sql/fixes/world/2026_11_21_04_stratholme_balnazzar_domination.sql`): Domination now
+  picks a random player other than his top-threat target (SmartAI target 6, players only). Solo
+  there is none, so he skips it; in a group it takes someone other than the tank.
+- **Status:** not tested in game yet. Runs cleanly twice on our copy of the world DB.
+- **Pick up:** run the SQL, restart `worldserver`.
 
 ## 2026-11-20 (pet battles)
 

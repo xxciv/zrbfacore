@@ -565,11 +565,11 @@ Stratholme had no objectives at all. The instance now picks the scenario when th
 the dungeon the group queued for in the Dungeon Finder, otherwise the entrance the player came in by.
 The choice is saved with the instance. It also keeps the Brotherhood of the Light questgivers in
 Balnazzar's hall (Crusade Commander Eligor Dawnbringer, Master Craftsman Wilhelm, Packmaster
-Stonebruiser) hidden until Balnazzar dies; their copies at the entrance stay. Balnazzar casts
-Domination (mind control on his target) only while another player is on his threat list: alone, the
-controlled player was his only target, so he evaded and reset to full health. It touches
+Stonebruiser) hidden until Balnazzar dies; their copies at the entrance stay. It touches
 `ScenarioMgr.h/.cpp` (a function that creates a given scenario for an instance), the Stratholme
-instance script and `boss_dathrohan_balnazzar.cpp`.
+instance script and `boss_dathrohan_balnazzar.cpp` (the classic Dathrohan script, which casts
+Domination only while a second player is on him; Dathrohan is not spawned since Cataclysm, so this
+changes nothing in game today).
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -1192,6 +1192,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_21_01_stratholme_patchwork_horror.sql` | Stratholme, Main Gate: Patchwork Horrors selectable again (dump had `dynamicflags` 2, hide model) |
 | `2026_11_21_02_stratholme_postboxes.sql` | Stratholme: postboxes call their three Undead Postmen again (action lists missing from the dump, copied from Pandaria 5.4.8) |
 | `2026_11_21_03_stratholme_scarlet_cannons.sql` | Stratholme, Main Gate: loaded Scarlet Cannons fire Cannon Fire and kill Willey's Risen Riflemen |
+| `2026_11_21_04_stratholme_balnazzar_domination.sql` | Stratholme, Main Gate: Balnazzar's Domination only takes a player other than his top-threat target (solo he no longer resets to full health) |
 | `2026_11_14_70_guild_vendor_locks.sql` | Guild vendors: all 12 sell the BFA guild reward list (Dalaran and Shattrath sell both factions' items) and lock each item like the guild Rewards tab: guild reputation rank + guild achievements + faction. Removes the dead 'Guild Level' locks (needs `guild-progression.patch`; backups `zr_guild_vendor_backup_npc_vendor` / `zr_guild_vendor_backup_conditions`) |
 | `2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` | 854 old-world NPCs that only meleed get their SmartAI scripts from TDB 7.3.5 (casts, gossip and quest events); Ghostclaw Lynx Rake verified in game 2026-11-12 |
 | `2026_11_12_31_tdb735_patrols.sql` | 733 open-world NPCs that stood still walk their TDB 7.3.5 patrol paths, 8 followers in formation (Orgrimmar Grunts verified in game 2026-11-12) |
