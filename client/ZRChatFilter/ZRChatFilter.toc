@@ -1,0 +1,6 @@
+## Interface: 80300
+## Title: ZRChatFilter
+## Notes: Hides the WoW Circle client's own ".ticket CU..." and ".addon load" lines from chat.
+## Author: zrbfacore
+## Version: 1.0-bfa
+ZRChatFilter.lua

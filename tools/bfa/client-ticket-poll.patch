@@ -1,18 +1,28 @@
 diff --git a/src/server/game/Handlers/ChatHandler.cpp b/src/server/game/Handlers/ChatHandler.cpp
-index 9a0593b..ef49f2e 100644
+index 9a0593b..1e9044b 100644
 --- a/src/server/game/Handlers/ChatHandler.cpp
 +++ b/src/server/game/Handlers/ChatHandler.cpp
-@@ -97,6 +97,16 @@ void WorldSession::HandleChatMessage(ChatMsg type, uint32 lang, std::string msg,
+@@ -97,6 +97,26 @@ void WorldSession::HandleChatMessage(ChatMsg type, uint32 lang, std::string msg,
  {
      Player* sender = GetPlayer();
  
-+    // zrbfacore: the WoW Circle client's built-in ticket UI polls with chat commands
-+    // like ".ticket CUticketGet". HavenCore has no such command, so for a player
-+    // ParseCommands fails and the text was broadcast as chat (guild, say, ...).
-+    // Drop these silently.
-+    if (msg.compare(0, 10, ".ticket CU") == 0)
++    // zrbfacore: the WoW Circle client polls the server with chat commands of its own:
++    // its built-in ticket UI sends ".ticket CUticketGet" and its addon loader ".addon load".
++    // HavenCore has no such commands, so for a player ParseCommands fails and the text was
++    // broadcast as chat (guild, say, ...). Drop these silently. The text is matched anywhere in
++    // the message, because a plain prefix check at the start of the message missed some of them.
++    if (msg.find("ticket CU") != std::string::npos || msg.find("addon load") != std::string::npos)
 +    {
-+        TC_LOG_DEBUG("network", "CMSG_CHAT_MESSAGE: dropped client ticket poll '%s' from %s", msg.c_str(), GetPlayerInfo().c_str());
++        // log the first few with their bytes, to see exactly what the client sends
++        static std::atomic<uint32> loggedPolls(0);
++        if (loggedPolls++ < 5)
++        {
++            std::string hex;
++            for (unsigned char c : msg)
++                hex += Trinity::StringFormat("%02X ", uint32(c));
++            TC_LOG_INFO("server.worldserver", "zrbfacore: dropped client poll (chat type %u, lang %u) from %s: '%s' [%s]",
++                uint32(type), lang, GetPlayerInfo().c_str(), msg.c_str(), hex.c_str());
++        }
 +        return;
 +    }
 +

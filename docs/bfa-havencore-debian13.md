@@ -153,6 +153,7 @@ git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 git apply ../tools-repo/tools/bfa/archaeology.patch
 git apply ../tools-repo/tools/bfa/zandalari-bwemba-spirit.patch
 git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
+git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -557,6 +558,16 @@ no zone yet, so it skipped the zone range and came out at its `battlepet_info` l
 pets). Only respawns got the zone's level. It now looks the zone up from the spawn position when the
 creature has none yet. It only touches `WildBattlePet.cpp`.
 
+`expansion-xp-gate.patch` stops experience at the old level caps until the character moves on to the
+next expansion. At 60 a character gets no more experience until they turn in a quest in Outland (or
+Through the Dark Portal), at 70 a quest in Northrend, at 80 one in the Cataclysm zones (Mount Hyjal,
+Vashj'ir, Deepholm, Uldum, Twilight Highlands, Tol Barad), at 85 Pandaria, at 90 Draenor, at 100 the
+Broken Isles and at 110 Kul Tiras or Zandalar. Quests elsewhere still give money, items and
+reputation. The quest that opens the gate pays its own experience, and a quest in a later expansion
+also opens the earlier gates. Leftover experience past the cap is dropped. The player gets a chat
+message when experience locks and when it unlocks. It only touches `Player.cpp/.h` and
+`worldserver.conf.dist` (`ExpansionXpGate.Enable`, default 1; set it to 0 to turn the gate off).
+
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
 80% health. When a player or a pet hits an invader, the invader drops the braves and fights only
@@ -807,6 +818,13 @@ are known, whatever the server allows, and its Professions tab only shows 2. The
 (separate distances for aggressive, neutral and friendly units), targeted, under the mouse or fighting you, and
 puts the unit's name on every plate it shows. Copy `client/ZRProximity` into `_retail_/Interface/AddOns/`;
 `/zrp` opens its settings. Confirmed in game.
+
+### Client chat polls (ZRChatFilter)
+
+[ZRChatFilter](../client/ZRChatFilter/README.md) hides the `.ticket CUticketGet` and `.addon load` lines
+that the WoW Circle client prints into chat by itself (for example in guild chat when you queue for the
+Dungeon Finder). The server never gets them as chat, so `client-ticket-poll.patch` can't drop them. Copy
+`client/ZRChatFilter` into `Interface/AddOns/`; `/zrcf` shows how many lines it hid.
 
 ### Patched third-party addons
 
@@ -1073,6 +1091,7 @@ git apply ../tools-repo/tools/bfa/smartai-passive-escort.patch
 git apply ../tools-repo/tools/bfa/archaeology.patch
 git apply ../tools-repo/tools/bfa/zandalari-bwemba-spirit.patch
 git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
+git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

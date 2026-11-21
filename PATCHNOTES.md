@@ -3,6 +3,76 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-21 (client: ZRChatFilter addon)
+
+PR #95 (draft). Confirmed in game by Four on 2026-11-21.
+
+### Client: ".ticket CUticketGet" still shows in guild chat with the server patch running
+
+- **Found** (Four, 2026-11-21): with the looser server drop below built and running (worldserver
+  started 19:19:55), a fresh `[G] [52:Delotha]: .ticket CUticketGet` showed at 19:23:00 right after
+  queueing for the Dungeon Finder, and `Server.log` had no `dropped client poll` line.
+- **Cause:** the server never receives that text as a chat message, so the client prints it itself.
+  No addon in `Interface/AddOns` contains `CUticket` (grep on Four's client: only Ace library comments
+  and Prat's saved chat history matched), so it comes from the WoW Circle client.
+- **Changed:** new client addon `client/ZRChatFilter` (`ZRChatFilter.toc`, `ZRChatFilter.lua`,
+  `README.md`): `ChatFrame_AddMessageEventFilter` on the say, yell, guild, officer, party, raid,
+  instance, whisper, channel, system and emote chat events hides any line containing `ticket CU` or
+  `.addon load`. `/zrcf` prints how many lines were hidden this session. Guide (client addons) and
+  README list it.
+- **Status:** confirmed in game by Four on 2026-11-21 (the Dungeon Finder ticket line no longer shows).
+- **Install:** on the server VM:
+
+  ```
+  mkdir -p ~/ZRChatFilter
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-z3fwbh
+  for f in ZRChatFilter.toc ZRChatFilter.lua README.md; do git -C ~/bfa/tools-repo show FETCH_HEAD:client/ZRChatFilter/$f > ~/ZRChatFilter/$f; done
+  ```
+
+  Then on the PC with the client (WoW closed):
+
+  ```
+  scp -r void@192.168.5.246:ZRChatFilter "/mnt/1TB/WoWCircle 8.3.7 BFA/Interface/AddOns/"
+  ```
+
+  Enable ZRChatFilter in the AddOns list at character select.
+
+## 2026-11-21 (chat: ".addon load" and ".ticket CUticketGet" in guild chat)
+
+PR #95 (draft, together with the expansion XP gate). Not tested in game yet.
+
+### Chat: character posts ".addon load" and still ".ticket CUticketGet" in guild chat
+
+- **Found** (Four, 2026-11-21): guild chat shows the character saying `.addon load`, alternating with
+  `.ticket CUticketGet`. A fresh `.ticket CUticketGet` still showed up at 19:01 on a worldserver
+  started at 18:51 with the 2026-11-14 patch built in (checked with `strings` and `ps`), right when
+  the character queued for the Dungeon Finder.
+- **Cause:** same as the ticket polls (2026-11-14 below). The WoW Circle client sends its own chat
+  commands, which its home server answers. HavenCore has no top-level `.addon` command (only
+  `.ticket addon` and `.account addon`), so `ParseCommands` fails for a player and the text is
+  broadcast as a normal chat message. The ticket poll that got through did not start with exactly
+  `.ticket CU`. The exact bytes are not known yet; the new log line will show them.
+- **Changed:** `tools/bfa/client-ticket-poll.patch`, `WorldSession::HandleChatMessage` in
+  `ChatHandler.cpp`: a message that contains `ticket CU` or `addon load` anywhere is dropped (before:
+  only one that starts with `.ticket CU`). The first 5 drops after each worldserver start are logged
+  to the console and `Server.log` as `zrbfacore: dropped client poll (chat type .., lang ..) from ..:
+  '<text>' [<hex bytes>]`.
+- **Status:** applies cleanly in the full chain on upstream 2c13546, `ChatHandler.cpp` compiles (with
+  and without the precompiled header). Not checked in game yet.
+- **Pick up** (until PR #95 is merged):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo pull
+  git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
+  if grep -q 'ticket CU' src/server/game/Handlers/ChatHandler.cpp; then git apply -R ../tools-repo/tools/bfa/client-ticket-poll.patch && echo "old ticket patch removed"; fi
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/client-ticket-poll.patch | git apply && echo "chat poll patch applied"
+  grep -c 'dropped client poll (chat type' src/server/game/Handlers/ChatHandler.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The grep prints 1. Restart worldserver.
+
 ## 2026-11-20 (pet battles)
 
 ### Core: wild battle pets ignore their zone's level
@@ -326,6 +396,56 @@ retest pending; Zandalari chain to test when level appropriate.
   ```
 
   Then restart worldserver.
+## 2026-11-20 (core: expansion XP gate)
+
+Draft PR #95, not merged yet. Not tested in game yet.
+
+### Core: no experience at the old level caps until the next expansion is started
+
+- **Asked** (Four, 2026-11-20): when a character hits 60, the vanilla cap, stop all experience until
+  they do the quest that moves them into the next expansion. They can keep questing around Azeroth for
+  rewards, money and reputation only. Once they start the next expansion, experience comes back
+  everywhere (also when they return to Azeroth). The same at every later cap.
+- **Changed:** new `tools/bfa/expansion-xp-gate.patch` (after `archaeology.patch`):
+  - `Player.cpp`: new gate table above `Player::GiveXP`. A gate opens when the character has turned
+    in a quest whose `QuestSortID` is one of the zones, or one of the listed entry quests. Hidden
+    tracking quests (flag `0x400`) never count. A quest in a later expansion also opens the earlier
+    gates.
+
+    | Gate level | Next expansion | Zones (`QuestSortID`) | Extra entry quests |
+    |---|---|---|---|
+    | 60 | Outland | 3483 Hellfire, 3521 Zangarmarsh, 3519 Terokkar, 3518 Nagrand, 3522 Blade's Edge, 3520 Shadowmoon, 3523 Netherstorm, 3703 Shattrath | 9407, 10119 Through the Dark Portal |
+    | 70 | Northrend | 3537 Borean Tundra, 495 Howling Fjord, 65 Dragonblight, 394 Grizzly Hills, 66 Zul'Drak, 3711 Sholazar, 67 Storm Peaks, 210 Icecrown, 4395 Dalaran | none |
+    | 80 | Cataclysm zones | 616 Mount Hyjal, 5146/4815/5144/5145 Vashj'ir, 5042 Deepholm, 5034 Uldum, 4922 Twilight Highlands, 5095/5389 Tol Barad | 14482, 25924 Call of Duty |
+    | 85 | Pandaria | 5785 Jade Forest, 5805 Valley of the Four Winds, 6134 Krasarang, 5841 Kun-Lai, 5842 Townlong, 6138 Dread Wastes, 5840 Vale, 6507 Isle of Thunder, 6757 Timeless Isle | 29548 The Mission, 29690 Into the Mists |
+    | 90 | Draenor | 6720, 6719, 6721, 6662, 6722, 6755, 6723, 7025, 6941 | 34398, 36881 The Dark Portal |
+    | 100 | Broken Isles | 7334 Azsuna, 7558 Val'sharah, 7503 Highmountain, 7541 Stormheim, 7637 Suramar, 7502 Dalaran, 7543 Broken Shore | 40519, 43926 The Legion Returns |
+    | 110 | Kul Tiras / Zandalar | 8567 Tiragarde, 8721 Drustvar, 9042 Stormsong, 8499 Zuldazar, 8500 Nazmir, 8501 Vol'dun, 9653 | 46727 Tides of War, 51443 Mission Statement |
+
+    The Wandering Isle (monk start) and the blood elf and draenei starting zones are not in any list.
+  - `Player::GiveXP`: while the gate for the character's level is closed, experience is ignored (no
+    "You gain" message) and the bar is set to 0. A level-up that reaches a closed gate stops there and
+    drops the leftover experience. Chat message: "Experience locked at level 60. Complete a quest in
+    Outland to keep earning experience...", once per gate per session.
+  - `Player::RewardQuest`: the quest that opens the gate counts before its own experience is paid, so
+    it still gives its experience, with the message "Experience unlocked: welcome to Outland...".
+  - `Player.h`: `GetLockedXpGateLevel`, `SendXpGateMessage` and a small cache (rescanned only when
+    the rewarded quest list changes size).
+  - `worldserver.conf.dist`: `ExpansionXpGate.Enable = 1` (0 turns the gate off). Not needed in your
+    `worldserver.conf`: missing means on.
+- **Status:** applies cleanly after the full chain on upstream 2c13546, `Player.cpp` compiles. Not
+  checked in game yet.
+- **Pick up** (until the PR is merged):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/expansion-xp-gate.patch | git apply && echo "xp gate patch applied"
+  grep -c "zrbfacore: expansion XP gate" src/server/game/Entities/Player/Player.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The grep prints 4. Restart worldserver.
 
 ## 2026-11-20 (Archaeology)
 
