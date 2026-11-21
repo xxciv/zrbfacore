@@ -81,6 +81,23 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Status:** not tested in game yet. Runs cleanly twice on our copy of the world DB.
 - **Pick up:** run the SQL, restart `worldserver`.
 
+### DB: Stratholme Main Gate, crusaders idle next to the Risen
+
+- **Found** (Four, 2026-11-21, screenshots): Argent Crusaders 45346 standing right next to a Risen
+  Sorcerer, Gallant and Defenders without fighting, while others fought the undead.
+- **Cause:** the crusaders' faction template 2131 (Argent Crusade) is hostile only to faction 1107 and
+  the Scourge (20). The Risen are template 67 (Scarlet Crusade, faction 56), so the two are neutral, and
+  creature vs creature attacks need one side to be hostile (`Unit::_IsValidAttackTarget`). The start
+  rows from `2026_11_20_00` could not stick on a Risen; skeletons, cadavers and ghouls (Scourge) worked.
+- **Changed** (`sql/fixes/world/2026_11_21_00_stratholme_crusader_faction.sql`): crusader 45346 faction
+  2115 (Actor Good, as the Rageclaw allies in Zul'Drak: friendly to players, hostile to every monster
+  faction); defensive on spawn and after each fight, so they don't charge bosses or rats across the
+  street; start rows for the seven staged Main Gate kinds that had none (Risen Inquisitor, Battle Mage,
+  Monk, Ravaged and Broken Cadavers, Vengeful Phantom, Patchwork Horror). Crusaders with nothing within
+  8 yards still stand until something walks by.
+- **Status:** not tested in game yet. Runs cleanly twice on our copy of the world DB.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-20 (pet battles)
 
 ### Core: wild battle pets ignore their zone's level
