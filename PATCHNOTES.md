@@ -147,6 +147,7 @@ to do to pick it up (rebuild, restart, run SQL).
   there is none, so he skips it; in a group it takes someone other than the tank.
 - **Status:** confirmed in game 2026-11-21 (Four: "a clean run").
 - **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-21 (core: Pick Lock stuck at 120)
 
 PR #99. Confirmed in game by Four on 2026-11-21.
@@ -573,6 +574,7 @@ retest pending; Zandalari chain to test when level appropriate.
   ```
 
   Then restart worldserver.
+
 ## 2026-11-20 (core: expansion XP gate)
 
 Draft PR #95, not merged yet. Not tested in game yet.
@@ -822,6 +824,101 @@ was merged before its in-game test).
 
   Then restart worldserver and delete the client Cache folder.
 
+## 2026-11-20 (World fixes: Cape of Stranglethorn, Duskwood, Redridge, Western Plaguelands)
+
+Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four walks Stranglethorn, Duskwood, Redridge, Ratchet and the Western Plaguelands and reports what is off.
+
+### World: Western Plaguelands zone review
+- **Found** (2026-11-20, the zone review that follows Four's Andorhal question): against TDB 8.3.7 the zone had stacked copies (4 Cauldron Lord Soulwrath on one spot, 3 extra Scarlet Hunters), extra Venom Mist Lurkers, Diseased Wolves, Redpine Shamans, Wailing Deaths and Hungering Wraiths, 7 rares with 2-3 spawn points up at once, a few missing Redpine Gnolls and Rabid Foxes, and the dump's 3-yard shuffle on most mobs that stand still in 8.3.7.
+- **Changed** (`sql/fixes/world/2026_11_20_37_western_plaguelands_review.sql`, run after `2026_11_20_36`):
+  - 63 extra creatures removed: Venom Mist Lurker 19, Diseased Wolf 16, Redpine Shaman 11, Wailing Death 7, Hungering Wraith 4, Scarlet Hunter 3, Cauldron Lord Soulwrath 3.
+  - Quest rule: quest givers are never removed. The quest-loot mobs among the removals (Diseased Wolf, Venom Mist Lurker, Redpine Shaman, Cauldron Lord Soulwrath) keep exactly the 8.3.7 count.
+  - 7 rares pooled so only one spawn point is up at a time (pools 5100638-5100644): Scarlet Smith, Scarlet Judge, Scarlet Interrogator, Scarlet Executioner, Scarlet High Clerist, The Husk, Lord Maldazzar.
+  - 19 missing TDB spawns added (735401524-735401542): Redpine Gnoll 11, Rabid Fox 7, Northridge Spider 1.
+  - Movement set to TDB on 494 spawns (mostly the 3-yard shuffle becoming standing still).
+- **Not changed:** Andorhal (its own entry below), critters and wild battle pets, anything next to a hostile NPC, spawns tied to events, pools, formations, paths or scripts.
+- **Status:** confirmed in game by Four (2026-11-20): "WPL looks pretty good."
+- **Pick up:** run the SQL after `2026_11_20_36`, restart `worldserver`.
+
+### World: Western Plaguelands, Andorhal's two battles phased
+- **Found** (Four, 2026-11-20): "is andorhal supposed to be phased or something? Lots of Andorhal Defenders right next to Undead mobs who are pretty much ignoring each other unless i attack something", and "Similar to the farm fields and the farmers". Andorhal has two battles, one after the other, and our dump showed both at once with no phases:
+  - **First battle** (Scourge First..., War Machines, The Endless Flow, Scholomancer, Brute Strength): Andorhal Defenders 44328 and Deathguard 44326/44447 each fight the Scourge (Desiccated Magus 44315, Desiccated Spearman 44316, Opengut Behemoth 44562). TDB 8.3.7 has exactly this battle: 181 spawns, every Defender and Deathguard 44326 within 5 yards of a Desiccated. Ours had only 31 of them, with 2 Behemoths for War Machines (6 kills).
+  - **Second battle** (after The Battle Resumes!: Supporting the Troops, Ashes to Ashes, The Farmers' Militia, Val'kyr Incursion, Brother Against Brother, Aradne): the Alliance and the farmers' militia (Provincial Minutemen) against the Forsaken, their Opengut Behemoths 44946 and val'kyr. TDB 8.3.7 has none of it; ours has all of it.
+  - The Desiccated templates carried `UNIT_FLAG_IMMUNE_TO_NPC` (0x200), which 8.3.7 does not, so no soldier could hit them. The Scourge faction is neutral to both armies, and creatures that stand still never start a fight on their own.
+- **Changed** (`sql/fixes/world/2026_11_20_36_andorhal_two_battles.sql`). 8.3.7 data has no phases here; the split and the quests that switch it are our own reading of the quest text:
+  - Phase 314, the first battle: TDB 8.3.7's 181 spawns (735401343-735401523) replace our 31 copies of the same entries, plus our 21 Stickbone Berserkers (The Endless Flow; TDB has none).
+  - Phase 317, the second battle: our dump's 138 spawns, unchanged except the phase. All quest targets kept.
+  - A player sees phase 317 once The Battle Resumes! (27083 Horde, 27197 Alliance) or any second-battle quest is taken, completed or rewarded, otherwise phase 314. Phase 169 stays on, so the rest of the zone is unchanged.
+  - Not phased: the quest givers (Koltira, Thassarian, Jearl Donald, Lindsay Ravensun, Lang Loosegrip), the fires, the towers and the Scourge Invasion spawns.
+  - The Desiccated (and the two second-battle commanders) lose `IMMUNE_TO_NPC`, as in 8.3.7.
+  - Fight starters (our own tuning, the staged-battle pattern): out of combat, soldiers attack the closest enemy within 5 yards (Minutemen: the Forsaken Behemoth within 10). All fighters take no damage from other creatures below 85% health (`flags_extra` 0x400), so the battles go on; players deal full damage.
+- **Status:** confirmed in game by Four (2026-11-20): "Andorhal looks good now! everyones fighting." A character before The Battle Resumes! sees the Scourge battle; the farmers and the val'kyr appear after it.
+- **Pick up:** run the SQL, restart `worldserver`. Needs `staged-npc-battles.patch` (already in the build).
+
+### World: Theramore dock, floating ship chairs
+- **Found** (2026-11-20, while fixing Ratchet): the same leftover as at Ratchet. The dump has two sniff snapshots of The Lady Mehley (Menethil - Theramore) docked at Theramore, so 18 Wooden Chairs (164759-164767, two copies of the ship's 9) float on the water off the dock. TDB 8.3.7 has none of them, there or on the ship (map 584 has no deck objects in TDB either), and they have no quest role.
+- **Changed** (`sql/fixes/world/2026_11_20_35_theramore_dock_chairs.sql`): the 18 chairs (guids 173730-173747) removed.
+- **Status:** confirmed in game by Four (2026-11-20).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Ratchet and Booty Bay, The Maiden's Fancy leftovers
+- **Found** (Four, 2026-11-20, screenshots at the Ratchet dock): "First Mate Masker is underwater, and there's a bunch of leftover furniture. I assume they should be on the transport between here and Booty Bay." The dump has sniff snapshots of the docked ship in world coordinates:
+  - First Mate Masker 25093 at Ratchet (guid 265581, in the water) and at Booty Bay (369219).
+  - The ship's 9 Wooden Chairs (164759-164767) floating off the Ratchet dock (175554-175562).
+  - TDB 8.3.7 has none of these. It has Masker and the chairs only on the ship (map 593).
+- **Changed** (`sql/fixes/world/2026_11_20_34_maidens_fancy_leftovers.sql`):
+  - The two static Masker copies and the 9 floating chairs removed. None of them has a quest role, and Masker keeps his gossip on the ship copy (735200074, from `2026_11_12_33`).
+  - The ship gets TDB 8.3.7's 9 deck chairs (GO guids 735400105-735400113).
+  - The ship also gets the two crewmen that the TDB 7.3.5 crew list in `2026_11_12_33` lacked: Bosun Thunderhorn 25098 (735401341) and Crewman Gearspinner 25096 (735401342). Phase 169 becomes 0, as in `2026_11_12_33`.
+- **Status:** confirmed in game by Four (2026-11-20).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Redridge Mountains, Lakeshire Inn fight club, a real fight both ways
+- **Found** (Four, 2026-11-20, after `2026_11_20_32`): "Dumpy vs. Big Earl. Big Earl is just taking it. Never throwing back a punch." Then, after the first version of `2026_11_20_33`: "now no one is fighting". Both fighters showed `UNIT_FLAG_IN_COMBAT`. The fighters run core C++ scripts: `ScriptName` wins over SmartAI, so the dump SmartAI (and the first version of this fix) never ran. `npc_dumpy_and_keeshan` makes Dumpy/Keeshan start a fight with the Big Earl that has the same stage aura. But `npc_big_earl` never picks a target (its `UpdateAI` has no `UpdateVictim`), so Big Earl never swings. Neither script recovers once the attacker loses its target, so both stay flagged in combat and stand still.
+- **Changed** (`sql/fixes/world/2026_11_20_33_lakeshire_fight_club_punches.sql`, run after `2026_11_20_32`). Our own tuning; TDB 8.3.7 uses the same C++ scripts:
+  - `ScriptName` cleared on John J. Keeshan 43184, Big Earl 43248 and Dumpy 43249, so they run SmartAI.
+  - Dumpy (735401337) and the second-stage Keeshan (735401290) get their own scripts. Out of combat, every second, each one attacks the Big Earl of its own stage (735401340 / 735401291), and keeps the unarmed fighting stance.
+  - Big Earl hits back with normal SmartAI melee.
+  - All three take no damage from other creatures below 85% health (`flags_extra` 0x400 from `staged-npc-battles.patch`), so the fight never ends.
+  - The last stage stays calm: the knocked-out Big Earl (735401314) is passive and lies down, and Keeshan with his crew (735401313) is passive.
+  - The rows the first version of this file added (Big Earl ids 4-7, Keeshan id 6) are removed again.
+- **Not changed:** the crowd keeps its C++ script `npc_redridge_citizen`, which cheers, roars and points every 10-25 seconds once a citizen has a stage aura.
+- **Status:** confirmed in game by Four (2026-11-20): "Fight Club is good!"
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Redridge Mountains, Lakeshire Inn basement fight club
+- **Found** (Four, 2026-11-20): "the two fighters are not fighting? Should the crowd not be cheering? Everyone is just standing around and the two fighters have a short wander distance." In 8.3.7 the basement is a scene staged by the Keeshan quests. Each spawn carries a "Quest Invis Zone" aura, and players get the matching detect aura from `spell_area` in Lakeshire (area 69), so each player sees the stage that fits their quests. Our DB had none of TDB's four `spell_area` rows, and one mixed set: Keeshan, Big Earl and Dumpy together, 20 citizens with no stage aura, and fighters wandering 3 yards. Dumpy's dump SmartAI also cast and then removed the detect auras on nearby players every second (rows 5-10; their conditions don't exist).
+- **Changed** (`sql/fixes/world/2026_11_20_32_lakeshire_fight_club.sql`):
+  - Our 23 basement spawns replaced by TDB 8.3.7's 51 (same entries, TDB positions and per-spawn addons, all standing still; guids 735401290-735401340):
+    - Before John J. Keeshan 26567 is taken: Dumpy and Big Earl with 20 citizens.
+    - From 26567 until They Drew First Blood 26607 is taken: Keeshan and Big Earl with 21 citizens.
+    - From 26607 until It's Never Over 26616 is taken: Keeshan, a knocked-out Big Earl, and Messner, Jorgensen, Krakauer and Danforth.
+  - TDB's 4 `spell_area` rows for area 69 added (detect spells 80817, 80818, 81202, 82100).
+  - Dumpy `smart_scripts` rows 5-10 removed.
+- **Not changed:** the punches between the fighters and Keeshan's cheer trigger for the crowd. Both come from the dump SmartAI; TDB has no script here. Keeshan 43184 still ends 26567/26607 and starts 26616, visible during those stages. Colonel Troteman 43221 is not touched. Once 26616 is taken the basement is empty, as in 8.3.7.
+- **Status:** confirmed in game by Four (2026-11-20): Dumpy vs. Big Earl stage shows; Big Earl's punches fixed in `2026_11_20_33`.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Duskwood, doubled watchers in Darkshire
+- **Found** (Four, 2026-11-20): "watcher jordan double spawn, watcher fraizer double spawn, watch burkouris double spawn". Compared with TDB 8.3.7: Watcher Jordan 887 had 3 spawns (TDB 1), Watcher Fraizer 2470 had 2 spawns 2.5 yards apart (TDB 1), and Watcher Mocarski 827 had 2 (TDB 1). Watcher Bukouris 494 has 2 spawns 9 yards apart, and TDB has two as well. None of them has a quest role.
+- **Changed** (`sql/fixes/world/2026_11_20_31_duskwood_watcher_doubles.sql`):
+  - Jordan: the pair 170441/170926 removed; 170824 moved to TDB's spot.
+  - Fraizer: 170415 removed.
+  - Mocarski: 170440 removed.
+  - Our own call (TDB has two): Bukouris 170416 removed.
+  - The kept watchers stand still, as in TDB.
+- **Status:** confirmed in game by Four (2026-11-20): no doubles.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Cape of Stranglethorn, Digsite Zombie Survivors
+- **Found** (Four, 2026-11-20, screenshot): a Digsite Zombie 52604 (guid 302821) near Gurubashi Arena and "a bunch of Digsite Zombie Survivors by the Dig Site". Both belong to Bwemba's 4.1 quest Voodoo Zombies (29150 Alliance, 29237 Horde): killing a zombie summons a survivor, which should then leave. Bwemba 52234 has no spawn in our DB or in TDB 8.3.7, so the quest can't be taken, and TDB 8.3.7 has none of these creatures. The 10 survivors at the Explorers' League Digsite are static copies of that summon. Their despawn waits for a `creature_text` line that doesn't exist, so they never leave.
+- **Changed** (`sql/fixes/world/2026_11_20_30_digsite_zombie_survivors.sql`):
+  - The 10 static Digsite Zombie Survivors 52870 (guids 307982-307991) removed. No quest needs them: credit comes from killing the zombie, which still summons a survivor.
+  - Our own tuning: a survivor summoned by a zombie kill now despawns after 5 seconds (`smart_scripts` 52870 row 0 = force despawn 5000 ms).
+- **Not changed:** the 3 Digsite Zombies at Gurubashi Arena (302820-302822) stay, because they are the quest's kill target. Bwemba's whole quest chain (29100-29238) has no quest giver in 8.3.7 either.
+- **Status:** confirmed in game by Four (2026-11-20): the standing survivors are gone.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-19 (Quest fixes: Stranglethorn)
 
 Merged to `main` with PR #91 on 2026-11-20. Confirmed in game 2026-11-20.
@@ -999,6 +1096,145 @@ Merged to `main` with PR #91 on 2026-11-20. Confirmed in game 2026-11-20.
   ```
 
   Then restart `worldserver`.
+
+## 2026-11-19 (World fixes: Northern Stranglethorn walk)
+
+Open in the same draft PR as the 2026-11-18 feedback below. Four walks Northern Stranglethorn and reports what is off.
+
+### World: Northern Stranglethorn zone review
+- **Found** (full 8.3.7 comparison of zone 33, chosen by Four on 2026-11-19 after the first notes below): compared with TDB 8.3.7, the zone had 49 extra creatures, 92 missing spawns, two rares with several spawn points up at once, and 362 creatures with the dump's 3-yard random wander where 8.3.7 has them standing still.
+- **Changed** (`sql/fixes/world/2026_11_19_32_northern_stranglethorn_review.sql`, run after `2026_11_19_30`):
+  - 49 extra creatures removed (every TDB spawn keeps its nearest match): Bloodscalp Headhunter 12, Skullsplitter Berserker 7, Bloodscalp Witch Doctor 7, Mosh'Ogg Shaman 6, Mosh'Ogg Spellcrafter 6, Snapjaw Crocolisk 6, Skullsplitter Warrior 4, Skullsplitter Mystic 1.
+  - Rares pooled, one up at a time: Gluggl 14487 (2 spawn points, pool 5100636) and Roloch 14488 (2 spawn points, pool 5100637).
+  - 92 missing TDB spawns added (guids 735401198-735401289): Crystal Spine Basilisk 13, Saltscale Forager 11, Saltscale Hunter 10, Skullsplitter Axe Thrower 8, Bloodscalp Hunter 6, Kurzen Medicine Man 6, Murkgill Hunter 6, Saltscale Warrior 5, Bloodscalp Scavenger 4, Skullsplitter Spiritchaser 4, Mosh'Ogg Brute 4, Kurzen Subchief 4, Kurzen Commando 4 (with the creep fix from `2026_11_19_31`), Kurzen Elite 3, Bloodscalp Warrior 3, Saltscale Oracle 1.
+  - 362 spawns stand still as in 8.3.7 (`MovementType` 0, `spawndist` 0). Largest groups: Zuuldaian Fetish 40, Venture Co. Geologist 31, Lesser Water Elemental 24, Skullsplitter Hunter 20, Mosh'Ogg Warmonger 15, Kurzen Jungle Fighter 13, Young Stranglethorn Tiger 12, Bloodscalp Scavenger 12.
+- **Not changed:** critters and wild battle pets; spawns linked to events, pools, formations, paths or scripts; anything standing next to a hostile NPC (staged fights); phased spawns; Herald's Stranglethorn quest NPCs (Wulfred 44018, Robert Rhodes 43042, Thaalia 44017 and the raptor ritual creatures 42840, 42842, 42870). One Mosh'Ogg Brute was not added because its 8.3.7 spot is next to a Fort Livingston Adventurer. 332 creatures keep the dump's wander because 8.3.7 has them moving too or has no matching spawn.
+- **Status:** confirmed in game by Four (2026-11-20): troll counts, Gluggl and Roloch.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: stealthed creatures creep instead of floating
+- **Found** (Four, 2026-11-19): "Kurzen Commandos are floating while in stealth. I think this affects most stealthed units". Their addon rows have `bytes1` 0x02000000: byte 3 is the animation tier, and 2 means hover, so the client draws them hovering. The value belongs one byte lower: byte 2 = 0x02 is the "creep" stand flag, the crouched stealth walk. AzerothCore (WotLK) has these creatures at 131072 (0x00020000, creep); TDB 8.3.7 has the shifted value too.
+- **Changed** (`sql/fixes/world/2026_11_19_31_stealthers_creep_not_hover.sql`): byte 3 cleared and creep set on stealthed creatures only (they cast a stealth spell from SmartAI or their aura list, or AzerothCore gives them creep). 16 `creature_template_addon` rows: Defias Night Runner 215, Shadowhide Assassin 579, Shadow Panther 768, Kurzen Commando 938, Fen Creeper 1040, Elder Shadowmaw Panther 1713, Fallenroot Shadowstalker 4798, Theramore Infiltrator 4834, Stonevault Cave Lurker 4850, Razorfen Stalker 6035, Onin MacHammar 6886, Putridus Shadowstalker 11792, Coldmist Stalker 16170, Stonescythe Ambusher 16928, Fenissa the Assassin 22060, Shadowsword Assassin 25484. 14 `creature_addon` rows: Coldmist Stalker 6, Stonescythe Ambusher 4, Daggerfen Assassin 3, Expedition Druid 1.
+- **Not changed:** the other ~170 creatures with the hover value (Val'kyr, Shadow Orbs, proto-drakes, elementals and the like), which are meant to hover.
+- **Status:** confirmed in game by Four (2026-11-20).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Northern Stranglethorn, first notes
+- **Found** (Four, 2026-11-19):
+  - Kurzen Medicine Man guid 183538 "walks through house": all 9 Kurzen Medicine Men 940 in Kurzen's Compound had the dump's 3-yard random wander (no path). TDB 8.3.7 has every one standing still.
+  - "Krazek is double spawned": Krazek 773 (guid 182899, quest giver at Nesingwary's Expedition) is the 8.3.7 spawn; guid 302753 is a second Krazek (entry 52297, no gossip or quests) 2.5 yards away, which 8.3.7 doesn't have.
+  - Chillwind Lieutenant guid 373403 "spawning outside of Midsummer Fire Festival": Ahune's lieutenants had no game event.
+- **Changed** (`sql/fixes/world/2026_11_19_30_northern_stranglethorn_spots.sql`):
+  - The 9 Kurzen Medicine Men stand still (`MovementType` 0, as in 8.3.7).
+  - Krazek 302753 (entry 52297) removed.
+  - Chillwind Lieutenant 26204 (373403, Stranglethorn), Frigid Lieutenant 26214 (373404, Searing Gorge), Frostwave Lieutenant 26116 (370754, Ashenvale) and Glacial Lieutenant 26215 (373405, Silithus) only appear during the Midsummer Fire Festival (event 1). TDB 8.3.7 has no spawns of them; ours keep their spots.
+- **Status:** confirmed in game by Four (2026-11-20): medicine men, one Krazek, Chillwind Lieutenant.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+## 2026-11-18 (World fixes: feedback on the reviewed zones)
+
+Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time and reports what is off.
+
+### World: Durotar, the Ticking Time Bomb can be seen
+- **Found** (Four, 2026-11-18, screenshot): "the bomb is not visible, and its health bar is in the air". The bomb creature 42776 uses an invisible trigger model (display 15294, scaled 2.25, so its health bar floats high). The bomb itself is the 5-second area effect Ticking Time Bomb 79727, which nothing cast: TDB 8.3.7 only casts Explosion 79728.
+- **Changed** (added to `sql/fixes/world/2026_11_18_43_ticking_time_bomb_fuse.sql`; first shipped as `2026_11_18_51_ticking_time_bomb_visual.sql`, folded into 43 because the pet thread also has a `2026_11_18_51` file):
+  - As it lands, the bomb casts 79727 on itself (new `smart_scripts` row id 4, linked from the landing row id 3). The effect goes away with the bomb, 1 second after the explosion.
+  - Our own tuning: the invisible bomb creature can't be selected (`unit_flags` |= 0x02000000), so its floating name and health bar no longer show.
+- **Status:** confirmed in game by Four (2026-11-18): the bomb shows on the ground, no floating health bar.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: monthly Brew Vendors list their brew once
+- **Found** (Four, 2026-11-18, Ironforge Brew Vendor): "offering 2 of the same item, instead of one inventory space". The monthly Brew Vendors 27806, 27810-27820 (Ironforge, and outside the Orgrimmar gate) each listed their brew twice: the 37488-37499 item and its same-named copy 37898-37909. 8.3.7 lists one item per vendor.
+- **Changed** (`sql/fixes/world/2026_11_18_36_brew_vendor_single_item.sql`, first shipped as `2026_11_18_50_brew_vendor_single_item.sql`; renamed because the pet thread also has a `2026_11_18_50` file): the copies are removed, so the lists now match 8.3.7: 37488-37499, except Izzard's Ever Flavor at 27810, which keeps 37899 as in 8.3.7.
+- **Status:** confirmed in game by Four (2026-11-18).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Ray'ma and the Orgrimmar Brew Vendor check like the Alliance side
+- **Found** (Four, 2026-11-18): Larkin Thunderbrew only opens his shop with a Brewfest Prize Token and the Ironforge Brew Vendors only sell to club members, but Ray'ma's shop and the Orgrimmar Brew Vendor 89830 were open to anyone. "rayma should have a lockout too", "as should the brew vendor next to them", "just like alliance". 8.3.7 has the checks only on the Alliance side.
+- **Changed** (`sql/fixes/world/2026_11_18_49_brew_club_lockouts.sql`, our own change):
+  - Ray'ma 27489 (menu 9554): "What do you have for me?" and her greeting "I see ya got some Brewfest tokens" (text 12968) need at least 1 Brewfest Prize Token 37829, the same check as Larkin's menu 9548. Without one she uses her other greeting (text 12869) and shows no shop.
+  - Brew Vendor 89830 gets gossip menu 9549, the Ironforge Brew Vendors' menu: "I'd like to buy this month's brew." only shows with the achievement Brew of the Month (2796); without it the vendor says the brews are for club members only.
+- **Not changed:** what they sell, and the monthly brew rotation from `2026_11_18_47`.
+- **Status:** confirmed in game by Four (2026-11-18).
+- **Pick up:** run the SQL, restart `worldserver`. Test with a Brewfest Prize Token in the bags (`.additem 37829`) and with the club achievement (`.achievement add 2796`).
+
+### World: the Brew of the Month Club can be joined all year
+- **Found** (Four, 2026-11-18, Ironforge Brew Vendor: "our brews are exclusive to members of the Brew of the Month Club"; "how do you join the club?"): the Ironforge vendors only sell to characters with the achievement Brew of the Month (2796), as in 8.3.7. You get it by joining: buy the membership form from Larkin Thunderbrew 27478 in Ironforge or Ray'ma 27489 in Orgrimmar and turn in Brew of the Month Club (12420 Alliance, 12421 Horde) to them. In 8.3.7 both stand there all year; ours only appeared during Brewfest, so the club couldn't be joined the rest of the year. Each also had a second Brewfest-only copy that 8.3.7 doesn't have.
+- **Changed** (`sql/fixes/world/2026_11_18_48_brew_club_recruiters_all_year.sql`): Larkin 180703 and Ray'ma 194753 (the 8.3.7 spots) are no longer tied to Brewfest. The extra copies are removed: Larkin 92779 (4.6 yards from the other) and Ray'ma 92780 (in Durotar outside the Orgrimmar gate).
+- **Not changed:** the Orgrimmar Brew Vendor 89830 still sells to everyone (no membership check in 8.3.7 either).
+- **Status:** confirmed in game by Four (2026-11-18).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Brew of the Month Club sells one brew a month again
+
+- **Found** (Four, 2026-11-18: "Vendor sells all brews all year. They should be in a cycle i believe, 1 type per month?", Brew Vendor 89830 in Orgrimmar): 89830 sold all 12 brews (37488-37499) all year; TDB 8.3.7 gives it no wares of its own. The club events 34-45 ("Brew of the Month January" to "December") ended on 2020-12-31, so the monthly Brew Vendors 27806-27820 outside Orgrimmar and in Ironforge never appeared. Ironforge had only the February vendor, up all year.
+- **Changed** (`sql/fixes/world/2026_11_18_47_brew_of_the_month.sql`, run after `2026_11_18_46`):
+  - 89830 sells only the current month's brew (`game_event_npc_vendor`, one row per month).
+  - Events 34-45 run every year again until the end of 2030. Start dates moved to the first of each month this year (our own dates; the event repeats every 365 days, so from March 2028 each month starts one day early).
+  - Ironforge gets the other 11 monthly vendors at 8.3.7's spot (guids 735401187-735401197); the February one only shows in February.
+- Brew of the Year still takes a year: each brew is sold only in its month.
+- **Status:** confirmed in game by Four (2026-11-18): Orgrimmar and Ironforge vendors sell only this month's brew.
+- **Pick up:** run `2026_11_18_46` first, then this SQL, restart `worldserver`.
+
+### World: holiday spawns appear in the right holiday
+
+- **Found** (while fixing the Brew of the Month Club): many holiday spawns were linked to the wrong game event compared with TDB 8.3.7. Pilgrim's Bounty (26) held Brewfest decorations, kegs, mugs and revelers, plus 39 Darkmoon Faire banners and 7 Stormwind Gypsy Wagons; its own feast tables, chairs, hostesses, pilgrims, pumpkins, haystacks and cooking fires were on Brew of the Month May (41). Isle of Conquest emissaries and banners were on Brew of the Month June (42), and the six Isle of Conquest Battlemasters only showed in June. Strand of the Ancients emissaries were on Edge of Madness, Wushoolay (30). The L70ETC band and stage were on Brew of the Month October (34). Smaller mix-ups: Midsummer banners in Winter Veil, Love is in the Air giants in Winter Veil, Lunar Festival fireworks in Midsummer, Hallow's End bonfires on an event that doesn't exist (46), Elder Clearwater of the Kalu'ak derby on Brew of the Month September, holiday commoners also on 32/40/41. Broken Isles Dalaran's Brewfest decorations had been put on Pilgrim's Bounty by `2026_11_16_31`.
+- **Changed** (`sql/fixes/world/2026_11_18_46_holiday_spawn_events.sql`): 3,439 spawns relinked. Each event-linked spawn was matched to the 8.3.7 spawn of the same entry within 2 yards and given that spawn's events. Without a match, a spawn moved only when all 8.3.7 spawns of its entry sit on one event and ours was one of the mixed-up events. Leftovers on the Brew of the Month events went with their set (Pilgrim's Bounty, L70ETC); the Isle of Conquest Battlemasters are always there, as in 8.3.7. Brewfest-named decorations on Pilgrim's Bounty went to Brewfest. Pilgrim's Bounty (starting next week) now shows its feast tables and no Brewfest decor.
+- **Not changed:** Darkmoon Faire spawns already on event 3 (Almanac's audit), every spawn an earlier fix set by hand (city and zone passes, love boats), critters and wild battle pets, Day of the Dead (8.3.7 puts its candles on an arena season event), spawns 8.3.7 doesn't have (such as the Orgrimmar signs and fires on 26), and all event dates.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Maplewood and Runestone Treasure Chests always hold loot again
+
+- **Found** (Four, 2026-11-18: "Is the Maplewood Treasure Chest on the top floor supposed to have any loot?", Tiragarde Keep): 11 treasure chest templates shared one loot table 207520 that TDB 8.3.7 doesn't have: 206 items rolled one by one at 0.1-2% each, so about 2 chests in 5 opened empty, and every chest drew from the same list whatever its level.
+- **Changed** (`sql/fixes/world/2026_11_18_45_treasure_chest_loot.sql`): each chest gets its 8.3.7 table back (39334-39344, already in our DB): 207520 → 39334, 207521 → 39335, 207522/207534 → 39336, 207523/207535 → 39337, 207524 → 39338, 207528/207540 → 39342, 207529 → 39343, 207542 → 39344. Those tables always drop 1-2 gems or potions plus one item of the chest's level. The chests stand in Tiragarde Keep (Durotar), Darkshore, Ashenvale, Stonetalon, Desolace, Feralas, Thousand Needles, Howling Fjord, Borean Tundra, Grizzly Hills, Icecrown and Abyssal Depths.
+- **Status:** confirmed in game by Four (2026-11-18, Tiragarde Keep).
+- **Pick up:** run the SQL, restart `worldserver`. A chest already opened empty refills on its next respawn.
+
+### World: Durotar, only one Sergeant Curtis in Tiragarde Keep
+
+- **Found** (Four, 2026-11-18: "I killed one on the bottom floor, and now I see another on the top floor."): the rare Sergeant Curtis 5809 had two spawn points in our dump, one per floor of the keep (guid 252648 ground floor, 49456 top floor), both up at once. TDB 8.3.7 has no Curtis spawn at all, so there is no reference to copy.
+- **Changed** (`sql/fixes/world/2026_11_18_44_sergeant_curtis_one_spawn.sql`): both spawn points join pool 5100635 (max 1), so one Curtis is up at a time, at either spot. Nothing deleted.
+- **Status:** confirmed in game by Four (2026-11-18).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Durotar, the Northwatch Marines' Ticking Time Bomb explodes
+
+- **Found** (Four, 2026-11-18, video: "ticking time bomb, brief graphical element, no functionality, doesn't do damage"): Northwatch Marine 39267 casts Ticking Time Bomb 79726, which throws a Ticking Time Bomb 42776 at your feet. The bomb's script (same as TDB 8.3.7) cast Explosion 79728 (Fire damage to enemies within 4 yards) at the very moment it appeared, while it was still being added to the world, then despawned. The explosion never landed. The ability's own text says "Explodes after a few seconds, inflicting Fire damage. Tick-tock."
+- **Changed** (`sql/fixes/world/2026_11_18_43_ticking_time_bomb_fuse.sql`, run it again after the second round): the bomb now ticks for 3 seconds (our own value for "a few seconds"), then explodes (triggered cast) and disappears a second later. Step out of it to avoid the damage. Second round (Four, video: "The bomb explosion worked, but it's still 'disappearing' from the world early."): the bomb is summoned as the Marine's guardian, and guardians are aggressive, so it ran after Four's imp and out of sight before exploding. It now turns passive and rooted as it lands. The same bomb is thrown by Sergeant Curtis 5809, Nethergarde Engineer 5997 and Chief Prospector Hondo 41173.
+- **Status:** confirmed in game by Four (2026-11-18), together with the visual fix in the entry above.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: the other all-in-one profession trainers (Train-a-Trons, Whittler Dewei, Profession Liaisons)
+
+- **Found** (Four, 2026-11-18: "can you do a pass of all profession trainers of this kind?"; Four chose to keep all of them): five more NPCs teach several professions, all where no other trainer stands. KTC Train-a-Tron Deluxe 45286 (Lost Isles, 4 spawns) had the fishing trainers' menu 17157 (Fishing only) and Whittler Dewei 57620 (Wandering Isle) a HavenCore menu 15125 with no "Train me in" options; 8.3.7 gives both menu 12180, like Runda. KTC Train-a-Tron Deluxe 49885 (Azshara) uses menu 12002: its two training options were trainer options themselves, so they never opened the primary/secondary lists 12045/12046; those 14 professions were gossip options that closed the menu; its trainer rows sat on menus 12006/12007 that don't exist; and "Access profession vending machine" did nothing. The Profession Liaisons Leedan Gustaf 142564 (Boralus) and Ozgrom Ragefang 142552 (Dazar'alor): "I would like to buy from you." did nothing (134 items each).
+- **Changed** (`sql/fixes/world/2026_11_18_42_profession_trainers_isolated.sql`):
+  - Train-a-Tron 45286 and Dewei 57620 use menu 12180 (8.3.7) and get the same 11 lists as Runda.
+  - Menu 12180 gets "Show me your wares, please." (vendor option, our own addition, not in 8.3.7), so the Train-a-Tron and Dewei can still sell. It only shows on NPCs that are vendors with goods, so Runda and the town trainers don't get it.
+  - Train-a-Tron 49885: vending opens the shop; primary and secondary training open 12045/12046 (8.3.7's links), and each profession there opens its list (the 11 above, plus Cooking 136, First Aid 880, Fishing 10).
+  - Profession Liaisons: "I would like to buy from you." opens the shop.
+  - Side effect: Acride 10296/10299 and Tinza Silvermug 45563 also point at menu 12046 and showed "Cooking / First Aid / Fishing" options that did nothing. Those are trainer options now, and since these three are not trainers, the options no longer show for them.
+- **Not changed:** trainer lists (same ids as `2026_11_18_41`), Journeyman's trainer work, the Nazjatar trainers (no trainer data, `npcflag` 0 in 8.3.7 too).
+- **Status:** confirmed in game by Four (2026-11-18): Train-a-Trons, Whittler Dewei, and both Profession Liaisons (their single shop option opens the shop straight away, the client does that by itself for a lone vendor option).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Durotar, the 11 "Profession Trainer" NPCs teach their professions
+
+- **Found** (Four, 2026-11-18: "Runda (Profession Trainer) - is this a real in game NPC or something added by Havencore? Either way, she doesn't work"): Runda 47418 in Razor Hill is a real NPC (Cataclysm and later). So are Lien Farner, Wembil Taskwidget, Nedric Sallow, Lalum Darkmane, Iranis Shadebloom, Saren, Valn, Therisa Sallow, Jack "All-Trades" Derrington and Elder Oakpaw. All 11 use gossip menu 12180 and its "Tell me about..." sub menus 12185-12199, where every menu lists "Train me in <profession>." for the 11 professions. Most of those options were vendor options (`OptionType` 3) or gossip options with nowhere to go, so a click closed the menu. Only 26 of the 154 had a `creature_trainer` row telling the core which list to open.
+- **Changed** (`sql/fixes/world/2026_11_18_41_profession_trainer_menus.sql`): every "Train me in X." option on those 14 menus is a trainer option (`OptionType` 5, `OptionNpcFlag` 16). It opens the list the sniffed rows already used, for all 11 NPCs (1,815 `creature_trainer` rows): Alchemy 59, Blacksmithing 80, Enchanting 51, Engineering 102, Herbalism 388, Inscription 387, Jewelcrafting 48, Leatherworking 103, Mining 389, Skinning 390, Tailoring 117.
+- **Status:** confirmed in game by Four (2026-11-18, Runda and the Razor Hill profession trainer).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Durotar, Razor Hill Grunts give directions again
+
+- **Found** (Four, 2026-11-18: "none of their direction gossip works. Just closes the menu."): Razor Hill Grunt 5953 uses gossip menu 3285. Its options had no `gossip_menu_option_action` rows, so every click closed the menu; TDB 8.3.7 has the same gap. "A class trainer" (option 4) was missing. The class menu 3283 gained Druid at the top in Cataclysm, but its links were still in the old order, so Druid answered "Thotar" and Warrior answered nothing. The answer texts and map markers were all there.
+- **Changed** (`sql/fixes/world/2026_11_18_40_razor_hill_grunt_directions.sql`; links as in AzerothCore, adjusted where Cataclysm moved an NPC):
+  - "A class trainer" restored.
+  - Main menu links: bank, inn and stable master answer with their texts, and the inn and stable get map markers. The wind rider master marks Burok in Razor Hill (the old text sends you to Orgrimmar). The class and profession menus open.
+  - Class menu realigned: Druid marks Jabul and Mage marks Un'Thuwa (both now in Razor Hill, new markers 54200/54201); the others keep their texts and markers.
+- **Status:** confirmed in game by Four (2026-11-18).
+- **Pick up:** run the SQL, restart `worldserver`.
+
 
 ## 2026-11-18 (Quest fixes: Crossroads Caravan Pickup, Northern Barrens)
 
@@ -1653,7 +1889,7 @@ Client addon only, in `client/FishingBuddy`. No server change: nothing to rebuil
 
 ## 2026-11-17 (World fixes: second-tier zones review)
 
-Open in a draft PR, not merged yet. Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
+Merged to main (PR #76, 2026-11-18). Same method as the starter zones (TDB 8.3.7 as reference, critters and wild battle pets never touched), plus three new checks: wander set to TDB, missing TDB spawns added, and rares with several spawn points pooled. The wander values are TDB's own; most TDB spawns in these zones are unsniffed, so where TDB stands a mob still, that is TDB's choice, not retail sniff data.
 
 ### World: Darkshore and the Ruins of Gilneas keep their normal spawns next to the new quest phases
 
