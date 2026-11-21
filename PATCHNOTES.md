@@ -20,14 +20,21 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### DB: Supply Crates would not open
 
-- **Found** (Four, 2026-11-21): right-clicking a Supply Crate 176224 says "You can't open that", so no
-  Stratholme Holy Water. The server never sends that message (`ERR_USE_CANT_OPEN` is unused in the
-  core), so the client refuses before casting Opening. Lock 57, loot 13646 (Holy Water 100%) and the
-  spawns are fine; the Gordok Tribute in Dire Maul opens with the same lock. The only difference is
-  `Data10` (require line of sight) = 1, which the server ignores. This cause is inferred, not proven.
-- **Changed** (`sql/fixes/world/2026_11_21_07_stratholme_supply_crate.sql`): 176224 `Data10` 1 -> 0.
+- **Found** (Four, 2026-11-21): right-clicking a Supply Crate says "You can't open that". Map 329 has two
+  kinds: 18 Holy Water crates 176224 (lock 57, loot 13646) and 51 vermin crates 176304, 176307, 176308,
+  176309 (no lock, no loot). Each vermin crate links a trap 175534-175537 (lock 1766, Disarm Trap)
+  that the core spawns on the same spot, and the 8.x sniff also caught those traps as 47 static
+  spawns. A rogue sees the traps, so the click lands on a trap and the client tries to disarm it
+  (Four's `.gobject target`: trap 175534, guid 187948). A first guess (the Holy Water crate's
+  line-of-sight flag, SQL 2026_11_21_07) did not help and is withdrawn.
+- **Changed** (`sql/fixes/world/2026_11_21_08_stratholme_trapped_crates.sql`):
+  - 176224 `Data10` back to 1 (undoes 2026_11_21_07).
+  - The 47 static trap spawns removed, backed up in `zr_backup_strat_crate_traps`. Not tied to any quest.
+  - The vermin crates' `Data7` (linked trap) 0, and AzerothCore's script in `smart_scripts`
+    (source type 1, ids 0-3): opening one casts its spell on the player (Bugs 16369, Maggots 16370,
+    Rats 16371, Plague Mist 16432), opens the lid and despawns the crate 5 seconds later.
 - **Status:** not tested in game yet.
-- **Pick up:** run the SQL, restart `worldserver`, delete the client's Cache folder.
+- **Pick up:** run the SQL, restart `worldserver`.
 
 ### DB: Service Entrance crusaders stood idle next to the Scourge
 
