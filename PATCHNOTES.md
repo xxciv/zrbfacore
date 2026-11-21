@@ -3,6 +3,117 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-21 (Stratholme, Service Entrance)
+
+### Core: Ramstein's Mindless Undead wave halved
+
+- **Found** (Four, 2026-11-21): when Ramstein dies, `boss_ramstein_the_gorger.cpp` summons 30 Mindless
+  Undead 11030 at once (around 3969, -3392), all attacking. Too many for one player. A first try
+  (a1dfea4) sent the other 15 thirty seconds later from the instance script, but that half lost
+  interest in the player; Four: "the first 15 was good".
+- **Changed** (`tools/bfa/stratholme.patch`): Ramstein summons 15 instead of 30. The delayed second
+  wave is removed.
+- **Status:** confirmed in game 2026-11-21 (the first 15).
+- **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
+
+### Core: the five Black Guard Sentries pulled together
+
+- **Found** (Four, 2026-11-21: "a bit too much for any solo player to pull at once", "all bunched up
+  together"): the five sentries 10394 stand within 6 yards of each other (4030-4036, -3376..-3378),
+  so pulling one brings all five. Scenario step 1155 needs all five killed.
+- **Changed** (`tools/bfa/stratholme.patch`, `instance_stratholme.cpp`): when Ramstein dies the
+  sentries appear as before, but only one is active. The rest hold their post (passive, immune to
+  players) until the active one dies; then the next one steps up and engages the players in the
+  instance. Also holds after a server restart (one active sentry is picked when they load). The
+  spots are unchanged.
+- **Status:** confirmed in game 2026-11-21 (Four: "everything else worked").
+- **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
+
+### DB: Supply Crates would not open
+
+- **Found** (Four, 2026-11-21): right-clicking a Supply Crate says "You can't open that". Map 329 has two
+  kinds: 18 Holy Water crates 176224 (lock 57, loot 13646) and 51 vermin crates 176304, 176307, 176308,
+  176309 (no lock, no loot). Each vermin crate links a trap 175534-175537 (lock 1766, Disarm Trap)
+  that the core spawns on the same spot, and the 8.x sniff also caught those traps as 47 static
+  spawns. A rogue sees the traps, so the click lands on a trap and the client tries to disarm it
+  (Four's `.gobject target`: trap 175534, guid 187948). A first guess (the Holy Water crate's
+  line-of-sight flag, SQL 2026_11_21_07) did not help and is withdrawn.
+- **Changed** (`sql/fixes/world/2026_11_21_08_stratholme_trapped_crates.sql`):
+  - 176224 `Data10` back to 1 (undoes 2026_11_21_07).
+  - The 47 static trap spawns removed, backed up in `zr_backup_strat_crate_traps`. Not tied to any quest.
+  - The vermin crates' `Data7` (linked trap) 0, and AzerothCore's script in `smart_scripts`
+    (source type 1, ids 0-3): opening one casts its spell on the player (Bugs 16369, Maggots 16370,
+    Rats 16371, Plague Mist 16432), opens the lid and despawns the crate 5 seconds later.
+- **Status:** confirmed in game 2026-11-21 (Four: "the crate was good", Holy Water quest turned in).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Service Entrance crusaders stood idle next to the Scourge
+
+- **Found** (Four, 2026-11-21: "Argent NPCs aren't fighting from the get go"): the mounted Argent
+  Crusader 45456 has SmartAI but no rows, and two creatures that both stand still never notice each
+  other. Its faction 2131 is hostile to faction 20 (most of the wing) but not to the monster group
+  (Plagued Insects). Several Service Entrance trash kinds lacked the staged battle flag, so a crusader
+  would kill them outright.
+- **Changed** (`sql/fixes/world/2026_11_21_06_stratholme_service_entrance_crusaders.sql`), as for the
+  Main Gate crusaders 45346:
+  - 45456 faction 2131 -> 2115.
+  - 45456 `smart_scripts` ids 0-13: out of combat, every 2-4 seconds, attack the closest Ravaged,
+    Mangled or Broken Cadaver, Skeletal Guardian or Berserker, Plague Ghoul (both entries), Ghoul
+    Ravener, Fleshflayer Ghoul, Thuzadin Shadowcaster or Necromancer, Rockwing Gargoyle, Shrieking
+    Banshee or Plagued Insect within 8 yards; id 14 defensive on reset. Bosses, sentries and
+    abominations are not targets. 7 of the visible crusaders have one within 8 yards; the rest stand
+    guard (the Slaughter Square group stays hidden until the abominations die).
+  - `flags_extra` |= 0x400 for 10398, 10399, 10400, 10405, 10406, 10407, 10408, 10416, 10417, 10461,
+    10463.
+- **Status:** confirmed in game 2026-11-21 (Four: "argent dawn faction is now fighting").
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### Core and DB: the Service Entrance scenario could not be finished
+
+- **Found** (survey, 2026-11-21): scenario 637 runs in order: step 1150 destroy the three Ash'ari
+  Crystals (scenario event 5167) and kill Baroness Anastari, Nerub'enkan and Maleki the Pallid; 1151
+  kill the nine abominations in Slaughter Square (event 5211, seven Venom Belchers 10417 and two Bile
+  Spewers 10416); 1152 Ramstein the Gorger; 1155 the five Black Guard Sentries and Lord Aurius
+  Rivendare 45412; Magistrate Barthilas is a bonus kill.
+  - The Ash'ari Crystals 10415 wait for five made-up auras and then use SAI action 205 as "update
+    scenario" (205 is SET_OVERRIDE_ZONE_LIGHT here), so no crystal ever broke and no event was sent.
+    The Bile Spewer and Timmy the Cruel had the same action 205 row, and the Bile Spewer also set
+    Ramstein's instance data to IN_PROGRESS, which shut the gauntlet portcullis behind you.
+  - The Slaughter Square portcullises 175373 and 175374 are missing from the 8.x spawns, so
+    abominations killed before the crystals never counted (scenario steps count only while active).
+  - Ramstein, the sentries and Rivendare stand from the start. The classic script summoned them, but
+    it waits for Baron Rivendare 10440, who is no longer spawned.
+  - The Dungeon Finder completion (instance encounter 484) still pointed at Baron Rivendare 10440.
+  - Mounted Argent Crusaders 45456 stand 1-4 yards from the ziggurat bosses, Ramstein and the
+    sentries, and a stacked group of 15 of them with Crusade Commander Korfax stands in Slaughter
+    Square from the start.
+  - Overspawn check: Stonespine 10809 (rare) had four spawn points all standing at once (Pandaria 5.4.8
+    too). 26 Mindless Undead 11030 stood at the Slaughter Square gate from the start; they are the
+    wave Ramstein's script summons when he dies (30 of them), caught by a sniff.
+- **Changed:**
+  - `tools/bfa/stratholme.patch` (`instance_stratholme.cpp`, `stratholme.h`): sends event 5167 when
+    an Ash'ari Crystal dies and 5211 for each Bile Spewer or Venom Belcher killed (each spawn counts
+    once), opens the Slaughter Square portcullises after the third crystal, keeps Ramstein and the
+    Argent forward group in Slaughter Square (Korfax 45206, the mounted crusaders, Eligor 45329,
+    Dosantos 45330, Wilhelm 45331, Stonebruiser 45328) hidden until the nine abominations are dead,
+    and the Black Guard Sentries and Lord Aurius Rivendare hidden until Ramstein dies. Crystal and
+    abomination counts are saved with the instance. The Argent copies at the entrance are unchanged.
+    Every Stratholme file compiles.
+  - `sql/fixes/world/2026_11_21_05_stratholme_service_entrance.sql`:
+    - Ash'ari Crystal 10415 `smart_scripts` replaced: each Thuzadin Acolyte 10399 death tells the
+      nearest crystal (80 yards), and the crystal dies on the fifth, as in AzerothCore.
+    - Bile Spewer 10416 ids 2 and 3 and Timmy the Cruel's action 205 row deleted.
+    - Portcullises 175373 (guid 187780) and 175374 (guid 187797) spawned as in Pandaria 5.4.8.
+    - `instance_encounters` 484 credit entry 10440 -> 45412.
+    - `flags_extra` |= 0x400 (staged battle: creatures can't bring them below 85%, players deal full
+      damage) for the sentries 10394, Barthilas 10435, Anastari 10436, Nerub'enkan 10437, Maleki
+      10438, Ramstein 10439, Stonespine 10809 and Rivendare 45412.
+    - Stonespine's four spawns in pool 32900, one per server start.
+    - The 26 pre-placed Mindless Undead removed, backed up in `zr_backup_strat_se_creature` and
+      `zr_backup_strat_se_creature_addon`. Not tied to any quest.
+- **Status:** confirmed in game 2026-11-21 (Four: "everything else worked").
+- **Pick up:** swap in the new patch, rebuild, run the SQL, restart `worldserver`.
+
 ## 2026-11-21 (Stratholme, Main Gate)
 
 ### Core: Stratholme had no dungeon scenario
