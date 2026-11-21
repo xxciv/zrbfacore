@@ -16,7 +16,7 @@ Open in the same draft PR as the 2026-11-19 and 2026-11-18 entries below. Four w
   - 19 missing TDB spawns added (735401524-735401542): Redpine Gnoll 11, Rabid Fox 7, Northridge Spider 1.
   - Movement set to TDB on 494 spawns (mostly the 3-yard shuffle becoming standing still).
 - **Not changed:** Andorhal (its own entry below), critters and wild battle pets, anything next to a hostile NPC, spawns tied to events, pools, formations, paths or scripts.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-20): "WPL looks pretty good."
 - **Pick up:** run the SQL after `2026_11_20_36`, restart `worldserver`.
 
 ### World: Western Plaguelands, Andorhal's two battles phased
