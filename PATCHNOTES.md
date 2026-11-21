@@ -108,6 +108,18 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Status:** not tested in game yet.
 - **Pick up:** run the SQL, restart `worldserver`.
 
+### DB: Stratholme postboxes do nothing
+
+- **Found** (Four, 2026-11-21): none of the postboxes summoned anything.
+- **Cause:** each postbox (176346, 176349-176353) runs action list 17634600 .. 17635300 when clicked,
+  and the dump has none of those lists. Since Cataclysm, Postmaster Malown 11143 is a normal boss standing
+  in Crusaders' Square (a static spawn here and in Pandaria 5.4.8); the postboxes only call three
+  Undead Postmen 11142 each.
+- **Changed** (`sql/fixes/world/2026_11_21_02_stratholme_postboxes.sql`): the six lists copied from
+  Pandaria 5.4.8 (three postmen per postbox, despawn after 5 minutes); each postbox calls them once.
+- **Status:** not tested in game yet. Runs cleanly twice on our copy of the world DB.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-20 (pet battles)
 
 ### Core: wild battle pets ignore their zone's level
