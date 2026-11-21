@@ -98,6 +98,16 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Status:** not tested in game yet. Runs cleanly twice on our copy of the world DB.
 - **Pick up:** run the SQL, restart `worldserver`.
 
+### DB: Stratholme Main Gate, Patchwork Horrors can't be clicked
+
+- **Found** (Four, 2026-11-21, screenshot): the Patchwork Horror 10414 abominations look see-through
+  green and can't be selected or attacked.
+- **Cause:** the dump's `creature_template.dynamicflags` for 10414 is 2 (`UNIT_DYNFLAG_HIDE_MODEL`); no
+  other Stratholme creature has it. Pandaria 5.4.8 and AzerothCore have 0.
+- **Changed** (`sql/fixes/world/2026_11_21_01_stratholme_patchwork_horror.sql`): `dynamicflags` 0.
+- **Status:** not tested in game yet.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-20 (pet battles)
 
 ### Core: wild battle pets ignore their zone's level
