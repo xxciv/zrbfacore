@@ -15,7 +15,7 @@ to do to pick it up (rebuild, restart, run SQL).
   players) until the active one dies; then the next one steps up and engages the players in the
   instance. Also holds after a server restart (one active sentry is picked when they load). The
   spots are unchanged.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game 2026-11-21 (Four: "everything else worked").
 - **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
 
 ### DB: Supply Crates would not open
@@ -100,7 +100,7 @@ to do to pick it up (rebuild, restart, run SQL).
     - Stonespine's four spawns in pool 32900, one per server start.
     - The 26 pre-placed Mindless Undead removed, backed up in `zr_backup_strat_se_creature` and
       `zr_backup_strat_se_creature_addon`. Not tied to any quest.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game 2026-11-21 (Four: "everything else worked").
 - **Pick up:** swap in the new patch, rebuild, run the SQL, restart `worldserver`.
 
 ## 2026-11-21 (Stratholme, Main Gate)
