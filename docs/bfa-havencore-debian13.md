@@ -577,8 +577,8 @@ the Gorger appears once the nine abominations are dead, together with the Argent
 group in the square (Crusade Commander Korfax, the mounted crusaders and the second set of
 questgivers). The Black Guard Sentries and Lord Aurius Rivendare appear once Ramstein dies. The
 sentries come one at a time: the others hold their post, can't be attacked, and the next steps up
-when the last one dies. Ramstein's 30 Mindless Undead come in two waves of 15, 30 seconds apart
-(`boss_ramstein_the_gorger.cpp` too). The counts are saved with the instance.
+when the last one dies. Ramstein's death releases 15 Mindless Undead instead of 30
+(`boss_ramstein_the_gorger.cpp`). The counts are saved with the instance.
 
 `expansion-xp-gate.patch` stops experience at the old level caps until the character moves on to the
 next expansion. At 60 a character gets no more experience until they turn in a quest in Outland (or
