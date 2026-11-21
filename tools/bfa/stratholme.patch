@@ -70,7 +70,7 @@ index de738d4..1e613f3 100644
                  } else m_uiMindControl_Timer -= uiDiff;
              }
 diff --git a/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp b/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp
-index 2bcf51a..51991ec 100644
+index 2bcf51a..7db25c0 100644
 --- a/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp
 +++ b/src/server/scripts/EasternKingdoms/Stratholme/instance_stratholme.cpp
 @@ -24,12 +24,17 @@ EndScriptData */
@@ -91,7 +91,7 @@ index 2bcf51a..51991ec 100644
  #include "stratholme.h"
  
  enum Misc
-@@ -37,6 +42,13 @@ enum Misc
+@@ -37,6 +42,20 @@ enum Misc
      MAX_ENCOUNTER           = 6
  };
  
@@ -102,21 +102,82 @@ index 2bcf51a..51991ec 100644
 +// The Brotherhood of the Light questgivers that wait in Balnazzar's hall (the others stand at the entrance)
 +float const BalnazzarQuestgiverMinY    = -3364.41f;
 +
++// Slaughter Square (Service Entrance): the Argent Crusade copies there (questgivers and a group of mounted
++// crusaders) arrive once the abominations are dead; their copies at Elders' Square stay.
++inline bool IsInSlaughterSquare(WorldObject const* obj)
++{
++    return obj->GetPositionX() > 3990.0f && obj->GetPositionY() > -3480.0f;
++}
++
  enum InstanceEvents
  {
      EVENT_BARON_RUN         = 1,
-@@ -58,6 +70,72 @@ class instance_stratholme : public InstanceMapScript
+@@ -58,6 +77,162 @@ class instance_stratholme : public InstanceMapScript
  
                  for (uint8 i = 0; i < 5; ++i)
                      IsSilverHandDead[i] = false;
 +
 +                _wing = WING_UNKNOWN;
 +                _balnazzarDead = false;
++                _crystalsDestroyed = 0;
++                _abominationsKilled = 0;
 +            }
 +
 +            uint32 _wing;
 +            bool _balnazzarDead;
 +            GuidVector _balnazzarQuestgivers;
++
++            // Service Entrance: the scenario steps run in order (crystals, abominations, Ramstein, then the
++            // Black Guard Sentries and Rivendare), and a kill only counts while its step is active. The 8.x
++            // spawns have Ramstein, the sentries and Rivendare standing from the start, so they are hidden
++            // until their step comes up, and the Slaughter Square portcullises stay shut until the crystals
++            // are gone.
++            uint32 _crystalsDestroyed;
++            uint32 _abominationsKilled;
++            std::set<ObjectGuid::LowType> _abominationsKilledSpawns;
++            ObjectGuid _ramsteinGUID;
++            GuidVector _rivendareDomain;    // Black Guard Sentries and Lord Aurius Rivendare
++            GuidVector _argentVanguard;     // the Argent Crusade copies in Slaughter Square
++
++            bool IsSlaughterhouseCleared() const { return _abominationsKilled >= MAX_SLAUGHTERHOUSE_ABOMINATIONS; }
++
++            void SendScenarioEvent(uint32 eventId)
++            {
++                InstanceMap* map = instance->ToInstanceMap();
++                InstanceScenario* scenario = map ? map->GetInstanceScenario() : nullptr;
++                if (!scenario)
++                    return;
++
++                // once: the scenario's progress is shared by the whole group
++                Map::PlayerList const& players = instance->GetPlayers();
++                for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++                    if (Player* player = itr->GetSource())
++                    {
++                        scenario->SendScenarioEvent(player, eventId);
++                        return;
++                    }
++            }
++
++            // Hidden hostile units must not fight while nobody can see them
++            static void ShowUnit(Creature* creature, bool show)
++            {
++                creature->SetVisible(show);
++                creature->SetReactState(show ? REACT_AGGRESSIVE : REACT_PASSIVE);
++            }
++
++            static void ShowVanguard(Creature* creature, bool show)
++            {
++                if (creature->GetEntry() == NPC_ARGENT_CRUSADER_MOUNTED)
++                    ShowUnit(creature, show);
++                else
++                    ShowQuestgiver(creature, show);
++            }
++
++            void OpenSlaughterSquare()
++            {
++                HandleGameObject(portGauntletGUID, true);
++                HandleGameObject(portSlaugtherGUID, true);
++            }
 +
 +            // Map 329 has two scenarios: 636 (Main Gate, Balnazzar) and 637 (Service Entrance, Rivendare).
 +            // The `scenarios` table can only link one per map, so the instance picks it when the first
@@ -157,7 +218,43 @@ index 2bcf51a..51991ec 100644
 +
 +            void OnUnitDeath(Unit* unit) override
 +            {
-+                if (unit->GetEntry() != NPC_DREADLORD_BALNAZZAR || !unit->ToCreature() || _balnazzarDead)
++                Creature* creature = unit->ToCreature();
++                if (!creature)
++                    return;
++
++                switch (creature->GetEntry())
++                {
++                    case NPC_CRYSTAL:
++                        SendScenarioEvent(SCENARIO_EVENT_ASHARI_CRYSTAL);
++                        if (_crystalsDestroyed < MAX_ASHARI_CRYSTALS && ++_crystalsDestroyed == MAX_ASHARI_CRYSTALS)
++                            OpenSlaughterSquare();
++                        SaveToDB();
++                        return;
++                    case NPC_ABOM_BILE:
++                    case NPC_ABOM_VENOM:
++                        SendScenarioEvent(SCENARIO_EVENT_ABOMINATION);
++                        if (IsSlaughterhouseCleared() || !_abominationsKilledSpawns.insert(creature->GetSpawnId()).second)
++                            return;
++                        if (++_abominationsKilled == MAX_SLAUGHTERHOUSE_ABOMINATIONS)
++                        {
++                            if (Creature* ramstein = instance->GetCreature(_ramsteinGUID))
++                                ShowUnit(ramstein, true);
++                            for (ObjectGuid const& guid : _argentVanguard)
++                                if (Creature* vanguard = instance->GetCreature(guid))
++                                    ShowVanguard(vanguard, true);
++                        }
++                        SaveToDB();
++                        return;
++                    case NPC_RAMSTEIN:
++                        for (ObjectGuid const& guid : _rivendareDomain)
++                            if (Creature* guard = instance->GetCreature(guid))
++                                ShowUnit(guard, true);
++                        return;
++                    default:
++                        break;
++                }
++
++                if (creature->GetEntry() != NPC_DREADLORD_BALNAZZAR || _balnazzarDead)
 +                    return;
 +
 +                // Balnazzar is dead: the Brotherhood of the Light comes in to take the quests
@@ -178,7 +275,22 @@ index 2bcf51a..51991ec 100644
              }
  
              uint32 EncounterState[MAX_ENCOUNTER];
-@@ -127,6 +205,16 @@ class instance_stratholme : public InstanceMapScript
+@@ -83,11 +258,10 @@ class instance_stratholme : public InstanceMapScript
+ 
+             bool StartSlaugtherSquare()
+             {
+-                //change to DONE when crystals implemented
+-                if (EncounterState[1] == IN_PROGRESS && EncounterState[2] == IN_PROGRESS && EncounterState[3] == IN_PROGRESS)
++                // the Ash'ari Crystals open it now (see OnUnitDeath)
++                if (_crystalsDestroyed >= MAX_ASHARI_CRYSTALS)
+                 {
+-                    HandleGameObject(portGauntletGUID, true);
+-                    HandleGameObject(portSlaugtherGUID, true);
++                    OpenSlaughterSquare();
+                     return true;
+                 }
+ 
+@@ -127,6 +301,44 @@ class instance_stratholme : public InstanceMapScript
                      case NPC_ABOM_VENOM:
                          abomnationGUID.insert(creature->GetGUID());
                          break;
@@ -192,20 +304,63 @@ index 2bcf51a..51991ec 100644
 +                                ShowQuestgiver(creature, false);
 +                        }
 +                        break;
++                    case NPC_RAMSTEIN:
++                        _ramsteinGUID = creature->GetGUID();
++                        if (!IsSlaughterhouseCleared())
++                            ShowUnit(creature, false);
++                        break;
++                    case NPC_BLACK_GUARD:
++                    case NPC_LORD_AURIUS_RIVENDARE:
++                        // only the sentries standing before Rivendare's door, not the ones his event summons
++                        if (creature->GetSpawnId())
++                        {
++                            _rivendareDomain.push_back(creature->GetGUID());
++                            if (GetData(TYPE_RAMSTEIN) != DONE)
++                                ShowUnit(creature, false);
++                        }
++                        break;
++                    case NPC_ARGENT_CRUSADER_MOUNTED:
++                    case NPC_CRUSADE_COMMANDER_KORFAX:
++                    case NPC_CRUSADE_COMMANDER_ELIGOR_SE:
++                    case NPC_ARCHMAGE_ANGELA_DOSANTOS:
++                    case NPC_MASTER_CRAFTSMAN_WILHELM_SE:
++                    case NPC_PACKMASTER_STONEBRUISER_SE:
++                        if (IsInSlaughterSquare(creature) && creature->GetSpawnId())
++                        {
++                            _argentVanguard.push_back(creature->GetGUID());
++                            if (!IsSlaughterhouseCleared())
++                                ShowVanguard(creature, false);
++                        }
++                        break;
                  }
              }
  
-@@ -346,7 +434,8 @@ class instance_stratholme : public InstanceMapScript
+@@ -183,12 +395,12 @@ class instance_stratholme : public InstanceMapScript
+                         break;
+                     case GO_PORT_GAUNTLET:
+                         portGauntletGUID = go->GetGUID();
+-                        if (GetData(TYPE_BARONESS) == IN_PROGRESS && GetData(TYPE_NERUB) == IN_PROGRESS && GetData(TYPE_PALLID) == IN_PROGRESS)
++                        if (_crystalsDestroyed >= MAX_ASHARI_CRYSTALS)
+                             HandleGameObject(ObjectGuid::Empty, true, go);
+                         break;
+                     case GO_PORT_SLAUGTHER:
+                         portSlaugtherGUID = go->GetGUID();
+-                        if (GetData(TYPE_BARONESS) == IN_PROGRESS && GetData(TYPE_NERUB) == IN_PROGRESS && GetData(TYPE_PALLID) == IN_PROGRESS)
++                        if (_crystalsDestroyed >= MAX_ASHARI_CRYSTALS)
+                             HandleGameObject(ObjectGuid::Empty, true, go);
+                         break;
+                     case GO_PORT_ELDERS:
+@@ -346,7 +558,8 @@ class instance_stratholme : public InstanceMapScript
  
                  std::ostringstream saveStream;
                  saveStream << EncounterState[0] << ' ' << EncounterState[1] << ' ' << EncounterState[2] << ' '
 -                    << EncounterState[3] << ' ' << EncounterState[4] << ' ' << EncounterState[5];
 +                    << EncounterState[3] << ' ' << EncounterState[4] << ' ' << EncounterState[5] << ' '
-+                    << _wing << ' ' << uint32(_balnazzarDead);
++                    << _wing << ' ' << uint32(_balnazzarDead) << ' ' << _crystalsDestroyed << ' ' << _abominationsKilled;
  
                  OUT_SAVE_INST_DATA_COMPLETE;
                  return saveStream.str();
-@@ -366,6 +455,14 @@ class instance_stratholme : public InstanceMapScript
+@@ -366,6 +579,21 @@ class instance_stratholme : public InstanceMapScript
                  loadStream >> EncounterState[0] >> EncounterState[1] >> EncounterState[2] >> EncounterState[3]
                  >> EncounterState[4] >> EncounterState[5];
  
@@ -217,10 +372,17 @@ index 2bcf51a..51991ec 100644
 +                    _balnazzarDead = balnazzarDead != 0;
 +                }
 +
++                uint32 crystals = 0, abominations = 0;
++                if (loadStream >> crystals >> abominations)
++                {
++                    _crystalsDestroyed = std::min<uint32>(crystals, MAX_ASHARI_CRYSTALS);
++                    _abominationsKilled = std::min<uint32>(abominations, MAX_SLAUGHTERHOUSE_ABOMINATIONS);
++                }
++
                  // Do not reset 1, 2 and 3. they are not set to done, yet .
                  if (EncounterState[0] == IN_PROGRESS)
                      EncounterState[0] = NOT_STARTED;
-@@ -397,6 +494,8 @@ class instance_stratholme : public InstanceMapScript
+@@ -397,6 +625,8 @@ class instance_stratholme : public InstanceMapScript
                            return EncounterState[4];
                        case TYPE_BARON:
                            return EncounterState[5];
@@ -230,7 +392,7 @@ index 2bcf51a..51991ec 100644
                    return 0;
              }
 diff --git a/src/server/scripts/EasternKingdoms/Stratholme/stratholme.h b/src/server/scripts/EasternKingdoms/Stratholme/stratholme.h
-index 104d4c2..de5fd11 100644
+index 104d4c2..fb04067 100644
 --- a/src/server/scripts/EasternKingdoms/Stratholme/stratholme.h
 +++ b/src/server/scripts/EasternKingdoms/Stratholme/stratholme.h
 @@ -36,6 +36,7 @@ enum STRDataTypes
@@ -241,14 +403,32 @@ index 104d4c2..de5fd11 100644
  
      TYPE_SH_QUEST                       = 20,
      TYPE_SH_CATHELA                     = 21,
-@@ -56,6 +57,24 @@ enum STRCreatureIds
+@@ -56,6 +57,42 @@ enum STRCreatureIds
      NPC_ABOM_VENOM                      = 10417,
      NPC_BLACK_GUARD                     = 10394,
      NPC_YSIDA                           = 16031,
 +    NPC_DREADLORD_BALNAZZAR             = 10813, // boss_dathrohan_balnazzar.cpp has its own NPC_BALNAZZAR
 +    NPC_COMMANDER_ELIGOR                = 45200, // Crusade Commander Eligor Dawnbringer
 +    NPC_MASTER_CRAFTSMAN_WILHELM        = 45201,
-+    NPC_PACKMASTER_STONEBRUISER         = 45323
++    NPC_PACKMASTER_STONEBRUISER         = 45323,
++    NPC_THUZADIN_ACOLYTE                = 10399,
++    NPC_LORD_AURIUS_RIVENDARE           = 45412, // replaces Baron Rivendare 10440 since Cataclysm
++    // the Argent Crusade that takes over Slaughter Square once the abominations are dead
++    NPC_ARGENT_CRUSADER_MOUNTED         = 45456,
++    NPC_CRUSADE_COMMANDER_KORFAX        = 45206,
++    NPC_CRUSADE_COMMANDER_ELIGOR_SE     = 45329,
++    NPC_ARCHMAGE_ANGELA_DOSANTOS        = 45330,
++    NPC_MASTER_CRAFTSMAN_WILHELM_SE     = 45331,
++    NPC_PACKMASTER_STONEBRUISER_SE      = 45328
++};
++
++// Service Entrance scenario events (ScenarioStep 1150 and 1151)
++enum STRScenarioEvents
++{
++    SCENARIO_EVENT_ASHARI_CRYSTAL       = 5167, // x3
++    SCENARIO_EVENT_ABOMINATION          = 5211, // x9
++    MAX_ASHARI_CRYSTALS                 = 3,
++    MAX_SLAUGHTERHOUSE_ABOMINATIONS     = 9
 +};
 +
 +// Map 329 holds two dungeons since Cataclysm, each with its own scenario
