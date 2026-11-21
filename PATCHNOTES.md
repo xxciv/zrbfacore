@@ -23,7 +23,7 @@ to do to pick it up (rebuild, restart, run SQL).
     guard (the Slaughter Square group stays hidden until the abominations die).
   - `flags_extra` |= 0x400 for 10398, 10399, 10400, 10405, 10406, 10407, 10408, 10416, 10417, 10461,
     10463.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game 2026-11-21 (Four: "argent dawn faction is now fighting").
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### Core and DB: the Service Entrance scenario could not be finished
