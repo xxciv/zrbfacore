@@ -5,6 +5,20 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### Core and DB: one side's quest givers in Blackrock Depths
+
+- **Found** (Four, 2026-11-22, screenshots at the entrance): Morgan's Militia (Alliance) and the
+  Kargath Expeditionary Force (Horde) stand on the same spots (Galamav the Marksman and Oralius at
+  487, 5), and the dump let every race take both chains, so an Alliance player saw a "!" over the
+  Horde givers too.
+- **Changed:**
+  - `tools/bfa/blackrock-depths.patch`: the first player to enter decides the side; the other side's
+    quest givers (Horde 45815-45840, Alliance 45888-45903) are hidden and lose gossip and quests.
+  - `sql/fixes/world/2026_11_22_01_blackrock_depths_faction_quests.sql`: the two chains get the race
+    masks of Pandaria 5.4.8 and Adventurers Wanted (27565-27578 Alliance, 27579-27593 Horde).
+- **Status:** untested.
+- **Pick up:** swap in the new patch, rebuild, run the SQL, restart `worldserver`.
+
 ### Core and DB: Detention Block survey fixes
 
 - **Found** (survey, 2026-11-22):

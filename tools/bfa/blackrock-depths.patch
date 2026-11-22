@@ -1,5 +1,5 @@
 diff --git a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp
-index 1968bc9..cf46aed 100644
+index 1968bc9..955296f 100644
 --- a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp
 +++ b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp
 @@ -17,11 +17,18 @@
@@ -21,15 +21,15 @@ index 1968bc9..cf46aed 100644
  #include "ScriptedCreature.h"
  
  #define TIMER_TOMBOFTHESEVEN    15000
-@@ -40,7 +47,31 @@ enum Creatures
+@@ -40,9 +47,59 @@ enum Creatures
      NPC_DOOMREL             = 9039,
      NPC_MAGMUS              = 9938,
      NPC_MOIRA               = 8929,
 -    NPC_COREN               = 23872
 +    NPC_COREN               = 23872,
 +    NPC_WATCHMAN_DOOMGRIP   = 9476
-+};
-+
+ };
+ 
 +// zrbfacore: map 230 has three scenarios, one per Dungeon Finder wing plus the whole dungeon. The
 +// `scenarios` table can only link one per map, so the instance picks it when the first player enters.
 +enum BRDScenarios
@@ -51,10 +51,38 @@ index 1968bc9..cf46aed 100644
 +    WING_DETENTION_BLOCK                = 1,
 +    WING_UPPER_CITY                     = 2,
 +    WING_WHOLE_DUNGEON                  = 3
- };
- 
++};
++
++// zrbfacore: the Kargath Expeditionary Force (Horde) and Morgan's Militia (Alliance) quest givers stand on the
++// same spots; only the entering player's side is shown.
++inline bool IsHordeQuestgiver(uint32 entry)
++{
++    switch (entry)
++    {
++        case 45815: case 45817: case 45818: case 45820: case 45821:
++        case 45823: case 45824: case 45839: case 45840:
++            return true;
++        default:
++            return false;
++    }
++}
++
++inline bool IsAllianceQuestgiver(uint32 entry)
++{
++    switch (entry)
++    {
++        case 45888: case 45890: case 45891: case 45892:
++        case 45894: case 45898: case 45899: case 45903:
++            return true;
++        default:
++            return false;
++    }
++}
++
  enum GameObjects
-@@ -65,7 +96,9 @@ enum GameObjects
+ {
+     GO_ARENA1               = 161525,
+@@ -65,7 +122,9 @@ enum GameObjects
      GO_GOLEM_ROOM_S         = 170574, // Magmus door Soutsh
      GO_THRONE_ROOM          = 170575, // Throne door
      GO_SPECTRAL_CHALICE     = 164869,
@@ -65,14 +93,30 @@ index 1968bc9..cf46aed 100644
  };
  
  class instance_blackrock_depths : public InstanceMapScript
-@@ -89,6 +122,113 @@ public:
+@@ -89,6 +148,137 @@ public:
              GhostKillCount = 0;
              TombTimer = TIMER_TOMBOFTHESEVEN;
              TombEventCounter = 0;
 +            _wing = WING_NONE;
++            _team = 0;
 +        }
 +
 +        uint32 _wing;
++        uint32 _team;               // ALLIANCE or HORDE, from the first player to enter
++        GuidVector _factionQuestgivers;
++
++        void UpdateFactionQuestgiver(Creature* creature)
++        {
++            if (!_team)
++                return;
++
++            bool show = _team == HORDE ? IsHordeQuestgiver(creature->GetEntry()) : IsAllianceQuestgiver(creature->GetEntry());
++            creature->SetVisible(show);
++            if (show)
++                creature->AddNpcFlag(NPCFlags(creature->GetCreatureTemplate()->npcflag));
++            else
++                creature->RemoveNpcFlag(NPCFlags(UNIT_NPC_FLAG_GOSSIP | UNIT_NPC_FLAG_QUESTGIVER));
++        }
 +        ObjectGuid GoSecretDoorGUID;
 +        ObjectGuid GoSecretSafeGUID;
 +
@@ -102,6 +146,14 @@ index 1968bc9..cf46aed 100644
 +
 +        void OnPlayerEnter(Player* player) override
 +        {
++            if (!_team)
++            {
++                _team = player->GetTeam();
++                for (ObjectGuid const& guid : _factionQuestgivers)
++                    if (Creature* questgiver = instance->GetCreature(guid))
++                        UpdateFactionQuestgiver(questgiver);
++            }
++
 +            InstanceMap* map = instance->ToInstanceMap();
 +            if (!map || map->GetInstanceScenario())
 +                return;
@@ -179,7 +231,21 @@ index 1968bc9..cf46aed 100644
          }
  
          uint32 encounter[MAX_ENCOUNTER];
-@@ -183,6 +323,15 @@ public:
+@@ -131,6 +321,13 @@ public:
+ 
+         void OnCreatureCreate(Creature* creature) override
+         {
++            if (IsHordeQuestgiver(creature->GetEntry()) || IsAllianceQuestgiver(creature->GetEntry()))
++            {
++                _factionQuestgivers.push_back(creature->GetGUID());
++                UpdateFactionQuestgiver(creature);
++                return;
++            }
++
+             switch (creature->GetEntry())
+             {
+             case NPC_EMPEROR: EmperorGUID = creature->GetGUID(); break;
+@@ -183,6 +380,15 @@ public:
              case GO_THRONE_ROOM: GoThroneGUID = go->GetGUID(); break;
              case GO_CHEST_SEVEN: GoChestGUID = go->GetGUID(); break;
              case GO_SPECTRAL_CHALICE: GoSpectralChaliceGUID = go->GetGUID(); break;
@@ -195,7 +261,7 @@ index 1968bc9..cf46aed 100644
              }
          }
  
-@@ -209,6 +358,8 @@ public:
+@@ -209,6 +415,8 @@ public:
              switch (type)
              {
              case TYPE_RING_OF_LAW:
@@ -204,7 +270,7 @@ index 1968bc9..cf46aed 100644
                  encounter[0] = data;
                  break;
              case TYPE_VAULT:
-@@ -238,11 +389,7 @@ public:
+@@ -238,11 +446,7 @@ public:
              {
                  OUT_SAVE_INST_DATA;
  
@@ -217,7 +283,7 @@ index 1968bc9..cf46aed 100644
  
                  SaveToDB();
                  OUT_SAVE_INST_DATA_COMPLETE;
-@@ -336,6 +483,8 @@ public:
+@@ -336,6 +540,8 @@ public:
              std::istringstream loadStream(in);
              loadStream >> encounter[0] >> encounter[1] >> encounter[2] >> encounter[3]
              >> encounter[4] >> encounter[5] >> GhostKillCount;
@@ -226,7 +292,7 @@ index 1968bc9..cf46aed 100644
  
              for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
                  if (encounter[i] == IN_PROGRESS)
-@@ -345,6 +494,8 @@ public:
+@@ -345,6 +551,8 @@ public:
              if (GhostKillCount >= 7)
                  GhostKillCount = 7;
  

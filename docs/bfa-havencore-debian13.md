@@ -614,6 +614,8 @@ dungeon (none for Coren Direbrew). The Ring of Law sends "Complete the Ring of L
 Grimstone's event ends, and the Detention Block's Dungeon Finder run ends with its scenario's main
 step (Lord Incendius and Fineous Darkvire) instead of at High Interrogator Gerstahn, the first boss
 on the way in. Watchman Doomgrip's death opens the Black Vault's Secret Safe (Heart of the Mountain).
+Only the entering player's side of the quest givers is shown (Morgan's Militia or the Kargath
+Expeditionary Force stand on the same spots).
 It only touches `instance_blackrock_depths.cpp` and needs `stratholme.patch` (the scenario helper in
 `ScenarioMgr`).
 
@@ -1255,6 +1257,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_21_08_stratholme_trapped_crates.sql` | Stratholme: the vermin Supply Crates open again (the trap sitting on each, which a rogue clicked and tried to disarm, is gone; opening a crate lets out its bugs, maggots, rats or plague mist as in AzerothCore; backup `zr_backup_strat_crate_traps`) |
 | `2026_11_21_09_zulfarrak.sql` | Zul'Farrak: 81 pyramid trolls standing before the event removed (sniffed event summons; backup `zr_backup_zf_pyramid_creature`), Sergeant Bly's crew back in their cages, Zerillis pooled to one spawn (needs `zulfarrak.patch`) |
 | `2026_11_22_00_blackrock_depths_detention.sql` | Blackrock Depths, Detention Block: scenario row removed (the patch picks one per wing), Dungeon Finder no longer ends at Gerstahn, Ring of Law event statics (Grimstone and 18 beasts) and 48 creatures stacked on the same spot removed (backup `zr_backup_brd_creature`), Warbringer Constructs peaceful scenery, Black Vault coffers open with their keys, two Horde quest givers no longer hostile to the Alliance (needs `blackrock-depths.patch`) |
+| `2026_11_22_01_blackrock_depths_faction_quests.sql` | Blackrock Depths: the Alliance and Horde quest chains are limited to their own races, as in Pandaria 5.4.8 (the patch hides the other side's givers) |
 | `2026_11_14_70_guild_vendor_locks.sql` | Guild vendors: all 12 sell the BFA guild reward list (Dalaran and Shattrath sell both factions' items) and lock each item like the guild Rewards tab: guild reputation rank + guild achievements + faction. Removes the dead 'Guild Level' locks (needs `guild-progression.patch`; backups `zr_guild_vendor_backup_npc_vendor` / `zr_guild_vendor_backup_conditions`) |
 | `2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` | 854 old-world NPCs that only meleed get their SmartAI scripts from TDB 7.3.5 (casts, gossip and quest events); Ghostclaw Lynx Rake verified in game 2026-11-12 |
 | `2026_11_12_31_tdb735_patrols.sql` | 733 open-world NPCs that stood still walk their TDB 7.3.5 patrol paths, 8 followers in formation (Orgrimmar Grunts verified in game 2026-11-12) |
