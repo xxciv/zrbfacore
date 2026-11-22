@@ -5,6 +5,18 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### DB: Panzor the Invincible spawned twice
+
+- **Found** (Four, 2026-11-22: "You didn't catch the Panzor the Invincible double spawn"): the rare 8923 has two
+  spawns 56 yards apart, 327502 and 49007. Pandaria 5.4.8 spawns 49007 only 12% of the time (pool 181, with a
+  Molten War Golem); this database has no pools on map 230, so both were always up. The overspawn check only
+  looked at packs within 5 yards and exact stacks, so two copies of one rare far apart slipped through.
+- **Changed** (`sql/fixes/world/2026_11_22_04_blackrock_depths_panzor.sql`): 49007 removed (backup
+  `zr_backup_brd_creature`), 327502 stays. Checked every rare and named boss on map 230 for a second spawn:
+  none other.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### DB: Upper City once-over (Lyceum braziers, Throne Room doors, Burning Spirits)
 
 - **Found** (Four, 2026-11-22: "the Lyceum event didn't work last night"; survey against Pandaria 5.4.8 and
