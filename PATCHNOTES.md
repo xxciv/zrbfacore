@@ -5,6 +5,20 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### DB: Grim Guzzler light show and patron factions
+
+- **Found** (Four, 2026-11-22, screenshot): a purple light over the Grim Guzzler, and patrons mixed
+  between hostile and neutral. The L70ETC concert in the bar (band 23619/23623-23626, FX controller
+  23830 casting Lightning Cloud 42500, Earthquake 42499 and fireworks, drums 28206) was linked to
+  events 34 and 71 (drums 70): old TrinityCore ids that are "Brew of the Month October" and "WoW's
+  10th Anniversary" here, so it plays Nov 17-24. Guzzling Patron 9547 and Hammered Patron 9554 had
+  faction 54 (hostile); Grim Patron 9545 has the bar's 674 (Pandaria 5.4.8: 674 for all three).
+- **Changed** (`sql/fixes/world/2026_11_22_02_blackrock_depths_grim_guzzler.sql`): the seven concert
+  spawns in map 230 are on Brewfest (event 24) only; 9547 and 9554 faction 674. The Shattrath copies
+  (map 530) are unchanged.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### Core: General Angerforge's call for help cut down for a solo player
 
 - **Found** (Four, 2026-11-22: "He hits too hard to have anyone come help him"): at 20% health
