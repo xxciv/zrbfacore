@@ -616,7 +616,8 @@ step (Lord Incendius and Fineous Darkvire) instead of at High Interrogator Gerst
 on the way in. Watchman Doomgrip's death opens the Black Vault's Secret Safe (Heart of the Mountain).
 Only the entering player's side of the quest givers is shown (Morgan's Militia or the Kargath
 Expeditionary Force stand on the same spots).
-High Justice Grimstone no longer attacks during his Ring of Law intro. It touches
+High Justice Grimstone no longer attacks during the Ring of Law, and its fighters come out of
+their gates for the player. It touches
 `instance_blackrock_depths.cpp` and `blackrock_depths.cpp`, and needs `stratholme.patch` (the scenario
 helper in `ScenarioMgr`).
 

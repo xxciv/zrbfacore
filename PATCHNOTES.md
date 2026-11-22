@@ -5,12 +5,15 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
-### Core: High Justice Grimstone attacked during the Ring of Law intro
+### Core: High Justice Grimstone attacked during the Ring of Law; fighters stayed in their gates
 
-- **Found** (Four, 2026-11-22): Grimstone (10096, faction 54) hit the player during his intro while he
-  could not be attacked back (`npc_grimstone` only made him not attackable).
+- **Found** (Four, 2026-11-22): Grimstone (10096, faction 54) hit the player during his intro, and
+  again while invisible after the champion died, while he could not be attacked back
+  (`npc_grimstone` only made him not attackable). The beasts and the champion stood in their gates
+  until pulled (`/// @todo move them to center` in `SummonRingMob` / `SummonRingBoss`).
 - **Changed** (`tools/bfa/blackrock-depths.patch`, `blackrock_depths.cpp`): Grimstone is passive and
-  immune to players on reset.
+  immune to players on reset; each summoned beast and champion attacks the nearest player within 80
+  yards (else walks to the middle of the ring, 596.8, -188.5).
 - **Status:** untested.
 - **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
 
