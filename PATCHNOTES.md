@@ -5,6 +5,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### DB: Eranikus' Shade removed from Blackrock Depths (purple band suspect)
+
+- **Found** (Four, 2026-11-22): a purple glow band with black smoke hangs at one height around the Grim Guzzler
+  and its bridge. It goes away with the client's Projected Textures setting off, stays put when the player flies
+  up, is not outside Blackrock Mountain, and no aura on the player draws it (`.list auras`). Every gameobject on
+  the map stands where Pandaria 5.4.8 has one. The only creatures this database adds near the bar and bridge
+  are two Eranikus' Shades (51366, display 7804) at 843,-216 and 999,-228: unselectable, immune, no script,
+  quest or gossip, and absent from Pandaria and AzerothCore.
+- **Changed** (`sql/fixes/world/2026_11_22_08_blackrock_depths_eranikus_shade.sql`): both removed (backup
+  `zr_backup_brd_creature`). The two in Blackrock Spire and one in Stormwind stay for now.
+- **Status:** untested in game; a suspect, not a confirmed cause.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### DB: Grim Guzzler lower floor seated; concert light rig only at Brewfest
 
 - **Found** (Four, 2026-11-22: "the top floor of the grim guzzler is better, there are still a few strays
