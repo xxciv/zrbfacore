@@ -31,7 +31,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`sql/fixes/world/2026_11_22_03_blackrock_depths_upper_city.sql`): braziers and Throne Room
   doors start closed/unlit (state 1, as in Pandaria and AzerothCore; Magmus's death opens the doors); the
   seven Burning Spirits removed (backup `zr_backup_brd_creature`).
-- **Status:** Lyceum confirmed in game (Four, 2026-11-22 Upper City run: "lyceum check"); throne doors and Burning Spirits not reported on.
+- **Status:** confirmed in game (Four, 2026-11-22 Upper City run: "lyceum check", "flamelash fight was good"); the Emperor was reached through Magmus.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### Core: Emperor Dagran Thaurissan no longer stunlocks a solo player
