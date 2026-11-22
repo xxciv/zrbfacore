@@ -14,7 +14,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`sql/fixes/world/2026_11_22_04_blackrock_depths_panzor.sql`): 49007 removed (backup
   `zr_backup_brd_creature`), 327502 stays. Checked every rare and named boss on map 230 for a second spawn:
   none other.
-- **Status:** untested.
+- **Status:** confirmed in game (Four, 2026-11-22: "panzor appeared once").
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### DB: Upper City once-over (Lyceum braziers, Throne Room doors, Burning Spirits)
