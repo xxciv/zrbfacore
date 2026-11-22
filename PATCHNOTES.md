@@ -5,6 +5,21 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### DB: Grim Guzzler lower floor seated; concert light rig only at Brewfest
+
+- **Found** (Four, 2026-11-22: "the top floor of the grim guzzler is better, there are still a few strays
+  standing inside tables, etc. the bottom floor is still pretty bad", with a video of the purple light pulsing
+  about every second and a half on a different client with the camera still): the first seating pass only took
+  patrons within 3 yards of a chair, and the lower floor's patrons stood as a crowd in front of the concert stage,
+  up to 14 yards from the tables. The L70ETC Music Doodad (186312, guid 188711, the concert stage rig) was
+  spawned with no event, unlike the band that `2026_11_22_02` put on Brewfest.
+- **Changed** (`sql/fixes/world/2026_11_22_07_blackrock_depths_bar_seats_light.sql`): 19 more patrons take the
+  nearest free chair on their own floor; 64 of 69 sit (4 stand at the upper bar counter, 1 on the stairs). The
+  music rig moves to Brewfest (event 24).
+- **Status:** untested in game. The rig is the best lead for the pulsing purple, not a confirmed cause: if the
+  purple still pulses after this, it is not the rig.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### DB: Grim Guzzler patrons sit and drink; Hurley Blackbreath waits for the kegs
 
 - **Found** (Four, 2026-11-22: "tons of patrons just huddled up standing around. no one is sitting or
