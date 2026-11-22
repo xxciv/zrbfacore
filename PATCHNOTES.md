@@ -31,7 +31,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`sql/fixes/world/2026_11_22_03_blackrock_depths_upper_city.sql`): braziers and Throne Room
   doors start closed/unlit (state 1, as in Pandaria and AzerothCore; Magmus's death opens the doors); the
   seven Burning Spirits removed (backup `zr_backup_brd_creature`).
-- **Status:** untested.
+- **Status:** Lyceum confirmed in game (Four, 2026-11-22 Upper City run: "lyceum check"); throne doors and Burning Spirits not reported on.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### Core: Emperor Dagran Thaurissan no longer stunlocks a solo player
@@ -43,7 +43,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`tools/bfa/blackrock-depths.patch`): Hand of Thaurissan repeats every 12 to 18
   seconds (first cast still at 4 seconds), leaving 7 to 13 seconds between stuns. Avatar of Flame
   is unchanged.
-- **Status:** untested; compiles.
+- **Status:** confirmed in game (Four, 2026-11-22: "emperor fight check").
 - **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
 
 ### Core: unknown zone where there is no .map file
@@ -86,7 +86,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`tools/bfa/blackrock-depths.patch`): one call for help of 2 Reservists (not elite),
   no Medics, no repeats. Four asked for 1 Medic and 2 Reservists if they are not elite, else none;
   the Medics are elite, so they are out.
-- **Status:** untested.
+- **Status:** confirmed in game (Four, 2026-11-22: "That was doable, but close").
 - **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
 
 ### Core: High Justice Grimstone attacked during the Ring of Law; fighters stayed in their gates
@@ -112,7 +112,7 @@ to do to pick it up (rebuild, restart, run SQL).
     quest givers (Horde 45815-45840, Alliance 45888-45903) are hidden and lose gossip and quests.
   - `sql/fixes/world/2026_11_22_01_blackrock_depths_faction_quests.sql`: the two chains get the race
     masks of Pandaria 5.4.8 and Adventurers Wanted (27565-27578 Alliance, 27579-27593 Horde).
-- **Status:** untested.
+- **Status:** confirmed in game (Four, 2026-11-22 Upper City run: "phasing check").
 - **Pick up:** swap in the new patch, rebuild, run the SQL, restart `worldserver`.
 
 ### Core and DB: Detention Block survey fixes
