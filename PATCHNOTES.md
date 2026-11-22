@@ -3,6 +3,158 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-22 (Blackrock Depths, Detention Block)
+
+### DB: Panzor the Invincible spawned twice
+
+- **Found** (Four, 2026-11-22: "You didn't catch the Panzor the Invincible double spawn"): the rare 8923 has two
+  spawns 56 yards apart, 327502 and 49007. Pandaria 5.4.8 spawns 49007 only 12% of the time (pool 181, with a
+  Molten War Golem); this database has no pools on map 230, so both were always up. The overspawn check only
+  looked at packs within 5 yards and exact stacks, so two copies of one rare far apart slipped through.
+- **Changed** (`sql/fixes/world/2026_11_22_04_blackrock_depths_panzor.sql`): 49007 removed (backup
+  `zr_backup_brd_creature`), 327502 stays. Checked every rare and named boss on map 230 for a second spawn:
+  none other.
+- **Status:** confirmed in game (Four, 2026-11-22: "panzor appeared once").
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Upper City once-over (Lyceum braziers, Throne Room doors, Burning Spirits)
+
+- **Found** (Four, 2026-11-22: "the Lyceum event didn't work last night"; survey against Pandaria 5.4.8 and
+  AzerothCore): the Lyceum's two Shadowforge Braziers (174744, 174745) spawned lit (state 0). Lighting them
+  with the Shadowforge Torch (lock 799 needs item 11885, 100% from Shadowforge Flame Keepers 9956) is what
+  opens the Golem Room doors to Magmus (`go_shadowforge_brazier`). The Throne Room doors (170575) spawned
+  open, so the Emperor could be reached before Magmus. Seven static Burning Spirits (9178) stood around
+  Ambassador Flamelash's room: they are his fight summons, caught by the sniff (Pandaria and AzerothCore
+  have none). The Lyceum's 250 Anvilrage Reservists match AzerothCore's 213 for the room and Pandaria's
+  spawns, so they stay. Scenario 670 (Flamelash, Doom'rel for the Seven, Magmus, the Emperor) and the
+  Dungeon Finder end at the Emperor (encounter 245, dungeon 276) look right.
+- **Changed** (`sql/fixes/world/2026_11_22_03_blackrock_depths_upper_city.sql`): braziers and Throne Room
+  doors start closed/unlit (state 1, as in Pandaria and AzerothCore; Magmus's death opens the doors); the
+  seven Burning Spirits removed (backup `zr_backup_brd_creature`).
+- **Status:** confirmed in game (Four, 2026-11-22 Upper City run: "lyceum check", "flamelash fight was good"); the Emperor was reached through Magmus.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### Core: Emperor Dagran Thaurissan no longer stunlocks a solo player
+
+- **Found** (Four, 2026-11-22: "Keeps casting Hand of Thaurissan which stuns you on repeat. Stunlocked
+  permanently."): Hand of Thaurissan 17492 stuns for 5 seconds (duration index 28) and
+  `boss_emperor_dagran_thaurissan.cpp` recast it every 5 seconds on a random target, so a solo
+  player never got out of it (Pandaria 5.4.8 has the same 5 second timer).
+- **Changed** (`tools/bfa/blackrock-depths.patch`): Hand of Thaurissan repeats every 12 to 18
+  seconds (first cast still at 4 seconds), leaving 7 to 13 seconds between stuns. Avatar of Flame
+  is unchanged.
+- **Status:** confirmed in game (Four, 2026-11-22: "emperor fight check").
+- **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
+
+### Core: unknown zone where there is no .map file
+
+- **Found** (Four, 2026-11-22, `.gps` in the Grim Guzzler): `Zone: 3075883456 ( <unknown> ) Area:
+  3075883456`, "Have height data (Map: 0 VMap: 1 MMap: 1)". `Map::GetFullTerrainStatusForPosition`
+  ran its whole area, floor and liquid lookup inside `if (GridMap* gmap = GetGrid(...))`, so where
+  there is no `.map` file (Blackrock Depths is a WMO-only map) it filled in nothing and every move
+  copied leftover memory into the zone, area, floor and liquid state.
+- **Changed** (`tools/bfa/terrain-status-no-gridmap.patch`, new, after `blackrock-depths.patch`):
+  the lookup runs without a grid map too, with the grid height treated as missing, as upstream does:
+  the WMO area from the vmap, else the map's own area (1584 for Blackrock Depths).
+- **Status:** confirmed in game (Four, 2026-11-22: `.gps` at the Upper City start reads `Zone: 1584 (Blackrock Depths)`). Not the cause of the Grim Guzzler's purple light: the client's
+  `Light.db2` has no light for map 230 at all (Four's files), so that colour comes from the client's
+  own Blackrock Depths model, not from anything the server sends (inferred).
+- **Pick up:** apply the patch, rebuild, restart `worldserver`.
+
+### DB: Grim Guzzler concert and patron factions
+
+- **Found** (Four, 2026-11-22, screenshot): a purple light over the Grim Guzzler, and patrons mixed
+  between hostile and neutral. The L70ETC concert in the bar (band 23619/23623-23626, FX controller
+  23830 casting Lightning Cloud 42500, Earthquake 42499 and fireworks, drums 28206) is linked to
+  events 34 and 71 (drums 70): old TrinityCore ids that are "Brew of the Month October" and "WoW's
+  10th Anniversary" here. Those events ended in 2020, 2014 and 2013 (`end_time`), so the concert
+  is not spawned today and is not the purple light (Four, after the SQL: "the purple fog is still
+  very much there"). Guzzling Patron 9547 and Hammered Patron 9554 had faction 54 (hostile); Grim
+  Patron 9545 has the bar's 674 (Pandaria 5.4.8: 674 for all three).
+- **Changed** (`sql/fixes/world/2026_11_22_02_blackrock_depths_grim_guzzler.sql`): the seven concert
+  spawns in map 230 are on Brewfest (event 24) only, so they play during Brewfest instead of never;
+  9547 and 9554 faction 674. The Shattrath copies (map 530) are unchanged.
+- **Status:** patrons confirmed neutral in game (Four's screenshot, 2026-11-22). The purple light is
+  still open: no light override, weather, area trigger or aura in the world DB touches the bar.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### Core: General Angerforge's call for help cut down for a solo player
+
+- **Found** (Four, 2026-11-22: "He hits too hard to have anyone come help him"): at 20% health
+  General Angerforge 9033 summons 2 Anvilrage Medics 8894 (elite) and 3 Anvilrage Reservists 8901,
+  then 3 more Reservists every 25 seconds (`boss_general_angerforge.cpp`).
+- **Changed** (`tools/bfa/blackrock-depths.patch`): one call for help of 2 Reservists (not elite),
+  no Medics, no repeats. Four asked for 1 Medic and 2 Reservists if they are not elite, else none;
+  the Medics are elite, so they are out.
+- **Status:** confirmed in game (Four, 2026-11-22: "That was doable, but close").
+- **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
+
+### Core: High Justice Grimstone attacked during the Ring of Law; fighters stayed in their gates
+
+- **Found** (Four, 2026-11-22): Grimstone (10096, faction 54) hit the player during his intro, and
+  again while invisible after the champion died, while he could not be attacked back
+  (`npc_grimstone` only made him not attackable). The beasts and the champion stood in their gates
+  until pulled (`/// @todo move them to center` in `SummonRingMob` / `SummonRingBoss`).
+- **Changed** (`tools/bfa/blackrock-depths.patch`, `blackrock_depths.cpp`): Grimstone is passive and
+  immune to players on reset; each summoned beast and champion attacks the nearest player within 80
+  yards (else walks to the middle of the ring, 596.8, -188.5).
+- **Status:** untested.
+- **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
+
+### Core and DB: one side's quest givers in Blackrock Depths
+
+- **Found** (Four, 2026-11-22, screenshots at the entrance): Morgan's Militia (Alliance) and the
+  Kargath Expeditionary Force (Horde) stand on the same spots (Galamav the Marksman and Oralius at
+  487, 5), and the dump let every race take both chains, so an Alliance player saw a "!" over the
+  Horde givers too.
+- **Changed:**
+  - `tools/bfa/blackrock-depths.patch`: the first player to enter decides the side; the other side's
+    quest givers (Horde 45815-45840, Alliance 45888-45903) are hidden and lose gossip and quests.
+  - `sql/fixes/world/2026_11_22_01_blackrock_depths_faction_quests.sql`: the two chains get the race
+    masks of Pandaria 5.4.8 and Adventurers Wanted (27565-27578 Alliance, 27579-27593 Horde).
+- **Status:** confirmed in game (Four, 2026-11-22 Upper City run: "phasing check").
+- **Pick up:** swap in the new patch, rebuild, run the SQL, restart `worldserver`.
+
+### Core and DB: Detention Block survey fixes
+
+- **Found** (survey, 2026-11-22):
+  - Map 230 has three scenarios: 669 Detention Block (Dungeon Finder 30: Lord Incendius and Fineous
+    Darkvire, bonus Ring of Law, High Interrogator Gerstahn and Bael'Gar), 670 Upper City (276) and
+    671 the whole dungeon. The `scenarios` row linked 671 to every run.
+  - The Ring of Law step waits for scenario event 23203, which nothing sent.
+  - The Dungeon Finder ended the Detention Block at Gerstahn (instance encounter 227), the first boss
+    on the way in, while the scenario ends with Incendius and Fineous.
+  - High Justice Grimstone stood in the Ring of Law from the start, and the Ring of Law trigger summons
+    a second one, so the event would run twice. 18 of the event's beasts and champions (6 Burrowing
+    Thundersnouts, 4 Deep Stingers, 6 Cave Creepers, Eviscerator, Ok'thor the Breaker) stood in the
+    arena and its pens. AzerothCore has none of these.
+  - Overspawn check: 48 spawn points had two creatures on exactly the same spot (a random-entry spawn
+    point sniffed twice), for example the Guardsman and Warden pairs at the Detention Block door.
+    Everything else matches Pandaria 5.4.8 (same spawns).
+  - Warbringer Construct 8905: the 8.x template made all ten untargetable but left them hostile.
+  - Black Vault: the Relic Coffer Doors stood open but the coffers stayed unclickable; nothing opened
+    the Secret Safe (Heart of the Mountain) or its door.
+  - Thunderheart and Warlord Goretooth (Horde quest givers, Upper City) were hostile to the Alliance
+    (faction 83).
+  - Quests checked: Into the Prison, Twilight?! No! (Gerstahn), The Sealed Gate (Bael'Gar), The Heart
+    of the Mountain (Black Vault safe), Infiltrating Shadowforge City and the two Adventurers Wanted;
+    their givers, targets and drops are in place. Class quests from the cities (The Dark Iron Army for
+    rogues uses Grain Rations 207165, 26 spawns) are in place but untested.
+- **Changed:**
+  - New `tools/bfa/blackrock-depths.patch` (after `zulfarrak.patch`), `instance_blackrock_depths.cpp`:
+    picks scenario 669, 670 or 671 when the first player enters (saved with the instance); sends 23203
+    when the Ring of Law is done; finishes the Detention Block run when tree 37231 (Incendius and
+    Fineous) completes; Watchman Doomgrip's death opens the Secret Door 174553 and makes the Secret Safe
+    161495 clickable. Also fixes the save data being empty after a reload.
+  - `sql/fixes/world/2026_11_22_00_blackrock_depths_detention.sql`: `scenarios` row for map 230
+    removed; encounter 227 no longer ends dungeon 30; Grimstone 322257, the 18 ring statics and one of
+    each of the 48 stacked pairs removed (backup `zr_backup_brd_creature`, 67 rows); 8905 gets
+    IMMUNE_TO_PC and IMMUNE_TO_NPC (768); the 12 Relic Coffer Doors closed, and each door (and the Dark
+    Coffer door 174565) makes its coffer clickable when opened (AzerothCore scripts); 45824 and 45840
+    faction 35.
+- **Status:** untested.
+- **Pick up:** apply the patch, rebuild, run the SQL, restart `worldserver`.
+
 ## 2026-11-21 (Zul'Farrak)
 
 ### Core and DB: Zul'Farrak survey fixes

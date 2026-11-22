@@ -1,0 +1,400 @@
+diff --git a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/blackrock_depths.cpp b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/blackrock_depths.cpp
+index 24717ad..e40733b 100644
+--- a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/blackrock_depths.cpp
++++ b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/blackrock_depths.cpp
+@@ -21,6 +21,7 @@
+ #include "GameObject.h"
+ #include "InstanceScript.h"
+ #include "Log.h"
++#include "MotionMaster.h"
+ #include "ObjectAccessor.h"
+ #include "Player.h"
+ #include "ScriptedEscortAI.h"
+@@ -169,13 +170,28 @@ public:
+             Initialize();
+ 
+             me->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
++            // zrbfacore: he is only the announcer; hostile (faction 54) he attacked players who could not hit back
++            me->AddUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
++            me->SetReactState(REACT_PASSIVE);
++        }
++
++        // zrbfacore: the fighters stood in their gate; they now go for the player in the ring
++        // (else walk to the middle of the ring)
++        void EnterRing(Creature* fighter)
++        {
++            if (Player* player = fighter->SelectNearestPlayer(80.0f))
++                fighter->AI()->AttackStart(player);
++            else
++                fighter->GetMotionMaster()->MovePoint(0, 596.8f, -188.5f, -54.1f);
+         }
+ 
+-        /// @todo move them to center
+         void SummonRingMob()
+         {
+             if (Creature* tmp = me->SummonCreature(RingMob[MobSpawnId], 608.960f, -235.322f, -53.907f, 1.857f, TEMPSUMMON_DEAD_DESPAWN, 0))
++            {
+                 RingMobGUID[MobCount] = tmp->GetGUID();
++                EnterRing(tmp);
++            }
+ 
+             ++MobCount;
+ 
+@@ -183,11 +199,13 @@ public:
+                 MobDeath_Timer = 2500;
+         }
+ 
+-        /// @todo move them to center
+         void SummonRingBoss()
+         {
+             if (Creature* tmp = me->SummonCreature(RingBoss[rand32() % 6], 644.300f, -175.989f, -53.739f, 3.418f, TEMPSUMMON_DEAD_DESPAWN, 0))
++            {
+                 RingBossGUID = tmp->GetGUID();
++                EnterRing(tmp);
++            }
+ 
+             MobDeath_Timer = 2500;
+         }
+diff --git a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_emperor_dagran_thaurissan.cpp b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_emperor_dagran_thaurissan.cpp
+index 26ca0eb..711d5f0 100644
+--- a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_emperor_dagran_thaurissan.cpp
++++ b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_emperor_dagran_thaurissan.cpp
+@@ -93,7 +93,9 @@ class boss_emperor_dagran_thaurissan : public CreatureScript
+                         case EVENT_HANDOFTHAURISSAN:
+                             if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
+                                 DoCast(target, SPELL_HANDOFTHAURISSAN);
+-                            _events.ScheduleEvent(EVENT_HANDOFTHAURISSAN, 5000);
++                            // zr: the stun lasts 5 seconds, so a 5 second repeat stunlocked a solo player;
++                            // leave 7 to 13 seconds free between stuns
++                            _events.ScheduleEvent(EVENT_HANDOFTHAURISSAN, urand(12000, 18000));
+                             break;
+                         case EVENT_AVATAROFFLAME:
+                             DoCastVictim(SPELL_AVATAROFFLAME);
+diff --git a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_general_angerforge.cpp b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_general_angerforge.cpp
+index 0e1a756..3a5f800 100644
+--- a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_general_angerforge.cpp
++++ b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_general_angerforge.cpp
+@@ -67,7 +67,8 @@ class boss_general_angerforge : public CreatureScript
+                 if (me->HealthBelowPctDamaged(20, damage) && _events.IsInPhase(PHASE_ONE))
+                 {
+                     _events.SetPhase(PHASE_TWO);
+-                    _events.ScheduleEvent(EVENT_MEDIC, 0, 0, PHASE_TWO);
++                    // zrbfacore: one call for help for a solo player: two Anvilrage Reservists (not elite),
++                    // no elite Anvilrage Medics and no new Reservists every 25 seconds
+                     _events.ScheduleEvent(EVENT_ADDS, 0, 0, PHASE_TWO);
+                 }
+             }
+@@ -112,9 +113,8 @@ class boss_general_angerforge : public CreatureScript
+                                 SummonMedic(me->GetVictim());
+                             break;
+                         case EVENT_ADDS:
+-                            for (uint8 i = 0; i < 3; ++i)
++                            for (uint8 i = 0; i < 2; ++i)
+                                 SummonAdd(me->GetVictim());
+-                            _events.ScheduleEvent(EVENT_ADDS, 25000, 0, PHASE_TWO);
+                             break;
+                         default:
+                             break;
+diff --git a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp
+index 1968bc9..955296f 100644
+--- a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp
++++ b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp
+@@ -17,11 +17,18 @@
+ 
+ #include "ScriptMgr.h"
+ #include "blackrock_depths.h"
++#include "CriteriaHandler.h"
++#include "DB2Stores.h"
+ #include "GameObject.h"
++#include "Group.h"
++#include "InstanceScenario.h"
+ #include "InstanceScript.h"
++#include "LFGMgr.h"
+ #include "Log.h"
+ #include "Map.h"
+ #include "MotionMaster.h"
++#include "Player.h"
++#include "ScenarioMgr.h"
+ #include "ScriptedCreature.h"
+ 
+ #define TIMER_TOMBOFTHESEVEN    15000
+@@ -40,9 +47,59 @@ enum Creatures
+     NPC_DOOMREL             = 9039,
+     NPC_MAGMUS              = 9938,
+     NPC_MOIRA               = 8929,
+-    NPC_COREN               = 23872
++    NPC_COREN               = 23872,
++    NPC_WATCHMAN_DOOMGRIP   = 9476
+ };
+ 
++// zrbfacore: map 230 has three scenarios, one per Dungeon Finder wing plus the whole dungeon. The
++// `scenarios` table can only link one per map, so the instance picks it when the first player enters.
++enum BRDScenarios
++{
++    LFG_DUNGEON_DETENTION_BLOCK         = 30,
++    LFG_DUNGEON_UPPER_CITY              = 276,
++
++    SCENARIO_DETENTION_BLOCK            = 669,
++    SCENARIO_UPPER_CITY                 = 670,
++    SCENARIO_WHOLE_DUNGEON              = 671,
++
++    // Detention Block main step: Lord Incendius and Fineous Darkvire (criteria tree of scenario step 1216)
++    CRITERIA_TREE_DETENTION_BLOCK_BOSSES = 37231,
++
++    // "Complete the Ring of Law" (criteria type 92, scenarios 669 and 671)
++    SCENARIO_EVENT_RING_OF_LAW          = 23203,
++
++    WING_NONE                           = 0,
++    WING_DETENTION_BLOCK                = 1,
++    WING_UPPER_CITY                     = 2,
++    WING_WHOLE_DUNGEON                  = 3
++};
++
++// zrbfacore: the Kargath Expeditionary Force (Horde) and Morgan's Militia (Alliance) quest givers stand on the
++// same spots; only the entering player's side is shown.
++inline bool IsHordeQuestgiver(uint32 entry)
++{
++    switch (entry)
++    {
++        case 45815: case 45817: case 45818: case 45820: case 45821:
++        case 45823: case 45824: case 45839: case 45840:
++            return true;
++        default:
++            return false;
++    }
++}
++
++inline bool IsAllianceQuestgiver(uint32 entry)
++{
++    switch (entry)
++    {
++        case 45888: case 45890: case 45891: case 45892:
++        case 45894: case 45898: case 45899: case 45903:
++            return true;
++        default:
++            return false;
++    }
++}
++
+ enum GameObjects
+ {
+     GO_ARENA1               = 161525,
+@@ -65,7 +122,9 @@ enum GameObjects
+     GO_GOLEM_ROOM_S         = 170574, // Magmus door Soutsh
+     GO_THRONE_ROOM          = 170575, // Throne door
+     GO_SPECTRAL_CHALICE     = 164869,
+-    GO_CHEST_SEVEN          = 169243
++    GO_CHEST_SEVEN          = 169243,
++    GO_SECRET_DOOR          = 174553, // Black Vault safe door, opens when Watchman Doomgrip dies
++    GO_SECRET_SAFE          = 161495
+ };
+ 
+ class instance_blackrock_depths : public InstanceMapScript
+@@ -89,6 +148,137 @@ public:
+             GhostKillCount = 0;
+             TombTimer = TIMER_TOMBOFTHESEVEN;
+             TombEventCounter = 0;
++            _wing = WING_NONE;
++            _team = 0;
++        }
++
++        uint32 _wing;
++        uint32 _team;               // ALLIANCE or HORDE, from the first player to enter
++        GuidVector _factionQuestgivers;
++
++        void UpdateFactionQuestgiver(Creature* creature)
++        {
++            if (!_team)
++                return;
++
++            bool show = _team == HORDE ? IsHordeQuestgiver(creature->GetEntry()) : IsAllianceQuestgiver(creature->GetEntry());
++            creature->SetVisible(show);
++            if (show)
++                creature->AddNpcFlag(NPCFlags(creature->GetCreatureTemplate()->npcflag));
++            else
++                creature->RemoveNpcFlag(NPCFlags(UNIT_NPC_FLAG_GOSSIP | UNIT_NPC_FLAG_QUESTGIVER));
++        }
++        ObjectGuid GoSecretDoorGUID;
++        ObjectGuid GoSecretSafeGUID;
++
++        void BuildSaveData()
++        {
++            std::ostringstream saveStream;
++            saveStream << encounter[0] << ' ' << encounter[1] << ' ' << encounter[2] << ' '
++                << encounter[3] << ' ' << encounter[4] << ' ' << encounter[5] << ' ' << GhostKillCount << ' ' << _wing;
++            str_data = saveStream.str();
++        }
++
++        void SendScenarioEvent(uint32 eventId)
++        {
++            InstanceScenario* scenario = instance->ToInstanceMap() ? instance->ToInstanceMap()->GetInstanceScenario() : nullptr;
++            if (!scenario)
++                return;
++
++            // once: the scenario's progress is shared by the whole group
++            Map::PlayerList const& players = instance->GetPlayers();
++            for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++                if (Player* player = itr->GetSource())
++                {
++                    scenario->SendScenarioEvent(player, eventId);
++                    return;
++                }
++        }
++
++        void OnPlayerEnter(Player* player) override
++        {
++            if (!_team)
++            {
++                _team = player->GetTeam();
++                for (ObjectGuid const& guid : _factionQuestgivers)
++                    if (Creature* questgiver = instance->GetCreature(guid))
++                        UpdateFactionQuestgiver(questgiver);
++            }
++
++            InstanceMap* map = instance->ToInstanceMap();
++            if (!map || map->GetInstanceScenario())
++                return;
++
++            if (_wing == WING_NONE)
++            {
++                _wing = WING_WHOLE_DUNGEON;
++                if (Group* group = player->GetGroup())
++                {
++                    if (group->isLFGGroup())
++                    {
++                        switch (sLFGMgr->GetDungeon(group->GetGUID()))
++                        {
++                            case LFG_DUNGEON_DETENTION_BLOCK: _wing = WING_DETENTION_BLOCK; break;
++                            case LFG_DUNGEON_UPPER_CITY:      _wing = WING_UPPER_CITY; break;
++                            default:                          _wing = WING_NONE; break; // Coren Direbrew and other events: no scenario
++                        }
++                    }
++                }
++
++                TC_LOG_DEBUG("scripts", "Instance Blackrock Depths: instance %u wing %u.", instance->GetInstanceId(), _wing);
++                if (_wing == WING_NONE)
++                    return;
++
++                BuildSaveData();
++                SaveToDB();
++            }
++
++            uint32 scenarioId = _wing == WING_DETENTION_BLOCK ? SCENARIO_DETENTION_BLOCK
++                : _wing == WING_UPPER_CITY ? SCENARIO_UPPER_CITY : SCENARIO_WHOLE_DUNGEON;
++            if (InstanceScenario* scenario = sScenarioMgr->CreateInstanceScenarioForMap(instance, scenarioId))
++                map->SetInstanceScenario(scenario);
++        }
++
++        // The Detention Block is done when its scenario main step is (Lord Incendius and Fineous Darkvire).
++        // instance_encounters used to end it at High Interrogator Gerstahn, the first boss on the way in.
++        void OnCompletedCriteriaTree(CriteriaTree const* tree) override
++        {
++            if (tree->ID != CRITERIA_TREE_DETENTION_BLOCK_BOSSES)
++                return;
++
++            Map::PlayerList const& players = instance->GetPlayers();
++            for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++                if (Player* player = itr->GetSource())
++                    if (Group* group = player->GetGroup())
++                        if (group->isLFGGroup())
++                        {
++                            sLFGMgr->FinishDungeon(group->GetGUID(), LFG_DUNGEON_DETENTION_BLOCK, instance);
++                            return;
++                        }
++        }
++
++        // The Black Vault: Watchman Doomgrip guards the Secret Safe (Heart of the Mountain); it opens when he dies.
++        void UpdateBlackVault(bool open)
++        {
++            if (GameObject* door = instance->GetGameObject(GoSecretDoorGUID))
++                door->SetGoState(open ? GO_STATE_ACTIVE : GO_STATE_READY);
++            if (GameObject* safe = instance->GetGameObject(GoSecretSafeGUID))
++            {
++                if (open)
++                    safe->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
++                else
++                    safe->AddFlag(GO_FLAG_NOT_SELECTABLE);
++            }
++        }
++
++        void OnUnitDeath(Unit* unit) override
++        {
++            Creature* creature = unit->ToCreature();
++            if (!creature || creature->GetEntry() != NPC_WATCHMAN_DOOMGRIP)
++                return;
++
++            UpdateBlackVault(true);
++            SetData(TYPE_VAULT, DONE);
+         }
+ 
+         uint32 encounter[MAX_ENCOUNTER];
+@@ -131,6 +321,13 @@ public:
+ 
+         void OnCreatureCreate(Creature* creature) override
+         {
++            if (IsHordeQuestgiver(creature->GetEntry()) || IsAllianceQuestgiver(creature->GetEntry()))
++            {
++                _factionQuestgivers.push_back(creature->GetGUID());
++                UpdateFactionQuestgiver(creature);
++                return;
++            }
++
+             switch (creature->GetEntry())
+             {
+             case NPC_EMPEROR: EmperorGUID = creature->GetGUID(); break;
+@@ -183,6 +380,15 @@ public:
+             case GO_THRONE_ROOM: GoThroneGUID = go->GetGUID(); break;
+             case GO_CHEST_SEVEN: GoChestGUID = go->GetGUID(); break;
+             case GO_SPECTRAL_CHALICE: GoSpectralChaliceGUID = go->GetGUID(); break;
++            case GO_SECRET_DOOR:
++                GoSecretDoorGUID = go->GetGUID();
++                go->SetGoState(encounter[1] == DONE ? GO_STATE_ACTIVE : GO_STATE_READY);
++                break;
++            case GO_SECRET_SAFE:
++                GoSecretSafeGUID = go->GetGUID();
++                if (encounter[1] == DONE)
++                    go->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
++                break;
+             }
+         }
+ 
+@@ -209,6 +415,8 @@ public:
+             switch (type)
+             {
+             case TYPE_RING_OF_LAW:
++                if (data == DONE && encounter[0] != DONE)
++                    SendScenarioEvent(SCENARIO_EVENT_RING_OF_LAW);
+                 encounter[0] = data;
+                 break;
+             case TYPE_VAULT:
+@@ -238,11 +446,7 @@ public:
+             {
+                 OUT_SAVE_INST_DATA;
+ 
+-                std::ostringstream saveStream;
+-                saveStream << encounter[0] << ' ' << encounter[1] << ' ' << encounter[2] << ' '
+-                    << encounter[3] << ' ' << encounter[4] << ' ' << encounter[5] << ' ' << GhostKillCount;
+-
+-                str_data = saveStream.str();
++                BuildSaveData();
+ 
+                 SaveToDB();
+                 OUT_SAVE_INST_DATA_COMPLETE;
+@@ -336,6 +540,8 @@ public:
+             std::istringstream loadStream(in);
+             loadStream >> encounter[0] >> encounter[1] >> encounter[2] >> encounter[3]
+             >> encounter[4] >> encounter[5] >> GhostKillCount;
++            if (!(loadStream >> _wing) || _wing > WING_WHOLE_DUNGEON)
++                _wing = WING_NONE;
+ 
+             for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
+                 if (encounter[i] == IN_PROGRESS)
+@@ -345,6 +551,8 @@ public:
+             if (GhostKillCount >= 7)
+                 GhostKillCount = 7;
+ 
++            BuildSaveData(); // GetSaveData() returned nothing after a reload until the next DONE
++
+             OUT_LOAD_INST_DATA_COMPLETE;
+         }
+ 
