@@ -5,6 +5,15 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### Core: High Justice Grimstone attacked during the Ring of Law intro
+
+- **Found** (Four, 2026-11-22): Grimstone (10096, faction 54) hit the player during his intro while he
+  could not be attacked back (`npc_grimstone` only made him not attackable).
+- **Changed** (`tools/bfa/blackrock-depths.patch`, `blackrock_depths.cpp`): Grimstone is passive and
+  immune to players on reset.
+- **Status:** untested.
+- **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
+
 ### Core and DB: one side's quest givers in Blackrock Depths
 
 - **Found** (Four, 2026-11-22, screenshots at the entrance): Morgan's Militia (Alliance) and the
