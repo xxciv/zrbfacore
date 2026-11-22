@@ -5,6 +5,25 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### DB: Grim Guzzler patrons doubled, and their imported formations
+
+- **Found** (Four, 2026-11-22: "I know the grim guzzler could use a look, there may be overspawns in other
+  areas like twilight npc's"; every creature on map 230 compared by spot with Pandaria 5.4.8 and
+  AzerothCore): the bar held 87 patrons (Grim 9545, Guzzling 9547, Hammered 9554) against 68 in each
+  reference. Every Pandaria spot is here plus 18 that sit exactly on AzerothCore spawns, and AzerothCore puts
+  most patrons a few yards from Pandaria's, so 18 patrons stood twice, 1 to 5 yards apart. Their
+  AzerothCore formations (64 rows, six leaders) came along by guid, but those guids are other creatures
+  here, so the groups mixed bar patrons with Northrend and Hellfire creatures. Nothing else on the map is
+  doubled: the Twilight's Hammer NPCs (Ambassador 15, Emissary 17, Torturer 14, Bodyguard 6) are at or under
+  Pandaria's counts and spots, and so are the Anvilrage groups, Flame Keepers, Arena Spectators and
+  Blazing Fireguards.
+- **Changed** (`sql/fixes/world/2026_11_22_05_blackrock_depths_bar_patrons.sql`): the 18 AzerothCore-only
+  patrons removed (backup `zr_backup_brd_creature`), leaving Grim 32, Guzzling 25, Hammered 12 (Pandaria 32,
+  24, 12); the 64 formation rows removed (backup `zr_backup_brd_creature_formations`). The patrons have no
+  quest, gossip or script of their own.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### DB: Panzor the Invincible spawned twice
 
 - **Found** (Four, 2026-11-22: "You didn't catch the Panzor the Invincible double spawn"): the rare 8923 has two
