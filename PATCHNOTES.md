@@ -5,6 +5,23 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### DB: Upper City once-over (Lyceum braziers, Throne Room doors, Burning Spirits)
+
+- **Found** (Four, 2026-11-22: "the Lyceum event didn't work last night"; survey against Pandaria 5.4.8 and
+  AzerothCore): the Lyceum's two Shadowforge Braziers (174744, 174745) spawned lit (state 0). Lighting them
+  with the Shadowforge Torch (lock 799 needs item 11885, 100% from Shadowforge Flame Keepers 9956) is what
+  opens the Golem Room doors to Magmus (`go_shadowforge_brazier`). The Throne Room doors (170575) spawned
+  open, so the Emperor could be reached before Magmus. Seven static Burning Spirits (9178) stood around
+  Ambassador Flamelash's room: they are his fight summons, caught by the sniff (Pandaria and AzerothCore
+  have none). The Lyceum's 250 Anvilrage Reservists match AzerothCore's 213 for the room and Pandaria's
+  spawns, so they stay. Scenario 670 (Flamelash, Doom'rel for the Seven, Magmus, the Emperor) and the
+  Dungeon Finder end at the Emperor (encounter 245, dungeon 276) look right.
+- **Changed** (`sql/fixes/world/2026_11_22_03_blackrock_depths_upper_city.sql`): braziers and Throne Room
+  doors start closed/unlit (state 1, as in Pandaria and AzerothCore; Magmus's death opens the doors); the
+  seven Burning Spirits removed (backup `zr_backup_brd_creature`).
+- **Status:** untested.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### Core: Emperor Dagran Thaurissan no longer stunlocks a solo player
 
 - **Found** (Four, 2026-11-22: "Keeps casting Hand of Thaurissan which stuns you on repeat. Stunlocked
