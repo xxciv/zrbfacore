@@ -16,8 +16,10 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`sql/fixes/world/2026_11_22_07_blackrock_depths_bar_seats_light.sql`): 19 more patrons take the
   nearest free chair on their own floor; 64 of 69 sit (4 stand at the upper bar counter, 1 on the stairs). The
   music rig moves to Brewfest (event 24).
-- **Status:** untested in game. The rig is the best lead for the pulsing purple, not a confirmed cause: if the
-  purple still pulses after this, it is not the rig.
+- **Status:** confirmed in game (Four, 2026-11-22: "all of the grim guzzlers patrons are seated drinking and
+  having the time of their life"; "it is no longer blinking like it was in and out"). A steady low purple fog
+  is still there; nothing server-side is left near the bar that could draw it (no auras, areatriggers, weather
+  or zone light override on map 230), so it comes from the client's art or lighting.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### DB: Grim Guzzler patrons sit and drink; Hurley Blackbreath waits for the kegs
@@ -36,7 +38,7 @@ to do to pick it up (rebuild, restart, run SQL).
   immune behind the bar at 878,-153; breaking the kegs (164911) behind the bar makes Hurley yell "Get away
   from those kegs!", and they walk over and fight (AzerothCore's script and the waypoints already in the
   table). Backups: `zr_backup_brd_creature_moved`, `zr_backup_brd_creature_addon`, `zr_backup_brd_smart_scripts`.
-- **Status:** untested in game.
+- **Status:** confirmed in game for the patrons (Four, 2026-11-22); the Hurley keg event is untested.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### DB: Grim Guzzler patrons doubled, and their imported formations
