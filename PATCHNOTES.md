@@ -56,7 +56,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`tools/bfa/terrain-status-no-gridmap.patch`, new, after `blackrock-depths.patch`):
   the lookup runs without a grid map too, with the grid height treated as missing, as upstream does:
   the WMO area from the vmap, else the map's own area (1584 for Blackrock Depths).
-- **Status:** untested; compiles. Not the cause of the Grim Guzzler's purple light: the client's
+- **Status:** confirmed in game (Four, 2026-11-22: `.gps` at the Upper City start reads `Zone: 1584 (Blackrock Depths)`). Not the cause of the Grim Guzzler's purple light: the client's
   `Light.db2` has no light for map 230 at all (Four's files), so that colour comes from the client's
   own Blackrock Depths model, not from anything the server sends (inferred).
 - **Pick up:** apply the patch, rebuild, restart `worldserver`.
