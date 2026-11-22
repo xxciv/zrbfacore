@@ -55,6 +55,31 @@ index 24717ad..e40733b 100644
  
              MobDeath_Timer = 2500;
          }
+diff --git a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_general_angerforge.cpp b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_general_angerforge.cpp
+index 0e1a756..3a5f800 100644
+--- a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_general_angerforge.cpp
++++ b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_general_angerforge.cpp
+@@ -67,7 +67,8 @@ class boss_general_angerforge : public CreatureScript
+                 if (me->HealthBelowPctDamaged(20, damage) && _events.IsInPhase(PHASE_ONE))
+                 {
+                     _events.SetPhase(PHASE_TWO);
+-                    _events.ScheduleEvent(EVENT_MEDIC, 0, 0, PHASE_TWO);
++                    // zrbfacore: one call for help for a solo player: two Anvilrage Reservists (not elite),
++                    // no elite Anvilrage Medics and no new Reservists every 25 seconds
+                     _events.ScheduleEvent(EVENT_ADDS, 0, 0, PHASE_TWO);
+                 }
+             }
+@@ -112,9 +113,8 @@ class boss_general_angerforge : public CreatureScript
+                                 SummonMedic(me->GetVictim());
+                             break;
+                         case EVENT_ADDS:
+-                            for (uint8 i = 0; i < 3; ++i)
++                            for (uint8 i = 0; i < 2; ++i)
+                                 SummonAdd(me->GetVictim());
+-                            _events.ScheduleEvent(EVENT_ADDS, 25000, 0, PHASE_TWO);
+                             break;
+                         default:
+                             break;
 diff --git a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp
 index 1968bc9..955296f 100644
 --- a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp

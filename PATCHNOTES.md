@@ -5,6 +5,17 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### Core: General Angerforge's call for help cut down for a solo player
+
+- **Found** (Four, 2026-11-22: "He hits too hard to have anyone come help him"): at 20% health
+  General Angerforge 9033 summons 2 Anvilrage Medics 8894 (elite) and 3 Anvilrage Reservists 8901,
+  then 3 more Reservists every 25 seconds (`boss_general_angerforge.cpp`).
+- **Changed** (`tools/bfa/blackrock-depths.patch`): one call for help of 2 Reservists (not elite),
+  no Medics, no repeats. Four asked for 1 Medic and 2 Reservists if they are not elite, else none;
+  the Medics are elite, so they are out.
+- **Status:** untested.
+- **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
+
 ### Core: High Justice Grimstone attacked during the Ring of Law; fighters stayed in their gates
 
 - **Found** (Four, 2026-11-22): Grimstone (10096, faction 54) hit the player during his intro, and

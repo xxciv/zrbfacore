@@ -617,8 +617,9 @@ on the way in. Watchman Doomgrip's death opens the Black Vault's Secret Safe (He
 Only the entering player's side of the quest givers is shown (Morgan's Militia or the Kargath
 Expeditionary Force stand on the same spots).
 High Justice Grimstone no longer attacks during the Ring of Law, and its fighters come out of
-their gates for the player. It touches
-`instance_blackrock_depths.cpp` and `blackrock_depths.cpp`, and needs `stratholme.patch` (the scenario
+their gates for the player. General Angerforge calls for help once (two Anvilrage
+Reservists) instead of two elite Medics and three Reservists every 25 seconds. It touches
+`instance_blackrock_depths.cpp`, `blackrock_depths.cpp` and `boss_general_angerforge.cpp`, and needs `stratholme.patch` (the scenario
 helper in `ScenarioMgr`).
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
