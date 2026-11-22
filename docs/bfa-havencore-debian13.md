@@ -156,6 +156,7 @@ git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
 git apply ../tools-repo/tools/bfa/stratholme.patch
 git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 git apply ../tools-repo/tools/bfa/pick-lock-level.patch
+git apply ../tools-repo/tools/bfa/zulfarrak.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -595,6 +596,15 @@ message when experience locks and when it unlocks. It only touches `Player.cpp/.
 120 plus 5 per level above the spell's level (265 at level 53), but `Spell::CanOpenLock` computed the
 spell's value without the caster, so the per-level part was skipped and every rogue stayed at 120: a
 Strong Iron Lockbox (125) failed with "Skill not high enough". It only touches `Spell.cpp`.
+
+`zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
+solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
+and "Nekrum Gutchewer defeated" (23315), which nothing sent; the instance now sends them when they
+die. Nekrum and Sezz'ziz are spawned in the world since 8.x, so the pyramid event no longer summons a
+second pair: the spawned pair stays hidden until the last wave and comes down the stairs with it, as
+in Pandaria 5.4.8. The first two waves summon every second troll of their list (12 instead of 23 or
+24; `PyramidWaveStep` in `instance_zulfarrak.cpp`). The spawned Gahz'rilla is no longer sent away
+when its grid reloads (only a second, summoned one is). It only touches `instance_zulfarrak.cpp`.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -1122,6 +1132,7 @@ git apply ../tools-repo/tools/bfa/wild-pet-zone-level.patch
 git apply ../tools-repo/tools/bfa/stratholme.patch
 git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 git apply ../tools-repo/tools/bfa/pick-lock-level.patch
+git apply ../tools-repo/tools/bfa/zulfarrak.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -1230,6 +1241,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_21_05_stratholme_service_entrance.sql` | Stratholme, Service Entrance: Ash'ari Crystals break when their five Thuzadin Acolytes die, Slaughter Square portcullises spawned, Dungeon Finder credit on Lord Aurius Rivendare, bosses and sentries staged against the crusaders, Stonespine pooled to one spawn, 26 pre-placed Mindless Undead removed (backup `zr_backup_strat_se_*`; needs `stratholme.patch`) |
 | `2026_11_21_06_stratholme_service_entrance_crusaders.sql` | Stratholme, Service Entrance: the mounted Argent Crusaders fight the Scourge next to them as a backdrop (faction 2115, start rows, defensive; staged battle flag on the rest of the wing's trash) |
 | `2026_11_21_08_stratholme_trapped_crates.sql` | Stratholme: the vermin Supply Crates open again (the trap sitting on each, which a rogue clicked and tried to disarm, is gone; opening a crate lets out its bugs, maggots, rats or plague mist as in AzerothCore; backup `zr_backup_strat_crate_traps`) |
+| `2026_11_21_09_zulfarrak.sql` | Zul'Farrak: 81 pyramid trolls standing before the event removed (sniffed event summons; backup `zr_backup_zf_pyramid_creature`), Sergeant Bly's crew back in their cages, Zerillis pooled to one spawn (needs `zulfarrak.patch`) |
 | `2026_11_14_70_guild_vendor_locks.sql` | Guild vendors: all 12 sell the BFA guild reward list (Dalaran and Shattrath sell both factions' items) and lock each item like the guild Rewards tab: guild reputation rank + guild achievements + faction. Removes the dead 'Guild Level' locks (needs `guild-progression.patch`; backups `zr_guild_vendor_backup_npc_vendor` / `zr_guild_vendor_backup_conditions`) |
 | `2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` | 854 old-world NPCs that only meleed get their SmartAI scripts from TDB 7.3.5 (casts, gossip and quest events); Ghostclaw Lynx Rake verified in game 2026-11-12 |
 | `2026_11_12_31_tdb735_patrols.sql` | 733 open-world NPCs that stood still walk their TDB 7.3.5 patrol paths, 8 followers in formation (Orgrimmar Grunts verified in game 2026-11-12) |

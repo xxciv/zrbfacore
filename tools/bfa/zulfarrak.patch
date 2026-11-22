@@ -1,0 +1,153 @@
+diff --git a/src/server/scripts/Kalimdor/ZulFarrak/instance_zulfarrak.cpp b/src/server/scripts/Kalimdor/ZulFarrak/instance_zulfarrak.cpp
+index 26df033..7fe54ce 100644
+--- a/src/server/scripts/Kalimdor/ZulFarrak/instance_zulfarrak.cpp
++++ b/src/server/scripts/Kalimdor/ZulFarrak/instance_zulfarrak.cpp
+@@ -19,8 +19,10 @@
+ 
+ #include "ScriptMgr.h"
+ #include "GameObject.h"
++#include "InstanceScenario.h"
+ #include "InstanceScript.h"
+ #include "Map.h"
++#include "Player.h"
+ #include "MotionMaster.h"
+ #include "TemporarySummon.h"
+ #include "zulfarrak.h"
+@@ -29,6 +31,13 @@ enum Misc
+ {
+     // Creatures
+     NPC_GAHZRILLA       = 7273,
++    NPC_SEZZIZ          = 7275,
++    NPC_NEKRUM          = 7796,
++
++    // Scenario 644 step 1164: "Shadowpriest Sezz'ziz defeated" and "Nekrum Gutchewer defeated" wait
++    // for these events, which nothing sent
++    SCENARIO_EVENT_NEKRUM_DEFEATED = 23315,
++    SCENARIO_EVENT_SEZZIZ_DEFEATED = 23316,
+ 
+     // Paths
+     PATH_ADDS           = 81553
+@@ -94,6 +103,11 @@ float pyramidSpawns [pyramidSpawnTotal][4] = {
+     {3, 7796, 1879.77f, 1207.96f}
+ };
+ 
++// zrbfacore: the waves are sized for five players; for each wave, only every Nth troll of the list
++// above is summoned (1 = all). Nekrum and Sezz'ziz are spawned in the world (8.x spawns), so their
++// wave 3 rows are skipped and the spawned pair joins wave 3 instead (as in Pandaria 5.4.8).
++uint32 const PyramidWaveStep[4] = { 1, 2, 2, 1 };
++
+ float Spawnsway[2][3] =
+ {
+     {1884.86f, 1228.62f, 9},
+@@ -131,6 +145,7 @@ public:
+         ObjectGuid RavenGUID;
+         ObjectGuid MurtaGUID;
+         ObjectGuid EndDoorGUID;
++        GuidVector PyramidBosses;           // Nekrum Gutchewer and Shadowpriest Sezz'ziz
+         uint32 PyramidPhase;
+         uint32 major_wave_Timer;
+         uint32 minor_wave_Timer;
+@@ -165,11 +180,66 @@ public:
+                     creature->SetReactState(REACT_PASSIVE);// starts out passive (in a cage)
+                     break;
+                 case NPC_GAHZRILLA:
++                    // the 8.x spawn stands in the pool (the gong has no script); only a second,
++                    // summoned Gahz'rilla is sent away
++                    if (creature->GetSpawnId())
++                        break;
+                     if (GahzRillaEncounter >= IN_PROGRESS)
+                         creature->DisappearAndDie();
+                     else
+                         GahzRillaEncounter = IN_PROGRESS;
+                     break;
++                case NPC_NEKRUM:
++                case NPC_SEZZIZ:
++                    // they come down with the last wave of the pyramid event
++                    if (!creature->GetSpawnId())
++                        break;
++                    PyramidBosses.push_back(creature->GetGUID());
++                    if (PyramidPhase < PYRAMID_WAVE_3)
++                        HidePyramidBoss(creature, true);
++                    break;
++            }
++        }
++
++        static void HidePyramidBoss(Creature* creature, bool hide)
++        {
++            creature->SetVisible(!hide);
++            creature->SetReactState(hide ? REACT_PASSIVE : REACT_AGGRESSIVE);
++            if (hide)
++                creature->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC));
++            else
++                creature->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC));
++        }
++
++        void SendScenarioEvent(uint32 eventId)
++        {
++            InstanceMap* map = instance->ToInstanceMap();
++            InstanceScenario* scenario = map ? map->GetInstanceScenario() : nullptr;
++            if (!scenario)
++                return;
++
++            // once: the scenario's progress is shared by the whole group
++            Map::PlayerList const& players = instance->GetPlayers();
++            for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++                if (Player* player = itr->GetSource())
++                {
++                    scenario->SendScenarioEvent(player, eventId);
++                    return;
++                }
++        }
++
++        void OnUnitDeath(Unit* unit) override
++        {
++            switch (unit->GetEntry())
++            {
++                case NPC_NEKRUM:
++                    SendScenarioEvent(SCENARIO_EVENT_NEKRUM_DEFEATED);
++                    break;
++                case NPC_SEZZIZ:
++                    SendScenarioEvent(SCENARIO_EVENT_SEZZIZ_DEFEATED);
++                    break;
++                default:
++                    break;
+             }
+         }
+ 
+@@ -327,10 +397,20 @@ public:
+ 
+         void SpawnPyramidWave(uint32 wave)
+         {
++            uint32 inWave = 0;
+             for (int i = 0; i < pyramidSpawnTotal; i++)
+             {
+                 if (pyramidSpawns[i][0] == (float)wave)
+                 {
++                    uint32 entry = uint32(pyramidSpawns[i][1]);
++                    if (entry == NPC_NEKRUM || entry == NPC_SEZZIZ)
++                    {
++                        if (!PyramidBosses.empty())
++                            continue;
++                    }
++                    else if (inWave++ % PyramidWaveStep[wave] != 0)
++                        continue;
++
+                     Position pos = {pyramidSpawns[i][2], pyramidSpawns[i][3], 8.87f, 0};
+                     if (TempSummon* ts = instance->SummonCreature(uint32(pyramidSpawns[i][1]), pos))
+                     {
+@@ -339,6 +419,15 @@ public:
+                     }
+                 }
+             }
++
++            if (wave == 3)
++                for (ObjectGuid const& guid : PyramidBosses)
++                    if (Creature* boss = instance->GetCreature(guid))
++                        if (boss->IsAlive())
++                        {
++                            HidePyramidBoss(boss, false);
++                            addsAtBase.push_back(guid);
++                        }
+         }
+ 
+         bool IsWaveAllDead()
