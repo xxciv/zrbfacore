@@ -90,6 +90,9 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/blackrock-depths.patch`](tools/bfa/blackrock-depths.patch): Blackrock Depths runs the
   scenario of the queued wing (Detention Block or Upper City), the Ring of Law counts, and the
   Detention Block ends with Lord Incendius and Fineous Darkvire.
+- [`tools/bfa/terrain-status-no-gridmap.patch`](tools/bfa/terrain-status-no-gridmap.patch): players
+  and creatures where the server has no `.map` file (WMO-only instances such as Blackrock Depths)
+  get a real zone and area instead of a garbage one.
 - [`tools/bfa/expansion-xp-gate.patch`](tools/bfa/expansion-xp-gate.patch): no experience at the
   old level caps (60, 70, 80, 85, 90, 100, 110) until the character turns in a quest in the next
   expansion; `ExpansionXpGate.Enable` in `worldserver.conf` turns it off.

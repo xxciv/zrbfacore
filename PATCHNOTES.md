@@ -5,6 +5,21 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### Core: unknown zone where there is no .map file
+
+- **Found** (Four, 2026-11-22, `.gps` in the Grim Guzzler): `Zone: 3075883456 ( <unknown> ) Area:
+  3075883456`, "Have height data (Map: 0 VMap: 1 MMap: 1)". `Map::GetFullTerrainStatusForPosition`
+  ran its whole area, floor and liquid lookup inside `if (GridMap* gmap = GetGrid(...))`, so where
+  there is no `.map` file (Blackrock Depths is a WMO-only map) it filled in nothing and every move
+  copied leftover memory into the zone, area, floor and liquid state.
+- **Changed** (`tools/bfa/terrain-status-no-gridmap.patch`, new, after `blackrock-depths.patch`):
+  the lookup runs without a grid map too, with the grid height treated as missing, as upstream does:
+  the WMO area from the vmap, else the map's own area (1584 for Blackrock Depths).
+- **Status:** untested; compiles. Not the cause of the Grim Guzzler's purple light: the client's
+  `Light.db2` has no light for map 230 at all (Four's files), so that colour comes from the client's
+  own Blackrock Depths model, not from anything the server sends (inferred).
+- **Pick up:** apply the patch, rebuild, restart `worldserver`.
+
 ### DB: Grim Guzzler concert and patron factions
 
 - **Found** (Four, 2026-11-22, screenshot): a purple light over the Grim Guzzler, and patrons mixed

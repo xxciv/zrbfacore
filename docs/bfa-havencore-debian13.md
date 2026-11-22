@@ -158,6 +158,7 @@ git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 git apply ../tools-repo/tools/bfa/pick-lock-level.patch
 git apply ../tools-repo/tools/bfa/zulfarrak.patch
 git apply ../tools-repo/tools/bfa/blackrock-depths.patch
+git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -621,6 +622,13 @@ their gates for the player. General Angerforge calls for help once (two Anvilrag
 Reservists) instead of two elite Medics and three Reservists every 25 seconds. It touches
 `instance_blackrock_depths.cpp`, `blackrock_depths.cpp` and `boss_general_angerforge.cpp`, and needs `stratholme.patch` (the scenario
 helper in `ScenarioMgr`).
+
+`terrain-status-no-gridmap.patch` fixes the zone and area of anything standing where the server has
+no `.map` file, which is all of a WMO-only instance such as Blackrock Depths. `Map::GetFullTerrainStatusForPosition`
+did the whole area, floor and liquid lookup inside `if (GridMap* gmap = ...)`, so without a grid
+map it filled in nothing and the zone was whatever was left in memory (`.gps` in the Grim Guzzler:
+`Zone: 3075883456 ( <unknown> )`). It now runs without one, like upstream: the WMO area from the
+vmap, else the map's own area (1584 for Blackrock Depths). It only touches `Map.cpp`.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -1150,6 +1158,7 @@ git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 git apply ../tools-repo/tools/bfa/pick-lock-level.patch
 git apply ../tools-repo/tools/bfa/zulfarrak.patch
 git apply ../tools-repo/tools/bfa/blackrock-depths.patch
+git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
