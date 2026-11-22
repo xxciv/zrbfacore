@@ -5,6 +5,18 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### Core: Emperor Dagran Thaurissan no longer stunlocks a solo player
+
+- **Found** (Four, 2026-11-22: "Keeps casting Hand of Thaurissan which stuns you on repeat. Stunlocked
+  permanently."): Hand of Thaurissan 17492 stuns for 5 seconds (duration index 28) and
+  `boss_emperor_dagran_thaurissan.cpp` recast it every 5 seconds on a random target, so a solo
+  player never got out of it (Pandaria 5.4.8 has the same 5 second timer).
+- **Changed** (`tools/bfa/blackrock-depths.patch`): Hand of Thaurissan repeats every 12 to 18
+  seconds (first cast still at 4 seconds), leaving 7 to 13 seconds between stuns. Avatar of Flame
+  is unchanged.
+- **Status:** untested; compiles.
+- **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
+
 ### Core: unknown zone where there is no .map file
 
 - **Found** (Four, 2026-11-22, `.gps` in the Grim Guzzler): `Zone: 3075883456 ( <unknown> ) Area:

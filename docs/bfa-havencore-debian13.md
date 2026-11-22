@@ -614,7 +614,7 @@ one per map, so the instance picks it when the first player enters: the queued w
 dungeon (none for Coren Direbrew). The Ring of Law sends "Complete the Ring of Law" (23203) when
 Grimstone's event ends, and the Detention Block's Dungeon Finder run ends with its scenario's main
 step (Lord Incendius and Fineous Darkvire) instead of at High Interrogator Gerstahn, the first boss
-on the way in. Watchman Doomgrip's death opens the Black Vault's Secret Safe (Heart of the Mountain).
+on the way in. Watchman Doomgrip's death opens the Black Vault's Secret Safe (Heart of the Mountain). Emperor Dagran Thaurissan recasts his 5 second Hand of Thaurissan stun every 12 to 18 seconds instead of every 5, so a solo player is not stunlocked.
 Only the entering player's side of the quest givers is shown (Morgan's Militia or the Kargath
 Expeditionary Force stand on the same spots).
 High Justice Grimstone no longer attacks during the Ring of Law, and its fighters come out of

@@ -55,6 +55,21 @@ index 24717ad..e40733b 100644
  
              MobDeath_Timer = 2500;
          }
+diff --git a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_emperor_dagran_thaurissan.cpp b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_emperor_dagran_thaurissan.cpp
+index 26ca0eb..711d5f0 100644
+--- a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_emperor_dagran_thaurissan.cpp
++++ b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_emperor_dagran_thaurissan.cpp
+@@ -93,7 +93,9 @@ class boss_emperor_dagran_thaurissan : public CreatureScript
+                         case EVENT_HANDOFTHAURISSAN:
+                             if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
+                                 DoCast(target, SPELL_HANDOFTHAURISSAN);
+-                            _events.ScheduleEvent(EVENT_HANDOFTHAURISSAN, 5000);
++                            // zr: the stun lasts 5 seconds, so a 5 second repeat stunlocked a solo player;
++                            // leave 7 to 13 seconds free between stuns
++                            _events.ScheduleEvent(EVENT_HANDOFTHAURISSAN, urand(12000, 18000));
+                             break;
+                         case EVENT_AVATAROFFLAME:
+                             DoCastVictim(SPELL_AVATAROFFLAME);
 diff --git a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_general_angerforge.cpp b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_general_angerforge.cpp
 index 0e1a756..3a5f800 100644
 --- a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/boss_general_angerforge.cpp
