@@ -38,7 +38,7 @@ to do to pick it up (rebuild, restart, run SQL).
     `zr_backup_zf_pyramid_creature`); Bly 326423, Raven 326425, Oro 326426, Murta 326427 and Weegli
     326424 moved into their cages (AzerothCore positions); cage 141071 (guid 189749) closed; Zerillis
     51510 and 327501 in pool 32901.
-- **Status:** not tested in game yet.
+- **Status:** confirmed in game 2026-11-21 (Four: "an absolutely clean run").
 - **Pick up:** apply the patch, rebuild, run the SQL, restart `worldserver`.
 
 ## 2026-11-21 (Stratholme, Service Entrance)
