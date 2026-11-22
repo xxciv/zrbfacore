@@ -157,6 +157,7 @@ git apply ../tools-repo/tools/bfa/stratholme.patch
 git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 git apply ../tools-repo/tools/bfa/pick-lock-level.patch
 git apply ../tools-repo/tools/bfa/zulfarrak.patch
+git apply ../tools-repo/tools/bfa/blackrock-depths.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -605,6 +606,16 @@ second pair: the spawned pair stays hidden until the last wave and comes down th
 in Pandaria 5.4.8. The first two waves summon every second troll of their list (12 instead of 23 or
 24; `PyramidWaveStep` in `instance_zulfarrak.cpp`). The spawned Gahz'rilla is no longer sent away
 when its grid reloads (only a second, summoned one is). It only touches `instance_zulfarrak.cpp`.
+
+`blackrock-depths.patch` gives Blackrock Depths a scenario per Dungeon Finder wing. Map 230 has three
+(669 Detention Block, 670 Upper City, 671 the whole dungeon) and the `scenarios` table can only link
+one per map, so the instance picks it when the first player enters: the queued wing, else the whole
+dungeon (none for Coren Direbrew). The Ring of Law sends "Complete the Ring of Law" (23203) when
+Grimstone's event ends, and the Detention Block's Dungeon Finder run ends with its scenario's main
+step (Lord Incendius and Fineous Darkvire) instead of at High Interrogator Gerstahn, the first boss
+on the way in. Watchman Doomgrip's death opens the Black Vault's Secret Safe (Heart of the Mountain).
+It only touches `instance_blackrock_depths.cpp` and needs `stratholme.patch` (the scenario helper in
+`ScenarioMgr`).
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -1133,6 +1144,7 @@ git apply ../tools-repo/tools/bfa/stratholme.patch
 git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 git apply ../tools-repo/tools/bfa/pick-lock-level.patch
 git apply ../tools-repo/tools/bfa/zulfarrak.patch
+git apply ../tools-repo/tools/bfa/blackrock-depths.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -1242,6 +1254,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_21_06_stratholme_service_entrance_crusaders.sql` | Stratholme, Service Entrance: the mounted Argent Crusaders fight the Scourge next to them as a backdrop (faction 2115, start rows, defensive; staged battle flag on the rest of the wing's trash) |
 | `2026_11_21_08_stratholme_trapped_crates.sql` | Stratholme: the vermin Supply Crates open again (the trap sitting on each, which a rogue clicked and tried to disarm, is gone; opening a crate lets out its bugs, maggots, rats or plague mist as in AzerothCore; backup `zr_backup_strat_crate_traps`) |
 | `2026_11_21_09_zulfarrak.sql` | Zul'Farrak: 81 pyramid trolls standing before the event removed (sniffed event summons; backup `zr_backup_zf_pyramid_creature`), Sergeant Bly's crew back in their cages, Zerillis pooled to one spawn (needs `zulfarrak.patch`) |
+| `2026_11_22_00_blackrock_depths_detention.sql` | Blackrock Depths, Detention Block: scenario row removed (the patch picks one per wing), Dungeon Finder no longer ends at Gerstahn, Ring of Law event statics (Grimstone and 18 beasts) and 48 creatures stacked on the same spot removed (backup `zr_backup_brd_creature`), Warbringer Constructs peaceful scenery, Black Vault coffers open with their keys, two Horde quest givers no longer hostile to the Alliance (needs `blackrock-depths.patch`) |
 | `2026_11_14_70_guild_vendor_locks.sql` | Guild vendors: all 12 sell the BFA guild reward list (Dalaran and Shattrath sell both factions' items) and lock each item like the guild Rewards tab: guild reputation rank + guild achievements + faction. Removes the dead 'Guild Level' locks (needs `guild-progression.patch`; backups `zr_guild_vendor_backup_npc_vendor` / `zr_guild_vendor_backup_conditions`) |
 | `2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` | 854 old-world NPCs that only meleed get their SmartAI scripts from TDB 7.3.5 (casts, gossip and quest events); Ghostclaw Lynx Rake verified in game 2026-11-12 |
 | `2026_11_12_31_tdb735_patrols.sql` | 733 open-world NPCs that stood still walk their TDB 7.3.5 patrol paths, 8 followers in formation (Orgrimmar Grunts verified in game 2026-11-12) |

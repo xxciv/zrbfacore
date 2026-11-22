@@ -3,6 +3,48 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-22 (Blackrock Depths, Detention Block)
+
+### Core and DB: Detention Block survey fixes
+
+- **Found** (survey, 2026-11-22):
+  - Map 230 has three scenarios: 669 Detention Block (Dungeon Finder 30: Lord Incendius and Fineous
+    Darkvire, bonus Ring of Law, High Interrogator Gerstahn and Bael'Gar), 670 Upper City (276) and
+    671 the whole dungeon. The `scenarios` row linked 671 to every run.
+  - The Ring of Law step waits for scenario event 23203, which nothing sent.
+  - The Dungeon Finder ended the Detention Block at Gerstahn (instance encounter 227), the first boss
+    on the way in, while the scenario ends with Incendius and Fineous.
+  - High Justice Grimstone stood in the Ring of Law from the start, and the Ring of Law trigger summons
+    a second one, so the event would run twice. 18 of the event's beasts and champions (6 Burrowing
+    Thundersnouts, 4 Deep Stingers, 6 Cave Creepers, Eviscerator, Ok'thor the Breaker) stood in the
+    arena and its pens. AzerothCore has none of these.
+  - Overspawn check: 48 spawn points had two creatures on exactly the same spot (a random-entry spawn
+    point sniffed twice), for example the Guardsman and Warden pairs at the Detention Block door.
+    Everything else matches Pandaria 5.4.8 (same spawns).
+  - Warbringer Construct 8905: the 8.x template made all ten untargetable but left them hostile.
+  - Black Vault: the Relic Coffer Doors stood open but the coffers stayed unclickable; nothing opened
+    the Secret Safe (Heart of the Mountain) or its door.
+  - Thunderheart and Warlord Goretooth (Horde quest givers, Upper City) were hostile to the Alliance
+    (faction 83).
+  - Quests checked: Into the Prison, Twilight?! No! (Gerstahn), The Sealed Gate (Bael'Gar), The Heart
+    of the Mountain (Black Vault safe), Infiltrating Shadowforge City and the two Adventurers Wanted;
+    their givers, targets and drops are in place. Class quests from the cities (The Dark Iron Army for
+    rogues uses Grain Rations 207165, 26 spawns) are in place but untested.
+- **Changed:**
+  - New `tools/bfa/blackrock-depths.patch` (after `zulfarrak.patch`), `instance_blackrock_depths.cpp`:
+    picks scenario 669, 670 or 671 when the first player enters (saved with the instance); sends 23203
+    when the Ring of Law is done; finishes the Detention Block run when tree 37231 (Incendius and
+    Fineous) completes; Watchman Doomgrip's death opens the Secret Door 174553 and makes the Secret Safe
+    161495 clickable. Also fixes the save data being empty after a reload.
+  - `sql/fixes/world/2026_11_22_00_blackrock_depths_detention.sql`: `scenarios` row for map 230
+    removed; encounter 227 no longer ends dungeon 30; Grimstone 322257, the 18 ring statics and one of
+    each of the 48 stacked pairs removed (backup `zr_backup_brd_creature`, 67 rows); 8905 gets
+    IMMUNE_TO_PC and IMMUNE_TO_NPC (768); the 12 Relic Coffer Doors closed, and each door (and the Dark
+    Coffer door 174565) makes its coffer clickable when opened (AzerothCore scripts); 45824 and 45840
+    faction 35.
+- **Status:** untested.
+- **Pick up:** apply the patch, rebuild, run the SQL, restart `worldserver`.
+
 ## 2026-11-21 (Zul'Farrak)
 
 ### Core and DB: Zul'Farrak survey fixes

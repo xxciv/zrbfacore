@@ -1,0 +1,237 @@
+diff --git a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp
+index 1968bc9..cf46aed 100644
+--- a/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp
++++ b/src/server/scripts/EasternKingdoms/BlackrockMountain/BlackrockDepths/instance_blackrock_depths.cpp
+@@ -17,11 +17,18 @@
+ 
+ #include "ScriptMgr.h"
+ #include "blackrock_depths.h"
++#include "CriteriaHandler.h"
++#include "DB2Stores.h"
+ #include "GameObject.h"
++#include "Group.h"
++#include "InstanceScenario.h"
+ #include "InstanceScript.h"
++#include "LFGMgr.h"
+ #include "Log.h"
+ #include "Map.h"
+ #include "MotionMaster.h"
++#include "Player.h"
++#include "ScenarioMgr.h"
+ #include "ScriptedCreature.h"
+ 
+ #define TIMER_TOMBOFTHESEVEN    15000
+@@ -40,7 +47,31 @@ enum Creatures
+     NPC_DOOMREL             = 9039,
+     NPC_MAGMUS              = 9938,
+     NPC_MOIRA               = 8929,
+-    NPC_COREN               = 23872
++    NPC_COREN               = 23872,
++    NPC_WATCHMAN_DOOMGRIP   = 9476
++};
++
++// zrbfacore: map 230 has three scenarios, one per Dungeon Finder wing plus the whole dungeon. The
++// `scenarios` table can only link one per map, so the instance picks it when the first player enters.
++enum BRDScenarios
++{
++    LFG_DUNGEON_DETENTION_BLOCK         = 30,
++    LFG_DUNGEON_UPPER_CITY              = 276,
++
++    SCENARIO_DETENTION_BLOCK            = 669,
++    SCENARIO_UPPER_CITY                 = 670,
++    SCENARIO_WHOLE_DUNGEON              = 671,
++
++    // Detention Block main step: Lord Incendius and Fineous Darkvire (criteria tree of scenario step 1216)
++    CRITERIA_TREE_DETENTION_BLOCK_BOSSES = 37231,
++
++    // "Complete the Ring of Law" (criteria type 92, scenarios 669 and 671)
++    SCENARIO_EVENT_RING_OF_LAW          = 23203,
++
++    WING_NONE                           = 0,
++    WING_DETENTION_BLOCK                = 1,
++    WING_UPPER_CITY                     = 2,
++    WING_WHOLE_DUNGEON                  = 3
+ };
+ 
+ enum GameObjects
+@@ -65,7 +96,9 @@ enum GameObjects
+     GO_GOLEM_ROOM_S         = 170574, // Magmus door Soutsh
+     GO_THRONE_ROOM          = 170575, // Throne door
+     GO_SPECTRAL_CHALICE     = 164869,
+-    GO_CHEST_SEVEN          = 169243
++    GO_CHEST_SEVEN          = 169243,
++    GO_SECRET_DOOR          = 174553, // Black Vault safe door, opens when Watchman Doomgrip dies
++    GO_SECRET_SAFE          = 161495
+ };
+ 
+ class instance_blackrock_depths : public InstanceMapScript
+@@ -89,6 +122,113 @@ public:
+             GhostKillCount = 0;
+             TombTimer = TIMER_TOMBOFTHESEVEN;
+             TombEventCounter = 0;
++            _wing = WING_NONE;
++        }
++
++        uint32 _wing;
++        ObjectGuid GoSecretDoorGUID;
++        ObjectGuid GoSecretSafeGUID;
++
++        void BuildSaveData()
++        {
++            std::ostringstream saveStream;
++            saveStream << encounter[0] << ' ' << encounter[1] << ' ' << encounter[2] << ' '
++                << encounter[3] << ' ' << encounter[4] << ' ' << encounter[5] << ' ' << GhostKillCount << ' ' << _wing;
++            str_data = saveStream.str();
++        }
++
++        void SendScenarioEvent(uint32 eventId)
++        {
++            InstanceScenario* scenario = instance->ToInstanceMap() ? instance->ToInstanceMap()->GetInstanceScenario() : nullptr;
++            if (!scenario)
++                return;
++
++            // once: the scenario's progress is shared by the whole group
++            Map::PlayerList const& players = instance->GetPlayers();
++            for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++                if (Player* player = itr->GetSource())
++                {
++                    scenario->SendScenarioEvent(player, eventId);
++                    return;
++                }
++        }
++
++        void OnPlayerEnter(Player* player) override
++        {
++            InstanceMap* map = instance->ToInstanceMap();
++            if (!map || map->GetInstanceScenario())
++                return;
++
++            if (_wing == WING_NONE)
++            {
++                _wing = WING_WHOLE_DUNGEON;
++                if (Group* group = player->GetGroup())
++                {
++                    if (group->isLFGGroup())
++                    {
++                        switch (sLFGMgr->GetDungeon(group->GetGUID()))
++                        {
++                            case LFG_DUNGEON_DETENTION_BLOCK: _wing = WING_DETENTION_BLOCK; break;
++                            case LFG_DUNGEON_UPPER_CITY:      _wing = WING_UPPER_CITY; break;
++                            default:                          _wing = WING_NONE; break; // Coren Direbrew and other events: no scenario
++                        }
++                    }
++                }
++
++                TC_LOG_DEBUG("scripts", "Instance Blackrock Depths: instance %u wing %u.", instance->GetInstanceId(), _wing);
++                if (_wing == WING_NONE)
++                    return;
++
++                BuildSaveData();
++                SaveToDB();
++            }
++
++            uint32 scenarioId = _wing == WING_DETENTION_BLOCK ? SCENARIO_DETENTION_BLOCK
++                : _wing == WING_UPPER_CITY ? SCENARIO_UPPER_CITY : SCENARIO_WHOLE_DUNGEON;
++            if (InstanceScenario* scenario = sScenarioMgr->CreateInstanceScenarioForMap(instance, scenarioId))
++                map->SetInstanceScenario(scenario);
++        }
++
++        // The Detention Block is done when its scenario main step is (Lord Incendius and Fineous Darkvire).
++        // instance_encounters used to end it at High Interrogator Gerstahn, the first boss on the way in.
++        void OnCompletedCriteriaTree(CriteriaTree const* tree) override
++        {
++            if (tree->ID != CRITERIA_TREE_DETENTION_BLOCK_BOSSES)
++                return;
++
++            Map::PlayerList const& players = instance->GetPlayers();
++            for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
++                if (Player* player = itr->GetSource())
++                    if (Group* group = player->GetGroup())
++                        if (group->isLFGGroup())
++                        {
++                            sLFGMgr->FinishDungeon(group->GetGUID(), LFG_DUNGEON_DETENTION_BLOCK, instance);
++                            return;
++                        }
++        }
++
++        // The Black Vault: Watchman Doomgrip guards the Secret Safe (Heart of the Mountain); it opens when he dies.
++        void UpdateBlackVault(bool open)
++        {
++            if (GameObject* door = instance->GetGameObject(GoSecretDoorGUID))
++                door->SetGoState(open ? GO_STATE_ACTIVE : GO_STATE_READY);
++            if (GameObject* safe = instance->GetGameObject(GoSecretSafeGUID))
++            {
++                if (open)
++                    safe->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
++                else
++                    safe->AddFlag(GO_FLAG_NOT_SELECTABLE);
++            }
++        }
++
++        void OnUnitDeath(Unit* unit) override
++        {
++            Creature* creature = unit->ToCreature();
++            if (!creature || creature->GetEntry() != NPC_WATCHMAN_DOOMGRIP)
++                return;
++
++            UpdateBlackVault(true);
++            SetData(TYPE_VAULT, DONE);
+         }
+ 
+         uint32 encounter[MAX_ENCOUNTER];
+@@ -183,6 +323,15 @@ public:
+             case GO_THRONE_ROOM: GoThroneGUID = go->GetGUID(); break;
+             case GO_CHEST_SEVEN: GoChestGUID = go->GetGUID(); break;
+             case GO_SPECTRAL_CHALICE: GoSpectralChaliceGUID = go->GetGUID(); break;
++            case GO_SECRET_DOOR:
++                GoSecretDoorGUID = go->GetGUID();
++                go->SetGoState(encounter[1] == DONE ? GO_STATE_ACTIVE : GO_STATE_READY);
++                break;
++            case GO_SECRET_SAFE:
++                GoSecretSafeGUID = go->GetGUID();
++                if (encounter[1] == DONE)
++                    go->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
++                break;
+             }
+         }
+ 
+@@ -209,6 +358,8 @@ public:
+             switch (type)
+             {
+             case TYPE_RING_OF_LAW:
++                if (data == DONE && encounter[0] != DONE)
++                    SendScenarioEvent(SCENARIO_EVENT_RING_OF_LAW);
+                 encounter[0] = data;
+                 break;
+             case TYPE_VAULT:
+@@ -238,11 +389,7 @@ public:
+             {
+                 OUT_SAVE_INST_DATA;
+ 
+-                std::ostringstream saveStream;
+-                saveStream << encounter[0] << ' ' << encounter[1] << ' ' << encounter[2] << ' '
+-                    << encounter[3] << ' ' << encounter[4] << ' ' << encounter[5] << ' ' << GhostKillCount;
+-
+-                str_data = saveStream.str();
++                BuildSaveData();
+ 
+                 SaveToDB();
+                 OUT_SAVE_INST_DATA_COMPLETE;
+@@ -336,6 +483,8 @@ public:
+             std::istringstream loadStream(in);
+             loadStream >> encounter[0] >> encounter[1] >> encounter[2] >> encounter[3]
+             >> encounter[4] >> encounter[5] >> GhostKillCount;
++            if (!(loadStream >> _wing) || _wing > WING_WHOLE_DUNGEON)
++                _wing = WING_NONE;
+ 
+             for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
+                 if (encounter[i] == IN_PROGRESS)
+@@ -345,6 +494,8 @@ public:
+             if (GhostKillCount >= 7)
+                 GhostKillCount = 7;
+ 
++            BuildSaveData(); // GetSaveData() returned nothing after a reload until the next DONE
++
+             OUT_LOAD_INST_DATA_COMPLETE;
+         }
+ 
