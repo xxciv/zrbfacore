@@ -5,6 +5,25 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### DB: Grim Guzzler patrons sit and drink; Hurley Blackbreath waits for the kegs
+
+- **Found** (Four, 2026-11-22: "tons of patrons just huddled up standing around. no one is sitting or
+  drinking." and "hurley Blackbreath and co are aggro right by the entrance"): every patron spot came from a
+  sniff that caught them standing (Pandaria 5.4.8 has the same spots, AzerothCore seats nobody either), five
+  stood within a yard of each other at 845,-161, and the patrons had no idle emotes. Hurley Blackbreath (9537)
+  and his three cronies (9541) stood hostile at 859,-149 by the bar entrance: the sniff caught them after
+  someone had broken the Thunderbrew Lager Kegs. The quest The Grim Guzzler (27571/27589) says "Damage the
+  kegs and Hurley Blackbreath will come running", and Pandaria and AzerothCore both script it that way.
+- **Changed** (`sql/fixes/world/2026_11_22_06_blackrock_depths_bar_life.sql`): 45 patrons now sit on the
+  nearest free chair (40 within 3 yards, plus the five huddled ones at the free table at 839,-151); 24 stand.
+  A seated patron stands up when pulled and sits again when it walks home. All patrons talk, cheer, laugh or
+  drink (eat emote) out of combat (AzerothCore's emotes plus eat). Hurley and the cronies wait hidden and
+  immune behind the bar at 878,-153; breaking the kegs (164911) behind the bar makes Hurley yell "Get away
+  from those kegs!", and they walk over and fight (AzerothCore's script and the waypoints already in the
+  table). Backups: `zr_backup_brd_creature_moved`, `zr_backup_brd_creature_addon`, `zr_backup_brd_smart_scripts`.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### DB: Grim Guzzler patrons doubled, and their imported formations
 
 - **Found** (Four, 2026-11-22: "I know the grim guzzler could use a look, there may be overspawns in other
