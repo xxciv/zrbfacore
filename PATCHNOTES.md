@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (core: "Already looted" with items still in the loot window)
 
-Draft PR, not merged yet. Not tested in game yet.
+Draft PR #103, not merged yet. Not tested in game yet.
 
 ### Core: "Already looted (1087436940/0)" on stacked summoned corpses
 
