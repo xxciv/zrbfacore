@@ -12,8 +12,8 @@
 -- 2. Patrons get AzerothCore's idle emotes (talk, cheer, laugh) plus eat, which is the drinking motion.
 -- 3. Hurley Blackbreath and his three cronies (9537, 9541) stood hostile by the bar entrance at 859,-149: the
 --    sniff caught them after someone had broken the Thunderbrew Lager Kegs (164911) behind the bar. Ported
---    from AzerothCore (Pandaria has the same keg script): they wait hidden and immune at 878,-153 until two
---    kegs are broken, then Hurley yells "Get away from those kegs!", they walk to the kegs (waypoints 9537,
+--    from AzerothCore (Pandaria has the same keg script): they wait hidden and immune at 878,-153 until three
+--    kegs are broken (counting fixed in 2026_11_22_09), then Hurley yells "Get away from those kegs!", they walk to the kegs (waypoints 9537,
 --    9541, 9541000, 9541001, already in the table) and fight. Flag 0x40 left alone (the template has it).
 -- Backups: zr_backup_brd_creature_moved (creature rows before the move), zr_backup_brd_creature_addon,
 -- zr_backup_brd_smart_scripts.

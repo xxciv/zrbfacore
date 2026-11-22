@@ -5,6 +5,27 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### DB: Hurley Blackbreath now comes when the third keg breaks
+
+- **Found** (Four, 2026-11-22: "hurleys keg event doesn't trigger after breaking 3 kegs"): the kegs (164911)
+  from `2026_11_22_06` counted breaks by telling each other through SAI target 13 (game objects in range). In
+  this core that target never finds anything when an entry is given: `SmartScript.cpp` tests
+  `!entry && GetEntry() == entry` (creature range has `!entry || ...`). No keg was counted, so Hurley stayed hidden.
+- **Changed** (`sql/fixes/world/2026_11_22_09_blackrock_depths_hurley_kegs.sql`): each broken keg tells Hurley
+  instead (creature range, which works), Hurley counts the breaks, and the third one starts his old wake-up chain.
+  The core bug is left alone; 12 other scripts in the database use target 13 with an entry and do nothing.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue (a restart drops a solo Dungeon Finder group).
+
+### DB: Purple fog in Blackrock Depths left alone (client art)
+
+- **Found** (Four, 2026-11-22): the purple fog stayed after `2026_11_22_08`. Every creature, gameobject,
+  display, aura, anim kit, world effect and spawn or out-of-combat cast on map 230 now matches Pandaria 5.4.8.
+  The only light auras there are Ilsa and Ursula Direbrew's red and blue Dark Iron lights (Brewfest, event 24)
+  and Elder Morndeep's Spotlight (Lunar Festival, event 7), and `.event activelist` shows neither running.
+- **Changed:** nothing. The fog comes from the client; Projected Textures off hides it.
+- **Status:** closed.
+
 ### DB: Eranikus' Shade removed from Blackrock Depths (purple band suspect)
 
 - **Found** (Four, 2026-11-22): a purple glow band with black smoke hangs at one height around the Grim Guzzler
@@ -15,7 +36,7 @@ to do to pick it up (rebuild, restart, run SQL).
   quest or gossip, and absent from Pandaria and AzerothCore.
 - **Changed** (`sql/fixes/world/2026_11_22_08_blackrock_depths_eranikus_shade.sql`): both removed (backup
   `zr_backup_brd_creature`). The two in Blackrock Spire and one in Stormwind stay for now.
-- **Status:** untested in game; a suspect, not a confirmed cause.
+- **Status:** tested in game (Four, 2026-11-22): the shades are gone, the purple fog is not; not the cause.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### DB: Grim Guzzler lower floor seated; concert light rig only at Brewfest
