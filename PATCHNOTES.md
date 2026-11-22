@@ -5,18 +5,21 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
-### DB: Grim Guzzler light show and patron factions
+### DB: Grim Guzzler concert and patron factions
 
 - **Found** (Four, 2026-11-22, screenshot): a purple light over the Grim Guzzler, and patrons mixed
   between hostile and neutral. The L70ETC concert in the bar (band 23619/23623-23626, FX controller
-  23830 casting Lightning Cloud 42500, Earthquake 42499 and fireworks, drums 28206) was linked to
+  23830 casting Lightning Cloud 42500, Earthquake 42499 and fireworks, drums 28206) is linked to
   events 34 and 71 (drums 70): old TrinityCore ids that are "Brew of the Month October" and "WoW's
-  10th Anniversary" here, so it plays Nov 17-24. Guzzling Patron 9547 and Hammered Patron 9554 had
-  faction 54 (hostile); Grim Patron 9545 has the bar's 674 (Pandaria 5.4.8: 674 for all three).
+  10th Anniversary" here. Those events ended in 2020, 2014 and 2013 (`end_time`), so the concert
+  is not spawned today and is not the purple light (Four, after the SQL: "the purple fog is still
+  very much there"). Guzzling Patron 9547 and Hammered Patron 9554 had faction 54 (hostile); Grim
+  Patron 9545 has the bar's 674 (Pandaria 5.4.8: 674 for all three).
 - **Changed** (`sql/fixes/world/2026_11_22_02_blackrock_depths_grim_guzzler.sql`): the seven concert
-  spawns in map 230 are on Brewfest (event 24) only; 9547 and 9554 faction 674. The Shattrath copies
-  (map 530) are unchanged.
-- **Status:** untested.
+  spawns in map 230 are on Brewfest (event 24) only, so they play during Brewfest instead of never;
+  9547 and 9554 faction 674. The Shattrath copies (map 530) are unchanged.
+- **Status:** patrons confirmed neutral in game (Four's screenshot, 2026-11-22). The purple light is
+  still open: no light override, weather, area trigger or aura in the world DB touches the bar.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### Core: General Angerforge's call for help cut down for a solo player
