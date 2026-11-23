@@ -3,6 +3,36 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-22 (Holidays: fishing tournaments)
+
+Draft PR, not merged yet.
+
+### DB: Stranglethorn Fishing Extravaganza and Kalu'ak Fishing Derby run again
+
+From Four, 2026-11-22 ("where have the fishing tournaments gone?"). World SQL
+`2026_11_22_20_fishing_tournaments.sql`. Run the SQL, restart. No rebuild.
+
+- **Found:**
+  - Stranglethorn: upstream's `2026_08_16_01_fix_game_events.sql` restarted events 14 and 15 on the wrong
+    times (15, the tournament itself, on Mondays at 02:00) with a 10079-minute period that slips a minute
+    earlier every week.
+  - Riggle Bassbait, Jang, Fishbot 5000 and the promoters Grinkle (Orgrimmar) and Barrus (Ironforge) were
+    each spawned twice: an old spawn plus the newer sniffed one.
+  - Kalu'ak: events 63 and 64 ended in 2020, and nothing dropped the Blacktip Shark (50289) that Elder
+    Clearwater's quests 24803 and 24806 need. Her quests were always open. Event 63 holds Perry Gatner's
+    comedy show in Shattrath despite its name.
+- **Changed:**
+  - Event 14 (promoters) runs Sundays 13:50 for 130 minutes and event 15 (Riggle, Jang, Fishbot, 91
+    Schools of Tastyfish) Sundays 14:00 for 120 minutes, every 10080 minutes, until 2030-12-31.
+  - Old spawns 81456, 52967, 52968, 52976 and 123736 removed; the sniffed ones (Riggle's balcony in
+    Booty Bay) stay.
+  - Event 64 is the derby: Saturdays 14:00 for 60 minutes, holiday 424, until 2030-12-31.
+  - During it, nine Northrend fish schools (192046, 192048-192054, 192057, the ones TrinityCore uses) give a
+    Blacktip Shark 5% of the time (TrinityCore: 0.2%, too low for a one-hour solo event).
+  - Elder Clearwater's two quests show only during the derby. No script picks one winner, so both stay open
+    to anyone with a shark. Event 63 is unchanged.
+- **Status:** not tested in game yet.
+
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
 ### DB: Hurley Blackbreath's cronies no longer elite
