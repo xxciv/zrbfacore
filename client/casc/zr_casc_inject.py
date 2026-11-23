@@ -557,7 +557,7 @@ class Encoding:
 
 # --------------------------------------------------------------------------- ROOT (8.x TSFM / legacy)
 
-def root_blocks(root):
+def root_blocks(root, with_locale=False):
     pos = 12 if root[0:4] == b"TSFM" else 0
     while pos + 12 <= len(root):
         n, cflags, lflags = struct.unpack_from("<III", root, pos)
@@ -574,7 +574,7 @@ def root_blocks(root):
         for d in deltas:
             fd += d + 1
             ids.append(fd)
-        yield start, ids, ck_at
+        yield (start, ids, ck_at, lflags) if with_locale else (start, ids, ck_at)
 
 
 def root_get(root, fdid):
@@ -831,18 +831,31 @@ def cmd_layout(client):
 
 
 def file_of(st, b, fdid):
-    cks = set(root_get(b["root"], fdid))
+    # a file can have several content keys (one per locale); prefer enUS, then any that is stored
+    cks = []
+    for _, ids, ck_at, lflags in root_blocks(b["root"], with_locale=True):
+        for i, f in enumerate(ids):
+            if f == fdid:
+                ck = b["root"][ck_at + 16 * i:ck_at + 16 * i + 16]
+                cks.append((0 if lflags & 0x2 else 1, ck))
     if not cks:
         raise Fail("file %d is not in ROOT" % fdid)
-    ck = sorted(cks)[0]
-    eks = b["enc"].ekeys_for(ck)
-    if not eks:
-        raise Fail("file %d: content key %s is not in ENCODING" % (fdid, ck.hex()))
-    _, blte = st.read(eks[0])
-    data = blte_decode(blte)
-    if md5(data) != ck:
-        raise Fail("file %d does not match its key" % fdid)
-    return data
+    err = None
+    for _, ck in sorted(cks):
+        eks = b["enc"].ekeys_for(ck)
+        if not eks:
+            err = "content key %s is not in ENCODING" % ck.hex()
+            continue
+        try:
+            _, blte = st.read(eks[0])
+        except Fail as e:
+            err = str(e)
+            continue
+        data = blte_decode(blte)
+        if md5(data) == ck:
+            return data
+        err = "does not match its key"
+    raise Fail("file %d: %s" % (fdid, err))
 
 
 def wmo_chunks(data, start=0, end=None):
