@@ -12,7 +12,7 @@ to do to pick it up (rebuild, restart, run SQL).
   they join Hurley all at once.
 - **Changed** (`sql/fixes/world/2026_11_22_11_blackrock_depths_blackbreath_cronies.sql`): rank normal, health
   x1, damage x3.5 like the bar's normal patrons (backup `zr_backup_brd_creature_template`). Hurley unchanged.
-- **Status:** untested in game.
+- **Status:** confirmed in game (Four, 2026-11-22: "That worked").
 - **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
 
 ### DB: Ribbly and his cronies immune to NPCs again
@@ -22,7 +22,7 @@ to do to pick it up (rebuild, restart, run SQL).
   hostile to Hurley's (54). AzerothCore gives both Immune to NPCs (unit_flags 0x200); this database lost it.
 - **Changed** (`sql/fixes/world/2026_11_22_10_blackrock_depths_ribbly_npc_immune.sql`): flag 0x200 added back
   to both templates. Players can still fight them.
-- **Status:** untested in game.
+- **Status:** confirmed in game (Four, 2026-11-22: "That worked").
 - **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
 
 ### DB: Hurley Blackbreath now comes when the third keg breaks
@@ -34,7 +34,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`sql/fixes/world/2026_11_22_09_blackrock_depths_hurley_kegs.sql`): each broken keg tells Hurley
   instead (creature range, which works), Hurley counts the breaks, and the third one starts his old wake-up chain.
   The core bug is left alone; 12 other scripts in the database use target 13 with an entry and do nothing.
-- **Status:** tested in game (Four, 2026-11-22): the third keg brings Hurley, who then attacked Ribbly (fixed above).
+- **Status:** confirmed in game (Four, 2026-11-22) together with the two fixes above.
 - **Pick up:** run the SQL, restart `worldserver`, re-queue (a restart drops a solo Dungeon Finder group).
 
 ### DB: Purple fog in Blackrock Depths left alone (client art)
@@ -92,7 +92,7 @@ to do to pick it up (rebuild, restart, run SQL).
   immune behind the bar at 878,-153; breaking the kegs (164911) behind the bar makes Hurley yell "Get away
   from those kegs!", and they walk over and fight (AzerothCore's script and the waypoints already in the
   table). Backups: `zr_backup_brd_creature_moved`, `zr_backup_brd_creature_addon`, `zr_backup_brd_smart_scripts`.
-- **Status:** confirmed in game for the patrons (Four, 2026-11-22); the Hurley keg event is untested.
+- **Status:** confirmed in game (Four, 2026-11-22); the Hurley keg event needed `2026_11_22_09` to `11`.
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### DB: Grim Guzzler patrons doubled, and their imported formations
