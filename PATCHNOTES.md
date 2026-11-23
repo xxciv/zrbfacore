@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-23 (core: Cannonball Runner trinket never procs)
 
-Draft PR, not merged yet. Not tested in game yet.
+Draft PR #109, not merged yet. Not tested in game yet.
 
 ### Core: Cannonball Runner never summons its cannon
 
