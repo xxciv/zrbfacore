@@ -15,6 +15,7 @@ Usage (close the game first):
   python brd_fog_casc.py "<client folder>" status
   python brd_fog_casc.py "<client folder>" apply off     # 9 fog zones disabled (radius 0)
   python brd_fog_casc.py "<client folder>" apply swap    # fog colour red/blue swapped
+  python brd_fog_casc.py "<client folder>" apply probe   # TEST: whole dungeon uses one texture
   python brd_fog_casc.py "<client folder>" restore       # put the original bytes back
 
 <client folder> is the folder that contains Data (and .build.info). Works on Linux
@@ -35,6 +36,7 @@ VARIANT_MD5 = {
     "original": "ba1f2379e67cfe1f5ecdf70469363c1c",
     "off": "1da7587f5a744ccc335be5ab5d31234f",
     "swap": "6e3f8087c7fb64fc719793da9d0ab9ab",
+    "probe": "338b43010004c7df669ebca381c57ddd",
 }
 BACKUP_DIR = "zr_casc_backup"
 
@@ -49,7 +51,12 @@ def make_variant(orig, name):
     d = bytearray(orig)
     if d[MFOG_DATA - 8:MFOG_DATA - 4] != b"GOFM" or struct.unpack_from("<I", d, MFOG_DATA - 4)[0] != 48 * MFOG_COUNT:
         raise Fail("the WMO has no 9-entry MFOG chunk where expected")
-    for i in range(MFOG_COUNT):
+    if name == "probe":
+        # test only: every material (MOMT, 57 x 64 bytes at 92) uses material 0's texture
+        tex = d[92 + 12:92 + 16]
+        for i in range(57):
+            d[92 + 64 * i + 12:92 + 64 * i + 16] = tex
+    for i in range(MFOG_COUNT if name != "probe" else 0):
         e = MFOG_DATA + 48 * i
         if name == "off":
             d[e + 16:e + 24] = bytes(8)          # smaller + larger radius = 0
@@ -853,7 +860,7 @@ def cmd_restore(client):
 
 
 def main(argv):
-    if len(argv) < 3 or argv[2] not in ("status", "apply", "restore") or (argv[2] == "apply" and (len(argv) < 4 or argv[3] not in ("off", "swap"))):
+    if len(argv) < 3 or argv[2] not in ("status", "apply", "restore") or (argv[2] == "apply" and (len(argv) < 4 or argv[3] not in ("off", "swap", "probe"))):
         print(__doc__)
         return 2
     client = argv[1]
