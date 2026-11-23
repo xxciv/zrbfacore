@@ -367,18 +367,18 @@ def blte_encode_like(orig_blte, data):
         return b"BLTE" + bytes(4) + enc(frames[0][0][0:1], data)
     sizes = [c for _, c in frames]
     modes = [f[0:1] for f, _ in frames]
-    if sum(sizes) != len(data):                 # size changed: keep the first frame's size for all
-        step = sizes[0]
+    if sum(sizes) != len(data):                 # size changed: plain 1 MB zlib frames
+        step = max(max(sizes), 1 << 20)
         sizes = [min(step, len(data) - i) for i in range(0, len(data), step)]
         modes = [b"Z"] * len(sizes)
     out, pos = [], 0
     for m, s in zip(modes, sizes):
         out.append(enc(m, data[pos:pos + s]))
         pos += s
-    head = b"BLTE" + struct.pack(">I", 12 + 24 * len(out)) + b"\x0f" + len(out).to_bytes(3, "big")
+    head = [b"BLTE" + struct.pack(">I", 12 + 24 * len(out)) + b"\x0f" + len(out).to_bytes(3, "big")]
     for f, s in zip(out, sizes):
-        head += struct.pack(">II", len(f), s) + md5(f)
-    blte = head + b"".join(out)
+        head.append(struct.pack(">II", len(f), s) + md5(f))
+    blte = b"".join(head) + b"".join(out)
     if blte_decode(blte) != data:
         raise Fail("BLTE self-check failed")
     return blte
