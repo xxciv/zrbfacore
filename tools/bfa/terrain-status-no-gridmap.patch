@@ -1,0 +1,18 @@
+diff --git a/src/server/game/Maps/Map.cpp b/src/server/game/Maps/Map.cpp
+index b7a7dce..99929c5 100644
+--- a/src/server/game/Maps/Map.cpp
++++ b/src/server/game/Maps/Map.cpp
+@@ -3026,9 +3026,11 @@ void Map::GetFullTerrainStatusForPosition(PhaseShift const& phaseShift, float x,
+     if (vmapData.areaInfo)
+         data.areaInfo.emplace(vmapData.areaInfo->adtId, vmapData.areaInfo->rootId, vmapData.areaInfo->groupId, vmapData.areaInfo->mogpFlags);
+ 
+-    if(GridMap* gmap = GetGrid(terrainMapId, x, y))
++    GridMap* gmap = GetGrid(terrainMapId, x, y);
++    // zr: no .map file here (WMO-only maps such as Blackrock Depths) used to skip the whole lookup
++    // and leave area, floor and liquid unset (garbage zone ids); fall back like upstream instead
+     {
+-        float mapHeight = gmap->getHeight(x, y);
++        float mapHeight = gmap ? gmap->getHeight(x, y) : VMAP_INVALID_HEIGHT_VALUE;
+ 
+         // area lookup
+         AreaTableEntry const* areaEntry = nullptr;

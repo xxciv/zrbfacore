@@ -157,7 +157,12 @@ git apply ../tools-repo/tools/bfa/stratholme.patch
 git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 git apply ../tools-repo/tools/bfa/pick-lock-level.patch
 git apply ../tools-repo/tools/bfa/zulfarrak.patch
+<<<<<<< HEAD
 git apply ../tools-repo/tools/bfa/loot-guid.patch
+=======
+git apply ../tools-repo/tools/bfa/blackrock-depths.patch
+git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
+>>>>>>> origin/main
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -613,6 +618,28 @@ second pair: the spawned pair stays hidden until the last wave and comes down th
 in Pandaria 5.4.8. The first two waves summon every second troll of their list (12 instead of 23 or
 24; `PyramidWaveStep` in `instance_zulfarrak.cpp`). The spawned Gahz'rilla is no longer sent away
 when its grid reloads (only a second, summoned one is). It only touches `instance_zulfarrak.cpp`.
+
+`blackrock-depths.patch` gives Blackrock Depths a scenario per Dungeon Finder wing. Map 230 has three
+(669 Detention Block, 670 Upper City, 671 the whole dungeon) and the `scenarios` table can only link
+one per map, so the instance picks it when the first player enters: the queued wing, else the whole
+dungeon (none for Coren Direbrew). The Ring of Law sends "Complete the Ring of Law" (23203) when
+Grimstone's event ends, and the Detention Block's Dungeon Finder run ends with its scenario's main
+step (Lord Incendius and Fineous Darkvire) instead of at High Interrogator Gerstahn, the first boss
+on the way in. Watchman Doomgrip's death opens the Black Vault's Secret Safe (Heart of the Mountain). Emperor Dagran Thaurissan recasts his 5 second Hand of Thaurissan stun every 12 to 18 seconds instead of every 5, so a solo player is not stunlocked.
+Only the entering player's side of the quest givers is shown (Morgan's Militia or the Kargath
+Expeditionary Force stand on the same spots).
+High Justice Grimstone no longer attacks during the Ring of Law, and its fighters come out of
+their gates for the player. General Angerforge calls for help once (two Anvilrage
+Reservists) instead of two elite Medics and three Reservists every 25 seconds. It touches
+`instance_blackrock_depths.cpp`, `blackrock_depths.cpp` and `boss_general_angerforge.cpp`, and needs `stratholme.patch` (the scenario
+helper in `ScenarioMgr`).
+
+`terrain-status-no-gridmap.patch` fixes the zone and area of anything standing where the server has
+no `.map` file, which is all of a WMO-only instance such as Blackrock Depths. `Map::GetFullTerrainStatusForPosition`
+did the whole area, floor and liquid lookup inside `if (GridMap* gmap = ...)`, so without a grid
+map it filled in nothing and the zone was whatever was left in memory (`.gps` in the Grim Guzzler:
+`Zone: 3075883456 ( <unknown> )`). It now runs without one, like upstream: the WMO area from the
+vmap, else the map's own area (1584 for Blackrock Depths). It only touches `Map.cpp`.
 
 `mulgore-bristleback-fight.patch` lets players take part in the Camp Narache battle (Rite of
 Strength). Fledgling Braves and Bristleback Invaders fight there forever because NPC hits stop at
@@ -1141,7 +1168,12 @@ git apply ../tools-repo/tools/bfa/stratholme.patch
 git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 git apply ../tools-repo/tools/bfa/pick-lock-level.patch
 git apply ../tools-repo/tools/bfa/zulfarrak.patch
+<<<<<<< HEAD
 git apply ../tools-repo/tools/bfa/loot-guid.patch
+=======
+git apply ../tools-repo/tools/bfa/blackrock-depths.patch
+git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
+>>>>>>> origin/main
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -1251,6 +1283,18 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_21_06_stratholme_service_entrance_crusaders.sql` | Stratholme, Service Entrance: the mounted Argent Crusaders fight the Scourge next to them as a backdrop (faction 2115, start rows, defensive; staged battle flag on the rest of the wing's trash) |
 | `2026_11_21_08_stratholme_trapped_crates.sql` | Stratholme: the vermin Supply Crates open again (the trap sitting on each, which a rogue clicked and tried to disarm, is gone; opening a crate lets out its bugs, maggots, rats or plague mist as in AzerothCore; backup `zr_backup_strat_crate_traps`) |
 | `2026_11_21_09_zulfarrak.sql` | Zul'Farrak: 81 pyramid trolls standing before the event removed (sniffed event summons; backup `zr_backup_zf_pyramid_creature`), Sergeant Bly's crew back in their cages, Zerillis pooled to one spawn (needs `zulfarrak.patch`) |
+| `2026_11_22_00_blackrock_depths_detention.sql` | Blackrock Depths, Detention Block: scenario row removed (the patch picks one per wing), Dungeon Finder no longer ends at Gerstahn, Ring of Law event statics (Grimstone and 18 beasts) and 48 creatures stacked on the same spot removed (backup `zr_backup_brd_creature`), Warbringer Constructs peaceful scenery, Black Vault coffers open with their keys, two Horde quest givers no longer hostile to the Alliance (needs `blackrock-depths.patch`) |
+| `2026_11_22_01_blackrock_depths_faction_quests.sql` | Blackrock Depths: the Alliance and Horde quest chains are limited to their own races, as in Pandaria 5.4.8 (the patch hides the other side's givers) |
+| `2026_11_22_02_blackrock_depths_grim_guzzler.sql` | Blackrock Depths, Grim Guzzler: the L70ETC concert plays at Brewfest only (it was on events that ended years ago, so it never played), Guzzling and Hammered Patrons use the bar's neutral faction like the Grim Patrons |
+| `2026_11_22_03_blackrock_depths_upper_city.sql` | Blackrock Depths, Upper City: the Lyceum's Shadowforge Braziers start unlit so the Shadowforge Torches can light them and open the Golem Room doors, the Throne Room doors stay shut until Magmus dies, and Flamelash's seven sniffed Burning Spirits are gone (backup `zr_backup_brd_creature`) |
+| `2026_11_22_04_blackrock_depths_panzor.sql` | Blackrock Depths: Panzor the Invincible spawned twice (the second spawn was a 12% pool spawn in Pandaria 5.4.8, and this database has no pools); one left (backup `zr_backup_brd_creature`) |
+| `2026_11_22_05_blackrock_depths_bar_patrons.sql` | Blackrock Depths: 18 Grim Guzzler patrons stood twice (AzerothCore spots on top of Pandaria's); removed (backup `zr_backup_brd_creature`), plus 64 imported patron formation rows that mixed in Northrend creatures (backup `zr_backup_brd_creature_formations`) |
+| `2026_11_22_06_blackrock_depths_bar_life.sql` | Blackrock Depths, Grim Guzzler: 45 patrons sit on chairs (huddle at 845,-161 broken up), idle emotes, stand up when pulled; Hurley Blackbreath and cronies hidden until the Thunderbrew Lager Kegs are broken (AzerothCore script); backups `zr_backup_brd_creature_moved`, `zr_backup_brd_creature_addon`, `zr_backup_brd_smart_scripts` |
+| `2026_11_22_07_blackrock_depths_bar_seats_light.sql` | Blackrock Depths, Grim Guzzler: 19 more patrons seated (lower floor), 64 of 69 sit; L70ETC Music Doodad (concert rig) only at Brewfest |
+| `2026_11_22_08_blackrock_depths_eranikus_shade.sql` | Blackrock Depths: two unselectable Eranikus' Shades (not in Pandaria or AzerothCore) removed by the bar and bridge, suspected of the purple glow band (backup `zr_backup_brd_creature`) |
+| `2026_11_22_09_blackrock_depths_hurley_kegs.sql` | Blackrock Depths: the Thunderbrew Lager Kegs tell Hurley Blackbreath directly (keg-to-keg SAI target 13 finds nothing in this core), so the third broken keg brings him and his cronies |
+| `2026_11_22_10_blackrock_depths_ribbly_npc_immune.sql` | Blackrock Depths: Ribbly Screwspigot and his cronies immune to NPCs again (AzerothCore has it), so Hurley Blackbreath doesn't fight them |
+| `2026_11_22_11_blackrock_depths_blackbreath_cronies.sql` | Blackrock Depths: Hurley Blackbreath's three cronies normal instead of elite for solo play (backup `zr_backup_brd_creature_template`) |
 | `2026_11_14_70_guild_vendor_locks.sql` | Guild vendors: all 12 sell the BFA guild reward list (Dalaran and Shattrath sell both factions' items) and lock each item like the guild Rewards tab: guild reputation rank + guild achievements + faction. Removes the dead 'Guild Level' locks (needs `guild-progression.patch`; backups `zr_guild_vendor_backup_npc_vendor` / `zr_guild_vendor_backup_conditions`) |
 | `2026_11_12_30_tdb735_smartai_for_scriptless_npcs.sql` | 854 old-world NPCs that only meleed get their SmartAI scripts from TDB 7.3.5 (casts, gossip and quest events); Ghostclaw Lynx Rake verified in game 2026-11-12 |
 | `2026_11_12_31_tdb735_patrols.sql` | 733 open-world NPCs that stood still walk their TDB 7.3.5 patrol paths, 8 followers in formation (Orgrimmar Grunts verified in game 2026-11-12) |

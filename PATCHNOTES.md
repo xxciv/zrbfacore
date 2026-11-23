@@ -3,9 +3,10 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+<<<<<<< HEAD
 ## 2026-11-22 (core: "Already looted" with items still in the loot window)
 
-Draft PR #103, not merged yet. Not tested in game yet.
+PR #103. Confirmed in game by Four on 2026-11-22.
 
 ### Core: "Already looted (1087436940/0)" on stacked summoned corpses
 
@@ -25,7 +26,7 @@ Draft PR #103, not merged yet. Not tested in game yet.
   - `Player.cpp` (`Player::SendLoot`): any loot still without a GUID (game objects, items, corpses)
     gets one before the loot window is sent.
 - **Status:** applies cleanly after the full chain on upstream 2c13546, `Unit.cpp` and `Player.cpp`
-  compile. Not checked in game yet.
+  compile. Confirmed in game by Four on 2026-11-22.
 - **Pick up** (until the PR is merged):
 
   ```
@@ -37,6 +38,268 @@ Draft PR #103, not merged yet. Not tested in game yet.
   ```
 
   The grep prints 1 for each file. Restart worldserver.
+=======
+## 2026-11-22 (Blackrock Depths, Detention Block)
+
+### DB: Hurley Blackbreath's cronies no longer elite
+
+- **Found** (Four, 2026-11-22: "his 3 friends need to not be elite." and "it was a massacre"): the three
+  Blackbreath Cronies (9541) are elite with 4x health and 7.5x damage (same in Pandaria and AzerothCore), and
+  they join Hurley all at once.
+- **Changed** (`sql/fixes/world/2026_11_22_11_blackrock_depths_blackbreath_cronies.sql`): rank normal, health
+  x1, damage x3.5 like the bar's normal patrons (backup `zr_backup_brd_creature_template`). Hurley unchanged.
+- **Status:** confirmed in game (Four, 2026-11-22: "That worked").
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Ribbly and his cronies immune to NPCs again
+
+- **Found** (Four, 2026-11-22: "it almost worked. Hurley decided to go pick a fight with Ribbly and Company."):
+  Ribbly Screwspigot (9543) and his cronies (10043) stand 14 yards from Hurley's corner with a faction (735)
+  hostile to Hurley's (54). AzerothCore gives both Immune to NPCs (unit_flags 0x200); this database lost it.
+- **Changed** (`sql/fixes/world/2026_11_22_10_blackrock_depths_ribbly_npc_immune.sql`): flag 0x200 added back
+  to both templates. Players can still fight them.
+- **Status:** confirmed in game (Four, 2026-11-22: "That worked").
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Hurley Blackbreath now comes when the third keg breaks
+
+- **Found** (Four, 2026-11-22: "hurleys keg event doesn't trigger after breaking 3 kegs"): the kegs (164911)
+  from `2026_11_22_06` counted breaks by telling each other through SAI target 13 (game objects in range). In
+  this core that target never finds anything when an entry is given: `SmartScript.cpp` tests
+  `!entry && GetEntry() == entry` (creature range has `!entry || ...`). No keg was counted, so Hurley stayed hidden.
+- **Changed** (`sql/fixes/world/2026_11_22_09_blackrock_depths_hurley_kegs.sql`): each broken keg tells Hurley
+  instead (creature range, which works), Hurley counts the breaks, and the third one starts his old wake-up chain.
+  The core bug is left alone; 12 other scripts in the database use target 13 with an entry and do nothing.
+- **Status:** confirmed in game (Four, 2026-11-22) together with the two fixes above.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue (a restart drops a solo Dungeon Finder group).
+
+### DB: Purple fog in Blackrock Depths left alone (client art)
+
+- **Found** (Four, 2026-11-22): the purple fog stayed after `2026_11_22_08`. Every creature, gameobject,
+  display, aura, anim kit, world effect and spawn or out-of-combat cast on map 230 now matches Pandaria 5.4.8.
+  The only light auras there are Ilsa and Ursula Direbrew's red and blue Dark Iron lights (Brewfest, event 24)
+  and Elder Morndeep's Spotlight (Lunar Festival, event 7), and `.event activelist` shows neither running.
+- **Changed:** nothing. The fog comes from the client; Projected Textures off hides it.
+- **Status:** closed.
+
+### DB: Eranikus' Shade removed from Blackrock Depths (purple band suspect)
+
+- **Found** (Four, 2026-11-22): a purple glow band with black smoke hangs at one height around the Grim Guzzler
+  and its bridge. It goes away with the client's Projected Textures setting off, stays put when the player flies
+  up, is not outside Blackrock Mountain, and no aura on the player draws it (`.list auras`). Every gameobject on
+  the map stands where Pandaria 5.4.8 has one. The only creatures this database adds near the bar and bridge
+  are two Eranikus' Shades (51366, display 7804) at 843,-216 and 999,-228: unselectable, immune, no script,
+  quest or gossip, and absent from Pandaria and AzerothCore.
+- **Changed** (`sql/fixes/world/2026_11_22_08_blackrock_depths_eranikus_shade.sql`): both removed (backup
+  `zr_backup_brd_creature`). The two in Blackrock Spire and one in Stormwind stay for now.
+- **Status:** tested in game (Four, 2026-11-22): the shades are gone, the purple fog is not; not the cause.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Grim Guzzler lower floor seated; concert light rig only at Brewfest
+
+- **Found** (Four, 2026-11-22: "the top floor of the grim guzzler is better, there are still a few strays
+  standing inside tables, etc. the bottom floor is still pretty bad", with a video of the purple light pulsing
+  about every second and a half on a different client with the camera still): the first seating pass only took
+  patrons within 3 yards of a chair, and the lower floor's patrons stood as a crowd in front of the concert stage,
+  up to 14 yards from the tables. The L70ETC Music Doodad (186312, guid 188711, the concert stage rig) was
+  spawned with no event, unlike the band that `2026_11_22_02` put on Brewfest.
+- **Changed** (`sql/fixes/world/2026_11_22_07_blackrock_depths_bar_seats_light.sql`): 19 more patrons take the
+  nearest free chair on their own floor; 64 of 69 sit (4 stand at the upper bar counter, 1 on the stairs). The
+  music rig moves to Brewfest (event 24).
+- **Status:** confirmed in game (Four, 2026-11-22: "all of the grim guzzlers patrons are seated drinking and
+  having the time of their life"; "it is no longer blinking like it was in and out"). A steady low purple fog
+  is still there; nothing server-side is left near the bar that could draw it (no auras, areatriggers, weather
+  or zone light override on map 230), so it comes from the client's art or lighting.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Grim Guzzler patrons sit and drink; Hurley Blackbreath waits for the kegs
+
+- **Found** (Four, 2026-11-22: "tons of patrons just huddled up standing around. no one is sitting or
+  drinking." and "hurley Blackbreath and co are aggro right by the entrance"): every patron spot came from a
+  sniff that caught them standing (Pandaria 5.4.8 has the same spots, AzerothCore seats nobody either), five
+  stood within a yard of each other at 845,-161, and the patrons had no idle emotes. Hurley Blackbreath (9537)
+  and his three cronies (9541) stood hostile at 859,-149 by the bar entrance: the sniff caught them after
+  someone had broken the Thunderbrew Lager Kegs. The quest The Grim Guzzler (27571/27589) says "Damage the
+  kegs and Hurley Blackbreath will come running", and Pandaria and AzerothCore both script it that way.
+- **Changed** (`sql/fixes/world/2026_11_22_06_blackrock_depths_bar_life.sql`): 45 patrons now sit on the
+  nearest free chair (40 within 3 yards, plus the five huddled ones at the free table at 839,-151); 24 stand.
+  A seated patron stands up when pulled and sits again when it walks home. All patrons talk, cheer, laugh or
+  drink (eat emote) out of combat (AzerothCore's emotes plus eat). Hurley and the cronies wait hidden and
+  immune behind the bar at 878,-153; breaking the kegs (164911) behind the bar makes Hurley yell "Get away
+  from those kegs!", and they walk over and fight (AzerothCore's script and the waypoints already in the
+  table). Backups: `zr_backup_brd_creature_moved`, `zr_backup_brd_creature_addon`, `zr_backup_brd_smart_scripts`.
+- **Status:** confirmed in game (Four, 2026-11-22); the Hurley keg event needed `2026_11_22_09` to `11`.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Grim Guzzler patrons doubled, and their imported formations
+
+- **Found** (Four, 2026-11-22: "I know the grim guzzler could use a look, there may be overspawns in other
+  areas like twilight npc's"; every creature on map 230 compared by spot with Pandaria 5.4.8 and
+  AzerothCore): the bar held 87 patrons (Grim 9545, Guzzling 9547, Hammered 9554) against 68 in each
+  reference. Every Pandaria spot is here plus 18 that sit exactly on AzerothCore spawns, and AzerothCore puts
+  most patrons a few yards from Pandaria's, so 18 patrons stood twice, 1 to 5 yards apart. Their
+  AzerothCore formations (64 rows, six leaders) came along by guid, but those guids are other creatures
+  here, so the groups mixed bar patrons with Northrend and Hellfire creatures. Nothing else on the map is
+  doubled: the Twilight's Hammer NPCs (Ambassador 15, Emissary 17, Torturer 14, Bodyguard 6) are at or under
+  Pandaria's counts and spots, and so are the Anvilrage groups, Flame Keepers, Arena Spectators and
+  Blazing Fireguards.
+- **Changed** (`sql/fixes/world/2026_11_22_05_blackrock_depths_bar_patrons.sql`): the 18 AzerothCore-only
+  patrons removed (backup `zr_backup_brd_creature`), leaving Grim 32, Guzzling 25, Hammered 12 (Pandaria 32,
+  24, 12); the 64 formation rows removed (backup `zr_backup_brd_creature_formations`). The patrons have no
+  quest, gossip or script of their own.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Panzor the Invincible spawned twice
+
+- **Found** (Four, 2026-11-22: "You didn't catch the Panzor the Invincible double spawn"): the rare 8923 has two
+  spawns 56 yards apart, 327502 and 49007. Pandaria 5.4.8 spawns 49007 only 12% of the time (pool 181, with a
+  Molten War Golem); this database has no pools on map 230, so both were always up. The overspawn check only
+  looked at packs within 5 yards and exact stacks, so two copies of one rare far apart slipped through.
+- **Changed** (`sql/fixes/world/2026_11_22_04_blackrock_depths_panzor.sql`): 49007 removed (backup
+  `zr_backup_brd_creature`), 327502 stays. Checked every rare and named boss on map 230 for a second spawn:
+  none other.
+- **Status:** confirmed in game (Four, 2026-11-22: "panzor appeared once").
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Upper City once-over (Lyceum braziers, Throne Room doors, Burning Spirits)
+
+- **Found** (Four, 2026-11-22: "the Lyceum event didn't work last night"; survey against Pandaria 5.4.8 and
+  AzerothCore): the Lyceum's two Shadowforge Braziers (174744, 174745) spawned lit (state 0). Lighting them
+  with the Shadowforge Torch (lock 799 needs item 11885, 100% from Shadowforge Flame Keepers 9956) is what
+  opens the Golem Room doors to Magmus (`go_shadowforge_brazier`). The Throne Room doors (170575) spawned
+  open, so the Emperor could be reached before Magmus. Seven static Burning Spirits (9178) stood around
+  Ambassador Flamelash's room: they are his fight summons, caught by the sniff (Pandaria and AzerothCore
+  have none). The Lyceum's 250 Anvilrage Reservists match AzerothCore's 213 for the room and Pandaria's
+  spawns, so they stay. Scenario 670 (Flamelash, Doom'rel for the Seven, Magmus, the Emperor) and the
+  Dungeon Finder end at the Emperor (encounter 245, dungeon 276) look right.
+- **Changed** (`sql/fixes/world/2026_11_22_03_blackrock_depths_upper_city.sql`): braziers and Throne Room
+  doors start closed/unlit (state 1, as in Pandaria and AzerothCore; Magmus's death opens the doors); the
+  seven Burning Spirits removed (backup `zr_backup_brd_creature`).
+- **Status:** confirmed in game (Four, 2026-11-22 Upper City run: "lyceum check", "flamelash fight was good"); the Emperor was reached through Magmus.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### Core: Emperor Dagran Thaurissan no longer stunlocks a solo player
+
+- **Found** (Four, 2026-11-22: "Keeps casting Hand of Thaurissan which stuns you on repeat. Stunlocked
+  permanently."): Hand of Thaurissan 17492 stuns for 5 seconds (duration index 28) and
+  `boss_emperor_dagran_thaurissan.cpp` recast it every 5 seconds on a random target, so a solo
+  player never got out of it (Pandaria 5.4.8 has the same 5 second timer).
+- **Changed** (`tools/bfa/blackrock-depths.patch`): Hand of Thaurissan repeats every 12 to 18
+  seconds (first cast still at 4 seconds), leaving 7 to 13 seconds between stuns. Avatar of Flame
+  is unchanged.
+- **Status:** confirmed in game (Four, 2026-11-22: "emperor fight check").
+- **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
+
+### Core: unknown zone where there is no .map file
+
+- **Found** (Four, 2026-11-22, `.gps` in the Grim Guzzler): `Zone: 3075883456 ( <unknown> ) Area:
+  3075883456`, "Have height data (Map: 0 VMap: 1 MMap: 1)". `Map::GetFullTerrainStatusForPosition`
+  ran its whole area, floor and liquid lookup inside `if (GridMap* gmap = GetGrid(...))`, so where
+  there is no `.map` file (Blackrock Depths is a WMO-only map) it filled in nothing and every move
+  copied leftover memory into the zone, area, floor and liquid state.
+- **Changed** (`tools/bfa/terrain-status-no-gridmap.patch`, new, after `blackrock-depths.patch`):
+  the lookup runs without a grid map too, with the grid height treated as missing, as upstream does:
+  the WMO area from the vmap, else the map's own area (1584 for Blackrock Depths).
+- **Status:** confirmed in game (Four, 2026-11-22: `.gps` at the Upper City start reads `Zone: 1584 (Blackrock Depths)`). Not the cause of the Grim Guzzler's purple light: the client's
+  `Light.db2` has no light for map 230 at all (Four's files), so that colour comes from the client's
+  own Blackrock Depths model, not from anything the server sends (inferred).
+- **Pick up:** apply the patch, rebuild, restart `worldserver`.
+
+### DB: Grim Guzzler concert and patron factions
+
+- **Found** (Four, 2026-11-22, screenshot): a purple light over the Grim Guzzler, and patrons mixed
+  between hostile and neutral. The L70ETC concert in the bar (band 23619/23623-23626, FX controller
+  23830 casting Lightning Cloud 42500, Earthquake 42499 and fireworks, drums 28206) is linked to
+  events 34 and 71 (drums 70): old TrinityCore ids that are "Brew of the Month October" and "WoW's
+  10th Anniversary" here. Those events ended in 2020, 2014 and 2013 (`end_time`), so the concert
+  is not spawned today and is not the purple light (Four, after the SQL: "the purple fog is still
+  very much there"). Guzzling Patron 9547 and Hammered Patron 9554 had faction 54 (hostile); Grim
+  Patron 9545 has the bar's 674 (Pandaria 5.4.8: 674 for all three).
+- **Changed** (`sql/fixes/world/2026_11_22_02_blackrock_depths_grim_guzzler.sql`): the seven concert
+  spawns in map 230 are on Brewfest (event 24) only, so they play during Brewfest instead of never;
+  9547 and 9554 faction 674. The Shattrath copies (map 530) are unchanged.
+- **Status:** patrons confirmed neutral in game (Four's screenshot, 2026-11-22). The purple light is
+  still open: no light override, weather, area trigger or aura in the world DB touches the bar.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### Core: General Angerforge's call for help cut down for a solo player
+
+- **Found** (Four, 2026-11-22: "He hits too hard to have anyone come help him"): at 20% health
+  General Angerforge 9033 summons 2 Anvilrage Medics 8894 (elite) and 3 Anvilrage Reservists 8901,
+  then 3 more Reservists every 25 seconds (`boss_general_angerforge.cpp`).
+- **Changed** (`tools/bfa/blackrock-depths.patch`): one call for help of 2 Reservists (not elite),
+  no Medics, no repeats. Four asked for 1 Medic and 2 Reservists if they are not elite, else none;
+  the Medics are elite, so they are out.
+- **Status:** confirmed in game (Four, 2026-11-22: "That was doable, but close").
+- **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
+
+### Core: High Justice Grimstone attacked during the Ring of Law; fighters stayed in their gates
+
+- **Found** (Four, 2026-11-22): Grimstone (10096, faction 54) hit the player during his intro, and
+  again while invisible after the champion died, while he could not be attacked back
+  (`npc_grimstone` only made him not attackable). The beasts and the champion stood in their gates
+  until pulled (`/// @todo move them to center` in `SummonRingMob` / `SummonRingBoss`).
+- **Changed** (`tools/bfa/blackrock-depths.patch`, `blackrock_depths.cpp`): Grimstone is passive and
+  immune to players on reset; each summoned beast and champion attacks the nearest player within 80
+  yards (else walks to the middle of the ring, 596.8, -188.5).
+- **Status:** untested.
+- **Pick up:** swap in the new patch, rebuild, restart `worldserver`.
+
+### Core and DB: one side's quest givers in Blackrock Depths
+
+- **Found** (Four, 2026-11-22, screenshots at the entrance): Morgan's Militia (Alliance) and the
+  Kargath Expeditionary Force (Horde) stand on the same spots (Galamav the Marksman and Oralius at
+  487, 5), and the dump let every race take both chains, so an Alliance player saw a "!" over the
+  Horde givers too.
+- **Changed:**
+  - `tools/bfa/blackrock-depths.patch`: the first player to enter decides the side; the other side's
+    quest givers (Horde 45815-45840, Alliance 45888-45903) are hidden and lose gossip and quests.
+  - `sql/fixes/world/2026_11_22_01_blackrock_depths_faction_quests.sql`: the two chains get the race
+    masks of Pandaria 5.4.8 and Adventurers Wanted (27565-27578 Alliance, 27579-27593 Horde).
+- **Status:** confirmed in game (Four, 2026-11-22 Upper City run: "phasing check").
+- **Pick up:** swap in the new patch, rebuild, run the SQL, restart `worldserver`.
+
+### Core and DB: Detention Block survey fixes
+
+- **Found** (survey, 2026-11-22):
+  - Map 230 has three scenarios: 669 Detention Block (Dungeon Finder 30: Lord Incendius and Fineous
+    Darkvire, bonus Ring of Law, High Interrogator Gerstahn and Bael'Gar), 670 Upper City (276) and
+    671 the whole dungeon. The `scenarios` row linked 671 to every run.
+  - The Ring of Law step waits for scenario event 23203, which nothing sent.
+  - The Dungeon Finder ended the Detention Block at Gerstahn (instance encounter 227), the first boss
+    on the way in, while the scenario ends with Incendius and Fineous.
+  - High Justice Grimstone stood in the Ring of Law from the start, and the Ring of Law trigger summons
+    a second one, so the event would run twice. 18 of the event's beasts and champions (6 Burrowing
+    Thundersnouts, 4 Deep Stingers, 6 Cave Creepers, Eviscerator, Ok'thor the Breaker) stood in the
+    arena and its pens. AzerothCore has none of these.
+  - Overspawn check: 48 spawn points had two creatures on exactly the same spot (a random-entry spawn
+    point sniffed twice), for example the Guardsman and Warden pairs at the Detention Block door.
+    Everything else matches Pandaria 5.4.8 (same spawns).
+  - Warbringer Construct 8905: the 8.x template made all ten untargetable but left them hostile.
+  - Black Vault: the Relic Coffer Doors stood open but the coffers stayed unclickable; nothing opened
+    the Secret Safe (Heart of the Mountain) or its door.
+  - Thunderheart and Warlord Goretooth (Horde quest givers, Upper City) were hostile to the Alliance
+    (faction 83).
+  - Quests checked: Into the Prison, Twilight?! No! (Gerstahn), The Sealed Gate (Bael'Gar), The Heart
+    of the Mountain (Black Vault safe), Infiltrating Shadowforge City and the two Adventurers Wanted;
+    their givers, targets and drops are in place. Class quests from the cities (The Dark Iron Army for
+    rogues uses Grain Rations 207165, 26 spawns) are in place but untested.
+- **Changed:**
+  - New `tools/bfa/blackrock-depths.patch` (after `zulfarrak.patch`), `instance_blackrock_depths.cpp`:
+    picks scenario 669, 670 or 671 when the first player enters (saved with the instance); sends 23203
+    when the Ring of Law is done; finishes the Detention Block run when tree 37231 (Incendius and
+    Fineous) completes; Watchman Doomgrip's death opens the Secret Door 174553 and makes the Secret Safe
+    161495 clickable. Also fixes the save data being empty after a reload.
+  - `sql/fixes/world/2026_11_22_00_blackrock_depths_detention.sql`: `scenarios` row for map 230
+    removed; encounter 227 no longer ends dungeon 30; Grimstone 322257, the 18 ring statics and one of
+    each of the 48 stacked pairs removed (backup `zr_backup_brd_creature`, 67 rows); 8905 gets
+    IMMUNE_TO_PC and IMMUNE_TO_NPC (768); the 12 Relic Coffer Doors closed, and each door (and the Dark
+    Coffer door 174565) makes its coffer clickable when opened (AzerothCore scripts); 45824 and 45840
+    faction 35.
+- **Status:** untested.
+- **Pick up:** apply the patch, rebuild, run the SQL, restart `worldserver`.
+>>>>>>> origin/main
 
 ## 2026-11-21 (Zul'Farrak)
 
@@ -759,7 +1022,7 @@ retest pending; Zandalari chain to test when level appropriate.
   Then restart worldserver.
 ## 2026-11-20 (core: expansion XP gate)
 
-Draft PR #95, not merged yet. Not tested in game yet.
+PR #95, merged 2026-11-21. Confirmed in game by Four on 2026-11-22 (XP locked at 60 until Outland).
 
 ### Core: no experience at the old level caps until the next expansion is started
 
@@ -794,8 +1057,8 @@ Draft PR #95, not merged yet. Not tested in game yet.
     the rewarded quest list changes size).
   - `worldserver.conf.dist`: `ExpansionXpGate.Enable = 1` (0 turns the gate off). Not needed in your
     `worldserver.conf`: missing means on.
-- **Status:** applies cleanly after the full chain on upstream 2c13546, `Player.cpp` compiles. Not
-  checked in game yet.
+- **Status:** applies cleanly after the full chain on upstream 2c13546, `Player.cpp` compiles.
+  Confirmed in game by Four on 2026-11-22.
 - **Pick up** (until the PR is merged):
 
   ```
