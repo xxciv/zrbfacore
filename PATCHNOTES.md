@@ -5,6 +5,17 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-23 (Sunken Temple)
 
+### DB: Malfurion Stormrage no longer appears in Sunken Temple
+
+- **Found** (Four, 2026-11-23: "During the fight with Dreamscythe, Malfurion spawned twice and is just chillin"):
+  area trigger 4016 runs the core's classic `at_malfurion_stormrage`, which summons Malfurion (15362) at the
+  player for 100 s each time they walk in with none within 15 yards. His classic Eranikus quests (8733-8735)
+  are not in this database, he has no quest or script, and Pandaria does not use that script on the trigger.
+- **Changed** (`sql/fixes/world/2026_11_23_04_sunken_temple_malfurion_trigger.sql`): trigger 4016 unbound
+  (backup `zr_backup_st_areatrigger_scripts`).
+- **Status:** tested on a copy of the database only; not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
 ### DB: Avatar of Hakkar waits for the Shrine of the Soulflayer
 
 - **Found** (Four, 2026-11-23: "avatar of hakkar was already spawned"): since Cataclysm the Avatar (8443) is
