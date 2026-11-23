@@ -5,6 +5,17 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-23 (Sunken Temple)
 
+### DB: Avatar of Hakkar waits for the Shrine of the Soulflayer
+
+- **Found** (Four, 2026-11-23: "avatar of hakkar was already spawned"): since Cataclysm the Avatar (8443) is
+  summoned by clicking the Shrine of the Soulflayer (208321). Pandaria does it in C++ (`go_shrine_of_soulflayer`,
+  `boss_avatar_of_hakkar`), which this core lacks, so he stood in the room from the start and the shrine did nothing.
+- **Changed** (`sql/fixes/world/2026_11_23_03_sunken_temple_avatar_shrine.sql`): the Avatar spawns invisible,
+  passive and immune to players; using the shrine makes him visible and he attacks the nearest player (same
+  pattern as Hurley Blackbreath). He stays up after a wipe. The bones on the floor are part of the room and stay.
+- **Status:** tested on a copy of the database only; not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
 ### DB: Sunken Temple survey fixes
 
 - **Found** (survey before Four's first run, 2026-11-23): the scenario (all seven bosses), Dungeon Finder
