@@ -10,6 +10,9 @@
 --    and he says "The Soulflayer comes!" every 31-33 s. Replaced with one script: line 0 when he sees a
 --    player, line 1 on aggro, Flamestrike, Earthgrab Totem, Hex plus "Join us!", Healing Wave below 50%
 --    health, sound on a kill, no summons. Backup zr_backup_st_smart_scripts.
+--    His Hex of Jammal'an (12480) turns the target into a friendly troll (creature 8505, faction 35); alone,
+--    that leaves him with no enemy, so he evades and heals to full (Four, 2026-11-23). Swapped for the plain
+--    Hex (11641: frog, 5 s, no faction change), still with "Join us!".
 -- 3. Dreamscythe (5721, guid 320786) and Weaver (5720, guid 320787) stand 15-20 yards from Morphaz and Hazzas,
 --    so the four elite dragons pull together. Moved back to their Pandaria 5.4.8 spots (backup zr_backup_st_creature).
 -- Everything the scenario needs (Avatar of Hakkar, Jammal'an, Dreamscythe, Weaver, Morphaz, Hazzas, Shade of
@@ -32,7 +35,7 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 (5710, 0, 1, 0, 4, 0, 100, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 'Jammal''an the Prophet - On Aggro - Say Line 1'),
 (5710, 0, 2, 0, 0, 0, 100, 0, 8000, 35000, 20000, 52000, 11, 12468, 0, 0, 0, 0, 0, 5, 0, 0, 0, 'Jammal''an the Prophet - In Combat - Cast Flamestrike'),
 (5710, 0, 3, 0, 0, 0, 100, 0, 6000, 16000, 26000, 36000, 11, 8376, 0, 0, 0, 0, 0, 1, 0, 0, 0, 'Jammal''an the Prophet - In Combat - Cast Earthgrab Totem'),
-(5710, 0, 4, 5, 0, 0, 100, 0, 16000, 19000, 31000, 53000, 11, 12480, 0, 0, 0, 0, 0, 5, 0, 0, 0, 'Jammal''an the Prophet - In Combat - Cast Hex of Jammal''an'),
+(5710, 0, 4, 5, 0, 0, 100, 0, 16000, 19000, 31000, 53000, 11, 11641, 0, 0, 0, 0, 0, 5, 0, 0, 0, 'Jammal''an the Prophet - In Combat - Cast Hex (frog, 5 s; solo-safe)'),
 (5710, 0, 5, 0, 61, 0, 100, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 'Jammal''an the Prophet - Linked - Say Line 2'),
 (5710, 0, 6, 0, 2, 0, 100, 0, 0, 50, 12000, 16000, 11, 12492, 0, 0, 0, 0, 0, 1, 0, 0, 0, 'Jammal''an the Prophet - Between 0-50% Health - Cast Healing Wave'),
 (5710, 0, 7, 0, 5, 0, 100, 0, 0, 0, 0, 0, 4, 5863, 0, 0, 0, 0, 0, 1, 0, 0, 0, 'Jammal''an the Prophet - On Killed Unit - Play Sound 5863');

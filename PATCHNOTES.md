@@ -29,7 +29,8 @@ to do to pick it up (rebuild, restart, run SQL).
     pulled together.
 - **Changed** (`sql/fixes/world/2026_11_23_02_sunken_temple_fixes.sql`): static spirits removed (Deathwalkers
   still summon theirs), Jammal'an gets one clean script (yells, Flamestrike, Earthgrab Totem, Hex, Healing Wave
-  below 50% health, no summons), Dreamscythe and Weaver back on their Pandaria spots. Backups
+  below 50% health, no summons; his troll Hex, which made a solo player friendly so he evaded and healed to
+  full, is now the plain 5 s frog Hex), Dreamscythe and Weaver back on their Pandaria spots. Backups
   `zr_backup_st_creature`, `zr_backup_st_smart_scripts`.
 - **Status:** tested on a copy of the database only; not yet run in game.
 - **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
