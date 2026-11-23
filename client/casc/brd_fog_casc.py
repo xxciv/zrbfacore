@@ -766,6 +766,134 @@ def encoding_ekey_for(client, ckey):
     raise Fail("content key %s not in ENCODING (is this the 8.3.7 35662 client?)" % ckey.hex())
 
 
+# ---- Bob Jenkins lookup3 (CASC .idx and data header checksums)
+
+_M32 = 0xFFFFFFFF
+
+
+def _rot(x, k):
+    return ((x << k) | (x >> (32 - k))) & _M32
+
+
+def _mix(a, b, c):
+    a = (a - c) & _M32; a ^= _rot(c, 4); c = (c + b) & _M32
+    b = (b - a) & _M32; b ^= _rot(a, 6); a = (a + c) & _M32
+    c = (c - b) & _M32; c ^= _rot(b, 8); b = (b + a) & _M32
+    a = (a - c) & _M32; a ^= _rot(c, 16); c = (c + b) & _M32
+    b = (b - a) & _M32; b ^= _rot(a, 19); a = (a + c) & _M32
+    c = (c - b) & _M32; c ^= _rot(b, 4); b = (b + a) & _M32
+    return a, b, c
+
+
+def _final(a, b, c):
+    c ^= b; c = (c - _rot(b, 14)) & _M32
+    a ^= c; a = (a - _rot(c, 11)) & _M32
+    b ^= a; b = (b - _rot(a, 25)) & _M32
+    c ^= b; c = (c - _rot(b, 16)) & _M32
+    a ^= c; a = (a - _rot(c, 4)) & _M32
+    b ^= a; b = (b - _rot(a, 14)) & _M32
+    c ^= b; c = (c - _rot(b, 24)) & _M32
+    return a, b, c
+
+
+def hashlittle2(data, pc=0, pb=0):
+    """Bob Jenkins lookup3 hashlittle2 (byte-wise path, same result as aligned paths)."""
+    length = len(data)
+    a = b = c = (0xDEADBEEF + length + pc) & _M32
+    c = (c + pb) & _M32
+    k = data
+    i = 0
+    while length > 12:
+        a = (a + int.from_bytes(k[i:i + 4], "little")) & _M32
+        b = (b + int.from_bytes(k[i + 4:i + 8], "little")) & _M32
+        c = (c + int.from_bytes(k[i + 8:i + 12], "little")) & _M32
+        a, b, c = _mix(a, b, c)
+        length -= 12
+        i += 12
+    if length == 0:
+        return c, b
+    tail = k[i:i + length] + bytes(12 - length)
+    a = (a + int.from_bytes(tail[0:4], "little")) & _M32
+    b = (b + int.from_bytes(tail[4:8], "little")) & _M32
+    c = (c + int.from_bytes(tail[8:12], "little")) & _M32
+    a, b, c = _final(a, b, c)
+    return c, b
+
+
+def hashlittle(data, initval=0):
+    return hashlittle2(data, initval, 0)[0]
+
+
+_OFFS_TABLE = [0x049396B8, 0x72A82A9B, 0xEE626CCA, 0x9917754F, 0x15DE40B1, 0xF5A8A9B6, 0x421EAC7E, 0xA9D55C9A,
+               0x317FD40C, 0x04FAF80D, 0x3D6BE971, 0x52933CFD, 0x27F64B7D, 0xC6F5C11B, 0xD5757E3A, 0x6C388745]
+
+
+def span_header_checks(hdr30, offset):
+    """(jenkins, checksum) the 30-byte data.NNN header should carry (CascLib VerifyHeaderSpan)."""
+    jen = hashlittle(hdr30[0:0x16], 0x3D6BE971).to_bytes(4, "little")
+    v = (offset + 30) & 0xFFFFFFFF
+    enc_off = (_OFFS_TABLE[v & 0xF] ^ v).to_bytes(4, "little")
+    hh = bytearray(4)
+    part = hdr30[0:0x16] + jen
+    for i in range(0x1A):
+        hh[i & 3] ^= part[i]
+    chk = bytes(hh[(0x1A + j) & 3] ^ enc_off[(0x1A + j) & 3] for j in range(4))
+    return jen, chk
+
+
+def cmd_check(client):
+    """Read-only: do this client's .idx and data headers use the checksums we know how to write?"""
+    import random
+    files = idx_files(client)
+    ok_hdr = ok_blk = 0
+    samples = []
+    for b, p in sorted(files.items()):
+        data = open(p, "rb").read()
+        hsize, hhash = struct.unpack_from("<II", data, 0)
+        ok_hdr += hashlittle(data[8:8 + hsize], 0) == hhash
+        seg_bits = data[8 + 7]
+        pos = ((8 + hsize) + 15) & ~15
+        bsz, bhash = struct.unpack_from("<II", data, pos)
+        pos += 8
+        pc = pb = 0
+        for i in range(bsz // 18):
+            pc, pb = hashlittle2(data[pos + 18 * i:pos + 18 * i + 18], pc, pb)
+        ok_blk += pc == bhash
+        ents = [data[pos + 18 * i:pos + 18 * i + 18] for i in range(bsz // 18)]
+        print("  %s: %d entries, header hash %s, entries hash %s, file %d bytes" % (
+            os.path.basename(p), len(ents), "ok" if hashlittle(data[8:8 + hsize], 0) == hhash else "MISMATCH",
+            "ok" if pc == bhash else "MISMATCH", len(data)))
+        random.seed(b)
+        samples += [(e, seg_bits) for e in random.sample(ents, min(15, len(ents)))]
+    print("idx: %d/%d header hashes ok, %d/%d entry-block hashes ok" % (ok_hdr, len(files), ok_blk, len(files)))
+    good = {"key": 0, "size": 0, "jenkins": 0, "checksum": 0, "blte": 0, "ekey=md5(hdr)": 0}
+    for e, seg_bits in samples:
+        so = int.from_bytes(e[9:14], "big")
+        arc, off, size = so >> seg_bits, so & ((1 << seg_bits) - 1), struct.unpack_from("<I", e, 14)[0]
+        with open(data_path(client, arc), "rb") as f:
+            f.seek(off)
+            blob = f.read(min(size, 1 << 20))
+        h = blob[0:30]
+        good["key"] += h[0:16][::-1][:9] == e[:9]
+        good["size"] += struct.unpack_from("<I", h, 16)[0] == size
+        jen, chk = span_header_checks(h, off)
+        good["jenkins"] += h[0x16:0x1A] == jen
+        good["checksum"] += h[0x1A:0x1E] == chk
+        good["blte"] += blob[30:34] == b"BLTE"
+        hs = struct.unpack_from(">I", blob, 34)[0]
+        ek = h[0:16][::-1]
+        if hs:
+            good["ekey=md5(hdr)"] += hashlib.md5(blob[30:30 + hs]).digest() == ek
+        elif len(blob) == size:
+            good["ekey=md5(hdr)"] += hashlib.md5(blob[30:]).digest() == ek
+    print("data headers (%d samples): %s" % (len(samples), good))
+    d = cpath(client, "Data", "data")
+    nums = sorted(int(f[5:]) for f in os.listdir(d) if f.lower().startswith("data.") and f[5:].isdigit())
+    print("data files: %s .. %s, last %s is %d bytes; shmem: %s" % (
+        nums[0], nums[-1], nums[-1], os.path.getsize(data_path(client, nums[-1])),
+        [f for f in os.listdir(d) if "shmem" in f.lower()]))
+
+
 # --------------------------------------------------------------------------- diagnostics
 
 def enc_lookup_all(enc, ckey):
@@ -1007,7 +1135,7 @@ def cmd_restore(client):
 
 
 def main(argv):
-    if len(argv) < 3 or argv[2] not in ("status", "apply", "restore", "diag") or (argv[2] == "apply" and (len(argv) < 4 or argv[3] not in ("off", "swap", "probe"))):
+    if len(argv) < 3 or argv[2] not in ("status", "apply", "restore", "diag", "check") or (argv[2] == "apply" and (len(argv) < 4 or argv[3] not in ("off", "swap", "probe"))):
         print(__doc__)
         return 2
     client = argv[1]
@@ -1019,6 +1147,8 @@ def main(argv):
             cmd_status(client)
         elif argv[2] == "diag":
             cmd_diag(client)
+        elif argv[2] == "check":
+            cmd_check(client)
         elif argv[2] == "apply":
             cmd_apply(client, argv[3])
         else:
