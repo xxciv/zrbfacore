@@ -5,6 +5,16 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### DB: Ribbly and his cronies immune to NPCs again
+
+- **Found** (Four, 2026-11-22: "it almost worked. Hurley decided to go pick a fight with Ribbly and Company."):
+  Ribbly Screwspigot (9543) and his cronies (10043) stand 14 yards from Hurley's corner with a faction (735)
+  hostile to Hurley's (54). AzerothCore gives both Immune to NPCs (unit_flags 0x200); this database lost it.
+- **Changed** (`sql/fixes/world/2026_11_22_10_blackrock_depths_ribbly_npc_immune.sql`): flag 0x200 added back
+  to both templates. Players can still fight them.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
 ### DB: Hurley Blackbreath now comes when the third keg breaks
 
 - **Found** (Four, 2026-11-22: "hurleys keg event doesn't trigger after breaking 3 kegs"): the kegs (164911)
@@ -14,7 +24,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`sql/fixes/world/2026_11_22_09_blackrock_depths_hurley_kegs.sql`): each broken keg tells Hurley
   instead (creature range, which works), Hurley counts the breaks, and the third one starts his old wake-up chain.
   The core bug is left alone; 12 other scripts in the database use target 13 with an entry and do nothing.
-- **Status:** untested in game.
+- **Status:** tested in game (Four, 2026-11-22): the third keg brings Hurley, who then attacked Ribbly (fixed above).
 - **Pick up:** run the SQL, restart `worldserver`, re-queue (a restart drops a solo Dungeon Finder group).
 
 ### DB: Purple fog in Blackrock Depths left alone (client art)
