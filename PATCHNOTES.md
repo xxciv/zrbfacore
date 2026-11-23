@@ -15,7 +15,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`sql/fixes/world/2026_11_23_09_lower_blackrock_spire_stacked_scarshield.sql`): the second copy of
   each pair removed (30), the second Ghok shares a 12% pool with the Veteran under him (pool 22920). Backups
   `zr_backup_lbrs_stacked_*`.
-- **Status:** tested on a copy of the database only; not yet run in game.
+- **Status:** confirmed in game (Four, 2026-11-23: "those are fixed.").
 - **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
 
 ### DB: Blackrock Stadium (Rend's arena) thinned by half
