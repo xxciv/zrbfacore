@@ -746,8 +746,51 @@ def cmd_uninject(client):
     print(".fzbuildnfo points at the original build config %s again" % info_build_key(info))
 
 
+def cmd_layout(client):
+    """Read-only: how the original ENCODING/ROOT/WMO are stored, and what we wrote."""
+    st = Storage(client)
+    s = load_state(client) or {}
+    key = s.get("orig_key") or info_build_key(info_file(client))
+    raw, kv = read_config(client, key)
+    print("== build config %s" % key)
+    print(raw.decode("utf-8", "replace"))
+    b = load_build(st, client, key)
+
+    def show(name, ek, blte):
+        arc, off, size = st.locate(ek)
+        hsize, frames = blte_parse(blte)
+        print("== %s ekey %s at data.%03d @%d size %d, header %d, %d frames" % (name, ek.hex(), arc, off, size, hsize, len(frames)))
+        print("   frames (csize/mode/esize):", [(c, f[0:1].decode("latin1"), len(f)) for f, c in frames[:12]], "..." if len(frames) > 12 else "")
+        print("   last frames:", [(c, f[0:1].decode("latin1"), len(f)) for f, c in frames[-3:]])
+        with open(st.data_path(arc), "rb") as f:
+            f.seek(off)
+            print("   span header:", f.read(30).hex())
+
+    enc_ek = bytes.fromhex(kv["encoding"][1])
+    show("ENCODING", enc_ek, b["enc_blte"])
+    show("ROOT", b["root_ek"], b["root_blte"])
+    ck, ek, wblte, _ = wmo_of(st, b)
+    show("WMO", ek, wblte)
+    e = b["enc"]
+    print("== ENCODING: cpage %d x %d, epage %d x %d, %d especs, trailer %r" % (
+        len(e.cpages), e.cpsize, len(e.epages), e.epsize, len(e.especs), e.trailer[:300]))
+    print("   especs:", [x.decode("latin1") for x in e.especs[:15]])
+    for name, k in (("ENCODING", enc_ek), ("ROOT", b["root_ek"]), ("WMO", ek)):
+        try:
+            print("   espec of %s: %s" % (name, e.especs[e.espec_index(k)].decode("latin1")))
+        except Fail as x:
+            print("   espec of %s: %s" % (name, x))
+    shm = cpath(client, "Data", "data", "shmem")
+    if os.path.isfile(shm):
+        with open(shm, "rb") as f:
+            d = f.read()
+        print("== shmem %d bytes, head %s" % (len(d), d[:300].hex()))
+        print("   strings:", [t for t in d.split(b"\0") if len(t) > 4][:10])
+    print("== data files:", st.archives()[-3:], [os.path.getsize(st.data_path(a)) for a in st.archives()[-3:]])
+
+
 def main(argv):
-    cmds = ("status", "inject", "uninject")
+    cmds = ("status", "inject", "uninject", "layout")
     if len(argv) < 3 or argv[2] not in cmds or (argv[2] == "inject" and (len(argv) < 4 or argv[3] not in ("off", "swap", "probe"))):
         print(__doc__)
         return 2
@@ -760,6 +803,8 @@ def main(argv):
             cmd_status(client)
         elif argv[2] == "inject":
             cmd_inject(client, argv[3])
+        elif argv[2] == "layout":
+            cmd_layout(client)
         else:
             cmd_uninject(client)
     except Fail as e:
