@@ -30,10 +30,17 @@ Usage (game closed):
       lightfix: Light.db2 gets a map-wide light for Blackrock Depths (map 230) that uses an
               all-black LightParams, so the client stops falling back to the default
               outdoor light (blue at night) there
+  python3 zr_casc_inject.py "<client folder>" inject file <file ID>=<path> [<file ID>=<path> ...]
+      replaces whole files with your own (for example an edited login-screen Lua file found
+      with 'find')
   python3 zr_casc_inject.py "<client folder>" uninject
   python3 zr_casc_inject.py "<client folder>" extract <out folder> brd|<file ID> [<file ID> ...]
       (read-only: writes files from the current build, 'brd' = the BRD root WMO and all its
        group files, and prints the liquid planes found in those group files)
+  python3 zr_casc_inject.py "<client folder>" find <out folder> [<text> ...]
+      (read-only: reads every stored text file (Lua, XML, TOC, ...) and lists the file IDs that
+       contain one of the texts, ignoring case; default texts "fstorm" and "live changelog".
+       Each hit is written to <out folder>/<file ID>.txt)
 """
 import hashlib
 import json
@@ -798,8 +805,27 @@ def light_add_map(db, mapid, params_id):
     return bytes(out)
 
 
-def variant_edits(variant):
-    """[(file ID, original content key, edit function)]"""
+def parse_file_args(args):
+    """['12345=/path/news.lua', ...] -> [(12345, data)]"""
+    out = []
+    for a in args:
+        fd, sep, path = a.partition("=")
+        if not sep or not fd.strip().isdigit():
+            raise Fail("expected <file ID>=<path>, got %r" % a)
+        path = os.path.expanduser(path)
+        if not os.path.isfile(path):
+            raise Fail("no such file: " + path)
+        with open(path, "rb") as f:
+            out.append((int(fd), f.read()))
+    if not out:
+        raise Fail("inject file needs at least one <file ID>=<path>")
+    return out
+
+
+def variant_edits(variant, extra=()):
+    """[(file ID, original content key or None, edit function)]"""
+    if variant == "file":
+        return [(fd, None, lambda d, x=data: x) for fd, data in parse_file_args(extra)]
     if variant in WMO_VARIANTS:
         return [(WMO_FDID, WMO_CKEY, lambda d: make_variant(d, variant))]
     if variant in LIQUID_VARIANTS:
@@ -843,7 +869,7 @@ def cmd_status(client):
         print("injected      %s" % s.get("variant"))
 
 
-def cmd_inject(client, variant):
+def cmd_inject(client, variant, extra=()):
     info = info_file(client)
     if not info:
         raise Fail("no .fzbuildnfo in the client folder; set up offline mode first")
@@ -858,9 +884,9 @@ def cmd_inject(client, variant):
         raise Fail("ENCODING rebuild self-test failed on this client; nothing written")
     enc = b["enc"]
     files = []      # (fdid, old ck, new data, new ck, new ek, new blte, old ek)
-    for fdid, orig_ck, fn in variant_edits(variant):
+    for fdid, orig_ck, fn in variant_edits(variant, extra):
         ck, ek, blte, data = file_entry(st, b, fdid)
-        if ck != orig_ck:
+        if orig_ck is not None and ck != orig_ck:
             raise Fail("base build's file %d is not the original (%s)" % (fdid, ck.hex()))
         nd = fn(data)
         nb = blte_encode_like(blte, nd)
@@ -947,7 +973,8 @@ def cmd_inject(client, variant):
     with open(info, "w", encoding="utf-8", newline="") as f:
         f.write(txt.replace(cur_key, new_key))
 
-    s.update({"orig_key": base_key, "new_key": new_key, "archive": arc, "variant": variant})
+    s.update({"orig_key": base_key, "new_key": new_key, "archive": arc,
+              "variant": variant if variant != "file" else "file " + " ".join(str(f[0]) for f in files)})
     with open(state_path(client), "w") as f:
         json.dump(s, f, indent=1)
 
@@ -959,7 +986,8 @@ def cmd_inject(client, variant):
         got = file_entry(st2, b2, fdid)[3]
         if got != nd:
             raise Fail("read-back mismatch for file %d" % fdid)
-        print("file %d now reads back as: %s" % (fdid, state_of(got) if fdid == WMO_FDID else variant))
+        print("file %d now reads back as: %s" % (fdid, state_of(got) if fdid == WMO_FDID and variant != "file"
+                                                  else "%s (%d bytes)" % (variant, len(got))))
 
 
 def cmd_uninject(client):
@@ -1123,9 +1151,129 @@ def cmd_extract(client, out, ids):
     print("wrote %d of %d files to %s" % (written, len(todo), out))
 
 
+def _looks_like_text(head):
+    if head.startswith(b"\xef\xbb\xbf"):
+        head = head[3:]
+    if not head or b"\0" in head:
+        return False
+    ok = sum(1 for c in head if c >= 0x20 or c in (9, 10, 13))
+    return ok >= 0.97 * len(head)
+
+
+def _span_head_text(head):
+    """First bytes of a stored span -> True if the file starts like text."""
+    blte = head[30:]
+    if blte[0:4] != b"BLTE" or len(blte) < 9:
+        return False
+    hsize = struct.unpack_from(">I", blte, 4)[0]
+    frame = blte[8:] if hsize == 0 else blte[hsize:]
+    if not frame:
+        return False
+    mode, body = frame[0:1], frame[1:]
+    if mode == b"N":
+        return _looks_like_text(body[:512])
+    if mode == b"Z":
+        try:
+            return _looks_like_text(zlib.decompressobj().decompress(body, 512))
+        except zlib.error:
+            return False
+    return False
+
+
+def cmd_find(client, out, texts):
+    texts = [t.lower().encode("utf-8") for t in (texts or ["fstorm", "live changelog"])]
+    info = info_file(client) or os.path.join(client, ".build.info")
+    if not os.path.isfile(info):
+        raise Fail("no .fzbuildnfo or .build.info in the client folder")
+    st = Storage(client)
+    key = info_build_key(info)
+    b = load_build(st, client, key)
+    # every stored file, in disk order
+    spans = {}
+    for bk in range(16):
+        x = st.newest(bk)
+        for e in x.entries:
+            so = int.from_bytes(e[9:14], "big")
+            spans[e[:9]] = (so >> x.seg_bits, so & ((1 << x.seg_bits) - 1), struct.unpack_from("<I", e, 14)[0])
+    order = sorted((v, k) for k, v in spans.items())
+    print("build config %s, %d stored files; looking for %s" % (key, len(order), ", ".join(repr(t.decode()) for t in texts)), flush=True)
+    hits = {}           # ekey9 -> (data, [(text, line)])
+    texty = done = 0
+    cur_arc, f = None, None
+    try:
+        for (arc, off, size), ek9 in order:
+            done += 1
+            if done % 50000 == 0:
+                print("  %d / %d files read, %d text files so far" % (done, len(order), texty), flush=True)
+            if arc != cur_arc:
+                if f:
+                    f.close()
+                p = st.data_path(arc)
+                f = open(p, "rb") if os.path.isfile(p) else None
+                cur_arc = arc
+            if f is None or size < 40:
+                continue
+            f.seek(off)
+            head = f.read(min(size, 4096))
+            if not _span_head_text(head):
+                continue
+            span = head + (f.read(size - len(head)) if size > len(head) else b"")
+            try:
+                data, _ = blte_decode_lenient(span[30:])
+            except (Fail, zlib.error, struct.error):
+                continue
+            texty += 1
+            low = data.lower()
+            found = []
+            for t in texts:
+                if t in low:
+                    for line in data.split(b"\n"):
+                        if t in line.lower():
+                            ln = line.strip()[:200].decode("utf-8", "replace")
+                            if ln not in found:
+                                found.append(ln)
+            if found:
+                hits[ek9] = (data, found)
+    finally:
+        if f:
+            f.close()
+    print("%d text files read, %d contain the text" % (texty, len(hits)))
+    if not hits:
+        return
+    # encoded key -> content key -> file IDs in this build
+    ck_of = {}
+    for pg in b["enc"].cpages:
+        for e in pg["entries"]:
+            for k in range(e[0]):
+                ek = e[22 + 16 * k:38 + 16 * k]
+                if ek[:9] in hits:
+                    ck_of[ek[:9]] = e[6:22]
+    fd_of = {}
+    want = set(ck_of.values())
+    for _, ids, ck_at, lflags in root_blocks(b["root"], with_locale=True):
+        for i, fd in enumerate(ids):
+            ck = b["root"][ck_at + 16 * i:ck_at + 16 * i + 16]
+            if ck in want:
+                fd_of.setdefault(ck, set()).add(fd)
+    os.makedirs(out, exist_ok=True)
+    for ek9, (data, found) in sorted(hits.items(), key=lambda kv: sorted(fd_of.get(ck_of.get(kv[0]), {0}))):
+        ck = ck_of.get(ek9)
+        fds = sorted(fd_of.get(ck, ())) if ck else []
+        name = ("%d" % fds[0]) if fds else ("unused_" + ek9.hex())
+        with open(os.path.join(out, name + ".txt"), "wb") as w:
+            w.write(data)
+        print("== %s  file ID %s  (%d bytes)%s" % (name + ".txt", ", ".join(map(str, fds)) or "-", len(data),
+                                                   "" if fds else "  not used by the current build"))
+        for line in found[:8]:
+            print("     " + line)
+        if len(found) > 8:
+            print("     ... %d more lines" % (len(found) - 8))
+    print("wrote %d files to %s" % (len(hits), out))
+
+
 def main(argv):
-    cmds = ("status", "inject", "uninject", "layout", "extract")
-    if len(argv) < 3 or argv[2] not in cmds or (argv[2] == "inject" and (len(argv) < 4 or argv[3] not in WMO_VARIANTS + LIQUID_VARIANTS + LIGHT_VARIANTS)):
+    cmds = ("status", "inject", "uninject", "layout", "extract", "find")
+    if len(argv) < 3 or argv[2] not in cmds or (argv[2] == "inject" and (len(argv) < 4 or argv[3] not in WMO_VARIANTS + LIQUID_VARIANTS + LIGHT_VARIANTS + ("file",))):
         print(__doc__)
         return 2
     client = argv[1]
@@ -1136,7 +1284,7 @@ def main(argv):
         if argv[2] == "status":
             cmd_status(client)
         elif argv[2] == "inject":
-            cmd_inject(client, argv[3])
+            cmd_inject(client, argv[3], argv[4:])
         elif argv[2] == "layout":
             cmd_layout(client)
         elif argv[2] == "extract":
@@ -1144,6 +1292,11 @@ def main(argv):
                 print(__doc__)
                 return 2
             cmd_extract(client, argv[3], argv[4:])
+        elif argv[2] == "find":
+            if len(argv) < 4:
+                print(__doc__)
+                return 2
+            cmd_find(client, argv[3], argv[4:])
         else:
             cmd_uninject(client)
     except Fail as e:

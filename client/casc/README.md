@@ -73,3 +73,24 @@ starts again from the original build, so variants don't stack; `uninject` undoes
 3/10/12/13) pure green in LightData.db2. `inject lightfix` adds a map-wide Light.db2 row for
 Blackrock Depths (map 230, position 0,0,0) that uses LightParams 1989 (all colours black), so
 the client no longer falls back to the default outdoor light (blue at night) there.
+
+## Finding and replacing text files (login screen news etc.)
+
+```
+python3 zr_casc_inject.py "<client>" find ~/Downloads/zr_find                 # "fstorm", "live changelog"
+python3 zr_casc_inject.py "<client>" find ~/Downloads/zr_find "some text" ...
+```
+
+Read-only. Goes through every stored file in disk order, decodes only the ones that start like
+text (Lua, XML, TOC, ...), and lists the file IDs whose content contains one of the texts
+(ignoring case). Each hit is saved as `<out>/<file ID>.txt`.
+
+To replace whole files with edited copies:
+
+```
+python3 zr_casc_inject.py "<client>" inject file 1234567=~/Downloads/zr_find/1234567.txt [more ...]
+```
+
+This works like the other variants (new ROOT/ENCODING/build config, `.fzbuildnfo` switched), so
+`uninject` undoes it, and every `inject` starts again from the original build: put all the files
+you want replaced in one `inject file` command.
