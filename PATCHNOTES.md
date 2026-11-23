@@ -5,6 +5,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-23 (Lower Blackrock Spire)
 
+### DB: Lower Blackrock Spire: Spirestone ogres doubled, two rares always up
+
+- **Found** (Four, 2026-11-23: "ogres are doubled up. spirestone butcher and spirestone battle lord (both rares)
+  both spawned."): seven spawns stood 0.7-1.9 yards from another mob, closer than a real pack but outside the
+  0.6-yard cut of the Scarshield fix (four Spirestone Reavers, a Spirestone Ogre Magus, and two Scarshield copies);
+  Pandaria has the same rows. Spirestone Butcher 322713 and Spirestone Lord Magus 323152 sat outside their pools,
+  so they spawned every run.
+- **Changed** (`sql/fixes/world/2026_11_23_10_lower_blackrock_spire_spirestone_doubles.sql`): the seven doubles
+  removed (Reavers 7 to 3, as in AzerothCore); the Butcher joins pool 22907 (one Butcher, 12% over three spots) and
+  the Lord Magus joins pool 22908 (one Lord Magus, 12% over two spots). Backups `zr_backup_lbrs_spirestone_*`.
+- **Status:** tested on a copy of the database only; not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
 ### DB: Lower Blackrock Spire: Scarshield spawns two to a spot
 
 - **Found** (Four, 2026-11-23: "doubled up spawns for spellbinders and warlocks"): 23 Scarshield spots held two
