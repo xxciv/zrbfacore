@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-23 (Quest fixes: Pilgrim's Bounty reward bag)
 
-Draft PR, not merged yet.
+PR #111, draft. Confirmed in game.
 
 ### DB: The Pilgrim's Bounty reward bag opens empty
 - **Found** (Four, 2026-11-23): turning in Don't Forget The Stuffing! and choosing the Pilgrim's Bounty
@@ -21,8 +21,8 @@ Draft PR, not merged yet.
   - 3% each: Frightened Bush Chicken 116403 (pet), Silver-Plated Turkey Shooter 116400 (toy), Fine
     Pilgrim's Hat 116401. The guides give about 9% for the three together.
   - The food amounts and the 3% split are our own choice; nothing published gives exact numbers.
-- **Status:** not tested in game yet. A bag that was already opened stays empty; the next one rolls the
-  new table.
+- **Status:** CONFIRMED in game by Four 2026-11-23. A bag that was already opened stays empty; the next
+  one rolls the new table.
 - **Pick up:** SQL only:
 
   ```
