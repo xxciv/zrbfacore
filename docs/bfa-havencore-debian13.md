@@ -1366,6 +1366,30 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_18_33_ruins_of_gilneas_rushers_inside.sql` | Ruins of Gilneas: 11 Worgen Rushers back inside the Forward Command, one per defender (our own tuning); Rusher fight starter reach 5 yards, Sharpshooters added as targets |
 | `2026_11_18_34_ruins_of_gilneas_forest_pairs.sql` | Ruins of Gilneas: 29 more Worgen Rushers paired with lone Forsaken Vanguards in the forest around the Forward Command (our own tuning) |
 | `2026_11_18_35_default_phase_in_phased_zones.sql` | Darkshore and Ruins of Gilneas: always add default phase 169 next to the quest phases of 2026_11_18_30/31, so normal spawns stay visible |
+| `2026_11_18_40_razor_hill_grunt_directions.sql` | Durotar: Razor Hill Grunt directions (menu 3285 links, "A class trainer" restored, class menu realigned, markers for Jabul/Un'Thuwa/Burok) |
+| `2026_11_18_41_profession_trainer_menus.sql` | Runda and the other 10 "Profession Trainer" NPCs: every "Train me in X." option opens that profession's trainer list |
+| `2026_11_18_42_profession_trainers_isolated.sql` | KTC Train-a-Tron Deluxes (Lost Isles, Azshara), Whittler Dewei and the Profession Liaisons: training and shop options open their lists |
+| `2026_11_18_43_ticking_time_bomb_fuse.sql` | Northwatch Marine's Ticking Time Bomb: ticks for 3 seconds where it lands, shows its bomb (spell 79727), then explodes |
+| `2026_11_18_44_sergeant_curtis_one_spawn.sql` | Tiragarde Keep: Sergeant Curtis's two spawn points pooled, one up at a time |
+| `2026_11_18_45_treasure_chest_loot.sql` | Maplewood and Runestone Treasure Chests: each uses its 8.3.7 loot table again, so none opens empty |
+| `2026_11_18_46_holiday_spawn_events.sql` | Holiday spawns on their 8.3.7 events (Pilgrim's Bounty, Brewfest, Isle of Conquest, Strand of the Ancients, L70ETC and others) |
+| `2026_11_18_47_brew_of_the_month.sql` | Brew of the Month Club: monthly events run again, Orgrimmar vendor sells the month's brew, Ironforge gets all 12 vendors (run after 46) |
+| `2026_11_18_48_brew_club_recruiters_all_year.sql` | Larkin Thunderbrew (Ironforge) and Ray'ma (Orgrimmar) stand all year, so the Brew of the Month Club can be joined outside Brewfest |
+| `2026_11_18_49_brew_club_lockouts.sql` | Ray'ma's shop needs a Brewfest Prize Token and the Orgrimmar Brew Vendor needs club membership, like their Ironforge twins (our own change) |
+| `2026_11_18_36_brew_vendor_single_item.sql` | Monthly Brew Vendors list their brew once (the same-named second copy removed, as in 8.3.7) |
+| `2026_11_19_30_northern_stranglethorn_spots.sql` | Northern Stranglethorn: Kurzen Medicine Men stand still, second Krazek removed, Ahune's lieutenants only during Midsummer |
+| `2026_11_19_31_stealthers_creep_not_hover.sql` | Stealthed creatures (Kurzen Commando and 15 more) creep on the ground instead of floating |
+| `2026_11_19_32_northern_stranglethorn_review.sql` | Northern Stranglethorn review: 49 extras removed, 92 missing 8.3.7 spawns added, Gluggl and Roloch one at a time, 362 mobs stand still |
+| `2026_11_20_30_digsite_zombie_survivors.sql` | Cape of Stranglethorn: left-over Digsite Zombie Survivors removed, summoned ones despawn after 5 s |
+| `2026_11_20_31_duskwood_watcher_doubles.sql` | Duskwood: doubled watchers Jordan, Fraizer, Mocarski and Bukouris down to one each |
+| `2026_11_20_32_lakeshire_fight_club.sql` | Redridge: Lakeshire Inn basement fight club staged by the Keeshan quests as in 8.3.7 |
+| `2026_11_20_33_lakeshire_fight_club_punches.sql` | Redridge: fight club fighters on SmartAI, Dumpy/Keeshan attack their Big Earl and he fights back (stops at 85%) |
+| `2026_11_20_34_maidens_fancy_leftovers.sql` | Ratchet/Booty Bay: Masker copies and floating chairs removed; deck chairs and two missing crewmen on The Maiden's Fancy |
+| `2026_11_20_35_theramore_dock_chairs.sql` | Theramore dock: 18 floating Lady Mehley chairs removed |
+| `2026_11_20_36_andorhal_two_battles.sql` | Western Plaguelands: Andorhal's Scourge battle (8.3.7 layout) and later Alliance-Horde battle in phases 314/317, both fighting |
+| `2026_11_20_37_western_plaguelands_review.sql` | Western Plaguelands zone review: extras and stacked copies removed, rares pooled, missing spawns added, movement as 8.3.7 |
+| `2026_11_23_30_pilgrims_bounty_feast_chairs.sql` | Pilgrim's Bounty: 159 loose (doubled) feast chairs removed, table/chair flags as 8.3.7, no names over the feast |
+| `2026_11_23_31_holiday_quests_only_in_season.sql` | 212 holiday quests offered only during their holiday (always-on starter rows removed), Costumed Orphan Matron on Hallow's End |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills, `2026_11_09_02_profession_tier_levels.sql` gates them by expansion level, `2026_11_15_80_profession_trainer_recipes.sql` gives every crafting trainer its recipes).
 
