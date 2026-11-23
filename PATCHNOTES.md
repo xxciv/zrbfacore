@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-23 (Quest fixes: quest tracker objective text, Pilgrim's Bounty table chairs)
 
-Draft PR, not merged yet.
+PR #110, draft. Both fixes confirmed in game.
 
 ### DB: Quest tracker shows "<bunny> slain" lines (all quests)
 - **Found** (Four, 2026-11-23): Pilgrim's Bounty "Spice Bread Stuffing" shows "2/5 Spice Bread Stuffing
@@ -18,7 +18,7 @@ Draft PR, not merged yet.
 - **Changed** (`sql/fixes/world/2026_11_23_70_quest_objective_text.sql`): copies TDB 8.3.7's Description
   into `quest_objectives` where ours is NULL or empty and the objective ID, QuestID, Type and ObjectID all
   match. Nothing that already has text is touched.
-- **Status:** not tested in game yet. Delete the client's Cache folder after applying, or the old quest text stays.
+- **Status:** CONFIRMED in game by Four 2026-11-23 (Pilgrim's Bounty quests). Delete the client's Cache folder after applying, or the old quest text stays.
 
 ### DB: Bountiful Table chairs have an empty action bar (Pilgrim's Bounty)
 - **Found** (Four, 2026-11-23): in Sharing a Bountiful Feast (14064/14065) the table and chairs don't work.
@@ -33,7 +33,7 @@ Draft PR, not merged yet.
   - unit_flags2 2048 -> 34816 on all five; Pie Chair unit_flags 16388 -> 16384; AIName SmartAI -> '' and
     their smart_scripts rows deleted.
   - The doubled static chairs around each table are Wayfarer's fix, not this one.
-- **Status:** not tested in game yet.
+- **Status:** CONFIRMED in game by Four 2026-11-23.
 - **Pick up** (both entries above): SQL only:
 
   ```
