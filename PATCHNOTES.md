@@ -5,6 +5,115 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### DB: Hurley Blackbreath's cronies no longer elite
+
+- **Found** (Four, 2026-11-22: "his 3 friends need to not be elite." and "it was a massacre"): the three
+  Blackbreath Cronies (9541) are elite with 4x health and 7.5x damage (same in Pandaria and AzerothCore), and
+  they join Hurley all at once.
+- **Changed** (`sql/fixes/world/2026_11_22_11_blackrock_depths_blackbreath_cronies.sql`): rank normal, health
+  x1, damage x3.5 like the bar's normal patrons (backup `zr_backup_brd_creature_template`). Hurley unchanged.
+- **Status:** confirmed in game (Four, 2026-11-22: "That worked").
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Ribbly and his cronies immune to NPCs again
+
+- **Found** (Four, 2026-11-22: "it almost worked. Hurley decided to go pick a fight with Ribbly and Company."):
+  Ribbly Screwspigot (9543) and his cronies (10043) stand 14 yards from Hurley's corner with a faction (735)
+  hostile to Hurley's (54). AzerothCore gives both Immune to NPCs (unit_flags 0x200); this database lost it.
+- **Changed** (`sql/fixes/world/2026_11_22_10_blackrock_depths_ribbly_npc_immune.sql`): flag 0x200 added back
+  to both templates. Players can still fight them.
+- **Status:** confirmed in game (Four, 2026-11-22: "That worked").
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Hurley Blackbreath now comes when the third keg breaks
+
+- **Found** (Four, 2026-11-22: "hurleys keg event doesn't trigger after breaking 3 kegs"): the kegs (164911)
+  from `2026_11_22_06` counted breaks by telling each other through SAI target 13 (game objects in range). In
+  this core that target never finds anything when an entry is given: `SmartScript.cpp` tests
+  `!entry && GetEntry() == entry` (creature range has `!entry || ...`). No keg was counted, so Hurley stayed hidden.
+- **Changed** (`sql/fixes/world/2026_11_22_09_blackrock_depths_hurley_kegs.sql`): each broken keg tells Hurley
+  instead (creature range, which works), Hurley counts the breaks, and the third one starts his old wake-up chain.
+  The core bug is left alone; 12 other scripts in the database use target 13 with an entry and do nothing.
+- **Status:** confirmed in game (Four, 2026-11-22) together with the two fixes above.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue (a restart drops a solo Dungeon Finder group).
+
+### DB: Purple fog in Blackrock Depths left alone (client art)
+
+- **Found** (Four, 2026-11-22): the purple fog stayed after `2026_11_22_08`. Every creature, gameobject,
+  display, aura, anim kit, world effect and spawn or out-of-combat cast on map 230 now matches Pandaria 5.4.8.
+  The only light auras there are Ilsa and Ursula Direbrew's red and blue Dark Iron lights (Brewfest, event 24)
+  and Elder Morndeep's Spotlight (Lunar Festival, event 7), and `.event activelist` shows neither running.
+- **Changed:** nothing. The fog comes from the client; Projected Textures off hides it.
+- **Status:** closed.
+
+### DB: Eranikus' Shade removed from Blackrock Depths (purple band suspect)
+
+- **Found** (Four, 2026-11-22): a purple glow band with black smoke hangs at one height around the Grim Guzzler
+  and its bridge. It goes away with the client's Projected Textures setting off, stays put when the player flies
+  up, is not outside Blackrock Mountain, and no aura on the player draws it (`.list auras`). Every gameobject on
+  the map stands where Pandaria 5.4.8 has one. The only creatures this database adds near the bar and bridge
+  are two Eranikus' Shades (51366, display 7804) at 843,-216 and 999,-228: unselectable, immune, no script,
+  quest or gossip, and absent from Pandaria and AzerothCore.
+- **Changed** (`sql/fixes/world/2026_11_22_08_blackrock_depths_eranikus_shade.sql`): both removed (backup
+  `zr_backup_brd_creature`). The two in Blackrock Spire and one in Stormwind stay for now.
+- **Status:** tested in game (Four, 2026-11-22): the shades are gone, the purple fog is not; not the cause.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Grim Guzzler lower floor seated; concert light rig only at Brewfest
+
+- **Found** (Four, 2026-11-22: "the top floor of the grim guzzler is better, there are still a few strays
+  standing inside tables, etc. the bottom floor is still pretty bad", with a video of the purple light pulsing
+  about every second and a half on a different client with the camera still): the first seating pass only took
+  patrons within 3 yards of a chair, and the lower floor's patrons stood as a crowd in front of the concert stage,
+  up to 14 yards from the tables. The L70ETC Music Doodad (186312, guid 188711, the concert stage rig) was
+  spawned with no event, unlike the band that `2026_11_22_02` put on Brewfest.
+- **Changed** (`sql/fixes/world/2026_11_22_07_blackrock_depths_bar_seats_light.sql`): 19 more patrons take the
+  nearest free chair on their own floor; 64 of 69 sit (4 stand at the upper bar counter, 1 on the stairs). The
+  music rig moves to Brewfest (event 24).
+- **Status:** confirmed in game (Four, 2026-11-22: "all of the grim guzzlers patrons are seated drinking and
+  having the time of their life"; "it is no longer blinking like it was in and out"). A steady low purple fog
+  is still there; nothing server-side is left near the bar that could draw it (no auras, areatriggers, weather
+  or zone light override on map 230), so it comes from the client's art or lighting.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Grim Guzzler patrons sit and drink; Hurley Blackbreath waits for the kegs
+
+- **Found** (Four, 2026-11-22: "tons of patrons just huddled up standing around. no one is sitting or
+  drinking." and "hurley Blackbreath and co are aggro right by the entrance"): every patron spot came from a
+  sniff that caught them standing (Pandaria 5.4.8 has the same spots, AzerothCore seats nobody either), five
+  stood within a yard of each other at 845,-161, and the patrons had no idle emotes. Hurley Blackbreath (9537)
+  and his three cronies (9541) stood hostile at 859,-149 by the bar entrance: the sniff caught them after
+  someone had broken the Thunderbrew Lager Kegs. The quest The Grim Guzzler (27571/27589) says "Damage the
+  kegs and Hurley Blackbreath will come running", and Pandaria and AzerothCore both script it that way.
+- **Changed** (`sql/fixes/world/2026_11_22_06_blackrock_depths_bar_life.sql`): 45 patrons now sit on the
+  nearest free chair (40 within 3 yards, plus the five huddled ones at the free table at 839,-151); 24 stand.
+  A seated patron stands up when pulled and sits again when it walks home. All patrons talk, cheer, laugh or
+  drink (eat emote) out of combat (AzerothCore's emotes plus eat). Hurley and the cronies wait hidden and
+  immune behind the bar at 878,-153; breaking the kegs (164911) behind the bar makes Hurley yell "Get away
+  from those kegs!", and they walk over and fight (AzerothCore's script and the waypoints already in the
+  table). Backups: `zr_backup_brd_creature_moved`, `zr_backup_brd_creature_addon`, `zr_backup_brd_smart_scripts`.
+- **Status:** confirmed in game (Four, 2026-11-22); the Hurley keg event needed `2026_11_22_09` to `11`.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### DB: Grim Guzzler patrons doubled, and their imported formations
+
+- **Found** (Four, 2026-11-22: "I know the grim guzzler could use a look, there may be overspawns in other
+  areas like twilight npc's"; every creature on map 230 compared by spot with Pandaria 5.4.8 and
+  AzerothCore): the bar held 87 patrons (Grim 9545, Guzzling 9547, Hammered 9554) against 68 in each
+  reference. Every Pandaria spot is here plus 18 that sit exactly on AzerothCore spawns, and AzerothCore puts
+  most patrons a few yards from Pandaria's, so 18 patrons stood twice, 1 to 5 yards apart. Their
+  AzerothCore formations (64 rows, six leaders) came along by guid, but those guids are other creatures
+  here, so the groups mixed bar patrons with Northrend and Hellfire creatures. Nothing else on the map is
+  doubled: the Twilight's Hammer NPCs (Ambassador 15, Emissary 17, Torturer 14, Bodyguard 6) are at or under
+  Pandaria's counts and spots, and so are the Anvilrage groups, Flame Keepers, Arena Spectators and
+  Blazing Fireguards.
+- **Changed** (`sql/fixes/world/2026_11_22_05_blackrock_depths_bar_patrons.sql`): the 18 AzerothCore-only
+  patrons removed (backup `zr_backup_brd_creature`), leaving Grim 32, Guzzling 25, Hammered 12 (Pandaria 32,
+  24, 12); the 64 formation rows removed (backup `zr_backup_brd_creature_formations`). The patrons have no
+  quest, gossip or script of their own.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### DB: Panzor the Invincible spawned twice
 
 - **Found** (Four, 2026-11-22: "You didn't catch the Panzor the Invincible double spawn"): the rare 8923 has two
