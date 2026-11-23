@@ -3,6 +3,38 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-23 (Quest fixes: Pilgrim's Bounty reward bag)
+
+Draft PR, not merged yet.
+
+### DB: The Pilgrim's Bounty reward bag opens empty
+- **Found** (Four, 2026-11-23): turning in Don't Forget The Stuffing! and choosing the Pilgrim's Bounty
+  reward (item 116404, "Filled with various seasonal fare.") gave an empty bag.
+- **Cause:** 116404 has no `item_loot_template` rows, in our dump or in any TDB we have (8.3.7, 11.2.7,
+  12.1.0). The quest's reward choices come from QuestPackageID 17285 in the client data, so the quest
+  itself is fine.
+- **Changed** (`sql/fixes/world/2026_11_23_72_pilgrims_bounty_bag.sql`), built from the guides (Icy
+  Veins, Wowhead comments, Xu-Fu's pet news) since no database has it:
+  - Turkey Shooter 44812, always.
+  - The bag's five foods, each 50% for 1-2: Congealed Cranberry Chutney 116405, Twice-Baked Sweet Potato
+    116406, Slow-Smoked Turkey 116407, Herb-Infused Stuffing 116408, Gourmet Pumpkin Pie 116409.
+  - 3% each: Frightened Bush Chicken 116403 (pet), Silver-Plated Turkey Shooter 116400 (toy), Fine
+    Pilgrim's Hat 116401. The guides give about 9% for the three together.
+  - The food amounts and the 3% split are our own choice; nothing published gives exact numbers.
+- **Status:** not tested in game yet. Bags already in your bags stay empty only if already opened;
+  unopened ones roll the new table when opened.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_23_72_pilgrims_bounty_bag.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-23 (Quest fixes: quest tracker objective text, Pilgrim's Bounty table chairs)
 
 PR #110, merged 2026-11-23. Both fixes confirmed in game.
