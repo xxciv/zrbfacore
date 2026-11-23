@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-23 (Quest fixes: quest tracker objective text, Pilgrim's Bounty table chairs)
 
-PR #110, draft. Both fixes confirmed in game.
+PR #110, merged 2026-11-23. Both fixes confirmed in game.
 
 ### DB: Quest tracker shows "<bunny> slain" lines (all quests)
 - **Found** (Four, 2026-11-23): Pilgrim's Bounty "Spice Bread Stuffing" shows "2/5 Spice Bread Stuffing
