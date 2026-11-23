@@ -355,7 +355,11 @@ class Storage:
             f.seek(off)
             span = f.read(size)
         if len(span) != size or span[0:16][::-1][:9] != ekey[:9] or span[30:34] != b"BLTE":
-            raise Fail("stored data for %s is not valid" % ekey.hex())
+            why = ("short read: got %d of %d bytes (file is %d bytes)" % (len(span), size, os.path.getsize(self.data_path(arc)))
+                   if len(span) != size else "key in span header %s" % span[0:16][::-1].hex()
+                   if span[0:16][::-1][:9] != ekey[:9] else "no BLTE signature")
+            raise Fail("stored data for %s is not valid (data.%03d @%d size %d: %s; first bytes %s)"
+                       % (ekey.hex(), arc, off, size, why, span[:40].hex()))
         blte = span[30:]
         if blte_ekey(blte) != ekey:
             raise Fail("stored data for %s does not match its key" % ekey.hex())
@@ -961,6 +965,17 @@ def cmd_inject(client, variant, extra=()):
     for bk in sorted({bucket_of(e) for e, _ in blobs}):
         for x in st.all_idx(bk):
             x.save()
+
+    # read the new blobs back before the client is pointed at them
+    st_chk = Storage(client)
+    names = ["file %d" % f[0] for f in files] + ["ROOT", "ENCODING"]
+    for (ekey, blte), name in zip(blobs, names):
+        try:
+            got = st_chk.read(ekey)[1]
+        except Fail as e:
+            raise Fail("%s: %s\n.fzbuildnfo was NOT changed; the client still uses build %s" % (name, e, cur_key))
+        if got != blte:
+            raise Fail("%s reads back different\n.fzbuildnfo was NOT changed; the client still uses build %s" % (name, cur_key))
 
     cp = config_path(client, new_key)
     if not os.path.isdir(os.path.dirname(cp)):
