@@ -5,6 +5,27 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-23 (Lower Blackrock Spire)
 
+### DB: Upper Blackrock Spire wing: Drakkisath's doors open
+
+- **Found** (survey, 2026-11-23, Four asked to cover the Upper Spire wing for Acride's quests): the wing is still on
+  map 229 and its route (Dragonspine Door, Emberseer's doors, the portcullises) spawns open, as in Pandaria. General
+  Drakkisath's two doors (175946/175947) spawn closed, and the core script names them but never opens them, so
+  "General Drakkisath, Hand of Nefarian" could not be finished.
+- **Changed** (`sql/fixes/world/2026_11_23_07_upper_blackrock_spire_drakkisath_doors.sql`): both doors spawn open.
+- **Status:** tested on a copy of the database only; not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Blackrock Spire mobs no longer stunned, silenced or untargetable
+
+- **Found** (survey, 2026-11-23): compared with Pandaria, this database had sniffed states on templates: 47 Scarshield
+  Legionnaires stunned, 56 Scarshield casters silenced, Scarshield Worgs flagged player-controlled, 21 Blackhand
+  Elites/Assassins in the Upper Spire halls untargetable; Lord Victor Nefarius hostile on Rend's balcony, Pyroguard
+  Emberseer on a faction hostile to his own jailers.
+- **Changed** (`sql/fixes/world/2026_11_23_06_blackrock_spire_unit_flags.sql`): flags and factions set to Pandaria's
+  (backup `zr_backup_brs_creature_template`).
+- **Status:** tested on a copy of the database only; not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
 ### DB: Lower Blackrock Spire survey fixes
 
 - **Found** (survey before Four's first run, 2026-11-23): 621 of 716 spawns match Pandaria 5.4.8, quests and their
