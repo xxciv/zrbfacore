@@ -5,6 +5,16 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
+### DB: Hurley Blackbreath's cronies no longer elite
+
+- **Found** (Four, 2026-11-22: "his 3 friends need to not be elite." and "it was a massacre"): the three
+  Blackbreath Cronies (9541) are elite with 4x health and 7.5x damage (same in Pandaria and AzerothCore), and
+  they join Hurley all at once.
+- **Changed** (`sql/fixes/world/2026_11_22_11_blackrock_depths_blackbreath_cronies.sql`): rank normal, health
+  x1, damage x3.5 like the bar's normal patrons (backup `zr_backup_brd_creature_template`). Hurley unchanged.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
 ### DB: Ribbly and his cronies immune to NPCs again
 
 - **Found** (Four, 2026-11-22: "it almost worked. Hurley decided to go pick a fight with Ribbly and Company."):
