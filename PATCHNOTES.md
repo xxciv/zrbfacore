@@ -7,6 +7,21 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet.
 
+### Hotfix: fishing tournaments on the calendar
+
+From Four, 2026-11-23 ("they're not on the calendar"). Hotfix SQL `2026_11_23_20_fishing_calendar.sql`
+(run against `bfa_hotfixes`). Run the SQL, restart, delete the client's Cache folder. No rebuild.
+
+- **Found:** the calendar draws holidays from the client's Holidays.db2, and neither fishing row could
+  show. Stranglethorn (301) has the "don't show in calendar" flag and a "every Sunday" date pattern no
+  shown holiday uses; the Kalu'ak Fishing Derby (424) has one date, "Saturdays in 2005".
+- **Changed:** both rows hotfixed with the client's own names, texture and Weekly Holidays filter, the
+  hidden flag cleared, and 26 explicit weekly dates at 14:00 (the format the Darkmoon Faire and holiday
+  hotfixes use): Sundays 2026-11-29 to 2027-05-23 and Saturdays 2026-11-28 to 2027-05-22. 26 is the most
+  dates a row holds, so they need new dates by May 2027. The events themselves keep running weekly on
+  the server either way.
+- **Status:** not tested in game yet.
+
 ### DB: Stranglethorn Fishing Extravaganza and Kalu'ak Fishing Derby run again
 
 From Four, 2026-11-22 ("where have the fishing tournaments gone?"). World SQL
