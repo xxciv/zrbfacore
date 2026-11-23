@@ -3,6 +3,62 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-23 (Sunken Temple)
+
+### DB: Malfurion Stormrage no longer appears in Sunken Temple
+
+- **Found** (Four, 2026-11-23: "During the fight with Dreamscythe, Malfurion spawned twice and is just chillin"):
+  area trigger 4016 runs the core's classic `at_malfurion_stormrage`, which summons Malfurion (15362) at the
+  player for 100 s each time they walk in with none within 15 yards. His classic Eranikus quests (8733-8735)
+  are not in this database, he has no quest or script, and Pandaria does not use that script on the trigger.
+- **Changed** (`sql/fixes/world/2026_11_23_04_sunken_temple_malfurion_trigger.sql`): trigger 4016 unbound
+  (backup `zr_backup_st_areatrigger_scripts`).
+- **Status:** confirmed in game (Four, 2026-11-23: "clean run. all fixed.").
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Avatar of Hakkar waits for the Shrine of the Soulflayer
+
+- **Found** (Four, 2026-11-23: "avatar of hakkar was already spawned"): since Cataclysm the Avatar (8443) is
+  summoned by clicking the Shrine of the Soulflayer (208321). Pandaria does it in C++ (`go_shrine_of_soulflayer`,
+  `boss_avatar_of_hakkar`), which this core lacks, so he stood in the room from the start and the shrine did nothing.
+- **Changed** (`sql/fixes/world/2026_11_23_03_sunken_temple_avatar_shrine.sql`): the Avatar spawns invisible,
+  passive and immune to players; using the shrine makes him visible and he attacks the nearest player (same
+  pattern as Hurley Blackbreath). He stays up after a wipe. The bones on the floor are part of the room and stay.
+- **Status:** confirmed in game (Four, 2026-11-23: "clean run. all fixed.").
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Sunken Temple survey fixes
+
+- **Found** (survey before Four's first run, 2026-11-23): the scenario (all seven bosses), Dungeon Finder
+  reward on the Shade of Eranikus, quests (Lord Itharius, the Jammal'an drop) and 115 of 119 spawns match
+  Pandaria 5.4.8. Three problems:
+  - nine Atal'ai Deathwalker's Spirits (8317, guids 320777-320785) stand among the nine Atal'ai Deathwalkers,
+    which already summon one each on death (spell 12095), so the room held 18 elites (AzerothCore: none);
+  - Jammal'an the Prophet (5710) ran two merged scripts: a second Dreamscythe and Weaver summoned on his death,
+    Healing Wave every 5-7 s, Earthgrab Totem and Hex cast twice, a yell every 31-33 s;
+  - Dreamscythe (320786) and Weaver (320787) stood 15-20 yards from Morphaz and Hazzas, so four elite dragons
+    pulled together.
+- **Changed** (`sql/fixes/world/2026_11_23_02_sunken_temple_fixes.sql`): static spirits removed (Deathwalkers
+  still summon theirs), Jammal'an gets one clean script (yells, Flamestrike, Earthgrab Totem, Hex, Healing Wave
+  below 50% health, no summons; his troll Hex, which made a solo player friendly so he evaded and healed to
+  full, is now the plain 5 s frog Hex), Dreamscythe and Weaver back on their Pandaria spots. Backups
+  `zr_backup_st_creature`, `zr_backup_st_smart_scripts`.
+- **Status:** confirmed in game (Four, 2026-11-23: "clean run. all fixed.").
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+## 2026-11-23 (Blackrock Depths, purple mist)
+
+### DB: Purple mist in Blackrock Depths only on Brewfest
+
+- **Found** (Neo, 2026-11-23): the L70ETC concert crew, Mizli Crankwheel (28209) and Ognip Blastbolt (28210),
+  were spawned all year. Their SmartAI runs the show by itself: Ognip casts spell 105389 (a fog aura) about
+  9 of every 11 minutes. Six invisible concert controllers next to the stage were also spawned all year.
+- **Changed** (`sql/fixes/world/2026_11_23_00_blackrock_depths_concert_controllers.sql`,
+  `sql/fixes/world/2026_11_23_01_blackrock_depths_concert_crew_fog.sql`): crew and controllers spawn only on
+  Brewfest (event 24), like the band and stage rig. Replaces the "client art" entry below, which was wrong.
+- **Status:** confirmed in game (2026-11-23).
+- **Pick up:** run both SQL files, restart `worldserver`.
+
 ## 2026-11-22 (Blackrock Depths, Detention Block)
 
 ### DB: Hurley Blackbreath's cronies no longer elite
@@ -37,14 +93,14 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Status:** confirmed in game (Four, 2026-11-22) together with the two fixes above.
 - **Pick up:** run the SQL, restart `worldserver`, re-queue (a restart drops a solo Dungeon Finder group).
 
-### DB: Purple fog in Blackrock Depths left alone (client art)
+### DB: Purple fog in Blackrock Depths left alone (client art) (wrong, see 2026-11-23)
 
 - **Found** (Four, 2026-11-22): the purple fog stayed after `2026_11_22_08`. Every creature, gameobject,
   display, aura, anim kit, world effect and spawn or out-of-combat cast on map 230 now matches Pandaria 5.4.8.
   The only light auras there are Ilsa and Ursula Direbrew's red and blue Dark Iron lights (Brewfest, event 24)
   and Elder Morndeep's Spotlight (Lunar Festival, event 7), and `.event activelist` shows neither running.
 - **Changed:** nothing. The fog comes from the client; Projected Textures off hides it.
-- **Status:** closed.
+- **Status:** wrong. The fog was the concert crew's spell; fixed 2026-11-23 (see above).
 
 ### DB: Eranikus' Shade removed from Blackrock Depths (purple band suspect)
 
