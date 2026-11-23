@@ -3,7 +3,6 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-<<<<<<< HEAD
 ## 2026-11-23 (Quest fixes: Pilgrim's Bounty reward bag)
 
 PR #111, merged 2026-11-23. Confirmed in game.
@@ -35,7 +34,7 @@ PR #111, merged 2026-11-23. Confirmed in game.
   ```
 
   Then restart worldserver.
-=======
+
 ## 2026-11-22 (Holidays: fishing tournaments)
 
 Merged 2026-11-23 (PR #106).
@@ -80,7 +79,6 @@ From Four, 2026-11-22 ("where have the fishing tournaments gone?"). World SQL
   - Elder Clearwater's two quests show only during the derby. No script picks one winner, so both stay open
     to anyone with a shark. Event 63 is unchanged.
 - **Status:** applied and approved by Four 2026-11-23; first Sunday tournament and Saturday derby still to be fished.
->>>>>>> origin/main
 
 ## 2026-11-23 (Quest fixes: quest tracker objective text, Pilgrim's Bounty table chairs)
 
