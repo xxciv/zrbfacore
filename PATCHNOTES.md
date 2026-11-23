@@ -10,7 +10,7 @@ Open in the same draft PR as the 2026-11-20 to 2026-11-18 world entries below. F
 ### World: holiday quests offered all year
 - **Found** (Four, 2026-11-23, screenshot in Stormwind): the Human Commoner 18927 announcer offers Costumed Orphan Matron, Brewfest!, The Master of Summer Lore, Spring Collectors, A Season for Celebration and Pilgrim's Bounty at once. 212 holiday quests sit both in `creature_queststarter` (always offered) and in `game_event_creature_quest` (offered during their holiday). TDB 8.3.7 never has both, and our event links already match 8.3.7's. So NPCs that stand all year offered every holiday's quests: Lunar Festival 87, Midsummer 45, Brewfest 24, Winter Veil 17, Love is in the Air 14, Noblegarden 12, Hallow's End 6, Pilgrim's Bounty 5, Children's Week 2. Costumed Orphan Matron 11356 was always offered by six commoners (18927, 19148, 19171, 19172, 19173, 20102) with no event link; TDB 8.3.7 has no giver for it.
 - **Changed** (`sql/fixes/world/2026_11_23_31_holiday_quests_only_in_season.sql`): the 212 always-on `creature_queststarter` rows removed; their event links stay. Costumed Orphan Matron is kept (quest rule) and moved to Hallow's End (event 12) on the same six commoners.
-- **Status:** untested in game. During Pilgrim's Bounty the commoner should offer only Pilgrim's Bounty.
+- **Status:** confirmed in game by Four (2026-11-23).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Pilgrim's Bounty feast, doubled chairs that follow you
@@ -19,7 +19,7 @@ Open in the same draft PR as the 2026-11-20 to 2026-11-18 world entries below. F
   - The 159 loose chairs removed. The quest role stays on the tables' own chairs.
   - Table 32823: `unit_flags` 0x2000000, `npcflag` 0. Chairs: `unit_flags` 0x4000, `unit_flags2` 0x8800 (all as in TDB 8.3.7).
   - Our own tuning (Four): no names over tables and chairs (`type_flags` |= 0x40000000 `DO_NOT_RENDER_OBJECT_NAME`).
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-23).
 - **Pick up:** run the SQL, restart `worldserver`, delete the WoW client's `Cache` folder (the name setting is cached).
 
 ## 2026-11-21 (Stratholme, Main Gate)
@@ -1200,7 +1200,7 @@ Open in a draft PR, not merged yet. Four walks the reviewed zones one at a time 
 - **Found** (while fixing the Brew of the Month Club): many holiday spawns were linked to the wrong game event compared with TDB 8.3.7. Pilgrim's Bounty (26) held Brewfest decorations, kegs, mugs and revelers, plus 39 Darkmoon Faire banners and 7 Stormwind Gypsy Wagons; its own feast tables, chairs, hostesses, pilgrims, pumpkins, haystacks and cooking fires were on Brew of the Month May (41). Isle of Conquest emissaries and banners were on Brew of the Month June (42), and the six Isle of Conquest Battlemasters only showed in June. Strand of the Ancients emissaries were on Edge of Madness, Wushoolay (30). The L70ETC band and stage were on Brew of the Month October (34). Smaller mix-ups: Midsummer banners in Winter Veil, Love is in the Air giants in Winter Veil, Lunar Festival fireworks in Midsummer, Hallow's End bonfires on an event that doesn't exist (46), Elder Clearwater of the Kalu'ak derby on Brew of the Month September, holiday commoners also on 32/40/41. Broken Isles Dalaran's Brewfest decorations had been put on Pilgrim's Bounty by `2026_11_16_31`.
 - **Changed** (`sql/fixes/world/2026_11_18_46_holiday_spawn_events.sql`): 3,439 spawns relinked. Each event-linked spawn was matched to the 8.3.7 spawn of the same entry within 2 yards and given that spawn's events. Without a match, a spawn moved only when all 8.3.7 spawns of its entry sit on one event and ours was one of the mixed-up events. Leftovers on the Brew of the Month events went with their set (Pilgrim's Bounty, L70ETC); the Isle of Conquest Battlemasters are always there, as in 8.3.7. Brewfest-named decorations on Pilgrim's Bounty went to Brewfest. Pilgrim's Bounty (starting next week) now shows its feast tables and no Brewfest decor.
 - **Not changed:** Darkmoon Faire spawns already on event 3 (Almanac's audit), every spawn an earlier fix set by hand (city and zone passes, love boats), critters and wild battle pets, Day of the Dead (8.3.7 puts its candles on an arena season event), spawns 8.3.7 doesn't have (such as the Orgrimmar signs and fires on 26), and all event dates.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-23, Pilgrim's Bounty: feast, pilgrims and decorations up on event 26).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Maplewood and Runestone Treasure Chests always hold loot again
