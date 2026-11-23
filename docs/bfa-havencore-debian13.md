@@ -157,12 +157,9 @@ git apply ../tools-repo/tools/bfa/stratholme.patch
 git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 git apply ../tools-repo/tools/bfa/pick-lock-level.patch
 git apply ../tools-repo/tools/bfa/zulfarrak.patch
-<<<<<<< HEAD
-git apply ../tools-repo/tools/bfa/loot-guid.patch
-=======
 git apply ../tools-repo/tools/bfa/blackrock-depths.patch
 git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
->>>>>>> origin/main
+git apply ../tools-repo/tools/bfa/loot-guid.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -1168,12 +1165,9 @@ git apply ../tools-repo/tools/bfa/stratholme.patch
 git apply ../tools-repo/tools/bfa/expansion-xp-gate.patch
 git apply ../tools-repo/tools/bfa/pick-lock-level.patch
 git apply ../tools-repo/tools/bfa/zulfarrak.patch
-<<<<<<< HEAD
-git apply ../tools-repo/tools/bfa/loot-guid.patch
-=======
 git apply ../tools-repo/tools/bfa/blackrock-depths.patch
 git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
->>>>>>> origin/main
+git apply ../tools-repo/tools/bfa/loot-guid.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
