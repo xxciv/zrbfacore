@@ -3,6 +3,53 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-23 (core: Cannonball Runner trinket never procs)
+
+Draft PR, not merged yet. Not tested in game yet.
+
+### Core: Cannonball Runner never summons its cannon
+
+- **Found** (Four, 2026-11-23): Cannonball Runner (item 13382, Willey Hopebreaker, Stratholme Main
+  Gate) says "Your attacks have a chance to summon a cannon for 10 sec that will fire at enemies in
+  front of it" but has never procced.
+- **Cause:** the equip spell 250091 is a single `SPELL_AURA_DUMMY` effect (scaling coefficient 10.5,
+  the cannon's damage). A dummy aura does nothing on its own; retail runs a server script, and neither
+  HavenCore nor TrinityCore 8.3.7 has one (no `spell_script_names` or `spell_proc` row either). The
+  cannon is Crimson Cannon 11199 (what 6251 Summon Crimson Cannon makes); its shot, Cannon Fire 17501,
+  has 0 base damage in 8.3.7.
+- **Changed:**
+  - new `tools/bfa/cannonball-runner.patch` (after `loot-guid.patch`), `spell_item.cpp`: aura script
+    `spell_item_cannonball_runner`. On proc against a living enemy it summons a Crimson Cannon 3 yards
+    in front of the wearer for 10 sec, with the wearer's faction and level, rooted, and gives it a small
+    AI (`CannonballRunnerCannonAI`) that casts Cannon Fire every 2 sec (first shot after 1 sec) at the
+    proc target, or at the nearest enemy within 30 yards when that one is gone. Each shot deals the
+    aura's amount (the trinket's scaled value; level x 15 if that is 0) as the Cannon Fire base damage,
+    credited to the wearer. The cannon ignores the Crimson Cannon SmartAI (that one stays for the
+    Northrend spawn).
+  - new `sql/fixes/world/2026_11_23_90_cannonball_runner.sql`: `spell_script_names` (250091,
+    `spell_item_cannonball_runner`) and a `spell_proc` row (our own tuning, the retail rate is not
+    known): ProcFlags 65876 (melee and ranged auto attacks, melee/ranged abilities, harmful spells),
+    phase hit, 1 proc per minute, 10 sec cooldown (one cannon at a time).
+- **Status:** applies cleanly after the full chain on upstream 2c13546, `spell_item.cpp` compiles.
+  Not checked in game yet.
+- **Pick up** (until the PR is merged):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/cannonball-runner.patch | git apply && echo "cannonball runner patch applied"
+  grep -c "spell_item_cannonball_runner" src/server/scripts/Spells/spell_item.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The grep prints 4. Then the SQL (one line):
+
+  ```
+  git -C ../tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_23_90_cannonball_runner.sql | mysql -u root -p bfa_world
+  ```
+
+  It prints `script rows 1, proc rows 1`. Restart worldserver.
+
 ## 2026-11-23 (Sunken Temple)
 
 ### DB: Malfurion Stormrage no longer appears in Sunken Temple
