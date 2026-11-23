@@ -24,6 +24,8 @@ Usage (game closed):
       liqfix: in the 6 BRD group files with liquid, the hidden liquid tiles' vertices (height 0.0)
               are lowered to the liquid's base height (the lava stays);
       liqoff: test only, every liquid tile in those 6 files is hidden (no lava surfaces)
+      lighttest: test only, the default outdoor light (Light 1: params 3/10/12/13) gets pure
+              green direct + ambient colour in LightData.db2
   python3 zr_casc_inject.py "<client folder>" uninject
   python3 zr_casc_inject.py "<client folder>" extract <out folder> brd|<file ID> [<file ID> ...]
       (read-only: writes files from the current build, 'brd' = the BRD root WMO and all its
@@ -57,7 +59,10 @@ LIQUID_GROUPS = {
     108337: "60100a37c11e62dcf5fc3f3b9ee46de4",
     108345: "de9ccd15a0aeaf40e73146a6122de399",
 }
+LIGHTDATA_FDID = 1375580
+LIGHTDATA_CKEY = bytes.fromhex("b3d232221aca5f67caec330a2a6bacc5")   # LightData.db2 (35662)
 WMO_VARIANTS = ("off", "swap", "probe")
+LIGHT_VARIANTS = ("lighttest",)
 LIQUID_VARIANTS = ("liqfix", "liqoff")
 BACKUP_DIR = "zr_casc_backup"
 INFO_NAMES = (".fzbuildnfo",)
@@ -707,6 +712,47 @@ def liquid_edit(g, mode):
     return bytes(d)
 
 
+def _bits_get(b, off, n):
+    v = int.from_bytes(b[off // 8:(off + n + 7) // 8 + 1], "little")
+    return (v >> (off % 8)) & ((1 << n) - 1)
+
+
+def _bits_set(b, off, n, val):
+    lo, hi = off // 8, (off + n + 7) // 8 + 1
+    v = int.from_bytes(b[lo:hi], "little")
+    mask = ((1 << n) - 1) << (off % 8)
+    v = (v & ~mask) | ((val & ((1 << n) - 1)) << (off % 8))
+    b[lo:hi] = v.to_bytes(hi - lo, "little")
+
+
+def lightdata_edit(db, params, colour):
+    """LightData.db2 (WDC3): set DirectColor + AmbientColor (fields 2, 3) of every row whose
+    LightParamID (field 0) is in params."""
+    d = bytearray(db)
+    hdr = struct.unpack_from("<4s9IHH7I", d, 0)
+    if hdr[0] != b"WDC3" or hdr[18] != 1:
+        raise Fail("LightData.db2 is not a single-section WDC3 file")
+    rec_size, fields, fsis = hdr[3], hdr[2], hdr[15]
+    sec = struct.unpack_from("<Q8I", d, 72)
+    p = 72 + 40 + 4 * fields
+    fsi = [struct.unpack_from("<HHIIIII", d, p + 24 * i) for i in range(fsis // 24)]
+    if fsi[0][3] != 1 or fsi[2][3] != 5 or fsi[3][3] != 5:
+        raise Fail("LightData.db2 layout is not the expected one")
+    base, count = sec[1], sec[2]
+    n = 0
+    for r in range(count):
+        at = base + r * rec_size
+        rec = bytearray(d[at:at + rec_size] + bytes(8))
+        if _bits_get(rec, fsi[0][0], fsi[0][5]) in params:
+            for f in (2, 3):
+                _bits_set(rec, fsi[f][0], fsi[f][5], colour)
+            d[at:at + rec_size] = rec[:rec_size]
+            n += 1
+    if n == 0:
+        raise Fail("no LightData rows found for params %s" % sorted(params))
+    return bytes(d)
+
+
 def variant_edits(variant):
     """[(file ID, original content key, edit function)]"""
     if variant in WMO_VARIANTS:
@@ -714,6 +760,8 @@ def variant_edits(variant):
     if variant in LIQUID_VARIANTS:
         mode = "fix" if variant == "liqfix" else "off"
         return [(f, bytes.fromhex(ck), lambda d, m=mode: liquid_edit(d, m)) for f, ck in sorted(LIQUID_GROUPS.items())]
+    if variant == "lighttest":
+        return [(LIGHTDATA_FDID, LIGHTDATA_CKEY, lambda d: lightdata_edit(d, {3, 10, 12, 13}, 0x00FF00))]
     raise Fail("unknown variant " + variant)
 
 
@@ -1030,7 +1078,7 @@ def cmd_extract(client, out, ids):
 
 def main(argv):
     cmds = ("status", "inject", "uninject", "layout", "extract")
-    if len(argv) < 3 or argv[2] not in cmds or (argv[2] == "inject" and (len(argv) < 4 or argv[3] not in WMO_VARIANTS + LIQUID_VARIANTS)):
+    if len(argv) < 3 or argv[2] not in cmds or (argv[2] == "inject" and (len(argv) < 4 or argv[3] not in WMO_VARIANTS + LIQUID_VARIANTS + LIGHT_VARIANTS)):
         print(__doc__)
         return 2
     client = argv[1]
