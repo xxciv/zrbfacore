@@ -3,6 +3,53 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-23 (Quest fixes: quest tracker objective text, Pilgrim's Bounty table chairs)
+
+PR #110, merged 2026-11-23. Both fixes confirmed in game.
+
+### DB: Quest tracker shows "<bunny> slain" lines (all quests)
+- **Found** (Four, 2026-11-23): Pilgrim's Bounty "Spice Bread Stuffing" shows "2/5 Spice Bread Stuffing
+  Proxy slain" above "2/5 Spice Bread Stuffing", and "Pumpkin Pie" the same with "Pumpkin Pie Proxy slain".
+- **Cause:** when a kill-credit or event objective has no Description, the client makes one from the
+  credit creature's name plus "slain". Our dump left Description empty on 9,147 objectives that TDB
+  8.3.7 fills, e.g. 'Prepare Spice Bread Stuffing', 'Prepare Pumpkin Pie', 'Spirit of Sharing',
+  'Freed Proto-Drakes', 'Mal'Ganis Defeated'. Of those, 7,287 are kill/credit objectives (type 0), 545
+  are object interactions (type 2), 501 are criteria (type 14), 246 are items (type 1), the rest other types.
+- **Changed** (`sql/fixes/world/2026_11_23_70_quest_objective_text.sql`): copies TDB 8.3.7's Description
+  into `quest_objectives` where ours is NULL or empty and the objective ID, QuestID, Type and ObjectID all
+  match. Nothing that already has text is touched.
+- **Status:** CONFIRMED in game by Four 2026-11-23 (Pilgrim's Bounty quests). Delete the client's Cache folder after applying, or the old quest text stays.
+
+### DB: Bountiful Table chairs have an empty action bar (Pilgrim's Bounty)
+- **Found** (Four, 2026-11-23): in Sharing a Bountiful Feast (14064/14065) the table and chairs don't work.
+- **Cause:** the five chairs (vehicle 321) had no vehicle spells, so sitting gives an empty bar with
+  nothing to eat or pass. They also had a SmartAI row re-adding their "Can Eat - <food>" aura every 5 s,
+  which TDB doesn't have (the core's `npc_bountiful_table` already gives it when a chair sits at a table).
+- **Changed** (`sql/fixes/world/2026_11_23_71_bountiful_table_chairs.sql`), as in TDB 8.3.7:
+  - spell1 = Pass The Turkey 66250 (Turkey Chair 34812), Pass The Stuffing 66259 (Stuffing Chair 34819),
+    Pass The Pie 66260 (Pie Chair 34822), Pass The Cranberries 66261 (Cranberry Chair 34823), Pass The
+    Sweet Potatoes 66262 (Sweet Potato Chair 34824).
+  - spell2-6 on all five = Feast On Turkey 61784, Cranberries 61785, Stuffing 61788, Sweet Potatoes 61786, Pie 61787.
+  - unit_flags2 2048 -> 34816 on all five; Pie Chair unit_flags 16388 -> 16384; AIName SmartAI -> '' and
+    their smart_scripts rows deleted.
+  - The doubled static chairs around each table are Wayfarer's fix, not this one.
+- **Status:** CONFIRMED in game by Four 2026-11-23.
+- **Pick up** (both entries above): SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_23_70_quest_objective_text.sql | mysql -u root -p bfa_world
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_23_71_bountiful_table_chairs.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver and delete the client's Cache folder.
+
 ## 2026-11-23 (Sunken Temple)
 
 ### DB: Malfurion Stormrage no longer appears in Sunken Temple
