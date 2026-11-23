@@ -95,3 +95,15 @@ python3 zr_casc_inject.py "<client>" inject file 1234567=~/Downloads/zr_find/123
 This works like the other variants (new ROOT/ENCODING/build config, `.fzbuildnfo` switched), so
 `uninject` undoes it, and every `inject` starts again from the original build: put all the files
 you want replaced in one `inject file` command.
+
+## Login screen: no Firestorm news / changelog panels
+
+With WoW Circle's patch server blocked, the local build's AccountLogin.lua (file ID 804870) shows
+two `ServerAlertTemplate` frames left over from Firestorm: `ServerAlertFrame` ("News", fed from
+`SERVER_ALERT_URL` = http://bfa.fstorm.eu/news.php in GlobalStrings) and `GlueChangelogFrame`
+("Live Changelog"). `login-news/AccountLogin_804870.lua` is that file with both switched to
+`ServerAlert_Disable`:
+
+```
+python3 zr_casc_inject.py "<client>" inject file 804870=login-news/AccountLogin_804870.lua
+```
