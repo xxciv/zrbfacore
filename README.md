@@ -83,8 +83,18 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/battle-pet-trainers.patch`](tools/bfa/battle-pet-trainers.patch): pet tamers such as
   Julia Stevens can be battled ("Let's do battle!") and the win credits their quest; a capture with
   2 or 3 pets in the team no longer adds the pet 2 or 3 times.
+- [`tools/bfa/loot-guid.patch`](tools/bfa/loot-guid.patch): no more "Already looted" errors when
+  area looting summoned creatures (each corpse gets its own loot GUID).
 - [`tools/bfa/pick-lock-level.patch`](tools/bfa/pick-lock-level.patch): Pick Lock opens locks up to
   the skill its tooltip shows (5 per level) instead of stopping at 120.
+- [`tools/bfa/zulfarrak.patch`](tools/bfa/zulfarrak.patch): Zul'Farrak's scenario counts Nekrum and
+  Sezz'ziz, and the pyramid event's first two waves are halved for solo players.
+- [`tools/bfa/blackrock-depths.patch`](tools/bfa/blackrock-depths.patch): Blackrock Depths runs the
+  scenario of the queued wing (Detention Block or Upper City), the Ring of Law counts, and the
+  Detention Block ends with Lord Incendius and Fineous Darkvire.
+- [`tools/bfa/terrain-status-no-gridmap.patch`](tools/bfa/terrain-status-no-gridmap.patch): players
+  and creatures where the server has no `.map` file (WMO-only instances such as Blackrock Depths)
+  get a real zone and area instead of a garbage one.
 - [`tools/bfa/expansion-xp-gate.patch`](tools/bfa/expansion-xp-gate.patch): no experience at the
   old level caps (60, 70, 80, 85, 90, 100, 110) until the character turns in a quest in the next
   expansion; `ExpansionXpGate.Enable` in `worldserver.conf` turns it off.
@@ -152,7 +162,9 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   `sql/fixes/world/2026_11_12_40_vashjir_ship_quest_phase.sql`.
 - [`tools/bfa/stratholme.patch`](tools/bfa/stratholme.patch): Stratholme gets its dungeon scenario
   (Main Gate or Service Entrance, picked from the Dungeon Finder queue or the entrance used), and the
-  Brotherhood of the Light questgivers in Balnazzar's hall appear when he dies.
+  Brotherhood of the Light questgivers in Balnazzar's hall appear when he dies. In the Service
+  Entrance the crystals and abominations count for the scenario, and Ramstein, the sentries and
+  Rivendare appear in order.
 - [`tools/bfa/dungeon-scale.patch`](tools/bfa/dungeon-scale.patch): scales 5-man dungeon mobs to the
   number of players inside, so one player can clear a dungeon (guide step 9, "Solo dungeons").
 - [`tools/bfa/build_extractors.sh`](tools/bfa/build_extractors.sh): builds just the extractors, portably.

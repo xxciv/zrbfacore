@@ -1,0 +1,34 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index e70ced6..9d2669e 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -9716,6 +9716,11 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type, bool aeLooting/* = fa
+         if (!aeLooting)
+             SetLootGUID(guid);
+ 
++        // zrbfacore: game objects, items and corpses never get a loot GUID, and the area loot view
++        // (m_AELootView) is keyed by it, so give every loot without one its own
++        if (loot->GetGUID().IsEmpty())
++            loot->SetGUID(ObjectGuid::Create<HighGuid::LootObject>(GetMapId(), guid.GetEntry(), GetMap()->GenerateLowGuid<HighGuid::LootObject>()));
++
+         WorldPackets::Loot::LootResponse packet;
+         packet.Owner = guid;
+         packet.LootObj = loot->GetGUID();
+diff --git a/src/server/game/Entities/Unit/Unit.cpp b/src/server/game/Entities/Unit/Unit.cpp
+index 86b1d7e..8039f28 100644
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -11547,6 +11547,13 @@ void Unit::Kill(Unit* victim, bool durabilityLoss)
+             Loot* loot = &creature->loot;
+             loot->clear();
+ 
++            // zrbfacore: only creatures loaded from the database get a loot GUID (Creature::LoadFromDB).
++            // Summoned and script-spawned creatures had none, so every such corpse shared the empty GUID:
++            // with two of them in one area loot window the client's requests went to the wrong corpse
++            // ("Already looted"). Give them their own.
++            if (loot->GetGUID().IsEmpty())
++                loot->SetGUID(ObjectGuid::Create<HighGuid::LootObject>(creature->GetMapId(), creature->GetEntry(), creature->GetMap()->GenerateLowGuid<HighGuid::LootObject>()));
++
+             for (Player* looter : creature->GetLootRecipients())
+             {
+                 if (creature)
