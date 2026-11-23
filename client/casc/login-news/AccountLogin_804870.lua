@@ -1,3 +1,20 @@
+-- zrbfa: keep the Firestorm "News" and "Live Changelog" panels hidden, even when the
+-- client shows them itself (hiding them again from their own OnShow)
+local function ZR_KeepHidden(frame)
+	if ( frame and not frame.zrKeepHidden ) then
+		frame.zrKeepHidden = true;
+		frame:HookScript("OnShow", function(f) f:Hide(); end);
+	end
+	if ( frame ) then
+		frame:Hide();
+	end
+end
+
+function ZR_HideLoginPanels()
+	ZR_KeepHidden(ServerAlertFrame);
+	ZR_KeepHidden(GlueChangelogFrame);
+end
+
 function AccountLogin_OnLoad(self)
 	local versionType, buildType, version, internalVersion, date = GetBuildInfo();
 	self.UI.ClientVersion:SetFormattedText(VERSION_TEMPLATE, versionType, version, internalVersion, buildType, date);
@@ -18,6 +35,7 @@ function AccountLogin_OnLoad(self)
 	self:RegisterEvent("SHOULD_RECONNECT_TO_REALM_LIST");
 
 	AccountLogin_CheckLoginState(self);
+	ZR_HideLoginPanels();
 end
 
 function AccountLogin_OnEvent(self, event, ...)
@@ -82,10 +100,10 @@ function AccountLogin_Update()
 		showButtonsAndStuff = false;
         shouldCheckSystemReqs = false;
 	else
-		-- zrbfa: no Firestorm news / changelog panels on the login screen
 		ServerAlert_Disable(ServerAlertFrame);
 		ServerAlert_Disable(GlueChangelogFrame);
 	end
+	ZR_HideLoginPanels();
 
 	--Cached login
 	CachedLoginFrameContainer_Update(AccountLogin.UI.CachedLoginFrameContainer);

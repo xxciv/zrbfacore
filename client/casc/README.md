@@ -102,7 +102,7 @@ With WoW Circle's patch server blocked, the local build's AccountLogin.lua (file
 two `ServerAlertTemplate` frames left over from Firestorm: `ServerAlertFrame` ("News", fed from
 `SERVER_ALERT_URL` = http://bfa.fstorm.eu/news.php in GlobalStrings) and `GlueChangelogFrame`
 ("Live Changelog"). `login-news/AccountLogin_804870.lua` is that file with both switched to
-`ServerAlert_Disable`:
+`ServerAlert_Disable`, and an OnShow hook hides them again if the client shows them itself:
 
 ```
 python3 zr_casc_inject.py "<client>" inject file 804870=login-news/AccountLogin_804870.lua
