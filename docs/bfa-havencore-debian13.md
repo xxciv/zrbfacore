@@ -160,6 +160,7 @@ git apply ../tools-repo/tools/bfa/zulfarrak.patch
 git apply ../tools-repo/tools/bfa/blackrock-depths.patch
 git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
 git apply ../tools-repo/tools/bfa/loot-guid.patch
+git apply ../tools-repo/tools/bfa/cannonball-runner.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -606,6 +607,12 @@ Ring of Law waves in Blackrock Depths, event and quest spawns), game objects and
 empty one. The area loot window keys each corpse by that GUID, so with two such corpses in one window
 the client's loot requests went to the wrong corpse. A loot without a GUID now gets its own when the
 creature dies (`Unit.cpp`) or when the loot window opens (`Player::SendLoot`).
+
+`cannonball-runner.patch` makes the Cannonball Runner trinket (Stratholme) work. Its equip aura
+(250091) is a plain dummy that nothing handled, so it never procced. A spell script now summons a rooted
+Crimson Cannon in front of you for 10 seconds, which fires Cannon Fire every 2 seconds at the enemy you
+hit (or the nearest one), for the trinket's scaled damage. It only touches `spell_item.cpp` and needs
+`sql/fixes/world/2026_11_23_90_cannonball_runner.sql` (script binding and proc rate).
 
 `zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
 solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
@@ -1168,6 +1175,7 @@ git apply ../tools-repo/tools/bfa/zulfarrak.patch
 git apply ../tools-repo/tools/bfa/blackrock-depths.patch
 git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
 git apply ../tools-repo/tools/bfa/loot-guid.patch
+git apply ../tools-repo/tools/bfa/cannonball-runner.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

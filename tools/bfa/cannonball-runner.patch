@@ -1,0 +1,113 @@
+diff --git a/src/server/scripts/Spells/spell_item.cpp b/src/server/scripts/Spells/spell_item.cpp
+index 41e1373..e2fc76c 100644
+--- a/src/server/scripts/Spells/spell_item.cpp
++++ b/src/server/scripts/Spells/spell_item.cpp
+@@ -38,6 +38,7 @@
+ #include "SpellHistory.h"
+ #include "SpellMgr.h"
+ #include "SpellScript.h"
++#include "TemporarySummon.h"
+ 
+ // Generic script for handling item dummy effects which trigger another spell.
+ class spell_item_trigger_spell : public SpellScriptLoader
+@@ -4729,6 +4730,93 @@ class spell_item_faded_wizard_hat : public AuraScript
+     }
+ };
+ 
++// zrbfacore: 250091 - Cannonball Runner (trinket, Stratholme). The equip aura is a plain dummy with no
++// script, so it never did anything. On proc it now summons a Crimson Cannon (11199, the model of
++// 6251 Summon Crimson Cannon) in front of the wearer for 10 sec. The cannon is rooted, on the wearer's
++// side, and fires Cannon Fire (17501, small area) every 2 sec at the proc target, or at the nearest
++// enemy when that one is gone. Cannon Fire has no damage of its own, so each shot deals the aura's
++// amount (scaled with the trinket's item level), credited to the wearer.
++enum CannonballRunner
++{
++    NPC_CRIMSON_CANNON = 11199,
++    SPELL_CANNON_FIRE  = 17501
++};
++
++class CannonballRunnerCannonAI : public CreatureAI
++{
++public:
++    CannonballRunnerCannonAI(Creature* creature, ObjectGuid owner, ObjectGuid target, int32 damage)
++        : CreatureAI(creature), _owner(owner), _target(target), _damage(damage), _shotTimer(1000) { }
++
++    void UpdateAI(uint32 diff) override
++    {
++        if (_shotTimer > diff)
++        {
++            _shotTimer -= diff;
++            return;
++        }
++        _shotTimer = 2000;
++
++        Unit* target = ObjectAccessor::GetUnit(*me, _target);
++        if (!target || !target->IsAlive() || !me->IsValidAttackTarget(target) || !me->IsWithinDistInMap(target, 40.0f))
++        {
++            target = me->SelectNearestTarget(30.0f);
++            if (!target)
++                return;
++            _target = target->GetGUID();
++        }
++
++        me->SetFacingToObject(target);
++        me->CastCustomSpell(target, SPELL_CANNON_FIRE, &_damage, nullptr, nullptr, true, nullptr, nullptr, _owner);
++    }
++
++    void AttackStart(Unit* /*who*/) override { }
++    void MoveInLineOfSight(Unit* /*who*/) override { }
++    void EnterEvadeMode(EvadeReason /*why*/) override { }
++
++private:
++    ObjectGuid _owner;
++    ObjectGuid _target;
++    int32 _damage;
++    uint32 _shotTimer;
++};
++
++class spell_item_cannonball_runner : public AuraScript
++{
++    PrepareAuraScript(spell_item_cannonball_runner);
++
++    void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
++    {
++        PreventDefaultAction();
++
++        Unit* owner = GetTarget();
++        Unit* target = eventInfo.GetActionTarget();
++        if (!target || target == owner || !target->IsAlive() || !owner->IsValidAttackTarget(target))
++            return;
++
++        int32 damage = aurEff->GetAmount();
++        if (damage <= 0)
++            damage = int32(owner->getLevel()) * 15; // fallback when the item scaling gives nothing
++
++        Position pos = owner->GetNearPosition(3.0f, 0.0f);
++        TempSummon* cannon = owner->SummonCreature(NPC_CRIMSON_CANNON, pos, TEMPSUMMON_TIMED_DESPAWN, 10 * IN_MILLISECONDS);
++        if (!cannon)
++            return;
++
++        cannon->SetFaction(owner->getFaction());
++        cannon->SetLevel(owner->getLevel());
++        cannon->SetCreatorGUID(owner->GetGUID());
++        cannon->SetControlled(true, UNIT_STATE_ROOT);
++        cannon->SetFacingToObject(target);
++        cannon->AIM_Initialize(new CannonballRunnerCannonAI(cannon, owner->GetGUID(), target->GetGUID(), damage));
++    }
++
++    void Register() override
++    {
++        OnEffectProc += AuraEffectProcFn(spell_item_cannonball_runner::HandleProc, EFFECT_0, SPELL_AURA_DUMMY);
++    }
++};
++
+ uint32 MaleModels[] = { 20122, 20124, 20130, 20131, 20132, 20133, 20134, 20756, 20757, 20758, 20759 };
+ class spell_item_demon_hunters_aspect : public AuraScript
+ {
+@@ -4969,5 +5057,6 @@ void AddSC_item_spell_scripts()
+     RegisterAuraScript(spell_item_demon_hunters_aspect);
+     RegisterAuraScript(spell_item_faded_wizard_hat);
+     RegisterAuraScript(aura_item_avalanche_elixir);
++    RegisterAuraScript(spell_item_cannonball_runner);
+     new talisman_of_flame_ascendancy();
+ }
