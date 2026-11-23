@@ -26,6 +26,9 @@ Usage (game closed):
       liqoff: test only, every liquid tile in those 6 files is hidden (no lava surfaces)
       lighttest: test only, the default outdoor light (Light 1: params 3/10/12/13) gets pure
               green direct + ambient colour in LightData.db2
+      lightfix: Light.db2 gets a map-wide light for Blackrock Depths (map 230) that uses an
+              all-black LightParams, so the client stops falling back to the default
+              outdoor light (blue at night) there
   python3 zr_casc_inject.py "<client folder>" uninject
   python3 zr_casc_inject.py "<client folder>" extract <out folder> brd|<file ID> [<file ID> ...]
       (read-only: writes files from the current build, 'brd' = the BRD root WMO and all its
@@ -62,7 +65,11 @@ LIQUID_GROUPS = {
 LIGHTDATA_FDID = 1375580
 LIGHTDATA_CKEY = bytes.fromhex("b3d232221aca5f67caec330a2a6bacc5")   # LightData.db2 (35662)
 WMO_VARIANTS = ("off", "swap", "probe")
-LIGHT_VARIANTS = ("lighttest",)
+LIGHT_FDID = 1375579
+LIGHT_CKEY = bytes.fromhex("f54439ded7a87f04b0c304af5149ceb0")       # Light.db2 (35662)
+BRD_MAP = 230
+DARK_LIGHTPARAMS = 1989       # a LightParams with all-black colours, used by no Light row
+LIGHT_VARIANTS = ("lighttest", "lightfix")
 LIQUID_VARIANTS = ("liqfix", "liqoff")
 BACKUP_DIR = "zr_casc_backup"
 INFO_NAMES = (".fzbuildnfo",)
@@ -753,6 +760,40 @@ def lightdata_edit(db, params, colour):
     return bytes(d)
 
 
+def light_add_map(db, mapid, params_id):
+    """Light.db2 (WDC3): append a map-wide light (position 0,0,0) for mapid using params_id in all
+    eight slots. Refuses if the map already has a light."""
+    d = bytes(db)
+    hdr = list(struct.unpack_from("<4s9IHH7I", d, 0))
+    if hdr[0] != b"WDC3" or hdr[18] != 1 or hdr[3] != 40 or hdr[2] != 5:
+        raise Fail("Light.db2 is not the expected single-section WDC3 file")
+    sec = list(struct.unpack_from("<Q8I", d, 72))
+    tk, fo, rc, sts, ore, idls, rels, omc, ctc = sec
+    if rels or omc or idls != 4 * rc:
+        raise Fail("Light.db2 section layout is not the expected one")
+    p = 72 + 40 + 4 * hdr[2]
+    fsi = [struct.unpack_from("<HHIIIII", d, p + 24 * i) for i in range(hdr[15] // 24)]
+    want = [(0, 96), (96, 32), (128, 32), (160, 16), (176, 128)]
+    if [(f[0], f[1]) for f in fsi] != want or any(f[3] for f in fsi):
+        raise Fail("Light.db2 fields are not the expected ones")
+    recs = d[fo:fo + 40 * rc]
+    for r in range(rc):
+        if struct.unpack_from("<H", recs, 40 * r + 20)[0] == mapid:
+            raise Fail("Light.db2 already has a light for map %d" % mapid)
+    ids_at = fo + 40 * rc + sts
+    ids = list(struct.unpack_from("<%dI" % rc, d, ids_at))
+    new_id = max(hdr[8], max(ids)) + 1
+    rec = struct.pack("<3fffH8H", 0.0, 0.0, 0.0, 0.0, 0.0, mapid, *([params_id] * 8)) + b"\0\0"
+    out = bytearray(d[:fo]) + recs + rec + d[fo + 40 * rc:ids_at] + struct.pack("<%dI" % (rc + 1), *(ids + [new_id])) \
+        + d[ids_at + idls:]
+    hdr[1] += 1
+    hdr[8] = new_id
+    struct.pack_into("<4s9IHH7I", out, 0, *hdr)
+    sec[2], sec[5] = rc + 1, idls + 4
+    struct.pack_into("<Q8I", out, 72, *sec)
+    return bytes(out)
+
+
 def variant_edits(variant):
     """[(file ID, original content key, edit function)]"""
     if variant in WMO_VARIANTS:
@@ -762,6 +803,8 @@ def variant_edits(variant):
         return [(f, bytes.fromhex(ck), lambda d, m=mode: liquid_edit(d, m)) for f, ck in sorted(LIQUID_GROUPS.items())]
     if variant == "lighttest":
         return [(LIGHTDATA_FDID, LIGHTDATA_CKEY, lambda d: lightdata_edit(d, {3, 10, 12, 13}, 0x00FF00))]
+    if variant == "lightfix":
+        return [(LIGHT_FDID, LIGHT_CKEY, lambda d: light_add_map(d, BRD_MAP, DARK_LIGHTPARAMS))]
     raise Fail("unknown variant " + variant)
 
 

@@ -66,3 +66,10 @@ liquid plane (MLIQ) in the groups with its position, height range and shown/hidd
 hidden tiles (stored at height 0.0) are lowered to the liquid's base height, so the lava itself
 is unchanged. `inject liqoff` (test only) hides every liquid tile in those files. Each inject
 starts again from the original build, so variants don't stack; `uninject` undoes any of them.
+
+## Light variants
+
+`inject lighttest` (test only) paints the default outdoor light (Light 1, LightParams
+3/10/12/13) pure green in LightData.db2. `inject lightfix` adds a map-wide Light.db2 row for
+Blackrock Depths (map 230, position 0,0,0) that uses LightParams 1989 (all colours black), so
+the client no longer falls back to the default outdoor light (blue at night) there.
