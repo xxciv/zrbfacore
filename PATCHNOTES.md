@@ -21,8 +21,8 @@ Draft PR, not merged yet.
   - 3% each: Frightened Bush Chicken 116403 (pet), Silver-Plated Turkey Shooter 116400 (toy), Fine
     Pilgrim's Hat 116401. The guides give about 9% for the three together.
   - The food amounts and the 3% split are our own choice; nothing published gives exact numbers.
-- **Status:** not tested in game yet. Bags already in your bags stay empty only if already opened;
-  unopened ones roll the new table when opened.
+- **Status:** not tested in game yet. A bag that was already opened stays empty; the next one rolls the
+  new table.
 - **Pick up:** SQL only:
 
   ```
