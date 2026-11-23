@@ -83,7 +83,8 @@ python3 zr_casc_inject.py "<client>" find ~/Downloads/zr_find "some text" ...
 
 Read-only. Goes through every stored file in disk order, decodes only the ones that start like
 text (Lua, XML, TOC, ...), and lists the file IDs whose content contains one of the texts
-(ignoring case). Each hit is saved as `<out>/<file ID>.txt`.
+(ignoring case). Each hit is saved as `<out>/<file ID>.txt`. With `--all` it also searches binary
+files (DB2 etc., UTF-8 and UTF-16 text), skipping textures, sound and models; slower.
 
 To replace whole files with edited copies:
 

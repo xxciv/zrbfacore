@@ -37,10 +37,11 @@ Usage (game closed):
   python3 zr_casc_inject.py "<client folder>" extract <out folder> brd|<file ID> [<file ID> ...]
       (read-only: writes files from the current build, 'brd' = the BRD root WMO and all its
        group files, and prints the liquid planes found in those group files)
-  python3 zr_casc_inject.py "<client folder>" find <out folder> [<text> ...]
+  python3 zr_casc_inject.py "<client folder>" find <out folder> [--all] [<text> ...]
       (read-only: reads every stored text file (Lua, XML, TOC, ...) and lists the file IDs that
        contain one of the texts, ignoring case; default texts "fstorm" and "live changelog".
-       Each hit is written to <out folder>/<file ID>.txt)
+       --all also searches binary files (DB2 etc., UTF-8 and UTF-16), skipping textures, sound
+       and models. Each hit is written to <out folder>/<file ID>.txt or .bin)
 """
 import hashlib
 import json
@@ -1160,28 +1161,42 @@ def _looks_like_text(head):
     return ok >= 0.97 * len(head)
 
 
-def _span_head_text(head):
-    """First bytes of a stored span -> True if the file starts like text."""
+def _span_head(head, n=512):
+    """First bytes of a stored span -> the first n bytes of the file, or None."""
     blte = head[30:]
     if blte[0:4] != b"BLTE" or len(blte) < 9:
-        return False
+        return None
     hsize = struct.unpack_from(">I", blte, 4)[0]
     frame = blte[8:] if hsize == 0 else blte[hsize:]
     if not frame:
-        return False
+        return None
     mode, body = frame[0:1], frame[1:]
     if mode == b"N":
-        return _looks_like_text(body[:512])
+        return body[:n]
     if mode == b"Z":
         try:
-            return _looks_like_text(zlib.decompressobj().decompress(body, 512))
+            return zlib.decompressobj().decompress(body, n)
         except zlib.error:
-            return False
-    return False
+            return None
+    return None
+
+
+# files that cannot hold readable text: textures, sound, models, animations, maps, video
+_SKIP_MAGIC = (b"BLP2", b"OggS", b"RIFF", b"MD21", b"MD20", b"ID3", b"fLaC", b"\xff\xfb", b"\xff\xf3",
+               b"SKB1", b"AFM2", b"AFSA", b"AFSB", b"SFID", b"TXAC", b"LDOM", b"MVER", b"REVM", b"KNIS",
+               b"PFID", b"TEXS", b"BIK", b"KB2", b"MAOS")
+
+
+def _context(data, i, n):
+    a, b = max(0, i - 60), min(len(data), i + n + 100)
+    return "".join(chr(c) if 32 <= c < 127 else "." for c in data[a:b])
 
 
 def cmd_find(client, out, texts):
+    every = "--all" in texts
+    texts = [t for t in texts if t != "--all"]
     texts = [t.lower().encode("utf-8") for t in (texts or ["fstorm", "live changelog"])]
+    wide = [t.decode("utf-8").encode("utf-16-le") for t in texts]
     info = info_file(client) or os.path.join(client, ".build.info")
     if not os.path.isfile(info):
         raise Fail("no .fzbuildnfo or .build.info in the client folder")
@@ -1196,7 +1211,9 @@ def cmd_find(client, out, texts):
             so = int.from_bytes(e[9:14], "big")
             spans[e[:9]] = (so >> x.seg_bits, so & ((1 << x.seg_bits) - 1), struct.unpack_from("<I", e, 14)[0])
     order = sorted((v, k) for k, v in spans.items())
-    print("build config %s, %d stored files; looking for %s" % (key, len(order), ", ".join(repr(t.decode()) for t in texts)), flush=True)
+    print("build config %s, %d stored files; looking for %s in %s" % (
+        key, len(order), ", ".join(repr(t.decode()) for t in texts),
+        "all files except textures/sound/models" if every else "text files"), flush=True)
     hits = {}           # ekey9 -> (data, [(text, line)])
     texty = done = 0
     cur_arc, f = None, None
@@ -1204,7 +1221,7 @@ def cmd_find(client, out, texts):
         for (arc, off, size), ek9 in order:
             done += 1
             if done % 50000 == 0:
-                print("  %d / %d files read, %d text files so far" % (done, len(order), texty), flush=True)
+                print("  %d / %d files read, %d searched, %d hits so far" % (done, len(order), texty, len(hits)), flush=True)
             if arc != cur_arc:
                 if f:
                     f.close()
@@ -1215,7 +1232,11 @@ def cmd_find(client, out, texts):
                 continue
             f.seek(off)
             head = f.read(min(size, 4096))
-            if not _span_head_text(head):
+            first = _span_head(head)
+            if first is None:
+                continue
+            is_text = _looks_like_text(first)
+            if not is_text and (not every or first.startswith(_SKIP_MAGIC)):
                 continue
             span = head + (f.read(size - len(head)) if size > len(head) else b"")
             try:
@@ -1225,6 +1246,17 @@ def cmd_find(client, out, texts):
             texty += 1
             low = data.lower()
             found = []
+            if not is_text:
+                for t in texts + wide:
+                    i = low.find(t)
+                    while i >= 0 and len(found) < 20:
+                        ln = _context(data, i, len(t))
+                        if ln not in found:
+                            found.append(ln)
+                        i = low.find(t, i + len(t))
+                if found:
+                    hits[ek9] = (data, found)
+                continue
             for t in texts:
                 if t in low:
                     for line in data.split(b"\n"):
@@ -1237,7 +1269,7 @@ def cmd_find(client, out, texts):
     finally:
         if f:
             f.close()
-    print("%d text files read, %d contain the text" % (texty, len(hits)))
+    print("%d files searched, %d contain the text" % (texty, len(hits)))
     if not hits:
         return
     # encoded key -> content key -> file IDs in this build
@@ -1260,9 +1292,10 @@ def cmd_find(client, out, texts):
         ck = ck_of.get(ek9)
         fds = sorted(fd_of.get(ck, ())) if ck else []
         name = ("%d" % fds[0]) if fds else ("unused_" + ek9.hex())
-        with open(os.path.join(out, name + ".txt"), "wb") as w:
+        ext = ".txt" if _looks_like_text(data[:512]) else ".bin"
+        with open(os.path.join(out, name + ext), "wb") as w:
             w.write(data)
-        print("== %s  file ID %s  (%d bytes)%s" % (name + ".txt", ", ".join(map(str, fds)) or "-", len(data),
+        print("== %s  file ID %s  (%d bytes)%s" % (name + ext, ", ".join(map(str, fds)) or "-", len(data),
                                                    "" if fds else "  not used by the current build"))
         for line in found[:8]:
             print("     " + line)
