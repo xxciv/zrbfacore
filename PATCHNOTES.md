@@ -263,6 +263,40 @@ to do to pick it up (rebuild, restart, run SQL).
     faction 35.
 - **Status:** untested.
 - **Pick up:** apply the patch, rebuild, run the SQL, restart `worldserver`.
+## 2026-11-22 (core: "Already looted" with items still in the loot window)
+
+PR #103. Confirmed in game by Four on 2026-11-22.
+
+### Core: "Already looted (1087436940/0)" on stacked summoned corpses
+
+- **Found** (Four, 2026-11-22, Blackrock Depths Ring of Law): looting two stacked Dredge Worm corpses,
+  the window shows Slimy Ichor and Gelatinous Goo but the client prints "Already looted" in red three
+  times. Four sees it more and more often.
+- **Cause:** the red text is `EQUIP_ERR_LOOT_GONE`, sent by `Player::StoreLootItem` when the loot it
+  was pointed at has no item in that slot. The loot is found through `Player::m_AELootView`, which maps
+  each loot's GUID to its corpse. Only `Creature::LoadFromDB` gives a loot a GUID, so creatures that
+  are summoned or spawned by scripts (Dredge Worm 8925 has no database spawn; the Ring of Law script
+  summons it), game objects and items all have an empty loot GUID. With two such corpses in one area
+  loot window both use the same key, the second overwrites the first, and the requests for the first
+  corpse's items go to the second one, which has nothing in those slots.
+- **Changed:** new `tools/bfa/loot-guid.patch` (after `zulfarrak.patch`):
+  - `Unit.cpp` (`Unit::Kill`, where the corpse's loot is filled): a creature loot with an empty GUID
+    gets a new `LootObject` GUID before the loot list is sent.
+  - `Player.cpp` (`Player::SendLoot`): any loot still without a GUID (game objects, items, corpses)
+    gets one before the loot window is sent.
+- **Status:** applies cleanly after the full chain on upstream 2c13546, `Unit.cpp` and `Player.cpp`
+  compile. Confirmed in game by Four on 2026-11-22.
+- **Pick up** (until the PR is merged):
+
+  ```
+  cd ~/bfa/source
+  git -C ../tools-repo fetch origin claude/project-thread-z3fwbh
+  git -C ../tools-repo show FETCH_HEAD:tools/bfa/loot-guid.patch | git apply && echo "loot guid patch applied"
+  grep -c "zrbfacore: .*loot GUID" src/server/game/Entities/Unit/Unit.cpp src/server/game/Entities/Player/Player.cpp
+  sudo cmake --build build -j"$(nproc)" && sudo cmake --build build --target install
+  ```
+
+  The grep prints 1 for each file. Restart worldserver.
 
 ## 2026-11-21 (Zul'Farrak)
 
@@ -985,7 +1019,7 @@ retest pending; Zandalari chain to test when level appropriate.
   Then restart worldserver.
 ## 2026-11-20 (core: expansion XP gate)
 
-Draft PR #95, not merged yet. Not tested in game yet.
+PR #95, merged 2026-11-21. Confirmed in game by Four on 2026-11-22 (XP locked at 60 until Outland).
 
 ### Core: no experience at the old level caps until the next expansion is started
 
@@ -1020,8 +1054,8 @@ Draft PR #95, not merged yet. Not tested in game yet.
     the rewarded quest list changes size).
   - `worldserver.conf.dist`: `ExpansionXpGate.Enable = 1` (0 turns the gate off). Not needed in your
     `worldserver.conf`: missing means on.
-- **Status:** applies cleanly after the full chain on upstream 2c13546, `Player.cpp` compiles. Not
-  checked in game yet.
+- **Status:** applies cleanly after the full chain on upstream 2c13546, `Player.cpp` compiles.
+  Confirmed in game by Four on 2026-11-22.
 - **Pick up** (until the PR is merged):
 
   ```

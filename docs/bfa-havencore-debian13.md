@@ -159,6 +159,7 @@ git apply ../tools-repo/tools/bfa/pick-lock-level.patch
 git apply ../tools-repo/tools/bfa/zulfarrak.patch
 git apply ../tools-repo/tools/bfa/blackrock-depths.patch
 git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
+git apply ../tools-repo/tools/bfa/loot-guid.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -598,6 +599,13 @@ message when experience locks and when it unlocks. It only touches `Player.cpp/.
 120 plus 5 per level above the spell's level (265 at level 53), but `Spell::CanOpenLock` computed the
 spell's value without the caster, so the per-level part was skipped and every rogue stayed at 120: a
 Strong Iron Lockbox (125) failed with "Skill not high enough". It only touches `Spell.cpp`.
+
+`loot-guid.patch` stops "Already looted" errors while the loot window still shows items. Only
+creatures loaded from the database got a loot GUID, so summoned and script-spawned creatures (the
+Ring of Law waves in Blackrock Depths, event and quest spawns), game objects and items all shared the
+empty one. The area loot window keys each corpse by that GUID, so with two such corpses in one window
+the client's loot requests went to the wrong corpse. A loot without a GUID now gets its own when the
+creature dies (`Unit.cpp`) or when the loot window opens (`Player::SendLoot`).
 
 `zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
 solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
@@ -1159,6 +1167,7 @@ git apply ../tools-repo/tools/bfa/pick-lock-level.patch
 git apply ../tools-repo/tools/bfa/zulfarrak.patch
 git apply ../tools-repo/tools/bfa/blackrock-depths.patch
 git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
+git apply ../tools-repo/tools/bfa/loot-guid.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
