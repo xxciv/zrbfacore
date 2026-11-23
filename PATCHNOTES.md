@@ -5,6 +5,16 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-23 (Lower Blackrock Spire)
 
+### DB: Blackrock Stadium (Rend's arena) thinned by half
+
+- **Found** (survey, 2026-11-23): 30 mobs in one open room (17 Chromatic Whelps, 8 elite Chromatic Dragonspawn,
+  5 elite Blackhand Dragon Handlers; Pandaria the same, AzerothCore 3 whelps and 1 dragonspawn), left over from
+  Rend's old waves. Four chose "Thin by half".
+- **Changed** (`sql/fixes/world/2026_11_23_08_upper_blackrock_spire_arena_thinned.sql`): kept the most spread-out
+  9 whelps, 4 dragonspawn and 2 handlers (backup `zr_backup_brs_arena_creature`).
+- **Status:** tested on a copy of the database only; not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
 ### DB: Upper Blackrock Spire wing: Drakkisath's doors open
 
 - **Found** (survey, 2026-11-23, Four asked to cover the Upper Spire wing for Acride's quests): the wing is still on
