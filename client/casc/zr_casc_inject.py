@@ -361,7 +361,7 @@ def blte_encode_like(orig_blte, data):
     hsize, frames = blte_parse(orig_blte)
 
     def enc(mode, chunk):
-        return (b"N" + chunk) if mode == b"N" else (b"Z" + zlib.compress(chunk, 9))
+        return (b"N" + chunk) if mode == b"N" else (b"Z" + zlib.compress(chunk, 6))
 
     if hsize == 0:
         return b"BLTE" + bytes(4) + enc(frames[0][0][0:1], data)
@@ -630,6 +630,7 @@ def cmd_inject(client, variant):
     cur_key = info_build_key(info)
     base_key = s.get("orig_key", cur_key) if s.get("new_key") == cur_key else cur_key
     print("base build config %s" % base_key)
+    print("reading ENCODING and ROOT ...", flush=True)
     b = load_build(st, client, base_key)
     if b["enc"].build() != b["enc_raw"]:
         raise Fail("ENCODING rebuild self-test failed on this client; nothing written")
@@ -642,12 +643,14 @@ def cmd_inject(client, variant):
     w_blte = blte_encode_like(wmo_blte, new_wmo)
     w_ck, w_ek = md5(new_wmo), blte_ekey(w_blte)
 
+    print("building new ROOT ...", flush=True)
     new_root = root_replace(b["root"], WMO_FDID, ck, w_ck)
     r_blte = blte_encode_like(b["root_blte"], new_root)
     r_ck, r_ek = md5(new_root), blte_ekey(r_blte)
 
     enc.add(w_ck, len(new_wmo), w_ek, enc.espec_index(ek), len(w_blte))
     enc.add(r_ck, len(new_root), r_ek, enc.espec_index(b["root_ek"]), len(r_blte))
+    print("building new ENCODING ...", flush=True)
     new_enc = enc.build()
     e_blte = blte_encode_like(b["enc_blte"], new_enc)
     e_ck, e_ek = md5(new_enc), blte_ekey(e_blte)
@@ -668,6 +671,7 @@ def cmd_inject(client, variant):
     new_cfg = "\n".join(lines).encode("utf-8")
     new_key = hashlib.md5(new_cfg).hexdigest()
 
+    print("writing ...", flush=True)
     # back up everything that is changed in place
     bdir = os.path.join(client, BACKUP_DIR)
     os.makedirs(os.path.join(bdir, "idx"), exist_ok=True)
