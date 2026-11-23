@@ -24,6 +24,7 @@ Usage (game closed):
 """
 import hashlib
 import json
+import re
 import os
 import shutil
 import struct
@@ -503,16 +504,39 @@ class Encoding:
                 out.append((keyof(g[0]), body + (pad_unit * (fill // len(pad_unit) + 1))[:fill]))
         return out
 
-    def build(self):
+    _LAYOUT = re.compile(rb"^b:\{22=n,(\d+)=z,(\d+)=n,(\d+)=n,(\d+)=n,(\d+)=n,\*=z\}$")
+
+    def sections(self):
+        """The file as its 7 natural sections; the trailing layout spec is updated to the new sizes."""
         cp = self._serialize(self.cpages, self.cpsize, b"\0", lambda e: e[6:22])
         ep = self._serialize(self.epages, self.epsize, self.epad, lambda e: e[0:16])
         head = b"EN\x01\x10\x10" + struct.pack(">HHII", self.cpsize // 1024, self.epsize // 1024, len(cp), len(ep))
-        head += bytes([self.unk]) + struct.pack(">I", len(self.espec_block)) + self.espec_block
-        out = [head]
-        out += [f + md5(b) for f, b in cp] + [b for _, b in cp]
-        out += [f + md5(b) for f, b in ep] + [b for _, b in ep]
-        out.append(self.trailer)
-        return b"".join(out)
+        head += bytes([self.unk]) + struct.pack(">I", len(self.espec_block))
+        secs = [head, self.espec_block,
+                b"".join(f + md5(b) for f, b in cp), b"".join(b for _, b in cp),
+                b"".join(f + md5(b) for f, b in ep), b"".join(b for _, b in ep)]
+        trailer = self.trailer
+        if self._LAYOUT.match(trailer):
+            trailer = ("b:{22=n,%d=z,%d=n,%d=n,%d=n,%d=n,*=z}" % tuple(len(x) for x in secs[1:])).encode()
+        return secs + [trailer]
+
+    def build(self):
+        return b"".join(self.sections())
+
+    def encode_blte(self, orig_blte):
+        """BLTE in the layout the file's own trailing spec describes (one frame per section)."""
+        secs = self.sections()
+        if not self._LAYOUT.match(secs[-1]):
+            return blte_encode_like(orig_blte, b"".join(secs))
+        modes = [b"N", b"Z", b"N", b"N", b"N", b"N", b"Z"]
+        frames = [(b"N" + x) if m == b"N" else (b"Z" + zlib.compress(x, 6)) for x, m in zip(secs, modes)]
+        head = [b"BLTE" + struct.pack(">I", 12 + 24 * len(frames)) + b"\x0f" + len(frames).to_bytes(3, "big")]
+        for f, x in zip(frames, secs):
+            head.append(struct.pack(">II", len(f), len(x)) + md5(f))
+        blte = b"".join(head) + b"".join(frames)
+        if blte_decode(blte) != b"".join(secs):
+            raise Fail("ENCODING BLTE self-check failed")
+        return blte
 
 
 # --------------------------------------------------------------------------- ROOT (8.x TSFM / legacy)
@@ -652,7 +676,7 @@ def cmd_inject(client, variant):
     enc.add(r_ck, len(new_root), r_ek, enc.espec_index(b["root_ek"]), len(r_blte))
     print("building new ENCODING ...", flush=True)
     new_enc = enc.build()
-    e_blte = blte_encode_like(b["enc_blte"], new_enc)
+    e_blte = enc.encode_blte(b["enc_blte"])
     e_ck, e_ek = md5(new_enc), blte_ekey(e_blte)
     if Encoding(new_enc).ekeys_for(w_ck) != [w_ek] or Encoding(new_enc).ekeys_for(r_ck) != [r_ek]:
         raise Fail("new ENCODING self-check failed")
@@ -685,11 +709,12 @@ def cmd_inject(client, variant):
                 shutil.copy2(x.path, dst)
 
     # data file: our own, appended
+    max_size = st.newest(0).max_size
+    need = sum(30 + len(x) for _, x in blobs)
     arc = s.get("archive")
-    if arc is None or not os.path.isfile(st.data_path(arc)):
+    if arc is None or not os.path.isfile(st.data_path(arc)) or os.path.getsize(st.data_path(arc)) + need > max_size:
         arc = st.archives()[-1] + 1
         open(st.data_path(arc), "wb").close()
-    max_size = st.newest(0).max_size
     with open(st.data_path(arc), "r+b") as f:
         f.seek(0, 2)
         off = f.tell()
