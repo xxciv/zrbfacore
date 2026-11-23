@@ -19,7 +19,11 @@ client asks that server which build to use and ignores ours).
 
 Usage (game closed):
   python3 zr_casc_inject.py "<client folder>" status
-  python3 zr_casc_inject.py "<client folder>" inject off|swap|probe
+  python3 zr_casc_inject.py "<client folder>" inject off|swap|probe|liqfix|liqoff
+      off/swap/probe edit the root WMO (MFOG / textures);
+      liqfix: in the 6 BRD group files with liquid, the hidden liquid tiles' vertices (height 0.0)
+              are lowered to the liquid's base height (the lava stays);
+      liqoff: test only, every liquid tile in those 6 files is hidden (no lava surfaces)
   python3 zr_casc_inject.py "<client folder>" uninject
   python3 zr_casc_inject.py "<client folder>" extract <out folder> brd|<file ID> [<file ID> ...]
       (read-only: writes files from the current build, 'brd' = the BRD root WMO and all its
@@ -44,6 +48,17 @@ VARIANT_MD5 = {
     "swap": "6e3f8087c7fb64fc719793da9d0ab9ab",
     "probe": "338b43010004c7df669ebca381c57ddd",
 }
+# BRD group files that hold liquid (MLIQ), with their original content keys (35662)
+LIQUID_GROUPS = {
+    108314: "7b4c0c6778734868ef65be96634b1ac1",
+    108328: "2082290989fc79cb9c951bc534e43aa9",
+    108329: "b819e55468c4ca3ee3d1ed28fdaf30ff",
+    108331: "51839c5a832c183959b43f7d31055eac",
+    108337: "60100a37c11e62dcf5fc3f3b9ee46de4",
+    108345: "de9ccd15a0aeaf40e73146a6122de399",
+}
+WMO_VARIANTS = ("off", "swap", "probe")
+LIQUID_VARIANTS = ("liqfix", "liqoff")
 BACKUP_DIR = "zr_casc_backup"
 INFO_NAMES = (".fzbuildnfo",)
 
@@ -644,6 +659,64 @@ def wmo_of(st, b):
     return ck, ek, blte, data
 
 
+def file_entry(st, b, fdid):
+    cks = set(root_get(b["root"], fdid))
+    if len(cks) != 1:
+        raise Fail("file %d has %d different content keys in ROOT" % (fdid, len(cks)))
+    ck = cks.pop()
+    eks = b["enc"].ekeys_for(ck)
+    if not eks:
+        raise Fail("file %d is not in ENCODING" % fdid)
+    _, blte = st.read(eks[0])
+    data = blte_decode(blte)
+    if md5(data) != ck:
+        raise Fail("file %d does not match its key" % fdid)
+    return ck, eks[0], blte, data
+
+
+def liquid_edit(g, mode):
+    """Edit the MLIQ chunk of a WMO group file in place (same size)."""
+    d = bytearray(g)
+    hit = 0
+    for tag, o, n in wmo_chunks(g):
+        if tag != "MOGP":
+            continue
+        for t2, o2, n2 in wmo_chunks(g, o + 68, o + n):
+            if t2 != "MLIQ":
+                continue
+            hit += 1
+            xv, yv, xt, yt = struct.unpack_from("<4I", g, o2)
+            bz = struct.unpack_from("<f", g, o2 + 24)[0]
+            vat = o2 + 30
+            tat = vat + 8 * xv * yv
+            if mode == "off":
+                for i in range(xt * yt):
+                    d[tat + i] |= 0x0F
+                continue
+            shown = set()
+            for ty in range(yt):
+                for tx in range(xt):
+                    if g[tat + ty * xt + tx] & 0x0F != 0x0F:
+                        shown.update(((ty, tx), (ty, tx + 1), (ty + 1, tx), (ty + 1, tx + 1)))
+            for vy in range(yv):
+                for vx in range(xv):
+                    if (vy, vx) not in shown:
+                        struct.pack_into("<f", d, vat + 8 * (vy * xv + vx) + 4, bz)
+    if hit != 1:
+        raise Fail("expected one liquid chunk, found %d" % hit)
+    return bytes(d)
+
+
+def variant_edits(variant):
+    """[(file ID, original content key, edit function)]"""
+    if variant in WMO_VARIANTS:
+        return [(WMO_FDID, WMO_CKEY, lambda d: make_variant(d, variant))]
+    if variant in LIQUID_VARIANTS:
+        mode = "fix" if variant == "liqfix" else "off"
+        return [(f, bytes.fromhex(ck), lambda d, m=mode: liquid_edit(d, m)) for f, ck in sorted(LIQUID_GROUPS.items())]
+    raise Fail("unknown variant " + variant)
+
+
 # --------------------------------------------------------------------------- commands
 
 def state_path(client):
@@ -671,6 +744,8 @@ def cmd_status(client):
     print("build config  %s%s" % (key, "  (injected; original %s)" % s["orig_key"] if s and s.get("new_key") == key else ""))
     print("WMO %d       ckey %s ekey %s" % (WMO_FDID, ck.hex(), ek.hex()))
     print("WMO state     %s" % state_of(data))
+    if s and s.get("new_key") == key:
+        print("injected      %s" % s.get("variant"))
 
 
 def cmd_inject(client, variant):
@@ -686,27 +761,32 @@ def cmd_inject(client, variant):
     b = load_build(st, client, base_key)
     if b["enc"].build() != b["enc_raw"]:
         raise Fail("ENCODING rebuild self-test failed on this client; nothing written")
-    ck, ek, wmo_blte, wmo = wmo_of(st, b)
-    if ck != WMO_CKEY:
-        raise Fail("base build's WMO is not the original (%s)" % state_of(wmo))
     enc = b["enc"]
-
-    new_wmo = make_variant(wmo, variant)
-    w_blte = blte_encode_like(wmo_blte, new_wmo)
-    w_ck, w_ek = md5(new_wmo), blte_ekey(w_blte)
+    files = []      # (fdid, old ck, new data, new ck, new ek, new blte, old ek)
+    for fdid, orig_ck, fn in variant_edits(variant):
+        ck, ek, blte, data = file_entry(st, b, fdid)
+        if ck != orig_ck:
+            raise Fail("base build's file %d is not the original (%s)" % (fdid, ck.hex()))
+        nd = fn(data)
+        nb = blte_encode_like(blte, nd)
+        files.append((fdid, ck, nd, md5(nd), blte_ekey(nb), nb, ek))
 
     print("building new ROOT ...", flush=True)
-    new_root = root_replace(b["root"], WMO_FDID, ck, w_ck)
+    new_root = b["root"]
+    for fdid, ck, nd, n_ck, n_ek, nb, ek in files:
+        new_root = root_replace(new_root, fdid, ck, n_ck)
     r_blte = blte_encode_like(b["root_blte"], new_root)
     r_ck, r_ek = md5(new_root), blte_ekey(r_blte)
 
-    enc.add(w_ck, len(new_wmo), w_ek, enc.espec_index(ek), len(w_blte))
+    for fdid, ck, nd, n_ck, n_ek, nb, ek in files:
+        enc.add(n_ck, len(nd), n_ek, enc.espec_index(ek), len(nb))
     enc.add(r_ck, len(new_root), r_ek, enc.espec_index(b["root_ek"]), len(r_blte))
     print("building new ENCODING ...", flush=True)
     new_enc = enc.build()
     e_blte = enc.encode_blte(b["enc_blte"])
     e_ck, e_ek = md5(new_enc), blte_ekey(e_blte)
-    if Encoding(new_enc).ekeys_for(w_ck) != [w_ek] or Encoding(new_enc).ekeys_for(r_ck) != [r_ek]:
+    chk = Encoding(new_enc)
+    if chk.ekeys_for(r_ck) != [r_ek] or any(chk.ekeys_for(f[3]) != [f[4]] for f in files):
         raise Fail("new ENCODING self-check failed")
 
     # new build config
@@ -729,7 +809,7 @@ def cmd_inject(client, variant):
     os.makedirs(os.path.join(bdir, "idx"), exist_ok=True)
     if not os.path.isfile(os.path.join(bdir, "fzbuildnfo.orig")):
         shutil.copy2(info, os.path.join(bdir, "fzbuildnfo.orig"))
-    blobs = [(w_ek, w_blte), (r_ek, r_blte), (e_ek, e_blte)]
+    blobs = [(f[4], f[5]) for f in files] + [(r_ek, r_blte), (e_ek, e_blte)]
     for bk in sorted({bucket_of(e) for e, _ in blobs}):
         for x in st.all_idx(bk):
             dst = os.path.join(bdir, "idx", os.path.basename(x.path))
@@ -779,11 +859,12 @@ def cmd_inject(client, variant):
     # read it all back the way the client will
     st2 = Storage(client)
     b2 = load_build(st2, client, info_build_key(info))
-    got = wmo_of(st2, b2)[3]
     print("new build config %s (data.%03d, %d new files)" % (new_key, arc, len(blobs)))
-    print("WMO %d now reads back as: %s" % (WMO_FDID, state_of(got)))
-    if got != new_wmo:
-        raise Fail("read-back mismatch")
+    for fdid, ck, nd, n_ck, n_ek, nb, ek in files:
+        got = file_entry(st2, b2, fdid)[3]
+        if got != nd:
+            raise Fail("read-back mismatch for file %d" % fdid)
+        print("file %d now reads back as: %s" % (fdid, state_of(got) if fdid == WMO_FDID else variant))
 
 
 def cmd_uninject(client):
@@ -949,7 +1030,7 @@ def cmd_extract(client, out, ids):
 
 def main(argv):
     cmds = ("status", "inject", "uninject", "layout", "extract")
-    if len(argv) < 3 or argv[2] not in cmds or (argv[2] == "inject" and (len(argv) < 4 or argv[3] not in ("off", "swap", "probe"))):
+    if len(argv) < 3 or argv[2] not in cmds or (argv[2] == "inject" and (len(argv) < 4 or argv[3] not in WMO_VARIANTS + LIQUID_VARIANTS)):
         print(__doc__)
         return 2
     client = argv[1]

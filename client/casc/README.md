@@ -59,3 +59,10 @@ on Four's client.
 (108299) and all 48 group files from the build the client currently uses, and prints every
 liquid plane (MLIQ) in the groups with its position, height range and shown/hidden tiles.
 `extract <out folder> <file ID> ...` writes any files by ID.
+
+## Liquid variants (BRD group files)
+
+`inject liqfix` edits the six BRD group files that carry lava (MLIQ): vertices that only touch
+hidden tiles (stored at height 0.0) are lowered to the liquid's base height, so the lava itself
+is unchanged. `inject liqoff` (test only) hides every liquid tile in those files. Each inject
+starts again from the original build, so variants don't stack; `uninject` undoes any of them.
