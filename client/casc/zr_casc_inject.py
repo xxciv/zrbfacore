@@ -19,8 +19,9 @@ client asks that server which build to use and ignores ours).
 
 Usage (game closed):
   python3 zr_casc_inject.py "<client folder>" status
-  python3 zr_casc_inject.py "<client folder>" inject off|swap|probe|liqfix|liqoff
-      off/swap/probe edit the root WMO (MFOG / textures);
+  python3 zr_casc_inject.py "<client folder>" inject off|swap|probe|fogwide|liqfix|liqoff|lighttest|lightfix
+      off/swap/probe edit the root WMO (MFOG / textures); fogwide gives all 9 MFOG fogs a
+              5000-yard outer radius, so the camera is never outside the dungeon's own fog;
       liqfix: in the 6 BRD group files with liquid, the hidden liquid tiles' vertices (height 0.0)
               are lowered to the liquid's base height (the lava stays);
       liqoff: test only, every liquid tile in those 6 files is hidden (no lava surfaces)
@@ -52,6 +53,7 @@ VARIANT_MD5 = {
     "off": "1da7587f5a744ccc335be5ab5d31234f",
     "swap": "6e3f8087c7fb64fc719793da9d0ab9ab",
     "probe": "338b43010004c7df669ebca381c57ddd",
+    "fogwide": "7108ba85777e4c487a682d2b47ba7897",
 }
 # BRD group files that hold liquid (MLIQ), with their original content keys (35662)
 LIQUID_GROUPS = {
@@ -64,7 +66,7 @@ LIQUID_GROUPS = {
 }
 LIGHTDATA_FDID = 1375580
 LIGHTDATA_CKEY = bytes.fromhex("b3d232221aca5f67caec330a2a6bacc5")   # LightData.db2 (35662)
-WMO_VARIANTS = ("off", "swap", "probe")
+WMO_VARIANTS = ("off", "swap", "probe", "fogwide")
 LIGHT_FDID = 1375579
 LIGHT_CKEY = bytes.fromhex("f54439ded7a87f04b0c304af5149ceb0")       # Light.db2 (35662)
 BRD_MAP = 230
@@ -93,9 +95,11 @@ def make_variant(orig, name):
         tex = d[104:108]
         for i in range(57):
             d[92 + 64 * i + 12:92 + 64 * i + 16] = tex
-    for i in range(MFOG_COUNT if name in ("off", "swap") else 0):
+    for i in range(MFOG_COUNT if name in ("off", "swap", "fogwide") else 0):
         e = MFOG_DATA + 48 * i
-        if name == "off":
+        if name == "fogwide":                 # larger radius 5000: the camera is always inside the fog
+            struct.pack_into("<f", d, e + 20, 5000.0)
+        elif name == "off":
             d[e + 16:e + 24] = bytes(8)          # smaller + larger radius = 0
         else:
             for c in (e + 32, e + 44):           # fog + underwater colour, swap B and R
