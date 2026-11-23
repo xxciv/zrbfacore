@@ -5,6 +5,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-23 (Lower Blackrock Spire)
 
+### DB: Lower Blackrock Spire: Scarshield spawns two to a spot
+
+- **Found** (Four, 2026-11-23: "doubled up spawns for spellbinders and warlocks"): 23 Scarshield spots held two
+  spawns of different entries at exactly the same point (a random-entry spawn point sniffed twice), 5 more pairs
+  stood under 0.6 yards apart, plus a Spirestone Mystic on a Reaver and a Rookery Hatcher on a Guardian; Pandaria
+  has the same rows. My survey only listed same-entry stacks. Ghok Bashguud (rare) also spawned every time at a
+  second spot, on top of a Bloodaxe Veteran, beside his pooled spot.
+- **Changed** (`sql/fixes/world/2026_11_23_09_lower_blackrock_spire_stacked_scarshield.sql`): the second copy of
+  each pair removed (30), the second Ghok shares a 12% pool with the Veteran under him (pool 22920). Backups
+  `zr_backup_lbrs_stacked_*`.
+- **Status:** tested on a copy of the database only; not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
 ### DB: Blackrock Stadium (Rend's arena) thinned by half
 
 - **Found** (survey, 2026-11-23): 30 mobs in one open room (17 Chromatic Whelps, 8 elite Chromatic Dragonspawn,
