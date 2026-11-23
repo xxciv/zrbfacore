@@ -17,7 +17,8 @@ Usage (close the game first):
   python brd_fog_casc.py "<client folder>" apply swap    # fog colour red/blue swapped
   python brd_fog_casc.py "<client folder>" restore       # put the original bytes back
 
-<client folder> is the folder that contains Data\\ (and .build.info).
+<client folder> is the folder that contains Data (and .build.info). Works on Linux
+(python3, e.g. a Wine/Proton install) and Windows (py).
 """
 import hashlib
 import json
@@ -73,8 +74,22 @@ def state_of(content):
 
 # --------------------------------------------------------------------------- storage lookup
 
+def cpath(base, *parts):
+    """Join path parts, matching each folder/file name case-insensitively (Linux/Wine installs)."""
+    p = base
+    for part in parts:
+        q = os.path.join(p, part)
+        if not os.path.exists(q) and os.path.isdir(p):
+            for name in os.listdir(p):
+                if name.lower() == part.lower():
+                    q = os.path.join(p, name)
+                    break
+        p = q
+    return p
+
+
 def read_build_key(client):
-    bi = os.path.join(client, ".build.info")
+    bi = cpath(client, ".build.info")
     if os.path.isfile(bi):
         with open(bi, "r", encoding="utf-8", errors="replace") as f:
             lines = [l.rstrip("\r\n") for l in f if l.strip()]
@@ -85,7 +100,7 @@ def read_build_key(client):
             if rec.get("Active", "1") == "1" and rec.get("Build Key"):
                 return rec["Build Key"].strip().lower()
     # no .build.info (repacked client): find the 35662 build config in Data/config
-    cfg = os.path.join(client, "Data", "config")
+    cfg = cpath(client, "Data", "config")
     for root, _, files in os.walk(cfg):
         for fn in files:
             p = os.path.join(root, fn)
@@ -100,7 +115,7 @@ def read_build_key(client):
 
 
 def read_build_config(client, key):
-    p = os.path.join(client, "Data", "config", key[0:2], key[2:4], key)
+    p = cpath(client, "Data", "config", key[0:2], key[2:4], key)
     if not os.path.isfile(p):
         raise Fail("build config %s not found at %s" % (key, p))
     cfg = {}
@@ -122,7 +137,7 @@ def bucket_of(ekey):
 
 
 def idx_files(client):
-    d = os.path.join(client, "Data", "data")
+    d = cpath(client, "Data", "data")
     best = {}
     for fn in os.listdir(d):
         if fn.lower().endswith(".idx") and len(fn) == 14:
@@ -167,7 +182,7 @@ def idx_lookup(client, ekey):
 
 
 def data_path(client, archive):
-    return os.path.join(client, "Data", "data", "data.%03d" % archive)
+    return cpath(client, "Data", "data", "data.%03d" % archive)
 
 
 def read_span(client, ekey):
@@ -820,7 +835,7 @@ def cmd_restore(client):
         orig = f.read()
     if hashlib.md5(orig).hexdigest() != m["md5"] or state_of(blte_decode(orig)) != "original":
         raise Fail("backup file is damaged")
-    path = os.path.join(client, "Data", "data", m["data_file"])
+    path = cpath(client, "Data", "data", m["data_file"])
     with open(path, "rb") as f:
         f.seek(m["offset"])
         cur = f.read(m["size"])
@@ -842,8 +857,8 @@ def main(argv):
         print(__doc__)
         return 2
     client = argv[1]
-    if not os.path.isdir(os.path.join(client, "Data", "data")):
-        print("error: %s has no Data\\data folder" % client)
+    if not os.path.isdir(cpath(client, "Data", "data")):
+        print("error: %s has no Data/data folder" % client)
         return 1
     try:
         if argv[2] == "status":

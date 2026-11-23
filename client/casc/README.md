@@ -21,10 +21,11 @@ Open question: the encoded key no longer matches the MD5 of the edited BLTE head
 it will report a corrupt file; run `restore`.
 
 ```
-py brd_fog_casc.py "C:\Users\void\Downloads\WoWCircle 8.3.7 BFA" status
-py brd_fog_casc.py "C:\Users\void\Downloads\WoWCircle 8.3.7 BFA" apply off
-py brd_fog_casc.py "C:\Users\void\Downloads\WoWCircle 8.3.7 BFA" apply swap
-py brd_fog_casc.py "C:\Users\void\Downloads\WoWCircle 8.3.7 BFA" restore
+python3 brd_fog_casc.py "/mnt/1TB/WoWCircle 8.3.7 BFA" status
+python3 brd_fog_casc.py "/mnt/1TB/WoWCircle 8.3.7 BFA" apply off
+python3 brd_fog_casc.py "/mnt/1TB/WoWCircle 8.3.7 BFA" apply swap
+python3 brd_fog_casc.py "/mnt/1TB/WoWCircle 8.3.7 BFA" restore
 ```
+(On Windows use `py` and the Windows path.) Folder names are matched case-insensitively.
 Close the game first. Tested only against synthetic CASC stores (zlib levels 1-9, 16K/64K/single frames, N frames,
 no .build.info): apply off/swap/off then restore gives a byte-identical data file.
