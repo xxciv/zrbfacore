@@ -21,6 +21,9 @@ Usage (game closed):
   python3 zr_casc_inject.py "<client folder>" status
   python3 zr_casc_inject.py "<client folder>" inject off|swap|probe
   python3 zr_casc_inject.py "<client folder>" uninject
+  python3 zr_casc_inject.py "<client folder>" extract <out folder> brd|<file ID> [<file ID> ...]
+      (read-only: writes files from the current build, 'brd' = the BRD root WMO and all its
+       group files, and prints the liquid planes found in those group files)
 """
 import hashlib
 import json
@@ -450,6 +453,19 @@ class Encoding:
         return out
 
     def ekeys_for(self, ckey):
+        # pages are sorted by content key: look in the last page whose first key <= ckey
+        lo, hi = 0, len(self.cpages) - 1
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            ents = self.cpages[mid]["entries"]
+            if ents and ents[0][6:22] <= ckey:
+                lo = mid
+            else:
+                hi = mid - 1
+        for pg in self.cpages[max(lo - 1, 0):lo + 2]:
+            for e in pg["entries"]:
+                if e[6:22] == ckey:
+                    return [e[22 + 16 * k:38 + 16 * k] for k in range(e[0])]
         for pg in self.cpages:
             for e in pg["entries"]:
                 if e[6:22] == ckey:
@@ -814,8 +830,91 @@ def cmd_layout(client):
     print("== data files:", st.archives()[-3:], [os.path.getsize(st.data_path(a)) for a in st.archives()[-3:]])
 
 
+def file_of(st, b, fdid):
+    cks = set(root_get(b["root"], fdid))
+    if not cks:
+        raise Fail("file %d is not in ROOT" % fdid)
+    ck = sorted(cks)[0]
+    eks = b["enc"].ekeys_for(ck)
+    if not eks:
+        raise Fail("file %d: content key %s is not in ENCODING" % (fdid, ck.hex()))
+    _, blte = st.read(eks[0])
+    data = blte_decode(blte)
+    if md5(data) != ck:
+        raise Fail("file %d does not match its key" % fdid)
+    return data
+
+
+def wmo_chunks(data, start=0, end=None):
+    end = len(data) if end is None else end
+    o = start
+    while o + 8 <= end:
+        tag = data[o:o + 4][::-1].decode("latin-1")
+        n = struct.unpack_from("<I", data, o + 4)[0]
+        yield tag, o + 8, n
+        o += 8 + n
+
+
+def liquid_summary(gi, fdid, g):
+    for tag, o, n in wmo_chunks(g):
+        if tag != "MOGP":
+            continue
+        flags = struct.unpack_from("<I", g, o + 8)[0]
+        fog = tuple(g[o + 48:o + 52])
+        liq = struct.unpack_from("<I", g, o + 52)[0]
+        found = False
+        for t2, o2, n2 in wmo_chunks(g, o + 68, o + n):
+            if t2 != "MLIQ":
+                continue
+            found = True
+            xv, yv, xt, yt = struct.unpack_from("<4I", g, o2)
+            bx, by, bz = struct.unpack_from("<3f", g, o2 + 16)
+            mat = struct.unpack_from("<H", g, o2 + 28)[0]
+            hs = [struct.unpack_from("<f", g, o2 + 30 + 8 * i + 4)[0] for i in range(xv * yv)]
+            tiles = g[o2 + 30 + 8 * xv * yv:o2 + 30 + 8 * xv * yv + xt * yt]
+            hidden = sum(1 for t in tiles if t & 0x0F == 0x0F)
+            print("group %2d file %6d flags %08x liquid %3d mat %2d at %7.1f %7.1f z %7.1f..%7.1f  %dx%d tiles, %d shown, %d hidden"
+                  % (gi, fdid, flags, liq, mat, -bx, -by, min(hs) if hs else bz, max(hs) if hs else bz,
+                     xt, yt, xt * yt - hidden, hidden))
+        if not found and liq:
+            print("group %2d file %6d flags %08x liquid %3d (no MLIQ)" % (gi, fdid, flags, liq))
+
+
+def cmd_extract(client, out, ids):
+    info = info_file(client) or os.path.join(client, ".build.info")
+    if not os.path.isfile(info):
+        raise Fail("no .fzbuildnfo or .build.info in the client folder")
+    st = Storage(client)
+    key = info_build_key(info)
+    b = load_build(st, client, key)
+    os.makedirs(out, exist_ok=True)
+    todo = []
+    for a in ids:
+        if a == "brd":
+            root = file_of(st, b, WMO_FDID)
+            gfid = []
+            for tag, o, n in wmo_chunks(root):
+                if tag == "GFID":
+                    gfid = list(struct.unpack_from("<%dI" % (n // 4), root, o))
+            todo.append(("root", WMO_FDID))
+            todo += [(i, f) for i, f in enumerate(gfid)]
+        else:
+            todo.append(("file", int(a)))
+    print("build config %s" % key)
+    for gi, fdid in todo:
+        data = file_of(st, b, fdid)
+        name = "%d.wmo" % fdid if gi != "file" else "%d.bin" % fdid
+        if gi not in ("root", "file"):
+            name = "group_%03d_%d.wmo" % (gi, fdid)
+        with open(os.path.join(out, name), "wb") as f:
+            f.write(data)
+        if isinstance(gi, int):
+            liquid_summary(gi, fdid, data)
+    print("wrote %d files to %s" % (len(todo), out))
+
+
 def main(argv):
-    cmds = ("status", "inject", "uninject", "layout")
+    cmds = ("status", "inject", "uninject", "layout", "extract")
     if len(argv) < 3 or argv[2] not in cmds or (argv[2] == "inject" and (len(argv) < 4 or argv[3] not in ("off", "swap", "probe"))):
         print(__doc__)
         return 2
@@ -830,6 +929,11 @@ def main(argv):
             cmd_inject(client, argv[3])
         elif argv[2] == "layout":
             cmd_layout(client)
+        elif argv[2] == "extract":
+            if len(argv) < 5:
+                print(__doc__)
+                return 2
+            cmd_extract(client, argv[3], argv[4:])
         else:
             cmd_uninject(client)
     except Fail as e:

@@ -52,3 +52,10 @@ python3 zr_casc_inject.py "/mnt/1TB/WoWCircle 8.3.7 BFA" uninject
 Tested on synthetic stores with valid idx/header checksums: CascLib reads file 108299 as the injected variant,
 and as the original after `uninject`. `brd_fog_casc.py check` confirmed the idx hashes and key = MD5(BLTE header)
 on Four's client.
+
+## Extracting files (read-only)
+
+`python3 zr_casc_inject.py "<client>" extract <out folder> brd` writes the BRD root WMO
+(108299) and all 48 group files from the build the client currently uses, and prints every
+liquid plane (MLIQ) in the groups with its position, height range and shown/hidden tiles.
+`extract <out folder> <file ID> ...` writes any files by ID.
