@@ -3,6 +3,26 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-23 (Lower Blackrock Spire)
+
+### DB: Lower Blackrock Spire survey fixes
+
+- **Found** (survey before Four's first run, 2026-11-23): 621 of 716 spawns match Pandaria 5.4.8, quests and their
+  bosses are in place. Problems:
+  - no `scenarios` row for map 229, so no objective tracker (scenario 734 exists in the client data);
+  - Pandaria's rare pools missing: every rare and its stand-in spawned (two Bannok Grimaxes, three Burning
+    Felguards, two Crystal Fangs, ...) and 11 Spire Spider Egg spots held two eggs;
+  - 95 Rookery Whelps and two unselectable Eranikus' Shades that neither Pandaria nor AzerothCore has;
+  - Gizrul the Slavener spawned in his den and again when Halycon dies (core script);
+  - Urok Doomhowl could not be summoned: Omokk's Head dropped only for a quest that no longer exists, and the
+    challenge event did nothing in this core.
+- **Changed** (`sql/fixes/world/2026_11_23_05_lower_blackrock_spire_fixes.sql`): scenario 734 on normal
+  difficulty; Pandaria's 8 rare pools and 11 egg pools copied (pool entries 22901-22919); whelps, shades and the
+  static Gizrul removed; Omokk's Head always drops; using it at Urok's Tribute Pile brings two waves of Urok's
+  ogres (now normal, not elite) and then Urok. Backups `zr_backup_lbrs_*`.
+- **Status:** tested on a copy of the database only; not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
 ## 2026-11-23 (Sunken Temple)
 
 ### DB: Malfurion Stormrage no longer appears in Sunken Temple
