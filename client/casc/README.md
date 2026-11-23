@@ -29,3 +29,26 @@ python3 brd_fog_casc.py "/mnt/1TB/WoWCircle 8.3.7 BFA" restore
 (On Windows use `py` and the Windows path.) Folder names are matched case-insensitively.
 Close the game first. Tested only against synthetic CASC stores (zlib levels 1-9, 16K/64K/single frames, N frames,
 no .build.info): apply off/swap/off then restore gives a byte-identical data file.
+
+## zr_casc_inject.py (the one that works with WoW Circle)
+
+The WoW Circle client checks every stored file against its key and re-downloads anything that doesn't match
+(from `cdn-bfa.wowcircle.me`, or it fails with a streaming error when offline), so the in-place edit above gets
+undone. `zr_casc_inject.py` leaves all original data alone and adds a correctly keyed patch instead:
+
+1. edited WMO, new ROOT (file 108299 -> edited WMO) and new ENCODING (knows both) go into a new `data.NNN`
+2. their keys are added to the bucket `.idx` files (originals backed up to `zr_casc_backup/idx/`)
+3. a new build config names the new ROOT and ENCODING
+4. `.fzbuildnfo` (WoW Circle's renamed `.build.info`) is pointed at the new build config
+
+`uninject` points `.fzbuildnfo` back at the original build config. Needs offline mode: `.fzbuildnfo` present and
+`cdn-bfa.wowcircle.me` blocked in `/etc/hosts`.
+
+```
+python3 zr_casc_inject.py "/mnt/1TB/WoWCircle 8.3.7 BFA" status
+python3 zr_casc_inject.py "/mnt/1TB/WoWCircle 8.3.7 BFA" inject probe|off|swap
+python3 zr_casc_inject.py "/mnt/1TB/WoWCircle 8.3.7 BFA" uninject
+```
+Tested on synthetic stores with valid idx/header checksums: CascLib reads file 108299 as the injected variant,
+and as the original after `uninject`. `brd_fog_casc.py check` confirmed the idx hashes and key = MD5(BLTE header)
+on Four's client.
