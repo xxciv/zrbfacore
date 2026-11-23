@@ -3,6 +3,25 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-23 (World fixes: Pilgrim's Bounty)
+
+Open in the same draft PR as the 2026-11-20 to 2026-11-18 world entries below. Four checks Pilgrim's Bounty, the holiday the 2026-11-18 holiday relinks (`2026_11_18_46`) were waiting on.
+
+### World: holiday quests offered all year
+- **Found** (Four, 2026-11-23, screenshot in Stormwind): the Human Commoner 18927 announcer offers Costumed Orphan Matron, Brewfest!, The Master of Summer Lore, Spring Collectors, A Season for Celebration and Pilgrim's Bounty at once. 212 holiday quests sit both in `creature_queststarter` (always offered) and in `game_event_creature_quest` (offered during their holiday). TDB 8.3.7 never has both, and our event links already match 8.3.7's. So NPCs that stand all year offered every holiday's quests: Lunar Festival 87, Midsummer 45, Brewfest 24, Winter Veil 17, Love is in the Air 14, Noblegarden 12, Hallow's End 6, Pilgrim's Bounty 5, Children's Week 2. Costumed Orphan Matron 11356 was always offered by six commoners (18927, 19148, 19171, 19172, 19173, 20102) with no event link; TDB 8.3.7 has no giver for it.
+- **Changed** (`sql/fixes/world/2026_11_23_31_holiday_quests_only_in_season.sql`): the 212 always-on `creature_queststarter` rows removed; their event links stay. Costumed Orphan Matron is kept (quest rule) and moved to Hallow's End (event 12) on the same six commoners.
+- **Status:** untested in game. During Pilgrim's Bounty the commoner should offer only Pilgrim's Bounty.
+- **Pick up:** run the SQL, restart `worldserver`.
+
+### World: Pilgrim's Bounty feast, doubled chairs that follow you
+- **Found** (Four, 2026-11-23, screenshots and video): "looks like chairs are doubled up", "they also chase you around if you move in them when you're sitting and exit", and "Don't need to have names displayed on the chairs and tables." Each Bountiful Table 32823 (vehicle 320) brings its own five chairs as vehicle accessories (Turkey 34812, Cranberry 34823, Stuffing 34819, Sweet Potato 34824, Pie 34822). Our dump also had 159 loose chair spawns next to the 32 tables, so every seat was doubled. A loose chair is a vehicle with no table under it: you can drive it, and after you leave it, it walks back home. TDB 8.3.7 has no loose chairs. The templates differed from 8.3.7 too: the table was clickable (spellclick npcflag) where 8.3.7 has it unselectable, The Pie Chair had `REMOVE_CLIENT_CONTROL` (0x4), and no chair had 8.3.7's `DISABLE_TURN` (`unit_flags2` 0x8000).
+- **Changed** (`sql/fixes/world/2026_11_23_30_pilgrims_bounty_feast_chairs.sql`):
+  - The 159 loose chairs removed. The quest role stays on the tables' own chairs.
+  - Table 32823: `unit_flags` 0x2000000, `npcflag` 0. Chairs: `unit_flags` 0x4000, `unit_flags2` 0x8800 (all as in TDB 8.3.7).
+  - Our own tuning (Four): no names over tables and chairs (`type_flags` |= 0x40000000 `DO_NOT_RENDER_OBJECT_NAME`).
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`, delete the WoW client's `Cache` folder (the name setting is cached).
+
 ## 2026-11-21 (Stratholme, Main Gate)
 
 ### Core: Stratholme had no dungeon scenario
