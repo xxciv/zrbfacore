@@ -13,7 +13,7 @@ to do to pick it up (rebuild, restart, run SQL).
   are not in this database, he has no quest or script, and Pandaria does not use that script on the trigger.
 - **Changed** (`sql/fixes/world/2026_11_23_04_sunken_temple_malfurion_trigger.sql`): trigger 4016 unbound
   (backup `zr_backup_st_areatrigger_scripts`).
-- **Status:** tested on a copy of the database only; not yet run in game.
+- **Status:** confirmed in game (Four, 2026-11-23: "clean run. all fixed.").
 - **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
 
 ### DB: Avatar of Hakkar waits for the Shrine of the Soulflayer
@@ -24,7 +24,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`sql/fixes/world/2026_11_23_03_sunken_temple_avatar_shrine.sql`): the Avatar spawns invisible,
   passive and immune to players; using the shrine makes him visible and he attacks the nearest player (same
   pattern as Hurley Blackbreath). He stays up after a wipe. The bones on the floor are part of the room and stay.
-- **Status:** tested on a copy of the database only; not yet run in game.
+- **Status:** confirmed in game (Four, 2026-11-23: "clean run. all fixed.").
 - **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
 
 ### DB: Sunken Temple survey fixes
@@ -43,7 +43,7 @@ to do to pick it up (rebuild, restart, run SQL).
   below 50% health, no summons; his troll Hex, which made a solo player friendly so he evaded and healed to
   full, is now the plain 5 s frog Hex), Dreamscythe and Weaver back on their Pandaria spots. Backups
   `zr_backup_st_creature`, `zr_backup_st_smart_scripts`.
-- **Status:** tested on a copy of the database only; not yet run in game.
+- **Status:** confirmed in game (Four, 2026-11-23: "clean run. all fixed.").
 - **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
 
 ## 2026-11-23 (Blackrock Depths, purple mist)
