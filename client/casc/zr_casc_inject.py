@@ -360,6 +360,18 @@ def blte_decode(blte):
     return b"".join(_frame_decode(f) for f, _ in blte_parse(blte)[1])
 
 
+def blte_decode_lenient(blte):
+    """Like blte_decode, but encrypted ('E') frames come back as zeros. Returns (data, n_encrypted)."""
+    out, n = [], 0
+    for f, csize in blte_parse(blte)[1]:
+        if f[0:1] == b"E":
+            n += 1
+            out.append(b"\0" * (csize or 0))
+        else:
+            out.append(_frame_decode(f))
+    return b"".join(out), n
+
+
 def blte_encode_like(orig_blte, data):
     """Encode data with the same frame layout (frame sizes and modes) as an existing BLTE file."""
     hsize, frames = blte_parse(orig_blte)
@@ -851,7 +863,10 @@ def file_of(st, b, fdid):
         except Fail as e:
             err = str(e)
             continue
-        data = blte_decode(blte)
+        data, enc = blte_decode_lenient(blte)
+        if enc:
+            print("file %d: %d encrypted piece(s) written as zeros" % (fdid, enc))
+            return data
         if md5(data) == ck:
             return data
         err = "does not match its key"
@@ -914,8 +929,14 @@ def cmd_extract(client, out, ids):
         else:
             todo.append(("file", int(a)))
     print("build config %s" % key)
+    written = 0
     for gi, fdid in todo:
-        data = file_of(st, b, fdid)
+        try:
+            data = file_of(st, b, fdid)
+        except Fail as e:
+            print("skipped: %s" % e)
+            continue
+        written += 1
         name = "%d.wmo" % fdid if gi != "file" else "%d.bin" % fdid
         if gi not in ("root", "file"):
             name = "group_%03d_%d.wmo" % (gi, fdid)
@@ -923,7 +944,7 @@ def cmd_extract(client, out, ids):
             f.write(data)
         if isinstance(gi, int):
             liquid_summary(gi, fdid, data)
-    print("wrote %d files to %s" % (len(todo), out))
+    print("wrote %d of %d files to %s" % (written, len(todo), out))
 
 
 def main(argv):
