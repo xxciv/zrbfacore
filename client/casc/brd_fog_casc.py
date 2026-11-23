@@ -766,6 +766,153 @@ def encoding_ekey_for(client, ckey):
     raise Fail("content key %s not in ENCODING (is this the 8.3.7 35662 client?)" % ckey.hex())
 
 
+# --------------------------------------------------------------------------- diagnostics
+
+def enc_lookup_all(enc, ckey):
+    ck_size, ek_size = enc[3], enc[4]
+    cpage_kb = struct.unpack_from(">H", enc, 5)[0]
+    cpage_count = struct.unpack_from(">I", enc, 9)[0]
+    espec_size = struct.unpack_from(">I", enc, 18)[0]
+    table = 22 + espec_size
+    pages = table + cpage_count * (ck_size + 16)
+    psize = cpage_kb * 1024
+    for i in range(cpage_count):
+        p = pages + i * psize
+        end = p + psize
+        while p < end:
+            n = enc[p]
+            if n == 0:
+                break
+            if enc[p + 6:p + 6 + ck_size] == ckey:
+                return [enc[p + 6 + ck_size + k * ek_size:p + 6 + ck_size + (k + 1) * ek_size] for k in range(n)]
+            p += 6 + ck_size + n * ek_size
+    return []
+
+
+def idx_all_hits(client, ekey):
+    d = cpath(client, "Data", "data")
+    hits = []
+    for fn in sorted(os.listdir(d)):
+        if not fn.lower().endswith(".idx"):
+            continue
+        with open(os.path.join(d, fn), "rb") as f:
+            data = f.read()
+        try:
+            hsize = struct.unpack_from("<I", data, 0)[0]
+            seg_bits = data[8 + 7]
+            pos = ((8 + hsize) + 15) & ~15
+            bsz = struct.unpack_from("<I", data, pos)[0]
+            pos += 8
+        except (struct.error, IndexError):
+            hits.append((fn, "unreadable"))
+            continue
+        end = min(len(data), pos + bsz)
+        while pos + 18 <= end:
+            if data[pos:pos + 9] == ekey[:9]:
+                so = int.from_bytes(data[pos + 9:pos + 14], "big")
+                hits.append((fn, "data.%03d @ %d size %d" % (so >> seg_bits, so & ((1 << seg_bits) - 1),
+                                                              struct.unpack_from("<I", data, pos + 14)[0])))
+            pos += 18
+    return hits
+
+
+def root_fdids_for(root, ckey):
+    """8.x root (TSFM or legacy blocks): fdids whose ckey matches, plus fdid->ckeys map for them."""
+    pos = 0
+    named = True
+    if root[0:4] == b"TSFM":
+        pos = 12
+    found = {}
+    blocks = []
+    while pos + 12 <= len(root):
+        n, cflags, lflags = struct.unpack_from("<III", root, pos)
+        pos += 12
+        deltas = struct.unpack_from("<%di" % n, root, pos)
+        pos += 4 * n
+        fd = -1
+        ids = []
+        for dl in deltas:
+            fd += dl + 1
+            ids.append(fd)
+        ck = [root[pos + 16 * i:pos + 16 * i + 16] for i in range(n)]
+        pos += 16 * n
+        if not (root[0:4] == b"TSFM" and cflags & 0x10000000):
+            pos += 8 * n
+        blocks.append((cflags, lflags, ids, ck))
+    want = set()
+    for cflags, lflags, ids, ck in blocks:
+        for i, c in zip(ids, ck):
+            if c == ckey:
+                want.add(i)
+    for cflags, lflags, ids, ck in blocks:
+        for i, c in zip(ids, ck):
+            if i in want:
+                found.setdefault(i, []).append((c.hex(), hex(cflags), hex(lflags)))
+    return found
+
+
+def cmd_diag(client):
+    print("== client folder")
+    for name in sorted(os.listdir(client)):
+        p = os.path.join(client, name)
+        print("  %s%s" % (name, "/" if os.path.isdir(p) else "  (%d bytes)" % os.path.getsize(p)))
+    print("== folders holding .idx files (depth 4)")
+    for root, dirs, files in os.walk(client):
+        if root[len(client):].count(os.sep) > 4:
+            dirs[:] = []
+            continue
+        n = sum(1 for f in files if f.lower().endswith(".idx"))
+        if n:
+            print("  %s: %d .idx, %d data.NNN" % (root, n, sum(1 for f in files if f.lower().startswith("data."))))
+    bi = cpath(client, ".build.info")
+    print("== .build.info")
+    if os.path.isfile(bi):
+        print(open(bi, encoding="utf-8", errors="replace").read().strip())
+    else:
+        print("  (none)")
+    print("== configs")
+    cfgdir = cpath(client, "Data", "config")
+    builds = []
+    for root, _, files in os.walk(cfgdir):
+        for fn in sorted(files):
+            try:
+                txt = open(os.path.join(root, fn), encoding="utf-8", errors="replace").read(200000)
+            except OSError:
+                continue
+            kv = dict(l.split(" = ", 1) for l in txt.splitlines() if " = " in l)
+            if "encoding" in kv:
+                builds.append((fn, kv))
+                print("  build %s: %s root=%s encoding=%s" % (fn, kv.get("build-name", "?"), kv.get("root", "?"),
+                                                              kv.get("encoding", "?")))
+            elif "archives" in kv:
+                print("  cdn   %s: %d archives" % (fn, len(kv["archives"].split())))
+            else:
+                print("  other %s: %s" % (fn, txt[:60].replace("\n", " | ")))
+    for fn, kv in builds:
+        print("== build config %s" % fn)
+        try:
+            enc_ekey = bytes.fromhex(kv["encoding"].split()[1])
+            _, _, blob = read_span(client, enc_ekey)
+            enc = blte_decode(blob)
+        except Exception as e:
+            print("  encoding not readable: %s" % e)
+            continue
+        ekeys = enc_lookup_all(enc, WMO_CKEY)
+        print("  WMO ckey %s -> ekeys %s" % (WMO_CKEY.hex(), [e.hex() for e in ekeys]))
+        for e in ekeys:
+            for h in idx_all_hits(client, e):
+                print("    %s in %s: %s" % (e.hex()[:18], h[0], h[1]))
+        try:
+            rck = bytes.fromhex(kv["root"].split()[0])
+            rek = enc_lookup_all(enc, rck)
+            _, _, rblob = read_span(client, rek[0])
+            root = blte_decode(rblob)
+            found = root_fdids_for(root, WMO_CKEY)
+            print("  root (%s, %d bytes): file ids with this WMO: %s" % (root[0:4], len(root), found or "NONE"))
+        except Exception as e:
+            print("  root not readable: %s" % e)
+
+
 # --------------------------------------------------------------------------- commands
 
 def backup_paths(client):
@@ -860,7 +1007,7 @@ def cmd_restore(client):
 
 
 def main(argv):
-    if len(argv) < 3 or argv[2] not in ("status", "apply", "restore") or (argv[2] == "apply" and (len(argv) < 4 or argv[3] not in ("off", "swap", "probe"))):
+    if len(argv) < 3 or argv[2] not in ("status", "apply", "restore", "diag") or (argv[2] == "apply" and (len(argv) < 4 or argv[3] not in ("off", "swap", "probe"))):
         print(__doc__)
         return 2
     client = argv[1]
@@ -870,6 +1017,8 @@ def main(argv):
     try:
         if argv[2] == "status":
             cmd_status(client)
+        elif argv[2] == "diag":
+            cmd_diag(client)
         elif argv[2] == "apply":
             cmd_apply(client, argv[3])
         else:
