@@ -943,7 +943,8 @@ def cmd_inject(client, variant, extra=()):
                 shutil.copy2(x.path, dst)
 
     # data file: our own, appended
-    max_size = st.newest(0).max_size
+    # an index entry holds the offset in seg_bits bits (1 GiB), whatever the header's max size says
+    max_size = min([st.newest(bk).max_size for bk in range(16)] + [1 << st.newest(bk).seg_bits for bk in range(16)])
     need = sum(30 + len(x) for _, x in blobs)
     arc = s.get("archive")
     if arc is None or not os.path.isfile(st.data_path(arc)) or os.path.getsize(st.data_path(arc)) + need > max_size:
