@@ -3,9 +3,10 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+<<<<<<< HEAD
 ## 2026-11-23 (Quest fixes: Pilgrim's Bounty reward bag)
 
-PR #111, draft. Confirmed in game.
+PR #111, merged 2026-11-23. Confirmed in game.
 
 ### DB: The Pilgrim's Bounty reward bag opens empty
 - **Found** (Four, 2026-11-23): turning in Don't Forget The Stuffing! and choosing the Pilgrim's Bounty
@@ -34,6 +35,52 @@ PR #111, draft. Confirmed in game.
   ```
 
   Then restart worldserver.
+=======
+## 2026-11-22 (Holidays: fishing tournaments)
+
+Merged 2026-11-23 (PR #106).
+
+### Hotfix: fishing tournaments on the calendar
+
+From Four, 2026-11-23 ("they're not on the calendar"). Hotfix SQL `2026_11_23_20_fishing_calendar.sql`
+(run against `bfa_hotfixes`). Run the SQL, restart, delete the client's Cache folder. No rebuild.
+
+- **Found:** the calendar draws holidays from the client's Holidays.db2, and neither fishing row could
+  show. Stranglethorn (301) has the "don't show in calendar" flag and a "every Sunday" date pattern no
+  shown holiday uses; the Kalu'ak Fishing Derby (424) has one date, "Saturdays in 2005".
+- **Changed:** both rows hotfixed with the client's own names, texture and Weekly Holidays filter, the
+  hidden flag cleared, and 26 explicit weekly dates at 14:00 (the format the Darkmoon Faire and holiday
+  hotfixes use): Sundays 2026-11-29 to 2027-05-23 and Saturdays 2026-11-28 to 2027-05-22. 26 is the most
+  dates a row holds, so they need new dates by May 2027. The events themselves keep running weekly on
+  the server either way.
+- **Status:** confirmed in game 2026-11-23 (both show on the calendar).
+
+### DB: Stranglethorn Fishing Extravaganza and Kalu'ak Fishing Derby run again
+
+From Four, 2026-11-22 ("where have the fishing tournaments gone?"). World SQL
+`2026_11_22_20_fishing_tournaments.sql`. Run the SQL, restart. No rebuild.
+
+- **Found:**
+  - Stranglethorn: upstream's `2026_08_16_01_fix_game_events.sql` restarted events 14 and 15 on the wrong
+    times (15, the tournament itself, on Mondays at 02:00) with a 10079-minute period that slips a minute
+    earlier every week.
+  - Riggle Bassbait, Jang, Fishbot 5000 and the promoters Grinkle (Orgrimmar) and Barrus (Ironforge) were
+    each spawned twice: an old spawn plus the newer sniffed one.
+  - Kalu'ak: events 63 and 64 ended in 2020, and nothing dropped the Blacktip Shark (50289) that Elder
+    Clearwater's quests 24803 and 24806 need. Her quests were always open. Event 63 holds Perry Gatner's
+    comedy show in Shattrath despite its name.
+- **Changed:**
+  - Event 14 (promoters) runs Sundays 13:50 for 130 minutes and event 15 (Riggle, Jang, Fishbot, 91
+    Schools of Tastyfish) Sundays 14:00 for 120 minutes, every 10080 minutes, until 2030-12-31.
+  - Old spawns 81456, 52967, 52968, 52976 and 123736 removed; the sniffed ones (Riggle's balcony in
+    Booty Bay) stay.
+  - Event 64 is the derby: Saturdays 14:00 for 60 minutes, holiday 424, until 2030-12-31.
+  - During it, nine Northrend fish schools (192046, 192048-192054, 192057, the ones TrinityCore uses) give a
+    Blacktip Shark 5% of the time (TrinityCore: 0.2%, too low for a one-hour solo event).
+  - Elder Clearwater's two quests show only during the derby. No script picks one winner, so both stay open
+    to anyone with a shark. Event 63 is unchanged.
+- **Status:** applied and approved by Four 2026-11-23; first Sunday tournament and Saturday derby still to be fished.
+>>>>>>> origin/main
 
 ## 2026-11-23 (Quest fixes: quest tracker objective text, Pilgrim's Bounty table chairs)
 
