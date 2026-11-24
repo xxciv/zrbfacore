@@ -3,6 +3,21 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-23 (Upper Blackrock Spire: a way into the old wing)
+
+### DB: Scarshield Guide takes you into old Upper Blackrock Spire
+
+- **Found** (Four, 2026-11-23: "walking into UBRS loads the WOD version" ... "heading towards the hall to go to UBRS
+  teleports you out of the dungeon"): since Warlords of Draenor the Blackrock Mountain portal and the hall toward the
+  Dragonspine Door both send you to the new Upper Blackrock Spire. The old wing (Emberseer, the Rookery, Rend's arena,
+  Drakkisath) is still inside the Lower Spire map with floor and mobs, and our fixes for it are already in
+  (2026_11_23_06/07/08), but nothing led there. Four chose "Add teleporter".
+- **Changed** (`sql/fixes/world/2026_11_23_14_upper_blackrock_spire_teleporter.sql`): a new NPC, Scarshield Guide
+  (entry and spawn 4822900), at the Lower Spire entrance on Four's spot. Its one gossip option moves you into the
+  Dragonspine Hall past the door, inside the same instance. The new Upper Blackrock Spire stays as it is.
+- **Status:** tested on a copy of the database only; not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh Lower Blackrock Spire instance.
+
 ## 2026-11-23 (Lower Blackrock Spire)
 
 ### DB: Lower Blackrock Spire: Shadow Hunter Vosh'gajin hexes you nonstop
