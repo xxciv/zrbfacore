@@ -25,10 +25,12 @@ to do to pick it up (rebuild, restart, run SQL).
   Pandaria has the same rows. Spirestone Butcher 322713 and Spirestone Lord Magus 323152 sat outside their pools,
   so they spawned every run.
 - **Changed** (`sql/fixes/world/2026_11_23_10_lower_blackrock_spire_spirestone_doubles.sql`): the seven doubles
-  removed (Reavers 7 to 3, as in AzerothCore); the Butcher joins pool 22907 (one Butcher, 12% over three spots) and
+  removed (Reavers 7 to 3, as in AzerothCore), plus Spirestone Mystic 323140 on Four's word for a better walk
+  through the hall (8 in all); the Butcher joins pool 22907 (one Butcher, 12% over three spots) and
   the Lord Magus joins pool 22908 (one Lord Magus, 12% over two spots). Backups `zr_backup_lbrs_spirestone_*`.
-- **Status:** tested on a copy of the database only; not yet run in game.
-- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+- **Status:** doubles and rares confirmed in game (Four, 2026-11-23: "i got the ogre fix, its much better."); the
+  Mystic removal not yet run.
+- **Pick up:** run the SQL (safe to rerun), restart `worldserver`, re-queue for a fresh instance.
 
 ### DB: Lower Blackrock Spire: Scarshield spawns two to a spot
 
