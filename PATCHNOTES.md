@@ -5,6 +5,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-23 (Lower Blackrock Spire)
 
+### DB: Lower Blackrock Spire: Four's run-through tweaks
+
+- **Found** (Four's run, 2026-11-23): Shadow Hunter Vosh'gajin's six trolls stood clumped in the middle of her room
+  ("seem clumped up"); a Spirestone Warlord to remove; a doorway pack of two Spirestone Warlords and two
+  Smolderthorn Berserkers to spread over four spots Four picked; the Unfired Plate Gauntlets by the lava opened
+  empty (their quest, the Classic blacksmithing "Fiery Plate Gauntlets", was removed in Cataclysm).
+- **Changed** (`sql/fixes/world/2026_11_23_12_lower_blackrock_spire_run_tweaks.sql`): the trolls moved onto
+  AzerothCore's spots for that room as three pairs (entrance, south side, beside Vosh'gajin); Warlord 49130 removed
+  (it was the stand-in of the Lord Magus pool, which keeps its two 6% spots); the doorway pack split into two
+  ogre-and-troll pairs on Four's spots; the gauntlets removed. Backups `zr_backup_lbrs_tweaks_*`.
+- **Status:** tested on a copy of the database only; not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
 ### DB: Blackrock Spire: Awbee and two Thugs on a ledge with no floor
 
 - **Found** (Four, 2026-11-23: "Can't attack him, and can't interact with Awbee", then "It just says out of range"):
