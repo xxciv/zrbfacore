@@ -3,6 +3,15 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-24 (World fixes: the Dark Portal)
+
+### World: the Dark Portal in the Blasted Lands takes players to Outland again
+- **Found** (Four, 2026-11-24): "the dark portal doesn't take you to outland ... you walk right through it" (Map 0, Area 72 The Dark Portal, -11815.2 -3195.54 -30.9). Area trigger 4354 (the portal) runs the C++ Warlords intro script `at_wod_dark_portal`. Below level 90 (or with Time Shift) the script returns false so the normal Outland teleport can take over, but there is no `areatrigger_teleport` row for 4354, so nothing happens. At 90 and above it sends players into the Tanaan Jungle intro or Ashran instead.
+- **Changed** (`sql/fixes/world/2026_11_24_30_dark_portal_to_outland.sql`), as in TDB 8.3.7: trigger 4354 runs `SmartTrigger`. One SmartAI row (source 2, event 46) teleports the player to the Hellfire Peninsula side of the portal (map 530: -248.149, 921.875, 84.3885), with the 8.3.7 condition that the player is above level 57.
+- **Not changed:** the C++ script stays in the core (unused). The way back from Hellfire Peninsula is not touched.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-23 (Upper Blackrock Spire: a way into the old wing, parked)
 
 ### DB: Scarshield Guide into old Upper Blackrock Spire (parked, not spawned)
