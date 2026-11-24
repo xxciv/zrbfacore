@@ -11,11 +11,14 @@
 -- 4. Unfired Plate Gauntlets (gameobject 176089, guid 188878) by the lava: its only loot is quest item 12812 for the
 --    Classic blacksmithing quest "Fiery Plate Gauntlets", removed in Cataclysm; no quest here uses it, so it always
 --    opened empty. Removed.
+-- 5. Quartermaster Zigris' landing had two Bloodaxe Raider packs 10 yards apart (each Raider with two Worgs, plus a
+--    Warmonger and a Summoner). Four: "let's move these two over here": the northern Raider 322633 and the Worg at
+--    his side 322635 now stand on Four's two spots in the hall below (-170/-165, -415, 76).
 -- Backups zr_backup_lbrs_tweaks_creature, zr_backup_lbrs_tweaks_pool_creature, zr_backup_lbrs_tweaks_gameobject.
 -- Undo: REPLACE INTO `creature` SELECT * FROM `zr_backup_lbrs_tweaks_creature`; REPLACE INTO `pool_creature` SELECT * FROM `zr_backup_lbrs_tweaks_pool_creature`; REPLACE INTO `gameobject` SELECT * FROM `zr_backup_lbrs_tweaks_gameobject`;
 
 CREATE TABLE IF NOT EXISTS `zr_backup_lbrs_tweaks_creature` LIKE `creature`;
-INSERT IGNORE INTO `zr_backup_lbrs_tweaks_creature` SELECT * FROM `creature` WHERE `map` = 229 AND `guid` IN (322706,322707,322728,322729,322730,322731,49130,322962,322963,322830,322831);
+INSERT IGNORE INTO `zr_backup_lbrs_tweaks_creature` SELECT * FROM `creature` WHERE `map` = 229 AND `guid` IN (322706,322707,322728,322729,322730,322731,49130,322962,322963,322830,322831,322633,322635);
 CREATE TABLE IF NOT EXISTS `zr_backup_lbrs_tweaks_pool_creature` LIKE `pool_creature`;
 INSERT IGNORE INTO `zr_backup_lbrs_tweaks_pool_creature` SELECT * FROM `pool_creature` WHERE `guid` = 49130;
 CREATE TABLE IF NOT EXISTS `zr_backup_lbrs_tweaks_gameobject` LIKE `gameobject`;
@@ -44,9 +47,14 @@ UPDATE `creature` SET `position_x` = -50.421, `position_y` = -395.724, `position
 DELETE FROM `gameobject_addon` WHERE `guid` = 188878;
 DELETE FROM `gameobject` WHERE `guid` = 188878 AND `id` = 176089;
 
--- Check: expect trolls spread 6, Warlord 49130 0, Lord Magus pool 2, pairs moved 4, gauntlets 0
+-- 5. Raider and Worg down to the hall
+UPDATE `creature` SET `position_x` = -169.802, `position_y` = -415.327, `position_z` = 76.149, `orientation` = 1.5749 WHERE `guid` = 322633 AND `id` = 9692;
+UPDATE `creature` SET `position_x` = -165.322, `position_y` = -415.309, `position_z` = 76.149, `orientation` = 1.5749 WHERE `guid` = 322635 AND `id` = 9696;
+
+-- Check: expect trolls spread 6, Warlord 49130 0, Lord Magus pool 2, pairs moved 4, gauntlets 0, raider and worg moved 2
 SELECT CONCAT('Trolls spread ', (SELECT COUNT(*) FROM `creature` WHERE `guid` IN (322706,322707,322728,322729,322730,322731) AND (ABS(`position_x` + 93.2) < 0.1 OR ABS(`position_y` + 491.6) < 0.3 OR ABS(`position_x` + 125.5) < 0.2)),
     ', Warlord 49130 ', (SELECT COUNT(*) FROM `creature` WHERE `guid` = 49130),
     ', Lord Magus pool ', (SELECT COUNT(*) FROM `pool_creature` WHERE `pool_entry` = 22908),
     ', pairs moved ', (SELECT COUNT(*) FROM `creature` WHERE `guid` IN (322962,322963,322830,322831) AND ROUND(`position_z`, 1) BETWEEN 77.7 AND 77.8 AND (ROUND(`position_y`) IN (-428, -396))),
-    ', gauntlets ', (SELECT COUNT(*) FROM `gameobject` WHERE `id` = 176089)) AS `check`;
+    ', gauntlets ', (SELECT COUNT(*) FROM `gameobject` WHERE `id` = 176089),
+    ', raider and worg moved ', (SELECT COUNT(*) FROM `creature` WHERE `guid` IN (322633, 322635) AND ROUND(`position_y`) = -415)) AS `check`;

@@ -14,7 +14,8 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`sql/fixes/world/2026_11_23_12_lower_blackrock_spire_run_tweaks.sql`): the trolls moved onto
   AzerothCore's spots for that room as three pairs (entrance, south side, beside Vosh'gajin); Warlord 49130 removed
   (it was the stand-in of the Lord Magus pool, which keeps its two 6% spots); the doorway pack split into two
-  ogre-and-troll pairs on Four's spots; the gauntlets removed. Backups `zr_backup_lbrs_tweaks_*`.
+  ogre-and-troll pairs on Four's spots; the gauntlets removed; at Quartermaster Zigris' landing (two Bloodaxe Raider packs 10 yards apart) the
+  northern Raider and one Worg moved down to two spots Four picked in the hall below. Backups `zr_backup_lbrs_tweaks_*`.
 - **Status:** tested on a copy of the database only; not yet run in game.
 - **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
 
