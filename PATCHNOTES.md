@@ -5,6 +5,18 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-23 (Lower Blackrock Spire)
 
+### DB: Blackrock Spire: Awbee and two Thugs on a ledge with no floor
+
+- **Found** (Four, 2026-11-23: "Can't attack him, and can't interact with Awbee", then "It just says out of range"):
+  Awbee and two Blackhand Thugs, the old Upper Spire scene for The Matron Protectorate (quest and dialogue removed in
+  Cataclysm), stand on a ledge that has no floor in this patch's map (Four: "you fall right through it"). The
+  client drew them on the Lower Spire floor 66 yards below. The other Upper Spire rooms (Drakkisath, Rend's arena,
+  Emberseer, the Rookery) all have floor.
+- **Changed** (`sql/fixes/world/2026_11_23_11_blackrock_spire_awbee_ledge.sql`): the three spawns removed (backups
+  `zr_backup_brs_awbee_*`).
+- **Status:** tested on a copy of the database only; not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
 ### DB: Lower Blackrock Spire: Spirestone ogres doubled, two rares always up
 
 - **Found** (Four, 2026-11-23: "ogres are doubled up. spirestone butcher and spirestone battle lord (both rares)
