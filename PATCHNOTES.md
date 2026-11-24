@@ -5,6 +5,13 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-24 (World fixes: the Dark Portal)
 
+### World: Hellfire Peninsula zone review
+- **Found:** compared with TDB 8.3.7, Hellfire Peninsula had piles of extra mobs in some camps (74 Razorfang Hatchlings where 8.3.7 has 48, 44 Marauding Crust Bursters for 25), was short on others (28 Shattered Hand Guards for 71, 27 Heckling Fel Sprites for 64), and 408 spawns moved differently from 8.3.7. That includes quest givers such as Commander Hogarth, Arch Mage Xintor and Watch Commander Leonus, and the Honor Hold target dummies, which wandered around.
+- **Changed** (`sql/fixes/world/2026_11_24_32_hellfire_peninsula_review.sql`): 126 extra creatures removed, 200 missing 8.3.7 spawns added (guids 735401549-735401748), and wander set to 8.3.7 on 408 spawns. The rules are the same as the earlier reviews: no critters or wild battle pets; nothing linked to an event, pool, formation, path or script; nothing next to a hostile it fights; quest targets and quest-loot mobs never drop below the 8.3.7 count.
+- **Not changed:** the Honor Hold Defenders and Thrallmar Grunts (8.3.7's guards under newer entries 51800/51904/51903), gameobjects and gathering nodes.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: walking into the Dark Portal teleports you, both ways
 - **Found** (Four, 2026-11-24, after 30): still nothing at the portal, and `.debug areatriggers` printed nothing. The 8.3.7 client has no area trigger at the Dark Portal any more (4354 is gone from its AreaTrigger table), so 30's SmartTrigger is never asked. The world DB has server-side area triggers in the portal instead (`areatrigger` guids 69 and 99 in the Blasted Lands, 70 in Hellfire Peninsula, teleports -69/-99/-70), but our core never spawns any `areatrigger` row: `LoadHelper` in `ObjectGridLoader.cpp` only spawns creatures and gameobjects and deletes everything else. All 90 or so rows (city portal rooms, Legion and BFA dungeon doors) are dead.
 - **Changed** (`sql/fixes/world/2026_11_24_31_dark_portal_walk_in.sql`): three invisible ELM General Purpose Bunnies (23837) across the opening on each side of the portal, just inside it. Every half second each one teleports players within 12 yards: Blasted Lands side to Hellfire Peninsula (world_safe_locs 7352), Hellfire side to the Blasted Lands (7348). The Blasted Lands bunnies are in phase 318, which zone 4 gives only to players above level 57 (the 8.3.7 gate), with phase 169 next to it. The arrival points are 21 and 35 yards from the nearest bunny, so you are never sent straight back. Spots, radius and timer are our own tuning, placed from the dead triggers.
