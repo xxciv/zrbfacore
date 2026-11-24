@@ -3,6 +3,120 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-23 (Lower Blackrock Spire)
+
+### DB: Lower Blackrock Spire: Shadow Hunter Vosh'gajin hexes you nonstop
+
+- **Found** (Four, 2026-11-23: "she uses it every single cooldown keeping you locked out of combat"): her C++
+  script casts Hex 16708 (instant, 20 seconds) every 15 seconds, so a solo player is never free of it. Pandaria and
+  AzerothCore use Hex 16097 (8 seconds, interruptible cast).
+- **Changed** (`sql/fixes/world/2026_11_23_13_lower_blackrock_spire_voshgajin_hex.sql`): she moves to SmartAI with
+  Curse of Blood, Cleave, and Hex 16097 every 25-30 seconds. Kill credit and the scenario step come from the kill.
+- **Status:** confirmed in game (Four, 2026-11-23: "clean run. great job").
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Lower Blackrock Spire: Four's run-through tweaks
+
+- **Found** (Four's run, 2026-11-23): Shadow Hunter Vosh'gajin's six trolls stood clumped in the middle of her room
+  ("seem clumped up"); a Spirestone Warlord to remove; a doorway pack of two Spirestone Warlords and two
+  Smolderthorn Berserkers to spread over four spots Four picked; the Unfired Plate Gauntlets by the lava opened
+  empty (their quest, the Classic blacksmithing "Fiery Plate Gauntlets", was removed in Cataclysm).
+- **Changed** (`sql/fixes/world/2026_11_23_12_lower_blackrock_spire_run_tweaks.sql`): the trolls moved onto
+  AzerothCore's spots for that room as three pairs (entrance, south side, beside Vosh'gajin); Warlord 49130 removed
+  (it was the stand-in of the Lord Magus pool, which keeps its two 6% spots); the doorway pack split into two
+  ogre-and-troll pairs on Four's spots; the gauntlets removed; at Quartermaster Zigris' landing (two Bloodaxe Raider packs 10 yards apart) the
+  northern Raider and one Worg moved down to two spots Four picked in the hall below. Backups `zr_backup_lbrs_tweaks_*`.
+- **Status:** confirmed in game (Four, 2026-11-23: "clean run. great job").
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Blackrock Spire: Awbee and two Thugs on a ledge with no floor
+
+- **Found** (Four, 2026-11-23: "Can't attack him, and can't interact with Awbee", then "It just says out of range"):
+  Awbee and two Blackhand Thugs, the old Upper Spire scene for The Matron Protectorate (quest and dialogue removed in
+  Cataclysm), stand on a ledge that has no floor in this patch's map (Four: "you fall right through it"). The
+  client drew them on the Lower Spire floor 66 yards below. The other Upper Spire rooms (Drakkisath, Rend's arena,
+  Emberseer, the Rookery) all have floor.
+- **Changed** (`sql/fixes/world/2026_11_23_11_blackrock_spire_awbee_ledge.sql`): the three spawns removed (backups
+  `zr_backup_brs_awbee_*`).
+- **Status:** confirmed in game (Four, 2026-11-23: "clean run. great job").
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Lower Blackrock Spire: Spirestone ogres doubled, two rares always up
+
+- **Found** (Four, 2026-11-23: "ogres are doubled up. spirestone butcher and spirestone battle lord (both rares)
+  both spawned."): seven spawns stood 0.7-1.9 yards from another mob, closer than a real pack but outside the
+  0.6-yard cut of the Scarshield fix (four Spirestone Reavers, a Spirestone Ogre Magus, and two Scarshield copies);
+  Pandaria has the same rows. Spirestone Butcher 322713 and Spirestone Lord Magus 323152 sat outside their pools,
+  so they spawned every run.
+- **Changed** (`sql/fixes/world/2026_11_23_10_lower_blackrock_spire_spirestone_doubles.sql`): the seven doubles
+  removed (Reavers 7 to 3, as in AzerothCore), plus Spirestone Mystic 323140 on Four's word for a better walk
+  through the hall (8 in all); the Butcher joins pool 22907 (one Butcher, 12% over three spots) and
+  the Lord Magus joins pool 22908 (one Lord Magus, 12% over two spots). Backups `zr_backup_lbrs_spirestone_*`.
+- **Status:** confirmed in game (Four, 2026-11-23: "clean run. great job").
+- **Pick up:** run the SQL (safe to rerun), restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Lower Blackrock Spire: Scarshield spawns two to a spot
+
+- **Found** (Four, 2026-11-23: "doubled up spawns for spellbinders and warlocks"): 23 Scarshield spots held two
+  spawns of different entries at exactly the same point (a random-entry spawn point sniffed twice), 5 more pairs
+  stood under 0.6 yards apart, plus a Spirestone Mystic on a Reaver and a Rookery Hatcher on a Guardian; Pandaria
+  has the same rows. My survey only listed same-entry stacks. Ghok Bashguud (rare) also spawned every time at a
+  second spot, on top of a Bloodaxe Veteran, beside his pooled spot.
+- **Changed** (`sql/fixes/world/2026_11_23_09_lower_blackrock_spire_stacked_scarshield.sql`): the second copy of
+  each pair removed (30), the second Ghok shares a 12% pool with the Veteran under him (pool 22920). Backups
+  `zr_backup_lbrs_stacked_*`.
+- **Status:** confirmed in game (Four, 2026-11-23: "those are fixed.").
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Blackrock Stadium (Rend's arena) thinned by half
+
+- **Found** (survey, 2026-11-23): 30 mobs in one open room (17 Chromatic Whelps, 8 elite Chromatic Dragonspawn,
+  5 elite Blackhand Dragon Handlers; Pandaria the same, AzerothCore 3 whelps and 1 dragonspawn), left over from
+  Rend's old waves. Four chose "Thin by half".
+- **Changed** (`sql/fixes/world/2026_11_23_08_upper_blackrock_spire_arena_thinned.sql`): kept the most spread-out
+  9 whelps, 4 dragonspawn and 2 handlers (backup `zr_backup_brs_arena_creature`).
+- **Status:** tested on a copy of the database only; not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Upper Blackrock Spire wing: Drakkisath's doors open
+
+- **Found** (survey, 2026-11-23, Four asked to cover the Upper Spire wing for Acride's quests): the wing is still on
+  map 229 and its route (Dragonspine Door, Emberseer's doors, the portcullises) spawns open, as in Pandaria. General
+  Drakkisath's two doors (175946/175947) spawn closed, and the core script names them but never opens them, so
+  "General Drakkisath, Hand of Nefarian" could not be finished.
+- **Changed** (`sql/fixes/world/2026_11_23_07_upper_blackrock_spire_drakkisath_doors.sql`): both doors spawn open.
+- **Status:** tested on a copy of the database only; not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Blackrock Spire mobs no longer stunned, silenced or untargetable
+
+- **Found** (survey, 2026-11-23): compared with Pandaria, this database had sniffed states on templates: 47 Scarshield
+  Legionnaires stunned, 56 Scarshield casters silenced, Scarshield Worgs flagged player-controlled, 21 Blackhand
+  Elites/Assassins in the Upper Spire halls untargetable; Lord Victor Nefarius hostile on Rend's balcony, Pyroguard
+  Emberseer on a faction hostile to his own jailers.
+- **Changed** (`sql/fixes/world/2026_11_23_06_blackrock_spire_unit_flags.sql`): flags and factions set to Pandaria's
+  (backup `zr_backup_brs_creature_template`).
+- **Status:** Lower Spire mobs confirmed in game (Four, 2026-11-23: "clean run. great job"); the Upper Spire ones not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
+### DB: Lower Blackrock Spire survey fixes
+
+- **Found** (survey before Four's first run, 2026-11-23): 621 of 716 spawns match Pandaria 5.4.8, quests and their
+  bosses are in place. Problems:
+  - no `scenarios` row for map 229, so no objective tracker (scenario 734 exists in the client data);
+  - Pandaria's rare pools missing: every rare and its stand-in spawned (two Bannok Grimaxes, three Burning
+    Felguards, two Crystal Fangs, ...) and 11 Spire Spider Egg spots held two eggs;
+  - 95 Rookery Whelps and two unselectable Eranikus' Shades that neither Pandaria nor AzerothCore has;
+  - Gizrul the Slavener spawned in his den and again when Halycon dies (core script);
+  - Urok Doomhowl could not be summoned: Omokk's Head dropped only for a quest that no longer exists, and the
+    challenge event did nothing in this core.
+- **Changed** (`sql/fixes/world/2026_11_23_05_lower_blackrock_spire_fixes.sql`): scenario 734 on normal
+  difficulty; Pandaria's 8 rare pools and 11 egg pools copied (pool entries 22901-22919); whelps, shades and the
+  static Gizrul removed; Omokk's Head always drops; using it at Urok's Tribute Pile brings two waves of Urok's
+  ogres (now normal, not elite) and then Urok. Backups `zr_backup_lbrs_*`.
+- **Status:** Lower Spire confirmed in game (Four, 2026-11-23: "clean run. great job").
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
 ## 2026-11-23 (Quest fixes: Pilgrim's Bounty reward bag)
 
 PR #111, merged 2026-11-23. Confirmed in game.
