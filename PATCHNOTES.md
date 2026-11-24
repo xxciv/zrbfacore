@@ -12,7 +12,7 @@ to do to pick it up (rebuild, restart, run SQL).
   AzerothCore use Hex 16097 (8 seconds, interruptible cast).
 - **Changed** (`sql/fixes/world/2026_11_23_13_lower_blackrock_spire_voshgajin_hex.sql`): she moves to SmartAI with
   Curse of Blood, Cleave, and Hex 16097 every 25-30 seconds. Kill credit and the scenario step come from the kill.
-- **Status:** tested on a copy of the database only; not yet run in game.
+- **Status:** confirmed in game (Four, 2026-11-23: "clean run. great job").
 - **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
 
 ### DB: Lower Blackrock Spire: Four's run-through tweaks
@@ -26,7 +26,7 @@ to do to pick it up (rebuild, restart, run SQL).
   (it was the stand-in of the Lord Magus pool, which keeps its two 6% spots); the doorway pack split into two
   ogre-and-troll pairs on Four's spots; the gauntlets removed; at Quartermaster Zigris' landing (two Bloodaxe Raider packs 10 yards apart) the
   northern Raider and one Worg moved down to two spots Four picked in the hall below. Backups `zr_backup_lbrs_tweaks_*`.
-- **Status:** tested on a copy of the database only; not yet run in game.
+- **Status:** confirmed in game (Four, 2026-11-23: "clean run. great job").
 - **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
 
 ### DB: Blackrock Spire: Awbee and two Thugs on a ledge with no floor
@@ -38,7 +38,7 @@ to do to pick it up (rebuild, restart, run SQL).
   Emberseer, the Rookery) all have floor.
 - **Changed** (`sql/fixes/world/2026_11_23_11_blackrock_spire_awbee_ledge.sql`): the three spawns removed (backups
   `zr_backup_brs_awbee_*`).
-- **Status:** tested on a copy of the database only; not yet run in game.
+- **Status:** confirmed in game (Four, 2026-11-23: "clean run. great job").
 - **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
 
 ### DB: Lower Blackrock Spire: Spirestone ogres doubled, two rares always up
@@ -52,8 +52,7 @@ to do to pick it up (rebuild, restart, run SQL).
   removed (Reavers 7 to 3, as in AzerothCore), plus Spirestone Mystic 323140 on Four's word for a better walk
   through the hall (8 in all); the Butcher joins pool 22907 (one Butcher, 12% over three spots) and
   the Lord Magus joins pool 22908 (one Lord Magus, 12% over two spots). Backups `zr_backup_lbrs_spirestone_*`.
-- **Status:** doubles and rares confirmed in game (Four, 2026-11-23: "i got the ogre fix, its much better."); the
-  Mystic removal not yet run.
+- **Status:** confirmed in game (Four, 2026-11-23: "clean run. great job").
 - **Pick up:** run the SQL (safe to rerun), restart `worldserver`, re-queue for a fresh instance.
 
 ### DB: Lower Blackrock Spire: Scarshield spawns two to a spot
@@ -97,7 +96,7 @@ to do to pick it up (rebuild, restart, run SQL).
   Emberseer on a faction hostile to his own jailers.
 - **Changed** (`sql/fixes/world/2026_11_23_06_blackrock_spire_unit_flags.sql`): flags and factions set to Pandaria's
   (backup `zr_backup_brs_creature_template`).
-- **Status:** tested on a copy of the database only; not yet run in game.
+- **Status:** Lower Spire mobs confirmed in game (Four, 2026-11-23: "clean run. great job"); the Upper Spire ones not yet run in game.
 - **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
 
 ### DB: Lower Blackrock Spire survey fixes
@@ -115,7 +114,7 @@ to do to pick it up (rebuild, restart, run SQL).
   difficulty; Pandaria's 8 rare pools and 11 egg pools copied (pool entries 22901-22919); whelps, shades and the
   static Gizrul removed; Omokk's Head always drops; using it at Urok's Tribute Pile brings two waves of Urok's
   ogres (now normal, not elite) and then Urok. Backups `zr_backup_lbrs_*`.
-- **Status:** tested on a copy of the database only; not yet run in game.
+- **Status:** Lower Spire confirmed in game (Four, 2026-11-23: "clean run. great job").
 - **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
 
 ## 2026-11-23 (Sunken Temple)
