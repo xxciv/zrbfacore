@@ -3,6 +3,52 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-24 (Quest fixes: holiday quests outside their holiday)
+
+Draft PR, not merged yet.
+
+### DB: City NPCs offer other holidays' quests (all cities)
+- **Found** (Four, 2026-11-24): during Pilgrim's Bounty the Troll Commoners in Orgrimmar offer Masked Orphan
+  Matron (Hallow's End) and The Spinner of Summer Tales (Midsummer). Four asked for a check of every holiday
+  quest giver in the cities.
+- **Cause:** 2026_11_23_31 (Wayfarer) removed the always-on starter rows of holiday quests that also had a
+  holiday link. 28 more holiday quest rows had no holiday link at all, so they stayed always-on. Their NPCs
+  stand all year (commoners are spawned for every holiday, the others never despawn).
+- **Check:** every creature and object that starts a holiday quest (quest sorts Lunar Festival, Love is in the
+  Air, Noblegarden, Children's Week, Midsummer, Brewfest, Hallow's End, Pilgrim's Bounty, Day of the Dead,
+  Seasonal) was compared with TDB 8.3.7. Givers that only spawn during their holiday (Festival Loremaster,
+  Talespinner, flame keepers, Lunar Festival Harbinger, Miles Standish, candy buckets, bonfires, Brewfest
+  vendors) were left alone, since they can't offer anything out of season.
+- **Changed** (`sql/fixes/world/2026_11_24_70_holiday_quests_without_event.sql`). Each quest is moved to its
+  holiday, nothing is dropped (TDB's holiday where TDB has the quest, otherwise the holiday of its quest sort):
+  - Masked Orphan Matron 11357, Blood Elf/Orc/Tauren/Troll/Forsaken/Goblin Commoners -> Hallow's End (12),
+    the Horde twin of Costumed Orphan Matron that 2026_11_23_31 moved.
+  - The Spinner of Summer Tales 11971, Blood Elf/Tauren/Troll/Forsaken/Goblin Commoners -> Midsummer (1).
+  - Inform the Elder 12012 and 29092, Earthen Ring Guide 25324 -> Midsummer (1).
+  - Pilgrim's Bounty 14022 (Dwarf/Draenei/Gnome/Night Elf Commoners) and 14036 (Tauren/Troll/Forsaken
+    Commoners) -> Pilgrim's Bounty (26).
+  - The Reason for the Season 6964 (Sagorne Creststrider) and 7062 (Historian Karnik), The Feast of Winter
+    Veil 7061 (Baine Bloodhoof) -> Winter Veil (2).
+  - A Gift for the Banshee Queen 24613 (Sylvanas), A Gift for the Regent Lord of Quel'Thalas 24615
+    (Lor'themar) -> Love is in the Air (8).
+  - Hch'uu and the Mushroom People 10945 (Hch'uu), Visit the Throne of the Elements 10953 (Elementalist
+    Sharvak), Children's Week 53965 (Caretaker Padae) -> Children's Week (10).
+  - Objects: This One Time, When I Was Drunk... 12020 (189989) and 12192 (189990) stand all year and were
+    always-on as well as on Brewfest; the always-on rows are removed, Brewfest (24) stays, as in TDB.
+- **Status:** not tested in game yet. Right now (Pilgrim's Bounty) the commoners should offer only their
+  Pilgrim's Bounty quest.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_24_70_holiday_quests_without_event.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-23 (Upper Blackrock Spire: a way into the old wing, parked)
 
 ### DB: Scarshield Guide into old Upper Blackrock Spire (parked, not spawned)
