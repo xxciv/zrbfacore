@@ -5,6 +5,13 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-24 (World fixes: the Dark Portal)
 
+### World: Northern Barrens second pass
+- **Found** (Four, 2026-11-24): six Horde Guards stacked on Thork at the Crossroads. The first pass (`2026_11_17_33`, ten zones at once) only thinned hostile mobs with big surpluses and skipped friendly NPCs. Horde Guard 51914 has 8 spawns here (6 on Thork) and none in 8.3.7; the Crossroads guards are 3501. Smaller surpluses were also left: Razormane Pillager 49 (8.3.7: 14), Devouring Ectoplasm 18 (9), Swarm of bees 12 (4), Theramore Marine 30 (22), Trok 3 (1), and a few spawns stacked under 1 yard apart.
+- **Changed** (`sql/fixes/world/2026_11_24_33_northern_barrens_second_pass.sql`): 159 extra creatures removed (Razormane Pillager 31, Fleeting Plainstrider 27, Savannah Huntress 14, Devouring Ectoplasm 9, Horde Guard 8, Swarm of bees 8, Theramore Marine 8, and smaller counts). Cap'n Garvey stands still as in 8.3.7. Guard 354890 had a stray SmartAI row giving credit for the Draenor quest Going Undercover (33080), which cannot happen in the Barrens; it goes with the guard.
+- **Not changed:** the same rules as before (critters, events, pools, paths, scripts, staged fighters, quest givers and quest counts), plus the caravan quests' NPCs and the Wounded Mor'shan Defenders.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Hellfire Peninsula zone review
 - **Found:** compared with TDB 8.3.7, Hellfire Peninsula had piles of extra mobs in some camps (74 Razorfang Hatchlings where 8.3.7 has 48, 44 Marauding Crust Bursters for 25), was short on others (28 Shattered Hand Guards for 71, 27 Heckling Fel Sprites for 64), and 408 spawns moved differently from 8.3.7. That includes quest givers such as Commander Hogarth, Arch Mage Xintor and Watch Commander Leonus, and the Honor Hold target dummies, which wandered around.
 - **Changed** (`sql/fixes/world/2026_11_24_32_hellfire_peninsula_review.sql`): 126 extra creatures removed, 200 missing 8.3.7 spawns added (guids 735401549-735401748), and wander set to 8.3.7 on 408 spawns. The rules are the same as the earlier reviews: no critters or wild battle pets; nothing linked to an event, pool, formation, path or script; nothing next to a hostile it fights; quest targets and quest-loot mobs never drop below the 8.3.7 count.
