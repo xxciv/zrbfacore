@@ -3,9 +3,9 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-23 (Upper Blackrock Spire: a way into the old wing)
+## 2026-11-23 (Upper Blackrock Spire: a way into the old wing, parked)
 
-### DB: Scarshield Guide takes you into old Upper Blackrock Spire
+### DB: Scarshield Guide into old Upper Blackrock Spire (parked, not spawned)
 
 - **Found** (Four, 2026-11-23: "walking into UBRS loads the WOD version" ... "heading towards the hall to go to UBRS
   teleports you out of the dungeon"): since Warlords of Draenor the Blackrock Mountain portal and the hall toward the
@@ -15,8 +15,12 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`sql/fixes/world/2026_11_23_14_upper_blackrock_spire_teleporter.sql`): a new NPC, Scarshield Guide
   (entry and spawn 4822900), at the Lower Spire entrance on Four's spot. Its one gossip option moves you to the
   Dragonspine Door on Four's spot (105.8, -319.0, 65.5), inside the same instance. The new Upper Blackrock Spire stays as it is.
-- **Status:** tested on a copy of the database only; not yet run in game.
-- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh Lower Blackrock Spire instance.
+- **Status:** parked (Four, 2026-11-23: "it's going to require a decent amount of work ... the maps don't line up,
+  there's a lot of stacked mobs, events need work ... keep the teleporter backed up, but leave it hidden. we can put a
+  pin in UBRS"). The guide, his gossip and script are in the database, but his spawn row sits in
+  `zr_parked_ubrs_guide_creature`, so he does not appear.
+- **Pick up:** run the SQL (it also takes down a guide spawned by the earlier version), restart `worldserver`. To bring
+  him back later: `INSERT IGNORE INTO creature SELECT * FROM zr_parked_ubrs_guide_creature;`
 
 ## 2026-11-23 (Lower Blackrock Spire)
 

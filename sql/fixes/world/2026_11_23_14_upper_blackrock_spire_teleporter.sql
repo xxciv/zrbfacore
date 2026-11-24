@@ -9,7 +9,13 @@
 -- in map 229 with floor and mobs, so a new NPC at the Lower Spire entrance, Scarshield Guide (entry 4822900, spawn
 -- guid 4822900), offers one gossip option that moves you, inside the same instance, to the Dragonspine Door (Four's
 -- spot, 105.8 -319.0 65.5). The new Upper Blackrock Spire stays in the Dungeon Finder and the outside portal as it is.
--- Undo: DELETE FROM `creature` WHERE `guid` = 4822900; DELETE FROM `creature_template` WHERE `entry` = 4822900; DELETE FROM `creature_template_model` WHERE `CreatureID` = 4822900; DELETE FROM `gossip_menu` WHERE `MenuId` = 4822900; DELETE FROM `gossip_menu_option` WHERE `MenuId` = 4822900; DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryorguid` = 4822900;
+--
+-- PARKED (Four, 2026-11-23): "it's going to require a decent amount of work for this to work. the maps don't line up,
+-- there's a lot of stacked mobs, events need work. i think we should keep the teleporter backed up, but leave it
+-- hidden. we can put a pin in UBRS". Everything below is kept, but the guide's spawn row lives in
+-- `zr_parked_ubrs_guide_creature` instead of `creature`, so he does not appear.
+-- To bring him back: INSERT IGNORE INTO `creature` SELECT * FROM `zr_parked_ubrs_guide_creature`;
+-- Undo: DROP TABLE IF EXISTS `zr_parked_ubrs_guide_creature`; DELETE FROM `creature` WHERE `guid` = 4822900; DELETE FROM `creature_template` WHERE `entry` = 4822900; DELETE FROM `creature_template_model` WHERE `CreatureID` = 4822900; DELETE FROM `gossip_menu` WHERE `MenuId` = 4822900; DELETE FROM `gossip_menu_option` WHERE `MenuId` = 4822900; DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryorguid` = 4822900;
 
 DELETE FROM `creature_template` WHERE `entry` = 4822900;
 INSERT INTO `creature_template` (`entry`, `name`, `subname`, `gossip_menu_id`, `minlevel`, `maxlevel`, `faction`, `npcflag`, `unit_class`, `unit_flags`, `type`, `AIName`, `ScriptName`, `VerifiedBuild`) VALUES
@@ -29,11 +35,16 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 (4822900, 0, 0, 1, 62, 0, 100, 0, 4822900, 0, 0, 0, 72, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 'Scarshield Guide - On Gossip Option 0 - Close Gossip'),
 (4822900, 0, 1, 0, 61, 0, 100, 0, 0, 0, 0, 0, 62, 229, 0, 0, 0, 0, 0, 7, 0, 0, 0, 105.808731, -319.014526, 65.475677, 0.002359, 'Scarshield Guide - Linked - Move player to the Dragonspine Door (same instance), Four''s spot');
 
-DELETE FROM `creature` WHERE `guid` = 4822900;
-INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnDifficulties`, `phaseUseFlags`, `PhaseId`, `PhaseGroup`, `terrainSwapMap`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `spawndist`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `unit_flags2`, `unit_flags3`, `dynamicflags`, `ScriptName`, `VerifiedBuild`) VALUES
+-- Guide spawn, parked: kept in its own table, not in `creature`.
+CREATE TABLE IF NOT EXISTS `zr_parked_ubrs_guide_creature` LIKE `creature`;
+DELETE FROM `zr_parked_ubrs_guide_creature` WHERE `guid` = 4822900;
+INSERT INTO `zr_parked_ubrs_guide_creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnDifficulties`, `phaseUseFlags`, `PhaseId`, `PhaseGroup`, `terrainSwapMap`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `spawndist`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `unit_flags2`, `unit_flags3`, `dynamicflags`, `ScriptName`, `VerifiedBuild`) VALUES
 (4822900, 4822900, 229, 1583, 1583, '1', 0, 0, 0, -1, 0, 0, 42.150948, -314.779022, 53.684311, 4.049838, 300, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0);
 
--- Check: expect guide 1, gossip option 1, script rows 2
-SELECT CONCAT('Guide ', (SELECT COUNT(*) FROM `creature` WHERE `guid` = 4822900 AND `map` = 229),
+DELETE FROM `creature` WHERE `guid` = 4822900;
+
+-- Check: expect guide spawned 0, parked 1, gossip option 1, script rows 2
+SELECT CONCAT('Guide spawned ', (SELECT COUNT(*) FROM `creature` WHERE `guid` = 4822900),
+    ', parked ', (SELECT COUNT(*) FROM `zr_parked_ubrs_guide_creature` WHERE `guid` = 4822900 AND `map` = 229),
     ', gossip option ', (SELECT COUNT(*) FROM `gossip_menu_option` WHERE `MenuId` = 4822900),
     ', script rows ', (SELECT COUNT(*) FROM `smart_scripts` WHERE `source_type` = 0 AND `entryorguid` = 4822900)) AS `check`;
