@@ -160,6 +160,7 @@ git apply ../tools-repo/tools/bfa/zulfarrak.patch
 git apply ../tools-repo/tools/bfa/blackrock-depths.patch
 git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
 git apply ../tools-repo/tools/bfa/loot-guid.patch
+git apply ../tools-repo/tools/bfa/cannonball-runner.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -606,6 +607,12 @@ Ring of Law waves in Blackrock Depths, event and quest spawns), game objects and
 empty one. The area loot window keys each corpse by that GUID, so with two such corpses in one window
 the client's loot requests went to the wrong corpse. A loot without a GUID now gets its own when the
 creature dies (`Unit.cpp`) or when the loot window opens (`Player::SendLoot`).
+
+`cannonball-runner.patch` makes the Cannonball Runner trinket (Stratholme) work. Its equip aura
+(250091) is a plain dummy that nothing handled, so it never procced. A spell script now summons a rooted
+Crimson Cannon in front of you for 10 seconds, which fires Cannon Fire every 2 seconds at the enemy you
+hit (or the nearest one), for the trinket's scaled damage. It only touches `spell_item.cpp` and needs
+`sql/fixes/world/2026_11_23_90_cannonball_runner.sql` (script binding and proc rate).
 
 `zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
 solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
@@ -1168,6 +1175,7 @@ git apply ../tools-repo/tools/bfa/zulfarrak.patch
 git apply ../tools-repo/tools/bfa/blackrock-depths.patch
 git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
 git apply ../tools-repo/tools/bfa/loot-guid.patch
+git apply ../tools-repo/tools/bfa/cannonball-runner.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -1289,6 +1297,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_22_09_blackrock_depths_hurley_kegs.sql` | Blackrock Depths: the Thunderbrew Lager Kegs tell Hurley Blackbreath directly (keg-to-keg SAI target 13 finds nothing in this core), so the third broken keg brings him and his cronies |
 | `2026_11_22_10_blackrock_depths_ribbly_npc_immune.sql` | Blackrock Depths: Ribbly Screwspigot and his cronies immune to NPCs again (AzerothCore has it), so Hurley Blackbreath doesn't fight them |
 | `2026_11_22_11_blackrock_depths_blackbreath_cronies.sql` | Blackrock Depths: Hurley Blackbreath's three cronies normal instead of elite for solo play (backup `zr_backup_brd_creature_template`) |
+| `2026_11_22_20_fishing_tournaments.sql` | Holidays: Stranglethorn Fishing Extravaganza back on Sundays 14:00-16:00 (old double spawns removed) and Kalu'ak Fishing Derby on Saturdays 14:00-15:00 with Blacktip Sharks in Northrend schools |
 | `2026_11_23_00_blackrock_depths_concert_controllers.sql` | Blackrock Depths: six L70ETC concert controllers next to the Grim Guzzler stage spawn only on Brewfest (event 24) |
 | `2026_11_23_01_blackrock_depths_concert_crew_fog.sql` | Blackrock Depths: concert crew Mizli Crankwheel and Ognip Blastbolt spawn only on Brewfest; Ognip's fog aura (105389) was the purple mist over the floors |
 | `2026_11_23_02_sunken_temple_fixes.sql` | Sunken Temple: nine static Atal'ai Deathwalker's Spirits removed (Deathwalkers summon them on death), Jammal'an the Prophet's doubled script replaced (no extra Dreamscythe/Weaver on death), Dreamscythe and Weaver moved off Morphaz and Hazzas to Pandaria's spots (backups `zr_backup_st_creature`, `zr_backup_st_smart_scripts`) |
@@ -1375,8 +1384,32 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_18_33_ruins_of_gilneas_rushers_inside.sql` | Ruins of Gilneas: 11 Worgen Rushers back inside the Forward Command, one per defender (our own tuning); Rusher fight starter reach 5 yards, Sharpshooters added as targets |
 | `2026_11_18_34_ruins_of_gilneas_forest_pairs.sql` | Ruins of Gilneas: 29 more Worgen Rushers paired with lone Forsaken Vanguards in the forest around the Forward Command (our own tuning) |
 | `2026_11_18_35_default_phase_in_phased_zones.sql` | Darkshore and Ruins of Gilneas: always add default phase 169 next to the quest phases of 2026_11_18_30/31, so normal spawns stay visible |
+| `2026_11_18_40_razor_hill_grunt_directions.sql` | Durotar: Razor Hill Grunt directions (menu 3285 links, "A class trainer" restored, class menu realigned, markers for Jabul/Un'Thuwa/Burok) |
+| `2026_11_18_41_profession_trainer_menus.sql` | Runda and the other 10 "Profession Trainer" NPCs: every "Train me in X." option opens that profession's trainer list |
+| `2026_11_18_42_profession_trainers_isolated.sql` | KTC Train-a-Tron Deluxes (Lost Isles, Azshara), Whittler Dewei and the Profession Liaisons: training and shop options open their lists |
+| `2026_11_18_43_ticking_time_bomb_fuse.sql` | Northwatch Marine's Ticking Time Bomb: ticks for 3 seconds where it lands, shows its bomb (spell 79727), then explodes |
+| `2026_11_18_44_sergeant_curtis_one_spawn.sql` | Tiragarde Keep: Sergeant Curtis's two spawn points pooled, one up at a time |
+| `2026_11_18_45_treasure_chest_loot.sql` | Maplewood and Runestone Treasure Chests: each uses its 8.3.7 loot table again, so none opens empty |
+| `2026_11_18_46_holiday_spawn_events.sql` | Holiday spawns on their 8.3.7 events (Pilgrim's Bounty, Brewfest, Isle of Conquest, Strand of the Ancients, L70ETC and others) |
+| `2026_11_18_47_brew_of_the_month.sql` | Brew of the Month Club: monthly events run again, Orgrimmar vendor sells the month's brew, Ironforge gets all 12 vendors (run after 46) |
+| `2026_11_18_48_brew_club_recruiters_all_year.sql` | Larkin Thunderbrew (Ironforge) and Ray'ma (Orgrimmar) stand all year, so the Brew of the Month Club can be joined outside Brewfest |
+| `2026_11_18_49_brew_club_lockouts.sql` | Ray'ma's shop needs a Brewfest Prize Token and the Orgrimmar Brew Vendor needs club membership, like their Ironforge twins (our own change) |
+| `2026_11_18_36_brew_vendor_single_item.sql` | Monthly Brew Vendors list their brew once (the same-named second copy removed, as in 8.3.7) |
+| `2026_11_19_30_northern_stranglethorn_spots.sql` | Northern Stranglethorn: Kurzen Medicine Men stand still, second Krazek removed, Ahune's lieutenants only during Midsummer |
+| `2026_11_19_31_stealthers_creep_not_hover.sql` | Stealthed creatures (Kurzen Commando and 15 more) creep on the ground instead of floating |
+| `2026_11_19_32_northern_stranglethorn_review.sql` | Northern Stranglethorn review: 49 extras removed, 92 missing 8.3.7 spawns added, Gluggl and Roloch one at a time, 362 mobs stand still |
+| `2026_11_20_30_digsite_zombie_survivors.sql` | Cape of Stranglethorn: left-over Digsite Zombie Survivors removed, summoned ones despawn after 5 s |
+| `2026_11_20_31_duskwood_watcher_doubles.sql` | Duskwood: doubled watchers Jordan, Fraizer, Mocarski and Bukouris down to one each |
+| `2026_11_20_32_lakeshire_fight_club.sql` | Redridge: Lakeshire Inn basement fight club staged by the Keeshan quests as in 8.3.7 |
+| `2026_11_20_33_lakeshire_fight_club_punches.sql` | Redridge: fight club fighters on SmartAI, Dumpy/Keeshan attack their Big Earl and he fights back (stops at 85%) |
+| `2026_11_20_34_maidens_fancy_leftovers.sql` | Ratchet/Booty Bay: Masker copies and floating chairs removed; deck chairs and two missing crewmen on The Maiden's Fancy |
+| `2026_11_20_35_theramore_dock_chairs.sql` | Theramore dock: 18 floating Lady Mehley chairs removed |
+| `2026_11_20_36_andorhal_two_battles.sql` | Western Plaguelands: Andorhal's Scourge battle (8.3.7 layout) and later Alliance-Horde battle in phases 314/317, both fighting |
+| `2026_11_20_37_western_plaguelands_review.sql` | Western Plaguelands zone review: extras and stacked copies removed, rares pooled, missing spawns added, movement as 8.3.7 |
+| `2026_11_23_30_pilgrims_bounty_feast_chairs.sql` | Pilgrim's Bounty: 159 loose (doubled) feast chairs removed, table/chair flags as 8.3.7, no names over the feast |
+| `2026_11_23_31_holiday_quests_only_in_season.sql` | 212 holiday quests offered only during their holiday (always-on starter rows removed), Costumed Orphan Matron on Hallow's End |
 
-Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills, `2026_11_09_02_profession_tier_levels.sql` gates them by expansion level, `2026_11_15_80_profession_trainer_recipes.sql` gives every crafting trainer its recipes).
+Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_23_20_fishing_calendar.sql` shows the Stranglethorn Fishing Extravaganza (Sundays) and the Kalu'ak Fishing Derby (Saturdays) on the calendar, weekly to May 2027 (the client's own rows are hidden or dated 2005). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills, `2026_11_09_02_profession_tier_levels.sql` gates them by expansion level, `2026_11_15_80_profession_trainer_recipes.sql` gives every crafting trainer its recipes).
 
 ## 11. Status
 
