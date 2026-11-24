@@ -5,6 +5,16 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-23 (Lower Blackrock Spire)
 
+### DB: Lower Blackrock Spire: Shadow Hunter Vosh'gajin hexes you nonstop
+
+- **Found** (Four, 2026-11-23: "she uses it every single cooldown keeping you locked out of combat"): her C++
+  script casts Hex 16708 (instant, 20 seconds) every 15 seconds, so a solo player is never free of it. Pandaria and
+  AzerothCore use Hex 16097 (8 seconds, interruptible cast).
+- **Changed** (`sql/fixes/world/2026_11_23_13_lower_blackrock_spire_voshgajin_hex.sql`): she moves to SmartAI with
+  Curse of Blood, Cleave, and Hex 16097 every 25-30 seconds. Kill credit and the scenario step come from the kill.
+- **Status:** tested on a copy of the database only; not yet run in game.
+- **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh instance.
+
 ### DB: Lower Blackrock Spire: Four's run-through tweaks
 
 - **Found** (Four's run, 2026-11-23): Shadow Hunter Vosh'gajin's six trolls stood clumped in the middle of her room
