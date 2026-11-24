@@ -3,6 +3,25 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-23 (Upper Blackrock Spire: a way into the old wing, parked)
+
+### DB: Scarshield Guide into old Upper Blackrock Spire (parked, not spawned)
+
+- **Found** (Four, 2026-11-23: "walking into UBRS loads the WOD version" ... "heading towards the hall to go to UBRS
+  teleports you out of the dungeon"): since Warlords of Draenor the Blackrock Mountain portal and the hall toward the
+  Dragonspine Door both send you to the new Upper Blackrock Spire. The old wing (Emberseer, the Rookery, Rend's arena,
+  Drakkisath) is still inside the Lower Spire map with floor and mobs, and our fixes for it are already in
+  (2026_11_23_06/07/08), but nothing led there. Four chose "Add teleporter".
+- **Changed** (`sql/fixes/world/2026_11_23_14_upper_blackrock_spire_teleporter.sql`): a new NPC, Scarshield Guide
+  (entry and spawn 4822900), at the Lower Spire entrance on Four's spot. Its one gossip option moves you to the
+  Dragonspine Door on Four's spot (105.8, -319.0, 65.5), inside the same instance. The new Upper Blackrock Spire stays as it is.
+- **Status:** parked (Four, 2026-11-23: "it's going to require a decent amount of work ... the maps don't line up,
+  there's a lot of stacked mobs, events need work ... keep the teleporter backed up, but leave it hidden. we can put a
+  pin in UBRS"). The guide, his gossip and script are in the database, but his spawn row sits in
+  `zr_parked_ubrs_guide_creature`, so he does not appear.
+- **Pick up:** run the SQL (it also takes down a guide spawned by the earlier version), restart `worldserver`. To bring
+  him back later: `INSERT IGNORE INTO creature SELECT * FROM zr_parked_ubrs_guide_creature;`
+
 ## 2026-11-23 (Lower Blackrock Spire)
 
 ### DB: Lower Blackrock Spire: Shadow Hunter Vosh'gajin hexes you nonstop
