@@ -7,8 +7,8 @@
 -- Since Warlords of Draenor the Blackrock Mountain portal and the hall toward the Dragonspine Door both send you to
 -- the new Upper Blackrock Spire (map 1358). The old wing (Emberseer, the Rookery, Rend's arena, Drakkisath) is still
 -- in map 229 with floor and mobs, so a new NPC at the Lower Spire entrance, Scarshield Guide (entry 4822900, spawn
--- guid 4822900), offers one gossip option that moves you, inside the same instance, into the Dragonspine Hall past
--- the door. The new Upper Blackrock Spire stays in the Dungeon Finder and the outside portal as it is.
+-- guid 4822900), offers one gossip option that moves you, inside the same instance, to the Dragonspine Door (Four's
+-- spot, 105.8 -319.0 65.5). The new Upper Blackrock Spire stays in the Dungeon Finder and the outside portal as it is.
 -- Undo: DELETE FROM `creature` WHERE `guid` = 4822900; DELETE FROM `creature_template` WHERE `entry` = 4822900; DELETE FROM `creature_template_model` WHERE `CreatureID` = 4822900; DELETE FROM `gossip_menu` WHERE `MenuId` = 4822900; DELETE FROM `gossip_menu_option` WHERE `MenuId` = 4822900; DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryorguid` = 4822900;
 
 DELETE FROM `creature_template` WHERE `entry` = 4822900;
@@ -27,7 +27,7 @@ INSERT INTO `gossip_menu_option` (`MenuId`, `OptionIndex`, `OptionIcon`, `Option
 DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryorguid` = 4822900;
 INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
 (4822900, 0, 0, 1, 62, 0, 100, 0, 4822900, 0, 0, 0, 72, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 'Scarshield Guide - On Gossip Option 0 - Close Gossip'),
-(4822900, 0, 1, 0, 61, 0, 100, 0, 0, 0, 0, 0, 62, 229, 0, 0, 0, 0, 0, 7, 0, 0, 0, 137.5, -305.5, 71.6, 0, 'Scarshield Guide - Linked - Move player into the Dragonspine Hall (same instance)');
+(4822900, 0, 1, 0, 61, 0, 100, 0, 0, 0, 0, 0, 62, 229, 0, 0, 0, 0, 0, 7, 0, 0, 0, 105.808731, -319.014526, 65.475677, 0.002359, 'Scarshield Guide - Linked - Move player to the Dragonspine Door (same instance), Four''s spot');
 
 DELETE FROM `creature` WHERE `guid` = 4822900;
 INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnDifficulties`, `phaseUseFlags`, `PhaseId`, `PhaseGroup`, `terrainSwapMap`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `spawndist`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `unit_flags2`, `unit_flags3`, `dynamicflags`, `ScriptName`, `VerifiedBuild`) VALUES

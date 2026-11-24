@@ -13,8 +13,8 @@ to do to pick it up (rebuild, restart, run SQL).
   Drakkisath) is still inside the Lower Spire map with floor and mobs, and our fixes for it are already in
   (2026_11_23_06/07/08), but nothing led there. Four chose "Add teleporter".
 - **Changed** (`sql/fixes/world/2026_11_23_14_upper_blackrock_spire_teleporter.sql`): a new NPC, Scarshield Guide
-  (entry and spawn 4822900), at the Lower Spire entrance on Four's spot. Its one gossip option moves you into the
-  Dragonspine Hall past the door, inside the same instance. The new Upper Blackrock Spire stays as it is.
+  (entry and spawn 4822900), at the Lower Spire entrance on Four's spot. Its one gossip option moves you to the
+  Dragonspine Door on Four's spot (105.8, -319.0, 65.5), inside the same instance. The new Upper Blackrock Spire stays as it is.
 - **Status:** tested on a copy of the database only; not yet run in game.
 - **Pick up:** run the SQL, restart `worldserver`, re-queue for a fresh Lower Blackrock Spire instance.
 
