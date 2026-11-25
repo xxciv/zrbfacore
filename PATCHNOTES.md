@@ -7,6 +7,20 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet (same PR as the holiday quest fix below).
 
+### DB: Gateways Murketh and Shaadraz don't catch fire when bombed
+- **Found** (Four, 2026-11-25): on Mission: The Murketh and Shaadraz Gateways (Alliance 10146, Horde twin
+  10129) the bomb gave credit, but Gateway Murketh didn't catch fire and Gateway Shaadraz was already burning.
+- **Cause:** the transporters (Legion Transporter: Alpha 19291 at Murketh, Beta 19292 at Shaadraz) only gave
+  credit on the bomb hit (Dropping The Nether Modulator 33655). The two Hellfire Fire objects at Shaadraz
+  (guids 68035, 68036) are always spawned. Murketh's four Vector Coil Fire objects (66690-66693) are always
+  spawned too, but they are faint smoke and embers, so nothing changes when you bomb it.
+- **Changed** (`sql/fixes/world/2026_11_25_71_murketh_shaadraz_fires.sql`):
+  - The six fire objects are kept but start hidden (spawntimesecs -180).
+  - A bomb hit on either transporter still gives credit, now also casts Create Hellfire Fire 34386 (a 60 second
+    fire on the gateway) and shows that gateway's fire objects for 3 minutes.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
 ### DB: Kingston's Primers say "You have no target" at the portals
 - **Found** (Four, 2026-11-25): on Disrupt Their Reinforcements (Horde 10144, Alliance 10208) the portals
   can't be disrupted. Using Kingston's Primers on a portal, or standing on it, fails with "You have no target".
