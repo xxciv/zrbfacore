@@ -9,7 +9,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Found** (Four, 2026-11-25): Runetog Wildhammer (Shatter Point) opened a flight map with no flight points at all, not even Shatter Point, and talking to him never taught the flight point. The 8.3.7 routes are there (Shatter Point to Honor Hold and to the Hellfire Peninsula Dark Portal, both ways). The core finds "the flight point you are at" in `ObjectMgr::GetNearestTaxiNode`, and its continent check only skipped flight points on garrison maps, so flight points on every other continent took part. Upstream TrinityCore skips every other continent. Which other-continent flight point wins at Shatter Point is inferred, not checked (no TaxiNodes table here), but an empty map without your own flight point is what a wrong current flight point looks like.
 - **Changed** (`tools/bfa/taxi-nearest-node.patch`, after `cannonball-runner.patch`): only flight points on your own continent count; garrison maps still count as Draenor.
 - **Not changed:** Runetog's quest flight to Gryphongar (`2026_11_24_34`).
-- **Status:** compiles (`ObjectMgr.cpp`); untested in game.
+- **Status:** confirmed in game by Four (2026-11-25).
 - **Pick up:** apply the patch, build, restart `worldserver`, talk to Runetog. Expect "New flight path discovered" and Shatter Point on the map, with Honor Hold once you know it.
 
 ### World: Zeth'Gor towers burn only after a Smoke Beacon
