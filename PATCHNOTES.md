@@ -17,7 +17,7 @@ Draft PR, not merged yet (same PR as the holiday quest fix below).
 - **Changed** (`sql/fixes/world/2026_11_25_70_disrupt_their_reinforcements.sql`): the four portal conditions on
   effect 1 are replaced by one that picks the caster. The dummy does nothing on you, the portal is still
   opened by effect 0 and credits Portal Grimh/Kaalez (10144) or Kruul/Xilus (10208).
-- **Status:** untested.
+- **Status:** confirmed in game by Four, 2026-11-25.
 - **Pick up:** run the SQL, restart worldserver.
 
 ## 2026-11-24 (Quest fixes: holiday quests outside their holiday)
