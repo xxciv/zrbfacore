@@ -19,6 +19,19 @@ index 87c081d..03b4a1e 100644
      CREATURE_FLAG_EXTRA_NO_SKILLGAIN | CREATURE_FLAG_EXTRA_TAUNT_DIMINISH | CREATURE_FLAG_EXTRA_ALL_DIMINISH | \
      CREATURE_FLAG_EXTRA_GUARD | CREATURE_FLAG_EXTRA_IGNORE_PATHFINDING | CREATURE_FLAG_EXTRA_NO_PLAYER_DAMAGE_REQ | CREATURE_FLAG_EXTRA_IMMUNITY_KNOCKBACK)
  
+diff --git a/src/server/game/Entities/GameObject/GameObject.cpp b/src/server/game/Entities/GameObject/GameObject.cpp
+index 3d71c7a..e805b4d 100644
+--- a/src/server/game/Entities/GameObject/GameObject.cpp
++++ b/src/server/game/Entities/GameObject/GameObject.cpp
+@@ -272,6 +272,8 @@ bool GameObject::Create(uint32 entry, Map* map, Position const& pos, QuaternionD
+     if (!dynamic)
+         SetRespawnCompatibilityMode();
+ 
++    // zone must be known before binding the zone script (outdoor PvP capture points), as upstream
++    UpdatePositionData();
+     SetZoneScript();
+     if (m_zoneScript)
+     {
 diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
 index 21b1d56..240d50c 100644
 --- a/src/server/game/Entities/Player/Player.cpp

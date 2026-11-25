@@ -626,6 +626,9 @@ TrinityCore. It only touches `ObjectMgr::GetNearestTaxiNode` in `ObjectMgr.cpp`.
 `hellfire-tower-skirmish.patch` turns the Hellfire Peninsula towers (Broken Hill, the Overlook, the Stadium)
 into a solo PvP fight. It also makes `/pvp` work again: the core ignored it ("handled by War Mode"), but
 War Mode never sets the PvP flag here, so nobody could be flagged and the towers could not be captured.
+It also links capture banners to their outdoor PvP script: `GameObject::Create` looked up the zone
+script before it knew the object's zone, so no capture point in any outdoor PvP zone ever ran (upstream
+works out the position first).
 While players of only one faction capture a tower and no enemy players are there, waves of the other
 faction's soldiers come in from 22-30 yards (Thrallmar against Alliance, Honor Hold against Horde), 8
 seconds after the last wave died, each harder than the last. Living soldiers on the tower push the
