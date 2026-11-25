@@ -631,7 +631,8 @@ script before it knew the object's zone, so no capture point in any outdoor PvP 
 works out the position first).
 While players of only one faction capture a tower and no enemy players are there, waves of the other
 faction's soldiers come in from 22-30 yards (Thrallmar against Alliance, Honor Hold against Horde), 10
-seconds after capturing starts and 20 seconds after the last wave died, each harder than the last. While
+seconds after capturing starts and 20 seconds after the last wave died, each harder than the last; the
+fourth wave (an elite and a mage) is the finale, and the tower cannot flip until it is dead. While
 soldiers are alive on the tower the capture bar moves at half speed (never backwards). Once
 the tower is taken the soldiers leave; if nobody is capturing for a minute they leave and the waves
 start over. A soldier counts as an enemy player of its level: honor, an honorable kill (and its

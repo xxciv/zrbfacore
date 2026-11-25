@@ -116,7 +116,7 @@ index 8d74428..9ab0e3e 100644
  
          virtual bool HandleGossipOption(Player* /*player*/, Creature* /*guid*/, uint32 /*gossipId*/) { return false; }
 diff --git a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp
-index 5dd2748..5c94022 100644
+index 5dd2748..4a17351 100644
 --- a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp
 +++ b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp
 @@ -16,10 +16,16 @@
@@ -193,7 +193,7 @@ index 5dd2748..5c94022 100644
      if (killed->GetTypeId() != TYPEID_PLAYER)
          return;
  
-@@ -295,6 +328,189 @@ void OutdoorPvPHP::HandleKillImpl(Player* player, Unit* killed)
+@@ -295,6 +328,205 @@ void OutdoorPvPHP::HandleKillImpl(Player* player, Unit* killed)
          player->CastSpell(player, HordePlayerKillReward, true);
  }
  
@@ -210,20 +210,36 @@ index 5dd2748..5c94022 100644
 +        return 0.0f;
 +
 +    float radius = float(m_capturePoint->GetGOInfo()->controlZone.radius);
++    bool alive = false;
 +    bool contested = false;
 +    for (ObjectGuid const& guid : m_skirmishNpcs)
 +        if (Creature* npc = ObjectAccessor::GetCreature(*m_capturePoint, guid))
-+            if (npc->IsAlive() && m_capturePoint->IsWithinDistInMap(npc, radius))
++            if (npc->IsAlive())
 +            {
-+                contested = true;
-+                break;
++                alive = true;
++                if (m_capturePoint->IsWithinDistInMap(npc, radius))
++                {
++                    contested = true;
++                    break;
++                }
 +            }
++
++    float const players = float(m_activePlayers[m_skirmishTeam].size());
++
++    // the tower holds just short of the capture line until the final wave is beaten
++    // (each update, about once a second, moves the bar by about one point per player)
++    if (m_skirmishWave < HP_SKIRMISH_FINAL_WAVE || alive)
++    {
++        float const progress = m_skirmishTeam == TEAM_ALLIANCE ? m_value : -m_value;
++        if (progress >= m_minValue - 2.0f * (players + 1.0f))
++            return m_skirmishTeam == TEAM_ALLIANCE ? -players : players;
++    }
 +
 +    if (!contested)
 +        return 0.0f;
 +
 +    // soldiers alive on the point halve the capture speed (they never push it back)
-+    float const slow = 0.5f * float(m_activePlayers[m_skirmishTeam].size());
++    float const slow = 0.5f * players;
 +    return m_skirmishTeam == TEAM_ALLIANCE ? -slow : slow;
 +}
 +
@@ -261,7 +277,7 @@ index 5dd2748..5c94022 100644
 +
 +        m_skirmishIdle = 0;
 +
-+        if (m_skirmishNpcs.empty())
++        if (m_skirmishNpcs.empty() && m_skirmishWave < HP_SKIRMISH_FINAL_WAVE)
 +        {
 +            m_skirmishTimer -= int32(diff);
 +            if (m_skirmishTimer <= 0)
@@ -384,10 +400,10 @@ index 5dd2748..5c94022 100644
  {
      return m_AllianceTowersControlled;
 diff --git a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h
-index 0c57fef..eb77daf 100644
+index 0c57fef..197c83e 100644
 --- a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h
 +++ b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h
-@@ -52,6 +52,24 @@ enum OutdoorPvPHPTowerType
+@@ -52,6 +52,25 @@ enum OutdoorPvPHPTowerType
  
  const uint32 HP_CREDITMARKER[HP_TOWER_NUM] = {19032, 19028, 19029};
  
@@ -404,6 +420,7 @@ index 0c57fef..eb77daf 100644
 +
 +    HP_SKIRMISH_FIRST_WAVE_DELAY    = 10 * IN_MILLISECONDS,  // after someone starts capturing
 +    HP_SKIRMISH_NEXT_WAVE_DELAY     = 20 * IN_MILLISECONDS,  // after the last soldier of a wave dies
++    HP_SKIRMISH_FINAL_WAVE          = 4,                     // wave 4 (elite + mage) is the finale: the tower holds until it is dead
 +    HP_SKIRMISH_IDLE_RESET          = 60 * IN_MILLISECONDS,  // nobody capturing: soldiers leave, waves start over
 +    HP_SKIRMISH_CORPSE_DESPAWN      = 30 * IN_MILLISECONDS,
 +    HP_ALL_TOWERS_RESET_TIME        = 10 * MINUTE * IN_MILLISECONDS // one side holding all 3 towers: back to neutral
@@ -412,7 +429,7 @@ index 0c57fef..eb77daf 100644
  const uint32 HP_CapturePointEvent_Enter[HP_TOWER_NUM] = {11404, 11396, 11388};
  
  const uint32 HP_CapturePointEvent_Leave[HP_TOWER_NUM] = {11403, 11395, 11387};
-@@ -100,8 +118,25 @@ class OPvPCapturePointHP : public OPvPCapturePoint
+@@ -100,8 +119,25 @@ class OPvPCapturePointHP : public OPvPCapturePoint
  
          void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
  
@@ -438,7 +455,7 @@ index 0c57fef..eb77daf 100644
  };
  
  class OutdoorPvPHP : public OutdoorPvP
-@@ -132,6 +167,9 @@ class OutdoorPvPHP : public OutdoorPvP
+@@ -132,6 +168,9 @@ class OutdoorPvPHP : public OutdoorPvP
          // how many towers are controlled
          uint32 m_AllianceTowersControlled;
          uint32 m_HordeTowersControlled;
