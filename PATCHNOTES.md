@@ -14,7 +14,8 @@ Draft PR, not merged yet (same PR as the holiday quest fix below).
   TrinityCore gives that credit with spell 35237 on accept, which is an empty serverside spell here, and our accept
   script for Runetog Wildhammer 20234 summoned an Enraged Gryphon instead. Nothing ever gave the credit.
 - **Changed** (`sql/fixes/world/2026_11_25_73_wing_commander_gryphongar.sql`):
-  - 10344 is now a plain "speak with" quest (flag 2 removed). Copies already in a quest log complete after the restart.
+  - 10344 is now a plain "speak with" quest (flag 2 removed). A copy already in a quest log stays incomplete
+    (the saved status is loaded as is): abandon it and take it again from Runetog Wildhammer, and it completes on accept.
   - Runetog's on-accept row (the stray gryphon summon) removed. His in-combat gryphon summon stays.
 - **Status:** untested.
 - **Pick up:** run the SQL, restart worldserver.
