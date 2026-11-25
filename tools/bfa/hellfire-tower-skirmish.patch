@@ -89,7 +89,7 @@ index 22ed603..c488a71 100644
      {
          GetPlayer()->RemovePlayerFlag(PLAYER_FLAGS_IN_PVP);
 diff --git a/src/server/game/OutdoorPvP/OutdoorPvP.cpp b/src/server/game/OutdoorPvP/OutdoorPvP.cpp
-index 8bd1ba5..4651e42 100644
+index 8bd1ba5..6890724 100644
 --- a/src/server/game/OutdoorPvP/OutdoorPvP.cpp
 +++ b/src/server/game/OutdoorPvP/OutdoorPvP.cpp
 @@ -325,7 +325,7 @@ bool OPvPCapturePoint::Update(uint32 diff)
@@ -97,26 +97,26 @@ index 8bd1ba5..4651e42 100644
  
      // get the difference of numbers
 -    float fact_diff = ((float)m_activePlayers[0].size() - (float)m_activePlayers[1].size()) * diff / OUTDOORPVP_OBJECTIVE_UPDATE_INTERVAL;
-+    float fact_diff = ((float)m_activePlayers[0].size() - (float)m_activePlayers[1].size() + (float)GetSimulatedPresence()) * diff / OUTDOORPVP_OBJECTIVE_UPDATE_INTERVAL;
++    float fact_diff = ((float)m_activePlayers[0].size() - (float)m_activePlayers[1].size() + GetSimulatedPresence()) * diff / OUTDOORPVP_OBJECTIVE_UPDATE_INTERVAL;
      if (!fact_diff)
          return false;
  
 diff --git a/src/server/game/OutdoorPvP/OutdoorPvP.h b/src/server/game/OutdoorPvP/OutdoorPvP.h
-index 8d74428..29932ad 100644
+index 8d74428..9ab0e3e 100644
 --- a/src/server/game/OutdoorPvP/OutdoorPvP.h
 +++ b/src/server/game/OutdoorPvP/OutdoorPvP.h
 @@ -125,6 +125,9 @@ class TC_GAME_API OPvPCapturePoint
  
          virtual void ChangeTeam(TeamId /*oldTeam*/) { }
  
-+        // NPCs that push the capture bar like players do: positive = towards Alliance, negative = towards Horde
-+        virtual int32 GetSimulatedPresence() const { return 0; }
++        // NPCs that push the capture bar like players do (in players): positive = towards Alliance, negative = towards Horde
++        virtual float GetSimulatedPresence() const { return 0.0f; }
 +
          virtual void SendChangePhase();
  
          virtual bool HandleGossipOption(Player* /*player*/, Creature* /*guid*/, uint32 /*gossipId*/) { return false; }
 diff --git a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp
-index 5dd2748..a9a3255 100644
+index 5dd2748..5c94022 100644
 --- a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp
 +++ b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp
 @@ -16,10 +16,16 @@
@@ -193,7 +193,7 @@ index 5dd2748..a9a3255 100644
      if (killed->GetTypeId() != TYPEID_PLAYER)
          return;
  
-@@ -295,6 +328,182 @@ void OutdoorPvPHP::HandleKillImpl(Player* player, Unit* killed)
+@@ -295,6 +328,189 @@ void OutdoorPvPHP::HandleKillImpl(Player* player, Unit* killed)
          player->CastSpell(player, HordePlayerKillReward, true);
  }
  
@@ -204,20 +204,27 @@ index 5dd2748..a9a3255 100644
 +    return changed;
 +}
 +
-+int32 OPvPCapturePointHP::GetSimulatedPresence() const
++float OPvPCapturePointHP::GetSimulatedPresence() const
 +{
 +    if (!m_capturePoint || m_skirmishTeam == TEAM_NEUTRAL)
-+        return 0;
++        return 0.0f;
 +
 +    float radius = float(m_capturePoint->GetGOInfo()->controlZone.radius);
-+    int32 count = 0;
++    bool contested = false;
 +    for (ObjectGuid const& guid : m_skirmishNpcs)
 +        if (Creature* npc = ObjectAccessor::GetCreature(*m_capturePoint, guid))
 +            if (npc->IsAlive() && m_capturePoint->IsWithinDistInMap(npc, radius))
-+                ++count;
++            {
++                contested = true;
++                break;
++            }
 +
-+    // the soldiers fight for the other side
-+    return m_skirmishTeam == TEAM_ALLIANCE ? -count : count;
++    if (!contested)
++        return 0.0f;
++
++    // soldiers alive on the point halve the capture speed (they never push it back)
++    float const slow = 0.5f * float(m_activePlayers[m_skirmishTeam].size());
++    return m_skirmishTeam == TEAM_ALLIANCE ? -slow : slow;
 +}
 +
 +void OPvPCapturePointHP::UpdateSkirmish(uint32 diff)
@@ -377,7 +384,7 @@ index 5dd2748..a9a3255 100644
  {
      return m_AllianceTowersControlled;
 diff --git a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h
-index 0c57fef..616c703 100644
+index 0c57fef..eb77daf 100644
 --- a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h
 +++ b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h
 @@ -52,6 +52,24 @@ enum OutdoorPvPHPTowerType
@@ -395,8 +402,8 @@ index 0c57fef..616c703 100644
 +    NPC_HP_ALLIANCE_BATTLEMAGE      = 9100105,
 +    NPC_HP_ALLIANCE_VANGUARD        = 9100106,
 +
-+    HP_SKIRMISH_FIRST_WAVE_DELAY    = 5 * IN_MILLISECONDS,   // after someone starts capturing
-+    HP_SKIRMISH_NEXT_WAVE_DELAY     = 8 * IN_MILLISECONDS,   // after the last soldier of a wave dies
++    HP_SKIRMISH_FIRST_WAVE_DELAY    = 10 * IN_MILLISECONDS,  // after someone starts capturing
++    HP_SKIRMISH_NEXT_WAVE_DELAY     = 20 * IN_MILLISECONDS,  // after the last soldier of a wave dies
 +    HP_SKIRMISH_IDLE_RESET          = 60 * IN_MILLISECONDS,  // nobody capturing: soldiers leave, waves start over
 +    HP_SKIRMISH_CORPSE_DESPAWN      = 30 * IN_MILLISECONDS,
 +    HP_ALL_TOWERS_RESET_TIME        = 10 * MINUTE * IN_MILLISECONDS // one side holding all 3 towers: back to neutral
@@ -411,7 +418,7 @@ index 0c57fef..616c703 100644
  
 +        bool Update(uint32 diff) override;
 +
-+        int32 GetSimulatedPresence() const override;
++        float GetSimulatedPresence() const override;
 +
 +        // tower back to neutral (all three held for 10 minutes)
 +        void ResetToNeutral();

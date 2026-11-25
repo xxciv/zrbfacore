@@ -630,9 +630,9 @@ It also links capture banners to their outdoor PvP script: `GameObject::Create` 
 script before it knew the object's zone, so no capture point in any outdoor PvP zone ever ran (upstream
 works out the position first).
 While players of only one faction capture a tower and no enemy players are there, waves of the other
-faction's soldiers come in from 22-30 yards (Thrallmar against Alliance, Honor Hold against Horde), 8
-seconds after the last wave died, each harder than the last. Living soldiers on the tower push the
-capture bar their way like enemy players, so one soldier stops your capture and two push it back. Once
+faction's soldiers come in from 22-30 yards (Thrallmar against Alliance, Honor Hold against Horde), 10
+seconds after capturing starts and 20 seconds after the last wave died, each harder than the last. While
+soldiers are alive on the tower the capture bar moves at half speed (never backwards). Once
 the tower is taken the soldiers leave; if nobody is capturing for a minute they leave and the waves
 start over. A soldier counts as an enemy player of its level: honor, an honorable kill (and its
 achievements) and a Mark of Honor Hold or Thrallmar. When one faction has held all three towers for 10
