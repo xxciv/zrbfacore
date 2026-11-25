@@ -3,6 +3,23 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-25 (Quest fixes: Disrupt Their Reinforcements)
+
+Draft PR, not merged yet (same PR as the holiday quest fix below).
+
+### DB: Kingston's Primers say "You have no target" at the portals
+- **Found** (Four, 2026-11-25): on Disrupt Their Reinforcements (Horde 10144, Alliance 10208) the portals
+  can't be disrupted. Using Kingston's Primers on a portal, or standing on it, fails with "You have no target".
+- **Cause:** the primers (28106 / 28478) cast Detonating Rune Stones 34387. Effect 0 opens the clicked portal
+  (that open is what gives the objective credit). Effect 1 is a dummy that looks for a nearby target by entry,
+  and that search only looks at creatures and players. Its conditions asked for the four portal objects, so it
+  never found anything and the whole cast was refused, including the open.
+- **Changed** (`sql/fixes/world/2026_11_25_70_disrupt_their_reinforcements.sql`): the four portal conditions on
+  effect 1 are replaced by one that picks the caster. The dummy does nothing on you, the portal is still
+  opened by effect 0 and credits Portal Grimh/Kaalez (10144) or Kruul/Xilus (10208).
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
 ## 2026-11-24 (Quest fixes: holiday quests outside their holiday)
 
 Draft PR, not merged yet.
