@@ -17,7 +17,7 @@ Draft PR, not merged yet (same PR as the holiday quest fix below).
   - 10344 is now a plain "speak with" quest (flag 2 removed). A copy already in a quest log stays incomplete
     (the saved status is loaded as is): abandon it and take it again from Runetog Wildhammer, and it completes on accept.
   - Runetog's on-accept row (the stray gryphon summon) removed. His in-combat gryphon summon stays.
-- **Status:** untested.
+- **Status:** confirmed in game by Four, 2026-11-25 (after abandoning and retaking the quest).
 - **Pick up:** run the SQL, restart worldserver.
 
 ### DB: Wing Commander Dabir'ee always offers the bombing run
