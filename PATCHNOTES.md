@@ -7,6 +7,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet (same PR as the holiday quest fix below).
 
+### DB: Gryphoneer Windbellow's Abyssal Shelf flight does nothing
+- **Found** (Four, 2026-11-25): on Mission: The Abyssal Shelf (10163) Gryphongar sends you to Gryphoneer
+  Windbellow at Shatter Point, whose "Send me to the Abyssal Shelf!" line doesn't start the flight.
+- **Cause:** her menu 8096 has the real Abyssal Shelf line as option 0 (shown on 10163 or Return to the Abyssal
+  Shelf 10346, starts Aerial Assault Flight 33899), but it was hidden and carried the Honor Point text. The line you
+  saw was option 2, a copy with no script. TDB 8.3.7 shows option 0 and hides option 2.
+- **Changed** (`sql/fixes/world/2026_11_25_74_gryphoneer_windbellow_gossip.sql`):
+  - Option 0 shown again with the Abyssal Shelf text (broadcast 16615). Its quest conditions and flight script were
+    already there.
+  - Option 2 kept but hidden, as in TDB. "Send me to Honor Point!" (option 1) unchanged.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
 ### DB: Wing Commander Gryphongar can't be turned in
 - **Found** (Four, 2026-11-25): quest Wing Commander Gryphongar (10344) shows a grey "?" over Gryphongar at
   Shatter Point and can't be turned in.
