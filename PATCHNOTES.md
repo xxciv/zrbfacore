@@ -10,7 +10,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Changed** (`sql/fixes/world/2026_11_24_35_zethgor_towers.sql`): the 52 fire objects and the 4 TEMP towers removed; TDB's 4 Tower Spell Focus objects added. GUID 74299 is the Tower South marker again at TDB's spot; 123040 removed, so one marker stays. North, Forge and Foothill markers moved to TDB's spots. Building markers moved to TDB's roof spots, plus 11 more copies (GUIDs 735401749-735401759). SmartAI of all Zeth'Gor quest markers, the bomber controllers and the four gryphon riders copied from TDB, with the controller GUIDs changed to ours (124679, 123039). Marker templates get TDB's unit flags (not selectable), the controller flags_extra 130, rider 22406 faction 55. Planting a beacon now sets that tower on fire (spell 34386) and sends a gryphon rider to bomb it.
 - **Not changed:** the other 152 Big Barracks Flames and 34 smoke emitters in Outland (outside Zeth'Gor).
 - **Status:** untested in game.
-- **Pick up:** run the SQL, restart `worldserver`, delete the client's Cache folder (marker templates changed).
+- **Pick up:** run the SQL, restart `worldserver`.
 
 ### World: Runetog Wildhammer at Shatter Point
 - **Found** (Four, 2026-11-24, sent to him by Wing Commander Dabir'ee): Runetog's SmartAI differed from TDB 8.3.7. Accepting Wing Commander Gryphongar (10344) summoned an Enraged Gryphon (creature 9526) next to the player instead of casting 35237, the Shatter Point to Beach Head flight to Gryphongar.
