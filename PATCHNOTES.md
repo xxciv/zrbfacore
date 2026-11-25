@@ -7,6 +7,19 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet (same PR as the holiday quest fix below).
 
+### DB: Wing Commander Dabir'ee always offers the bombing run
+- **Found** (Four, 2026-11-25): Wing Commander Dabir'ee (Honor Hold, also flies you to Shatter Point) offers
+  "I'm on a bombing mission for Forward Commander Kingston" whether or not you have the quest.
+- **Cause:** her menu 7970 has two copies of that line. Option 0 is the real one (only on quest 10146, starts the
+  flight). Option 3 is an old copy with no condition and no script, so it always showed. TDB 8.3.7 hides it.
+  Same kind of bug on the Horde twin, Wing Commander Brack (menu 7967): the second "Send me to the Abyssal Shelf!"
+  (option 1) had no condition.
+- **Changed** (`sql/fixes/world/2026_11_25_72_wing_commander_mission_gossip.sql`):
+  - Dabir'ee option 3 kept but hidden (OptionType 0, OptionNpcFlag 0), as in TDB.
+  - Brack option 1 shown only on Return to the Abyssal Shelf 10347, as in TDB (option 0 stays on 10162).
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
 ### DB: Gateways Murketh and Shaadraz don't catch fire when bombed
 - **Found** (Four, 2026-11-25): on Mission: The Murketh and Shaadraz Gateways (Alliance 10146, Horde twin
   10129) the bomb gave credit, but Gateway Murketh didn't catch fire and Gateway Shaadraz was already burning.
