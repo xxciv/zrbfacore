@@ -5,6 +5,13 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-24 (World fixes: the Dark Portal)
 
+### World: Runetog Wildhammer at Shatter Point
+- **Found** (Four, 2026-11-24, sent to him by Wing Commander Dabir'ee): Runetog's SmartAI differed from TDB 8.3.7. Accepting Wing Commander Gryphongar (10344) summoned an Enraged Gryphon (creature 9526) next to the player instead of casting 35237, the Shatter Point to Beach Head flight to Gryphongar.
+- **Changed** (`sql/fixes/world/2026_11_24_34_runetog_wildhammer.sql`): his three SmartAI rows are now exactly TDB 8.3.7's. On aggro he casts 14313 (summons the gryphon) and yells "Guards!"; on accepting 10344 he casts 35237 on the player.
+- **Not changed:** his flight map ("Show me where I can fly", node Shatter Point): it only lists flight points the character has already discovered.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ### World: Northern Barrens second pass
 - **Found** (Four, 2026-11-24): six Horde Guards stacked on Thork at the Crossroads. The first pass (`2026_11_17_33`, ten zones at once) only thinned hostile mobs with big surpluses and skipped friendly NPCs. Horde Guard 51914 has 8 spawns here (6 on Thork) and none in 8.3.7; the Crossroads guards are 3501. Smaller surpluses were also left: Razormane Pillager 49 (8.3.7: 14), Devouring Ectoplasm 18 (9), Swarm of bees 12 (4), Theramore Marine 30 (22), Trok 3 (1), and a few spawns stacked under 1 yard apart.
 - **Changed** (`sql/fixes/world/2026_11_24_33_northern_barrens_second_pass.sql`): 159 extra creatures removed (Razormane Pillager 31, Fleeting Plainstrider 27, Savannah Huntress 14, Devouring Ectoplasm 9, Horde Guard 8, Swarm of bees 8, Theramore Marine 8, and smaller counts). Cap'n Garvey stands still as in 8.3.7. Guard 354890 had a stray SmartAI row giving credit for the Draenor quest Going Undercover (33080), which cannot happen in the Barrens; it goes with the guard.
