@@ -17,7 +17,7 @@ Draft PR, not merged yet (same PR as the holiday quest fix below).
   - Option 0 shown again with the Abyssal Shelf text (broadcast 16615). Its quest conditions and flight script were
     already there.
   - Option 2 kept but hidden, as in TDB. "Send me to Honor Point!" (option 1) unchanged.
-- **Status:** untested.
+- **Status:** confirmed in game by Four, 2026-11-25.
 - **Pick up:** run the SQL, restart worldserver.
 
 ### DB: Wing Commander Gryphongar can't be turned in
@@ -43,7 +43,7 @@ Draft PR, not merged yet (same PR as the holiday quest fix below).
 - **Changed** (`sql/fixes/world/2026_11_25_72_wing_commander_mission_gossip.sql`):
   - Dabir'ee option 3 kept but hidden (OptionType 0, OptionNpcFlag 0), as in TDB.
   - Brack option 1 shown only on Return to the Abyssal Shelf 10347, as in TDB (option 0 stays on 10162).
-- **Status:** untested.
+- **Status:** confirmed in game by Four, 2026-11-25.
 - **Pick up:** run the SQL, restart worldserver.
 
 ### DB: Gateways Murketh and Shaadraz don't catch fire when bombed
@@ -57,7 +57,7 @@ Draft PR, not merged yet (same PR as the holiday quest fix below).
   - The six fire objects are kept but start hidden (spawntimesecs -180).
   - A bomb hit on either transporter still gives credit, now also casts Create Hellfire Fire 34386 (a 60 second
     fire on the gateway) and shows that gateway's fire objects for 3 minutes.
-- **Status:** untested.
+- **Status:** confirmed in game by Four, 2026-11-25.
 - **Pick up:** run the SQL, restart worldserver.
 
 ### DB: Kingston's Primers say "You have no target" at the portals
@@ -105,8 +105,7 @@ Draft PR, not merged yet.
     Sharvak), Children's Week 53965 (Caretaker Padae) -> Children's Week (10).
   - Objects: This One Time, When I Was Drunk... 12020 (189989) and 12192 (189990) stand all year and were
     always-on as well as on Brewfest; the always-on rows are removed, Brewfest (24) stays, as in TDB.
-- **Status:** not tested in game yet. Right now (Pilgrim's Bounty) the commoners should offer only their
-  Pilgrim's Bounty quest.
+- **Status:** confirmed in game by Four, 2026-11-25.
 - **Pick up:** SQL only:
 
   ```
