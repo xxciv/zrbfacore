@@ -3,6 +3,121 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-25 (Quest fixes: Disrupt Their Reinforcements)
+
+Draft PR, not merged yet (same PR as the holiday quest fix below).
+
+### DB: Gryphoneer Windbellow's Abyssal Shelf flight does nothing
+- **Found** (Four, 2026-11-25): on Mission: The Abyssal Shelf (10163) Gryphongar sends you to Gryphoneer
+  Windbellow at Shatter Point, whose "Send me to the Abyssal Shelf!" line doesn't start the flight.
+- **Cause:** her menu 8096 has the real Abyssal Shelf line as option 0 (shown on 10163 or Return to the Abyssal
+  Shelf 10346, starts Aerial Assault Flight 33899), but it was hidden and carried the Honor Point text. The line you
+  saw was option 2, a copy with no script. TDB 8.3.7 shows option 0 and hides option 2.
+- **Changed** (`sql/fixes/world/2026_11_25_74_gryphoneer_windbellow_gossip.sql`):
+  - Option 0 shown again with the Abyssal Shelf text (broadcast 16615). Its quest conditions and flight script were
+    already there.
+  - Option 2 kept but hidden, as in TDB. "Send me to Honor Point!" (option 1) unchanged.
+- **Status:** confirmed in game by Four, 2026-11-25.
+- **Pick up:** run the SQL, restart worldserver.
+
+### DB: Wing Commander Gryphongar can't be turned in
+- **Found** (Four, 2026-11-25): quest Wing Commander Gryphongar (10344) shows a grey "?" over Gryphongar at
+  Shatter Point and can't be turned in.
+- **Cause:** the quest has no objectives but is flagged as needing an explore/event credit (SpecialFlags 2).
+  TrinityCore gives that credit with spell 35237 on accept, which is an empty serverside spell here, and our accept
+  script for Runetog Wildhammer 20234 summoned an Enraged Gryphon instead. Nothing ever gave the credit.
+- **Changed** (`sql/fixes/world/2026_11_25_73_wing_commander_gryphongar.sql`):
+  - 10344 is now a plain "speak with" quest (flag 2 removed). A copy already in a quest log stays incomplete
+    (the saved status is loaded as is): abandon it and take it again from Runetog Wildhammer, and it completes on accept.
+  - Runetog's on-accept row (the stray gryphon summon) removed. His in-combat gryphon summon stays.
+- **Status:** confirmed in game by Four, 2026-11-25 (after abandoning and retaking the quest).
+- **Pick up:** run the SQL, restart worldserver.
+
+### DB: Wing Commander Dabir'ee always offers the bombing run
+- **Found** (Four, 2026-11-25): Wing Commander Dabir'ee (Honor Hold, also flies you to Shatter Point) offers
+  "I'm on a bombing mission for Forward Commander Kingston" whether or not you have the quest.
+- **Cause:** her menu 7970 has two copies of that line. Option 0 is the real one (only on quest 10146, starts the
+  flight). Option 3 is an old copy with no condition and no script, so it always showed. TDB 8.3.7 hides it.
+  Same kind of bug on the Horde twin, Wing Commander Brack (menu 7967): the second "Send me to the Abyssal Shelf!"
+  (option 1) had no condition.
+- **Changed** (`sql/fixes/world/2026_11_25_72_wing_commander_mission_gossip.sql`):
+  - Dabir'ee option 3 kept but hidden (OptionType 0, OptionNpcFlag 0), as in TDB.
+  - Brack option 1 shown only on Return to the Abyssal Shelf 10347, as in TDB (option 0 stays on 10162).
+- **Status:** confirmed in game by Four, 2026-11-25.
+- **Pick up:** run the SQL, restart worldserver.
+
+### DB: Gateways Murketh and Shaadraz don't catch fire when bombed
+- **Found** (Four, 2026-11-25): on Mission: The Murketh and Shaadraz Gateways (Alliance 10146, Horde twin
+  10129) the bomb gave credit, but Gateway Murketh didn't catch fire and Gateway Shaadraz was already burning.
+- **Cause:** the transporters (Legion Transporter: Alpha 19291 at Murketh, Beta 19292 at Shaadraz) only gave
+  credit on the bomb hit (Dropping The Nether Modulator 33655). The two Hellfire Fire objects at Shaadraz
+  (guids 68035, 68036) are always spawned. Murketh's four Vector Coil Fire objects (66690-66693) are always
+  spawned too, but they are faint smoke and embers, so nothing changes when you bomb it.
+- **Changed** (`sql/fixes/world/2026_11_25_71_murketh_shaadraz_fires.sql`):
+  - The six fire objects are kept but start hidden (spawntimesecs -180).
+  - A bomb hit on either transporter still gives credit, now also casts Create Hellfire Fire 34386 (a 60 second
+    fire on the gateway) and shows that gateway's fire objects for 3 minutes.
+- **Status:** confirmed in game by Four, 2026-11-25.
+- **Pick up:** run the SQL, restart worldserver.
+
+### DB: Kingston's Primers say "You have no target" at the portals
+- **Found** (Four, 2026-11-25): on Disrupt Their Reinforcements (Horde 10144, Alliance 10208) the portals
+  can't be disrupted. Using Kingston's Primers on a portal, or standing on it, fails with "You have no target".
+- **Cause:** the primers (28106 / 28478) cast Detonating Rune Stones 34387. Effect 0 opens the clicked portal
+  (that open is what gives the objective credit). Effect 1 is a dummy that looks for a nearby target by entry,
+  and that search only looks at creatures and players. Its conditions asked for the four portal objects, so it
+  never found anything and the whole cast was refused, including the open.
+- **Changed** (`sql/fixes/world/2026_11_25_70_disrupt_their_reinforcements.sql`): the four portal conditions on
+  effect 1 are replaced by one that picks the caster. The dummy does nothing on you, the portal is still
+  opened by effect 0 and credits Portal Grimh/Kaalez (10144) or Kruul/Xilus (10208).
+- **Status:** confirmed in game by Four, 2026-11-25.
+- **Pick up:** run the SQL, restart worldserver.
+
+## 2026-11-24 (Quest fixes: holiday quests outside their holiday)
+
+Draft PR, not merged yet.
+
+### DB: City NPCs offer other holidays' quests (all cities)
+- **Found** (Four, 2026-11-24): during Pilgrim's Bounty the Troll Commoners in Orgrimmar offer Masked Orphan
+  Matron (Hallow's End) and The Spinner of Summer Tales (Midsummer). Four asked for a check of every holiday
+  quest giver in the cities.
+- **Cause:** 2026_11_23_31 (Wayfarer) removed the always-on starter rows of holiday quests that also had a
+  holiday link. 28 more holiday quest rows had no holiday link at all, so they stayed always-on. Their NPCs
+  stand all year (commoners are spawned for every holiday, the others never despawn).
+- **Check:** every creature and object that starts a holiday quest (quest sorts Lunar Festival, Love is in the
+  Air, Noblegarden, Children's Week, Midsummer, Brewfest, Hallow's End, Pilgrim's Bounty, Day of the Dead,
+  Seasonal) was compared with TDB 8.3.7. Givers that only spawn during their holiday (Festival Loremaster,
+  Talespinner, flame keepers, Lunar Festival Harbinger, Miles Standish, candy buckets, bonfires, Brewfest
+  vendors) were left alone, since they can't offer anything out of season.
+- **Changed** (`sql/fixes/world/2026_11_24_70_holiday_quests_without_event.sql`). Each quest is moved to its
+  holiday, nothing is dropped (TDB's holiday where TDB has the quest, otherwise the holiday of its quest sort):
+  - Masked Orphan Matron 11357, Blood Elf/Orc/Tauren/Troll/Forsaken/Goblin Commoners -> Hallow's End (12),
+    the Horde twin of Costumed Orphan Matron that 2026_11_23_31 moved.
+  - The Spinner of Summer Tales 11971, Blood Elf/Tauren/Troll/Forsaken/Goblin Commoners -> Midsummer (1).
+  - Inform the Elder 12012 and 29092, Earthen Ring Guide 25324 -> Midsummer (1).
+  - Pilgrim's Bounty 14022 (Dwarf/Draenei/Gnome/Night Elf Commoners) and 14036 (Tauren/Troll/Forsaken
+    Commoners) -> Pilgrim's Bounty (26).
+  - The Reason for the Season 6964 (Sagorne Creststrider) and 7062 (Historian Karnik), The Feast of Winter
+    Veil 7061 (Baine Bloodhoof) -> Winter Veil (2).
+  - A Gift for the Banshee Queen 24613 (Sylvanas), A Gift for the Regent Lord of Quel'Thalas 24615
+    (Lor'themar) -> Love is in the Air (8).
+  - Hch'uu and the Mushroom People 10945 (Hch'uu), Visit the Throne of the Elements 10953 (Elementalist
+    Sharvak), Children's Week 53965 (Caretaker Padae) -> Children's Week (10).
+  - Objects: This One Time, When I Was Drunk... 12020 (189989) and 12192 (189990) stand all year and were
+    always-on as well as on Brewfest; the always-on rows are removed, Brewfest (24) stays, as in TDB.
+- **Status:** confirmed in game by Four, 2026-11-25.
+- **Pick up:** SQL only:
+
+  ```
+  git -C ~/bfa/tools-repo fetch origin claude/project-thread-8ftb1c
+  ```
+
+  ```
+  git -C ~/bfa/tools-repo show FETCH_HEAD:sql/fixes/world/2026_11_24_70_holiday_quests_without_event.sql | mysql -u root -p bfa_world
+  ```
+
+  Then restart worldserver.
+
 ## 2026-11-23 (Upper Blackrock Spire: a way into the old wing, parked)
 
 ### DB: Scarshield Guide into old Upper Blackrock Spire (parked, not spawned)
