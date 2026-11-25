@@ -83,6 +83,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/battle-pet-trainers.patch`](tools/bfa/battle-pet-trainers.patch): pet tamers such as
   Julia Stevens can be battled ("Let's do battle!") and the win credits their quest; a capture with
   2 or 3 pets in the team no longer adds the pet 2 or 3 times.
+- [`tools/bfa/taxi-nearest-node.patch`](tools/bfa/taxi-nearest-node.patch): flight masters use their
+  own flight point, not one on another continent (Shatter Point's empty flight map).
 - [`tools/bfa/cannonball-runner.patch`](tools/bfa/cannonball-runner.patch): the Cannonball Runner
   trinket summons its cannon. Needs `sql/fixes/world/2026_11_23_90_cannonball_runner.sql`.
 - [`tools/bfa/loot-guid.patch`](tools/bfa/loot-guid.patch): no more "Already looted" errors when

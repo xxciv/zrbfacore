@@ -161,6 +161,7 @@ git apply ../tools-repo/tools/bfa/blackrock-depths.patch
 git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
 git apply ../tools-repo/tools/bfa/loot-guid.patch
 git apply ../tools-repo/tools/bfa/cannonball-runner.patch
+git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -613,6 +614,13 @@ creature dies (`Unit.cpp`) or when the loot window opens (`Player::SendLoot`).
 Crimson Cannon in front of you for 10 seconds, which fires Cannon Fire every 2 seconds at the enemy you
 hit (or the nearest one), for the trinket's scaled damage. It only touches `spell_item.cpp` and needs
 `sql/fixes/world/2026_11_23_90_cannonball_runner.sql` (script binding and proc rate).
+
+`taxi-nearest-node.patch` makes flight masters pick their own flight point. To find "the flight point you
+are standing at", the core looked through every flight point in the game, and its continent check only
+skipped garrison maps, so a flight point on another continent at nearby coordinates could win. Runetog
+Wildhammer at Shatter Point then opened an empty flight map and never taught Shatter Point. Now only
+flight points on your own continent count (garrison maps still count as Draenor), as in upstream
+TrinityCore. It only touches `ObjectMgr::GetNearestTaxiNode` in `ObjectMgr.cpp`.
 
 `zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
 solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
@@ -1176,6 +1184,7 @@ git apply ../tools-repo/tools/bfa/blackrock-depths.patch
 git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
 git apply ../tools-repo/tools/bfa/loot-guid.patch
 git apply ../tools-repo/tools/bfa/cannonball-runner.patch
+git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
