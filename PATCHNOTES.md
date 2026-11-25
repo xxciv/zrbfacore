@@ -7,6 +7,18 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet (same PR as the holiday quest fix below).
 
+### DB: Wing Commander Gryphongar can't be turned in
+- **Found** (Four, 2026-11-25): quest Wing Commander Gryphongar (10344) shows a grey "?" over Gryphongar at
+  Shatter Point and can't be turned in.
+- **Cause:** the quest has no objectives but is flagged as needing an explore/event credit (SpecialFlags 2).
+  TrinityCore gives that credit with spell 35237 on accept, which is an empty serverside spell here, and our accept
+  script for Runetog Wildhammer 20234 summoned an Enraged Gryphon instead. Nothing ever gave the credit.
+- **Changed** (`sql/fixes/world/2026_11_25_73_wing_commander_gryphongar.sql`):
+  - 10344 is now a plain "speak with" quest (flag 2 removed). Copies already in a quest log complete after the restart.
+  - Runetog's on-accept row (the stray gryphon summon) removed. His in-combat gryphon summon stays.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
 ### DB: Wing Commander Dabir'ee always offers the bombing run
 - **Found** (Four, 2026-11-25): Wing Commander Dabir'ee (Honor Hold, also flies you to Shatter Point) offers
   "I'm on a bombing mission for Forward Commander Kingston" whether or not you have the quest.
