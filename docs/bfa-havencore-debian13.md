@@ -164,6 +164,7 @@ git apply ../tools-repo/tools/bfa/cannonball-runner.patch
 git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
 git apply ../tools-repo/tools/bfa/hellfire-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/terokkar-tower-skirmish.patch
+git apply ../tools-repo/tools/bfa/tower-skirmish-class-pool.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -650,6 +651,13 @@ players; wave 4 is the finale. When one faction holds all five towers, the Bless
 lasts 10 minutes and then all five go back to neutral (blizzlike: locked for 6 hours, and the towers
 keep their owner). The Spirits of Auchindoun quest still completes on a capture. Needs
 `sql/fixes/world/2026_11_26_30_terokkar_tower_skirmishers.sql`. Our own design and tuning.
+
+`tower-skirmish-class-pool.patch` (after `terokkar-tower-skirmish.patch`) changes the waves at both
+zones' towers: every wave is one soldier, and wave 4 is one elite. Waves 1-3 pick a class at random,
+with no repeats, from a pool of seven: warrior, frost mage, fire mage, hunter with a pet, shaman,
+warlock with an imp and rogue. The wave ends when the soldier and its pet are both dead. It changes only
+`OutdoorPvPSkirmish.h` and the two scripts. Needs
+`sql/fixes/world/2026_11_26_31_tower_skirmish_class_pool.sql`. Our own design and tuning.
 
 `zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
 solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
@@ -1216,6 +1224,7 @@ git apply ../tools-repo/tools/bfa/cannonball-runner.patch
 git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
 git apply ../tools-repo/tools/bfa/hellfire-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/terokkar-tower-skirmish.patch
+git apply ../tools-repo/tools/bfa/tower-skirmish-class-pool.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -1455,6 +1464,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_24_33_northern_barrens_second_pass.sql` | Northern Barrens second pass: 159 extras removed incl. the 8 Horde Guards 51914 stacked on Thork at the Crossroads, friendly NPCs and smaller surpluses checked against 8.3.7 |
 | `2026_11_24_34_runetog_wildhammer.sql` | Runetog Wildhammer (Shatter Point): SmartAI back to TDB 8.3.7, so accepting Wing Commander Gryphongar flies you to Gryphongar instead of summoning an Enraged Gryphon |
 | `2026_11_24_35_zethgor_towers.sql` | Zeth'Gor: towers no longer burn from the start (52 always-on fire objects removed, TDB Tower Spell Focus back); the Crusher and Sundered Rumblers at the towers are the tower markers again; tower and building markers, bomber controllers and gryphon riders as TDB 8.3.7, so a Smoke Beacon sets a tower on fire and calls a bomber |
+| `2026_11_26_31_tower_skirmish_class_pool.sql` | Tower skirmishes: the class pool for `tower-skirmish-class-pool.patch` (Pyromancer, Tracker + pet, Earthcaller, Shadowcaller + imp, Cutthroat for Thrallmar, Honor Hold, Stonebreaker and Allerian; 9100113-9100136) |
 | `2026_11_26_30_terokkar_tower_skirmishers.sql` | Terokkar Spirit Towers: the six wave soldiers for `terokkar-tower-skirmish.patch` (Stonebreaker / Allerian Skirmisher, Battlemage and elite Warbringer / Vanguard, level-scaled 62-83, honor kill, no XP); removes five dead duplicate capture banners |
 | `2026_11_25_30_hellfire_tower_skirmishers.sql` | Hellfire towers: the six wave soldiers for `hellfire-tower-skirmish.patch` (Thrallmar / Honor Hold Skirmisher, Battlemage and elite Warbringer / Vanguard, level-scaled, honor kill, no XP); removes three dead duplicate capture banners |
 
