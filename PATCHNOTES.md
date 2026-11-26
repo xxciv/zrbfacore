@@ -9,7 +9,7 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Found** (Four, 2026-11-26): `worldserver` ends with a segmentation fault while running `server shutdown 5`, not while playing, since the recent changes.
 - **Cause:** at shutdown `Main.cpp` deletes the outdoor PvP scripts (`sOutdoorPvPMgr->Die()`) and only then unloads the maps. `hellfire-tower-skirmish.patch` made capture banners link to their outdoor PvP script (`GameObject::Create` now knows the zone first), so when the maps unloaded, each banner's `GameObject::RemoveFromWorld` called `OnGameObjectRemove` on the deleted script. Before that patch no object was linked, so nothing crashed.
 - **Changed** (`tools/bfa/shutdown-zone-script.patch`, after `tower-skirmish-class-pool.patch`): `GameObject::RemoveFromWorld` and `Creature::RemoveFromWorld` skip the zone script call once the world is stopping (`World::IsStopped()`). Nothing needs those calls at shutdown. Playing is unchanged.
-- **Status:** cause found by reading the shutdown order; to be confirmed by Four's backtrace and a clean `server shutdown`.
+- **Status:** confirmed by Four (2026-11-26): the backtrace pointed at `GameObject.cpp:241` (the `OnGameObjectRemove` call), and with the patch `server shutdown 5` exits cleanly after playing.
 - **Pick up:** apply the patch, build (`GameObject.cpp` and `Creature.cpp` rebuild), restart `worldserver`.
 
 ## 2026-11-26 (World fixes: tower skirmish class pool)
