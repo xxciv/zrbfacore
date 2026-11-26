@@ -165,6 +165,7 @@ git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
 git apply ../tools-repo/tools/bfa/hellfire-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/terokkar-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-class-pool.patch
+git apply ../tools-repo/tools/bfa/shutdown-zone-script.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-all-classes.patch
 ```
 
@@ -660,7 +661,13 @@ warlock with an imp and rogue. The wave ends when the soldier and its pet are bo
 `OutdoorPvPSkirmish.h` and the two scripts. Needs
 `sql/fixes/world/2026_11_26_31_tower_skirmish_class_pool.sql`. Our own design and tuning.
 
-`tower-skirmish-all-classes.patch` (after `tower-skirmish-class-pool.patch`) grows the pool to all
+`shutdown-zone-script.patch` (after `tower-skirmish-class-pool.patch`) fixes a segmentation fault on
+`server shutdown`. At shutdown the outdoor PvP scripts are deleted before the maps unload, and since
+`hellfire-tower-skirmish.patch` links capture banners to their script, unloading those banners
+called into the deleted script. Objects leaving the map no longer call their zone script once the
+server is stopping. Only `GameObject.cpp` and `Creature.cpp`.
+
+`tower-skirmish-all-classes.patch` (after `shutdown-zone-script.patch`) grows the pool to all
 thirteen classes (adding paladin, priest, death knight, monk, druid and demon hunter) and gives wave 4
 a pool too: each run shuffles the classes, waves 1-3 are regulars of the first three and wave 4 is the
 elite of the fourth, so no class comes twice. Every class has an elite now, and every kit has a skill
@@ -1233,6 +1240,7 @@ git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
 git apply ../tools-repo/tools/bfa/hellfire-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/terokkar-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-class-pool.patch
+git apply ../tools-repo/tools/bfa/shutdown-zone-script.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-all-classes.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```

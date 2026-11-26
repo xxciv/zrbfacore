@@ -1,0 +1,29 @@
+diff --git a/src/server/game/Entities/Creature/Creature.cpp b/src/server/game/Entities/Creature/Creature.cpp
+index b1e0e55..d2868a6 100644
+--- a/src/server/game/Entities/Creature/Creature.cpp
++++ b/src/server/game/Entities/Creature/Creature.cpp
+@@ -362,7 +362,8 @@ void Creature::RemoveFromWorld()
+     {
+         sScriptMgr->OnCreatureRemoveWorld(this);
+ 
+-        if (GetZoneScript())
++        // at shutdown the outdoor PvP scripts are already deleted (see GameObject::RemoveFromWorld)
++        if (GetZoneScript() && !World::IsStopped())
+             GetZoneScript()->OnCreatureRemove(this);
+ 
+         if (m_formation)
+diff --git a/src/server/game/Entities/GameObject/GameObject.cpp b/src/server/game/Entities/GameObject/GameObject.cpp
+index e805b4d..b034039 100644
+--- a/src/server/game/Entities/GameObject/GameObject.cpp
++++ b/src/server/game/Entities/GameObject/GameObject.cpp
+@@ -236,7 +236,9 @@ void GameObject::RemoveFromWorld()
+     ///- Remove the gameobject from the accessor
+     if (IsInWorld())
+     {
+-        if (m_zoneScript)
++        // at shutdown the outdoor PvP scripts are deleted before the maps unload (Main.cpp), so the
++        // zone script pointer of a capture point or banner left on the map is dangling by then
++        if (m_zoneScript && !World::IsStopped())
+             {
+             m_zoneScript->OnGameObjectRemove(this);
+             m_zoneScript->OnGameObjectRemoveForScript(this);

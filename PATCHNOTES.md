@@ -7,7 +7,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ### Core + world: all thirteen classes, bigger kits, and a pool of elites for wave 4
 - **Asked** (Four, 2026-11-26, after the class pool, on "is wave 4 always a warrior?" (yes)): "expand the pool to all player classes, expand their kit and give them an additional skill or two. and yes, give the last wave a pool just like the others ... but keeping the last wave elite".
-- **Changed** (`tools/bfa/tower-skirmish-all-classes.patch`, after `tower-skirmish-class-pool.patch`; only `OutdoorPvPSkirmish.h`, `OutdoorPvPHP.cpp/.h`, `OutdoorPvPTF.cpp/.h`):
+- **Changed** (`tools/bfa/tower-skirmish-all-classes.patch`, after `shutdown-zone-script.patch`; only `OutdoorPvPSkirmish.h`, `OutdoorPvPHP.cpp/.h`, `OutdoorPvPTF.cpp/.h`):
   - The pool has all thirteen classes. Each run shuffles them and uses the first four: waves 1-3 are regulars of the first three classes, wave 4 is the **elite** of the fourth. So no class comes twice in a run, and the elite is never a class you already fought.
   - Every class has a regular and an elite for each faction in both zones. Hunter and warlock elites bring their pet too.
   - Timing, capture speed, the finale hold and the resets are unchanged.
@@ -19,6 +19,15 @@ to do to pick it up (rebuild, restart, run SQL).
 - **Not changed:** the warrior elite (Warbringer / Vanguard, health x3.4, its kit), the pets, honor and honorable kills.
 - **Status:** confirmed in game by Four (2026-11-26: a priest in the regular waves, a death knight elite in wave 4). All spells and numbers are our own tuning.
 - **Pick up:** apply the patch, build (only the two outdoor PvP scripts rebuild), run the SQL, restart `worldserver`.
+
+## 2026-11-26 (Core fixes: segmentation fault on shutdown)
+
+### Core: `server shutdown` crashed the worldserver
+- **Found** (Four, 2026-11-26): `worldserver` ends with a segmentation fault while running `server shutdown 5`, not while playing, since the recent changes.
+- **Cause:** at shutdown `Main.cpp` deletes the outdoor PvP scripts (`sOutdoorPvPMgr->Die()`) and only then unloads the maps. `hellfire-tower-skirmish.patch` made capture banners link to their outdoor PvP script (`GameObject::Create` now knows the zone first), so when the maps unloaded, each banner's `GameObject::RemoveFromWorld` called `OnGameObjectRemove` on the deleted script. Before that patch no object was linked, so nothing crashed.
+- **Changed** (`tools/bfa/shutdown-zone-script.patch`, after `tower-skirmish-class-pool.patch`): `GameObject::RemoveFromWorld` and `Creature::RemoveFromWorld` skip the zone script call once the world is stopping (`World::IsStopped()`). Nothing needs those calls at shutdown. Playing is unchanged.
+- **Status:** confirmed by Four (2026-11-26): the backtrace pointed at `GameObject.cpp:241` (the `OnGameObjectRemove` call), and with the patch `server shutdown 5` exits cleanly after playing.
+- **Pick up:** apply the patch, build (`GameObject.cpp` and `Creature.cpp` rebuild), restart `worldserver`.
 
 ## 2026-11-26 (World fixes: tower skirmish class pool)
 
