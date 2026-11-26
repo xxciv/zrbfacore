@@ -17,10 +17,10 @@ DELETE FROM `creature_template` WHERE `entry` BETWEEN 9100101 AND 9100106;
 INSERT INTO `creature_template` (`entry`,`name`,`subname`,`minlevel`,`maxlevel`,`faction`,`npcflag`,`speed_walk`,`speed_run`,`scale`,`rank`,`dmgschool`,`BaseAttackTime`,`RangeAttackTime`,`unit_class`,`unit_flags`,`unit_flags2`,`type`,`lootid`,`AIName`,`MovementType`,`InhabitType`,`HoverHeight`,`HealthModifier`,`ManaModifier`,`ArmorModifier`,`DamageModifier`,`ExperienceModifier`,`RegenHealth`,`flags_extra`,`ScriptName`,`VerifiedBuild`) VALUES
 (9100101,'Thrallmar Skirmisher','',58,80,1668,0,1,1.14286,1,0,0,2000,2000,1,32768,2048,7,0,'SmartAI',0,3,1,1.5,1,1,1.2,1,1,2112,'',0),
 (9100102,'Thrallmar Battlemage','',58,80,1668,0,1,1.14286,1,0,0,2000,2000,8,32768,2048,7,0,'SmartAI',0,3,1,1.2,1,1,1,1,1,2112,'',0),
-(9100103,'Thrallmar Warbringer','',58,80,1668,0,1,1.14286,1.1,1,0,2000,2000,1,32768,2048,7,0,'SmartAI',0,3,1,4,1,1,1.6,1,1,2112,'',0),
+(9100103,'Thrallmar Warbringer','',58,80,1668,0,1,1.14286,1.1,1,0,2000,2000,1,32768,2048,7,0,'SmartAI',0,3,1,3.4,1,1,1.6,1,1,2112,'',0),
 (9100104,'Honor Hold Skirmisher','',58,80,1666,0,1,1.14286,1,0,0,2000,2000,1,32768,2048,7,0,'SmartAI',0,3,1,1.5,1,1,1.2,1,1,2112,'',0),
 (9100105,'Honor Hold Battlemage','',58,80,1666,0,1,1.14286,1,0,0,2000,2000,8,32768,2048,7,0,'SmartAI',0,3,1,1.2,1,1,1,1,1,2112,'',0),
-(9100106,'Honor Hold Vanguard','',58,80,1666,0,1,1.14286,1.1,1,0,2000,2000,1,32768,2048,7,0,'SmartAI',0,3,1,4,1,1,1.6,1,1,2112,'',0);
+(9100106,'Honor Hold Vanguard','',58,80,1666,0,1,1.14286,1.1,1,0,2000,2000,1,32768,2048,7,0,'SmartAI',0,3,1,3.4,1,1,1.6,1,1,2112,'',0);
 
 -- Level scaling like Hellfire Peninsula's mobs; elites one level above the player
 DELETE FROM `creature_template_scaling` WHERE `Entry` BETWEEN 9100101 AND 9100106;
