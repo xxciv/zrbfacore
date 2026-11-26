@@ -17,7 +17,7 @@ to do to pick it up (rebuild, restart, run SQL).
   - New elites (same kit as their regular, plus Enrage 8599 once below 30%): Frostweaver, Flameweaver, Huntmaster (+ pet), Stormcaller, Doomcaller (+ imp), Nightblade, Justicar, High Confessor, Deathlord, Grandmaster, Archdruid, Felreaver. They take the warrior elite's step up from their regular (health x2.27, damage x1.33, so x2.7 to x3.4 health), one level above you, scale 1.1.
   - Looks from TDB 8.3.7 NPCs: Blood Knights / Ironforge Paladins, Expeditionary / Dun Garok Priests, Knights of the Ebon Blade, Huojin / Tushui Monks, Bloodhoof Healers / Darnassian Druids, Illidari. Elites wear their regular's looks.
 - **Not changed:** the warrior elite (Warbringer / Vanguard, health x3.4, its kit), the pets, honor and honorable kills.
-- **Status:** untested in game. All spells and numbers are our own tuning; the new spells come from the 8.3.7 spell data, but an NPC casting a player spell (monk, demon hunter) may behave oddly.
+- **Status:** confirmed in game by Four (2026-11-26: a priest in the regular waves, a death knight elite in wave 4). All spells and numbers are our own tuning.
 - **Pick up:** apply the patch, build (only the two outdoor PvP scripts rebuild), run the SQL, restart `worldserver`.
 
 ## 2026-11-26 (World fixes: tower skirmish class pool)
