@@ -14,7 +14,7 @@ to do to pick it up (rebuild, restart, run SQL).
   - All five held: the lock and blessing last 10 minutes instead of 6 hours (our tuning, like Hellfire), then all five towers go back to neutral and the blessing ends. Spirits of Auchindoun (11505 / 11506) still completes on a capture.
   - `sql/fixes/world/2026_11_26_30_terokkar_tower_skirmishers.sql`: soldiers 9100107-9100112 (Stonebreaker Skirmisher / Battlemage / Warbringer, Allerian Skirmisher / Battlemage / Vanguard) with the Hellfire soldiers' stats and spells (elites health x3.4), the looks and weapons of TDB 8.3.7's Stonebreaker Grunt and Guard and Allerian Defender and Horseman, level scaling 62-83 like the Bone Wastes' mobs. The five static banners removed.
 - **Not changed:** the other Outland PvP areas; no Marks or tokens for these kills (Terokkar never had kill tokens), honor and honorable kills as in Hellfire.
-- **Status:** both scripts pass a syntax check with the scripts' precompiled header; SQL tested twice; untested in game. All numbers are our own tuning.
+- **Status:** confirmed in game by Four (2026-11-25). All numbers are our own tuning.
 - **Pick up:** apply the patch, build (only the two outdoor PvP scripts rebuild), run the SQL, restart `worldserver`, then `/pvp` and stand on a Spirit Tower.
 
 ## 2026-11-25 (World fixes: Hellfire tower skirmishes)
