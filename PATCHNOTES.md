@@ -3,6 +3,23 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-26 (World fixes: tower skirmishes get every class)
+
+### Core + world: all thirteen classes, bigger kits, and a pool of elites for wave 4
+- **Asked** (Four, 2026-11-26, after the class pool, on "is wave 4 always a warrior?" (yes)): "expand the pool to all player classes, expand their kit and give them an additional skill or two. and yes, give the last wave a pool just like the others ... but keeping the last wave elite".
+- **Changed** (`tools/bfa/tower-skirmish-all-classes.patch`, after `tower-skirmish-class-pool.patch`; only `OutdoorPvPSkirmish.h`, `OutdoorPvPHP.cpp/.h`, `OutdoorPvPTF.cpp/.h`):
+  - The pool has all thirteen classes. Each run shuffles them and uses the first four: waves 1-3 are regulars of the first three classes, wave 4 is the **elite** of the fourth. So no class comes twice in a run, and the elite is never a class you already fought.
+  - Every class has a regular and an elite for each faction in both zones. Hunter and warlock elites bring their pet too.
+  - Timing, capture speed, the finale hold and the resets are unchanged.
+- **Changed** (`sql/fixes/world/2026_11_26_32_tower_skirmish_all_classes.sql`, run after `_31`): 72 new soldiers, 18 for each of Thrallmar, Honor Hold, Stonebreaker and Allerian (entries 9100137-9100208).
+  - New regulars: **Crusader** (paladin: Devotion Aura 8258 on aggro, Crusader Strike 14518, Holy Strike 13953, Exorcism 17149, Hammer of Justice 13005, Holy Light 15493 below 35%), **Confessor** (priest: Power Word: Shield 17139 on aggro, Smite 9734, Shadow Word: Pain 11639, Mind Blast 13860, Psychic Scream 13704 within 8 yards, Renew 11640 below 50%), **Runeblade** (death knight: Icy Touch 55331, Plague Strike 50688, Death Coil 79903, Death and Decay 61112), **Windwalker** (monk: Flying Serpent Kick 119500 on aggro, Jab 128630, Blackout Kick 128631, Spinning Crane Kick 118592 within 8 yards), **Grovewarden** (druid: Wrath 9739, Moonfire 15798, Starfire 78907, Entangling Roots 11922, Rejuvenation 12160 below 50%), **Felblade** (demon hunter: Fel Strike 188105, Blade Dance 30739 within 8 yards, Eye Beam 26134, Chaos Nova 36255). Health x1.2 to x1.5, damage x1 to x1.2, like the others.
+  - Bigger kits for the first seven: warrior + Rend 13445, Demoralizing Shout 13730; frost mage + Frost Armor 12544 on aggro, Cone of Cold 20828 within 10 yards; fire mage + Flamestrike 11829; hunter + Arcane Shot 78754, Wing Clip 32908 and Raptor Strike 32915 within 5 yards; shaman + Flame Shock 15616, Chain Lightning 12058; warlock + Curse of Agony 14868, Drain Life 17173; rogue + Gouge 12540, Evasion 79853 once below 50%.
+  - New elites (same kit as their regular, plus Enrage 8599 once below 30%): Frostweaver, Flameweaver, Huntmaster (+ pet), Stormcaller, Doomcaller (+ imp), Nightblade, Justicar, High Confessor, Deathlord, Grandmaster, Archdruid, Felreaver. They take the warrior elite's step up from their regular (health x2.27, damage x1.33, so x2.7 to x3.4 health), one level above you, scale 1.1.
+  - Looks from TDB 8.3.7 NPCs: Blood Knights / Ironforge Paladins, Expeditionary / Dun Garok Priests, Knights of the Ebon Blade, Huojin / Tushui Monks, Bloodhoof Healers / Darnassian Druids, Illidari. Elites wear their regular's looks.
+- **Not changed:** the warrior elite (Warbringer / Vanguard, health x3.4, its kit), the pets, honor and honorable kills.
+- **Status:** untested in game. All spells and numbers are our own tuning; the new spells come from the 8.3.7 spell data, but an NPC casting a player spell (monk, demon hunter) may behave oddly.
+- **Pick up:** apply the patch, build (only the two outdoor PvP scripts rebuild), run the SQL, restart `worldserver`.
+
 ## 2026-11-26 (World fixes: tower skirmish class pool)
 
 ### Core + world: one soldier per wave, from a pool of classes
@@ -13,7 +30,7 @@ to do to pick it up (rebuild, restart, run SQL).
   - Timing, capture speed, the finale hold and the resets are unchanged.
 - **Changed** (`sql/fixes/world/2026_11_26_31_tower_skirmish_class_pool.sql`): five new classes for each of Thrallmar, Honor Hold, Stonebreaker and Allerian. **Pyromancer** (fire mage: Fireball 9053, Fire Blast 20795), **Tracker** (hunter: Shoot 6660, Multi-Shot 14443), **Earthcaller** (shaman: Lightning Shield 12550 on aggro, Lightning Bolt 26098, Earth Shock 13728, Healing Wave 12491 below 40% health), **Shadowcaller** (warlock: Shadow Bolt 20825, Corruption 32063) and **Cutthroat** (rogue: Sinister Strike 14873, Eviscerate 15691, Kick 15610 when you cast). Health x1.2 to x1.4 and damage x1 to x1.2, like the existing Skirmisher and Battlemage, which stay in the pool as warrior and frost mage. Pets: Tracker's Worg / Nightsaber (health x0.8, damage x0.7), Shadowcaller's Imp (health x0.5, Firebolt 20801); pets give no honor and no XP. Entries 9100113-9100136. Levels scale like the zone (Hellfire 58-83, Terokkar 62-83). Looks from TDB 8.3.7 faction NPCs.
 - **Not changed:** elites (health x3.4), Marks of Honor Hold / Thrallmar in Hellfire, honor and honorable kills.
-- **Status:** played by Four (2026-11-25, "tons better"); more feedback to come before merging. All spells and numbers are our own tuning.
+- **Status:** played by Four (2026-11-25, "tons better"); merged (PR #116). All spells and numbers are our own tuning.
 - **Pick up:** apply the patch, build (only the two outdoor PvP scripts rebuild), run the SQL, restart `worldserver`.
 
 ## 2026-11-26 (World fixes: Terokkar Spirit Tower skirmishes)

@@ -165,6 +165,7 @@ git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
 git apply ../tools-repo/tools/bfa/hellfire-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/terokkar-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-class-pool.patch
+git apply ../tools-repo/tools/bfa/tower-skirmish-all-classes.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -658,6 +659,13 @@ with no repeats, from a pool of seven: warrior, frost mage, fire mage, hunter wi
 warlock with an imp and rogue. The wave ends when the soldier and its pet are both dead. It changes only
 `OutdoorPvPSkirmish.h` and the two scripts. Needs
 `sql/fixes/world/2026_11_26_31_tower_skirmish_class_pool.sql`. Our own design and tuning.
+
+`tower-skirmish-all-classes.patch` (after `tower-skirmish-class-pool.patch`) grows the pool to all
+thirteen classes (adding paladin, priest, death knight, monk, druid and demon hunter) and gives wave 4
+a pool too: each run shuffles the classes, waves 1-3 are regulars of the first three and wave 4 is the
+elite of the fourth, so no class comes twice. Every class has an elite now, and every kit has a skill
+or two more. It changes only `OutdoorPvPSkirmish.h` and the two scripts. Needs
+`sql/fixes/world/2026_11_26_32_tower_skirmish_all_classes.sql`. Our own design and tuning.
 
 `zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
 solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
@@ -1225,6 +1233,7 @@ git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
 git apply ../tools-repo/tools/bfa/hellfire-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/terokkar-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-class-pool.patch
+git apply ../tools-repo/tools/bfa/tower-skirmish-all-classes.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -1464,6 +1473,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_24_33_northern_barrens_second_pass.sql` | Northern Barrens second pass: 159 extras removed incl. the 8 Horde Guards 51914 stacked on Thork at the Crossroads, friendly NPCs and smaller surpluses checked against 8.3.7 |
 | `2026_11_24_34_runetog_wildhammer.sql` | Runetog Wildhammer (Shatter Point): SmartAI back to TDB 8.3.7, so accepting Wing Commander Gryphongar flies you to Gryphongar instead of summoning an Enraged Gryphon |
 | `2026_11_24_35_zethgor_towers.sql` | Zeth'Gor: towers no longer burn from the start (52 always-on fire objects removed, TDB Tower Spell Focus back); the Crusher and Sundered Rumblers at the towers are the tower markers again; tower and building markers, bomber controllers and gryphon riders as TDB 8.3.7, so a Smoke Beacon sets a tower on fire and calls a bomber |
+| `2026_11_26_32_tower_skirmish_all_classes.sql` | Tower skirmishes: every class for `tower-skirmish-all-classes.patch` (Crusader, Confessor, Runeblade, Windwalker, Grovewarden, Felblade and an elite of every class for Thrallmar, Honor Hold, Stonebreaker and Allerian; 9100137-9100208); bigger kits for the first seven classes |
 | `2026_11_26_31_tower_skirmish_class_pool.sql` | Tower skirmishes: the class pool for `tower-skirmish-class-pool.patch` (Pyromancer, Tracker + pet, Earthcaller, Shadowcaller + imp, Cutthroat for Thrallmar, Honor Hold, Stonebreaker and Allerian; 9100113-9100136) |
 | `2026_11_26_30_terokkar_tower_skirmishers.sql` | Terokkar Spirit Towers: the six wave soldiers for `terokkar-tower-skirmish.patch` (Stonebreaker / Allerian Skirmisher, Battlemage and elite Warbringer / Vanguard, level-scaled 62-83, honor kill, no XP); removes five dead duplicate capture banners |
 | `2026_11_25_30_hellfire_tower_skirmishers.sql` | Hellfire towers: the six wave soldiers for `hellfire-tower-skirmish.patch` (Thrallmar / Honor Hold Skirmisher, Battlemage and elite Warbringer / Vanguard, level-scaled, honor kill, no XP); removes three dead duplicate capture banners |
