@@ -163,6 +163,7 @@ git apply ../tools-repo/tools/bfa/loot-guid.patch
 git apply ../tools-repo/tools/bfa/cannonball-runner.patch
 git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
 git apply ../tools-repo/tools/bfa/hellfire-tower-skirmish.patch
+git apply ../tools-repo/tools/bfa/terokkar-tower-skirmish.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -640,6 +641,15 @@ achievements) and a Mark of Honor Hold or Thrallmar. When one faction has held a
 minutes, all three go back to neutral. New `flags_extra` bit 0x800 (`CREATURE_FLAG_EXTRA_HONOR_KILL`)
 marks the soldiers. Needs `sql/fixes/world/2026_11_25_30_hellfire_tower_skirmishers.sql`. Our own
 design, not Blizzard's.
+
+`terokkar-tower-skirmish.patch` (after `hellfire-tower-skirmish.patch`) gives Terokkar Forest's five
+Spirit Towers in the Bone Wastes the same waves. The wave logic moves out of the Hellfire script into
+a shared header, `OutdoorPvPSkirmish.h`, which both scripts use (Hellfire plays exactly as before).
+Stonebreaker Hold soldiers attack Alliance players and Allerian Stronghold soldiers attack Horde
+players; wave 4 is the finale. When one faction holds all five towers, the Blessing of Auchindoun
+lasts 10 minutes and then all five go back to neutral (blizzlike: locked for 6 hours, and the towers
+keep their owner). The Spirits of Auchindoun quest still completes on a capture. Needs
+`sql/fixes/world/2026_11_26_30_terokkar_tower_skirmishers.sql`. Our own design and tuning.
 
 `zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
 solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
@@ -1205,6 +1215,7 @@ git apply ../tools-repo/tools/bfa/loot-guid.patch
 git apply ../tools-repo/tools/bfa/cannonball-runner.patch
 git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
 git apply ../tools-repo/tools/bfa/hellfire-tower-skirmish.patch
+git apply ../tools-repo/tools/bfa/terokkar-tower-skirmish.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -1444,6 +1455,7 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_24_33_northern_barrens_second_pass.sql` | Northern Barrens second pass: 159 extras removed incl. the 8 Horde Guards 51914 stacked on Thork at the Crossroads, friendly NPCs and smaller surpluses checked against 8.3.7 |
 | `2026_11_24_34_runetog_wildhammer.sql` | Runetog Wildhammer (Shatter Point): SmartAI back to TDB 8.3.7, so accepting Wing Commander Gryphongar flies you to Gryphongar instead of summoning an Enraged Gryphon |
 | `2026_11_24_35_zethgor_towers.sql` | Zeth'Gor: towers no longer burn from the start (52 always-on fire objects removed, TDB Tower Spell Focus back); the Crusher and Sundered Rumblers at the towers are the tower markers again; tower and building markers, bomber controllers and gryphon riders as TDB 8.3.7, so a Smoke Beacon sets a tower on fire and calls a bomber |
+| `2026_11_26_30_terokkar_tower_skirmishers.sql` | Terokkar Spirit Towers: the six wave soldiers for `terokkar-tower-skirmish.patch` (Stonebreaker / Allerian Skirmisher, Battlemage and elite Warbringer / Vanguard, level-scaled 62-83, honor kill, no XP); removes five dead duplicate capture banners |
 | `2026_11_25_30_hellfire_tower_skirmishers.sql` | Hellfire towers: the six wave soldiers for `hellfire-tower-skirmish.patch` (Thrallmar / Honor Hold Skirmisher, Battlemage and elite Warbringer / Vanguard, level-scaled, honor kill, no XP); removes three dead duplicate capture banners |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_23_20_fishing_calendar.sql` shows the Stranglethorn Fishing Extravaganza (Sundays) and the Kalu'ak Fishing Derby (Saturdays) on the calendar, weekly to May 2027 (the client's own rows are hidden or dated 2005). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills, `2026_11_09_02_profession_tier_levels.sql` gates them by expansion level, `2026_11_15_80_profession_trainer_recipes.sql` gives every crafting trainer its recipes).
