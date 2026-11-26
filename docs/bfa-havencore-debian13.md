@@ -165,6 +165,7 @@ git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
 git apply ../tools-repo/tools/bfa/hellfire-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/terokkar-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-class-pool.patch
+git apply ../tools-repo/tools/bfa/shutdown-zone-script.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -658,6 +659,12 @@ with no repeats, from a pool of seven: warrior, frost mage, fire mage, hunter wi
 warlock with an imp and rogue. The wave ends when the soldier and its pet are both dead. It changes only
 `OutdoorPvPSkirmish.h` and the two scripts. Needs
 `sql/fixes/world/2026_11_26_31_tower_skirmish_class_pool.sql`. Our own design and tuning.
+
+`shutdown-zone-script.patch` (after `tower-skirmish-class-pool.patch`) fixes a segmentation fault on
+`server shutdown`. At shutdown the outdoor PvP scripts are deleted before the maps unload, and since
+`hellfire-tower-skirmish.patch` links capture banners to their script, unloading those banners
+called into the deleted script. Objects leaving the map no longer call their zone script once the
+server is stopping. Only `GameObject.cpp` and `Creature.cpp`.
 
 `zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
 solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
@@ -1225,6 +1232,7 @@ git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
 git apply ../tools-repo/tools/bfa/hellfire-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/terokkar-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-class-pool.patch
+git apply ../tools-repo/tools/bfa/shutdown-zone-script.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
