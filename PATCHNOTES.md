@@ -3,6 +3,22 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-26 (Quest fixes: Cursed Talisman drop rate)
+
+Draft PR, not merged yet.
+
+### DB: Cursed Talismans drop too rarely
+- **Found** (Four, 2026-11-26): Cursed Talisman 30157 drops far too rarely for Cursed Talismans (10484, needs 12),
+  and for Ill Omens (10483, needs 1) before it.
+- **Cause:** 17-25% chance on the Bleeding Hollow orcs, about 55 kills for 12 talismans.
+- **Changed** (`sql/fixes/world/2026_11_26_70_cursed_talisman_drop_rate.sql`):
+  - 50% on Bleeding Hollow Grunt 16871, Dark Shaman 16873, Peon 16907, Necrolyte 19422, Tormentor 19424
+    (about 24 kills for 12).
+  - 100% on the named orcs Worg Master Kruush 19442 and Grillok "Darkeye" 19457.
+  - Worgs and boars keep their tiny chances.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
 ## 2026-11-26 (World fixes: tower skirmish class pool)
 
 ### Core + world: one soldier per wave, from a pool of classes
