@@ -3,6 +3,20 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-26 (World fixes: Terokkar Spirit Tower skirmishes)
+
+### Core + world: Terokkar Forest's Spirit Towers become a solo PvP fight
+- **Asked** (Four, 2026-11-26): the Hellfire tower skirmishes for another PvP area; Four picked Terokkar.
+- **Found:** Terokkar's script (`OutdoorPvPTF.cpp`) has five Spirit Towers in the Bone Wastes. Their banners take only 12 points from neutral (`controlZone` neutral 10%, max 120; Hellfire's need 120 of 600), so alone you take a tower in about 12 seconds. When one faction holds all five, they get Blessing of Auchindoun (33377) and the towers are locked for 6 hours; when the lock ends nothing resets, so towers kept their owner for good. Our world DB also had five static 'Terokkar Banner' capture objects (67500, 67719-67722) that TDB 8.3.7 doesn't have, on top of the core's own.
+- **Changed** (`tools/bfa/terokkar-tower-skirmish.patch`, after `hellfire-tower-skirmish.patch`):
+  - New `OutdoorPvPSkirmish.h` (scripts, header only, so no CMake rerun): the wave logic from the Hellfire patch, unchanged, as a capture point class both scripts use. `OutdoorPvPHP.cpp/.h` now use it; Hellfire plays exactly as before.
+  - `OutdoorPvPTF.cpp/.h`: the five towers get the waves (first 10 seconds after capturing starts, then 20 seconds after each wave dies; warriors / mages / elites 1/0/0, 2/0/0, 2/1/0, then the finale 0/1/1; the tower holds just short of capture until the finale is dead; soldiers alive on the tower halve the capture speed; nobody capturing for 60 seconds resets the waves). Stonebreaker soldiers attack Alliance players, Allerian soldiers attack Horde players.
+  - All five held: the lock and blessing last 10 minutes instead of 6 hours (our tuning, like Hellfire), then all five towers go back to neutral and the blessing ends. Spirits of Auchindoun (11505 / 11506) still completes on a capture.
+  - `sql/fixes/world/2026_11_26_30_terokkar_tower_skirmishers.sql`: soldiers 9100107-9100112 (Stonebreaker Skirmisher / Battlemage / Warbringer, Allerian Skirmisher / Battlemage / Vanguard) with the Hellfire soldiers' stats and spells (elites health x3.4), the looks and weapons of TDB 8.3.7's Stonebreaker Grunt and Guard and Allerian Defender and Horseman, level scaling 62-83 like the Bone Wastes' mobs. The five static banners removed.
+- **Not changed:** the other Outland PvP areas; no Marks or tokens for these kills (Terokkar never had kill tokens), honor and honorable kills as in Hellfire.
+- **Status:** confirmed in game by Four (2026-11-25). All numbers are our own tuning.
+- **Pick up:** apply the patch, build (only the two outdoor PvP scripts rebuild), run the SQL, restart `worldserver`, then `/pvp` and stand on a Spirit Tower.
+
 ## 2026-11-25 (World fixes: Hellfire tower skirmishes)
 
 ### Core + world: Hellfire Peninsula towers become a solo PvP fight

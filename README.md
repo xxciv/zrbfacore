@@ -86,6 +86,9 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/hellfire-tower-skirmish.patch`](tools/bfa/hellfire-tower-skirmish.patch): `/pvp` works
   again, capture banners link to their outdoor PvP script again, and capturing a Hellfire Peninsula tower alone brings waves of enemy soldiers that give honor
   and honorable kills. Needs `sql/fixes/world/2026_11_25_30_hellfire_tower_skirmishers.sql`.
+- [`tools/bfa/terokkar-tower-skirmish.patch`](tools/bfa/terokkar-tower-skirmish.patch): the same
+  waves at Terokkar Forest's five Spirit Towers, and all five go back to neutral 10 minutes after one
+  faction takes them all. Needs `sql/fixes/world/2026_11_26_30_terokkar_tower_skirmishers.sql`.
 - [`tools/bfa/taxi-nearest-node.patch`](tools/bfa/taxi-nearest-node.patch): flight masters use their
   own flight point, not one on another continent (Shatter Point's empty flight map).
 - [`tools/bfa/cannonball-runner.patch`](tools/bfa/cannonball-runner.patch): the Cannonball Runner
