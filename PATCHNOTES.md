@@ -13,7 +13,7 @@ to do to pick it up (rebuild, restart, run SQL).
   - Timing, capture speed, the finale hold and the resets are unchanged.
 - **Changed** (`sql/fixes/world/2026_11_26_31_tower_skirmish_class_pool.sql`): five new classes for each of Thrallmar, Honor Hold, Stonebreaker and Allerian. **Pyromancer** (fire mage: Fireball 9053, Fire Blast 20795), **Tracker** (hunter: Shoot 6660, Multi-Shot 14443), **Earthcaller** (shaman: Lightning Shield 12550 on aggro, Lightning Bolt 26098, Earth Shock 13728, Healing Wave 12491 below 40% health), **Shadowcaller** (warlock: Shadow Bolt 20825, Corruption 32063) and **Cutthroat** (rogue: Sinister Strike 14873, Eviscerate 15691, Kick 15610 when you cast). Health x1.2 to x1.4 and damage x1 to x1.2, like the existing Skirmisher and Battlemage, which stay in the pool as warrior and frost mage. Pets: Tracker's Worg / Nightsaber (health x0.8, damage x0.7), Shadowcaller's Imp (health x0.5, Firebolt 20801); pets give no honor and no XP. Entries 9100113-9100136. Levels scale like the zone (Hellfire 58-83, Terokkar 62-83). Looks from TDB 8.3.7 faction NPCs.
 - **Not changed:** elites (health x3.4), Marks of Honor Hold / Thrallmar in Hellfire, honor and honorable kills.
-- **Status:** both scripts pass a syntax check with the scripts' precompiled header; SQL tested twice; untested in game. All spells and numbers are our own tuning.
+- **Status:** played by Four (2026-11-25, "tons better"); more feedback to come before merging. All spells and numbers are our own tuning.
 - **Pick up:** apply the patch, build (only the two outdoor PvP scripts rebuild), run the SQL, restart `worldserver`.
 
 ## 2026-11-26 (World fixes: Terokkar Spirit Tower skirmishes)
