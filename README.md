@@ -89,6 +89,9 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/terokkar-tower-skirmish.patch`](tools/bfa/terokkar-tower-skirmish.patch): the same
   waves at Terokkar Forest's five Spirit Towers, and all five go back to neutral 10 minutes after one
   faction takes them all. Needs `sql/fixes/world/2026_11_26_30_terokkar_tower_skirmishers.sql`.
+- [`tools/bfa/tower-skirmish-class-pool.patch`](tools/bfa/tower-skirmish-class-pool.patch): tower
+  skirmish waves are one soldier each from a pool of seven classes (hunters and warlocks bring a pet),
+  with an elite in wave 4. Needs `sql/fixes/world/2026_11_26_31_tower_skirmish_class_pool.sql`.
 - [`tools/bfa/taxi-nearest-node.patch`](tools/bfa/taxi-nearest-node.patch): flight masters use their
   own flight point, not one on another continent (Shatter Point's empty flight map).
 - [`tools/bfa/cannonball-runner.patch`](tools/bfa/cannonball-runner.patch): the Cannonball Runner

@@ -3,6 +3,19 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-26 (World fixes: tower skirmish class pool)
+
+### Core + world: one soldier per wave, from a pool of classes
+- **Asked** (Four, 2026-11-26, after playing both zones): "a bit of a slog", fighting several soldiers at once meant kiting and terrain tricks, and the mages were always frost (Frost Nova, slows). Wanted: a pool of classes, always one soldier per wave, wave 4 an elite, health and damage unchanged.
+- **Changed** (`tools/bfa/tower-skirmish-class-pool.patch`, after `terokkar-tower-skirmish.patch`; only `OutdoorPvPSkirmish.h`, `OutdoorPvPHP.cpp/.h`, `OutdoorPvPTF.cpp/.h`):
+  - Waves 1-3 are one soldier each. At the start of each run the seven classes are shuffled, and the first three come in that order, so there are no repeats in a run. Wave 4 is one elite (Warbringer / Vanguard). The old wave table (2 warriors, warrior + mage, and so on) is gone.
+  - Hunters bring a pet and warlocks an imp, summoned at their side. The wave ends when both are dead; the tower still holds until the elite is dead.
+  - Timing, capture speed, the finale hold and the resets are unchanged.
+- **Changed** (`sql/fixes/world/2026_11_26_31_tower_skirmish_class_pool.sql`): five new classes for each of Thrallmar, Honor Hold, Stonebreaker and Allerian. **Pyromancer** (fire mage: Fireball 9053, Fire Blast 20795), **Tracker** (hunter: Shoot 6660, Multi-Shot 14443), **Earthcaller** (shaman: Lightning Shield 12550 on aggro, Lightning Bolt 26098, Earth Shock 13728, Healing Wave 12491 below 40% health), **Shadowcaller** (warlock: Shadow Bolt 20825, Corruption 32063) and **Cutthroat** (rogue: Sinister Strike 14873, Eviscerate 15691, Kick 15610 when you cast). Health x1.2 to x1.4 and damage x1 to x1.2, like the existing Skirmisher and Battlemage, which stay in the pool as warrior and frost mage. Pets: Tracker's Worg / Nightsaber (health x0.8, damage x0.7), Shadowcaller's Imp (health x0.5, Firebolt 20801); pets give no honor and no XP. Entries 9100113-9100136. Levels scale like the zone (Hellfire 58-83, Terokkar 62-83). Looks from TDB 8.3.7 faction NPCs.
+- **Not changed:** elites (health x3.4), Marks of Honor Hold / Thrallmar in Hellfire, honor and honorable kills.
+- **Status:** played by Four (2026-11-25, "tons better"); more feedback to come before merging. All spells and numbers are our own tuning.
+- **Pick up:** apply the patch, build (only the two outdoor PvP scripts rebuild), run the SQL, restart `worldserver`.
+
 ## 2026-11-26 (World fixes: Terokkar Spirit Tower skirmishes)
 
 ### Core + world: Terokkar Forest's Spirit Towers become a solo PvP fight
