@@ -1,0 +1,467 @@
+diff --git a/src/server/game/Entities/Creature/CreatureData.h b/src/server/game/Entities/Creature/CreatureData.h
+index 87c081d..03b4a1e 100644
+--- a/src/server/game/Entities/Creature/CreatureData.h
++++ b/src/server/game/Entities/Creature/CreatureData.h
+@@ -268,6 +268,7 @@ enum CreatureFlagsExtra
+     CREATURE_FLAG_EXTRA_NO_TAUNT             = 0x00000100,       // creature is immune to taunt auras and effect attack me
+     CREATURE_FLAG_EXTRA_NO_MOVE_FLAGS_UPDATE = 0x00000200,       // creature won't update movement flags
+     CREATURE_FLAG_EXTRA_NO_NPC_DAMAGE_BELOW_85PCT = 0x00000400,  // staged NPC battles: damage from creatures stops at 85% health (players and their pets deal full damage)
++    CREATURE_FLAG_EXTRA_HONOR_KILL           = 0x00000800,       // killing it gives honor and an honorable kill like an enemy player of its level (Hellfire tower skirmishers)
+     CREATURE_FLAG_EXTRA_WORLDEVENT           = 0x00004000,       // custom flag for world event creatures (left room for merging)
+     CREATURE_FLAG_EXTRA_GUARD                = 0x00008000,       // Creature is guard
+     CREATURE_FLAG_EXTRA_NO_CRIT              = 0x00020000,       // creature can't do critical strikes
+@@ -283,7 +284,7 @@ enum CreatureFlagsExtra
+ #define CREATURE_FLAG_EXTRA_DB_ALLOWED (CREATURE_FLAG_EXTRA_INSTANCE_BIND | CREATURE_FLAG_EXTRA_CIVILIAN | \
+     CREATURE_FLAG_EXTRA_NO_PARRY | CREATURE_FLAG_EXTRA_NO_PARRY_HASTEN | CREATURE_FLAG_EXTRA_NO_BLOCK | \
+     CREATURE_FLAG_EXTRA_NO_CRUSH | CREATURE_FLAG_EXTRA_NO_XP_AT_KILL | CREATURE_FLAG_EXTRA_TRIGGER | \
+-    CREATURE_FLAG_EXTRA_NO_TAUNT | CREATURE_FLAG_EXTRA_NO_MOVE_FLAGS_UPDATE | CREATURE_FLAG_EXTRA_NO_NPC_DAMAGE_BELOW_85PCT | CREATURE_FLAG_EXTRA_WORLDEVENT | CREATURE_FLAG_EXTRA_NO_CRIT | \
++    CREATURE_FLAG_EXTRA_NO_TAUNT | CREATURE_FLAG_EXTRA_NO_MOVE_FLAGS_UPDATE | CREATURE_FLAG_EXTRA_NO_NPC_DAMAGE_BELOW_85PCT | CREATURE_FLAG_EXTRA_HONOR_KILL | CREATURE_FLAG_EXTRA_WORLDEVENT | CREATURE_FLAG_EXTRA_NO_CRIT | \
+     CREATURE_FLAG_EXTRA_NO_SKILLGAIN | CREATURE_FLAG_EXTRA_TAUNT_DIMINISH | CREATURE_FLAG_EXTRA_ALL_DIMINISH | \
+     CREATURE_FLAG_EXTRA_GUARD | CREATURE_FLAG_EXTRA_IGNORE_PATHFINDING | CREATURE_FLAG_EXTRA_NO_PLAYER_DAMAGE_REQ | CREATURE_FLAG_EXTRA_IMMUNITY_KNOCKBACK)
+ 
+diff --git a/src/server/game/Entities/GameObject/GameObject.cpp b/src/server/game/Entities/GameObject/GameObject.cpp
+index 3d71c7a..e805b4d 100644
+--- a/src/server/game/Entities/GameObject/GameObject.cpp
++++ b/src/server/game/Entities/GameObject/GameObject.cpp
+@@ -272,6 +272,8 @@ bool GameObject::Create(uint32 entry, Map* map, Position const& pos, QuaternionD
+     if (!dynamic)
+         SetRespawnCompatibilityMode();
+ 
++    // zone must be known before binding the zone script (outdoor PvP capture points), as upstream
++    UpdatePositionData();
+     SetZoneScript();
+     if (m_zoneScript)
+     {
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index 21b1d56..240d50c 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -7133,6 +7133,26 @@ bool Player::RewardHonor(Unit* victim, uint32 groupsize, int32 honor, bool pvpto
+             UpdateCriteria(CRITERIA_TYPE_HONORABLE_KILL_AT_AREA, GetAreaId());
+             UpdateCriteria(CRITERIA_TYPE_HONORABLE_KILL, 1, 0, 0, victim);
+         }
++        else if (victim->ToCreature()->GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_HONOR_KILL)
++        {
++            // stands in for an enemy player: same honor and honorable kill counting as a player of its level
++            uint8 k_level = getLevel();
++            uint8 k_grey = Trinity::XP::GetGrayLevel(k_level);
++            uint8 v_level = victim->GetLevelForTarget(this);
++
++            if (v_level <= k_grey)
++                return false;
++
++            honor_f = std::ceil(Trinity::Honor::hk_honor_at_level_f(k_level) * (v_level - k_grey) / (k_level - k_grey));
++
++            ApplyModUpdateFieldValue(m_values.ModifyValue(&Player::m_activePlayerData).ModifyValue(&UF::ActivePlayerData::TodayHonorableKills), 1, true);
++            ApplyModUpdateFieldValue(m_values.ModifyValue(&Player::m_activePlayerData).ModifyValue(&UF::ActivePlayerData::LifetimeHonorableKills), 1, true);
++            UpdateCriteria(CRITERIA_TYPE_EARN_HONORABLE_KILL);
++            UpdateCriteria(CRITERIA_TYPE_HONORABLE_KILLS_GUILD, 1);
++            UpdateCriteria(CRITERIA_TYPE_HK_CLASS, victim->getClass());
++            UpdateCriteria(CRITERIA_TYPE_HONORABLE_KILL_AT_AREA, GetAreaId());
++            UpdateCriteria(CRITERIA_TYPE_HONORABLE_KILL, 1, 0, 0, victim);
++        }
+         else
+         {
+             if (!victim->ToCreature()->IsRacialLeader())
+diff --git a/src/server/game/Handlers/MiscHandler.cpp b/src/server/game/Handlers/MiscHandler.cpp
+index 22ed603..c488a71 100644
+--- a/src/server/game/Handlers/MiscHandler.cpp
++++ b/src/server/game/Handlers/MiscHandler.cpp
+@@ -332,9 +332,7 @@ void WorldSession::HandleLogoutCancelOpcode(WorldPackets::Character::LogoutCance
+ 
+ void WorldSession::HandleTogglePvP(WorldPackets::Misc::TogglePvP& /*packet*/)
+ {
+-    //Handled by WarMode now
+-    return;
+-
++    // /pvp works again (War Mode never sets the PvP flag here, so nothing else could)
+     if (GetPlayer()->HasPlayerFlag(PLAYER_FLAGS_IN_PVP))
+     {
+         GetPlayer()->RemovePlayerFlag(PLAYER_FLAGS_IN_PVP);
+@@ -353,9 +351,6 @@ void WorldSession::HandleTogglePvP(WorldPackets::Misc::TogglePvP& /*packet*/)
+ 
+ void WorldSession::HandleSetPvP(WorldPackets::Misc::SetPvP& packet)
+ {
+-    //Handled by WarMode now
+-    return;
+-
+     if (!packet.EnablePVP)
+     {
+         GetPlayer()->RemovePlayerFlag(PLAYER_FLAGS_IN_PVP);
+diff --git a/src/server/game/OutdoorPvP/OutdoorPvP.cpp b/src/server/game/OutdoorPvP/OutdoorPvP.cpp
+index 8bd1ba5..6890724 100644
+--- a/src/server/game/OutdoorPvP/OutdoorPvP.cpp
++++ b/src/server/game/OutdoorPvP/OutdoorPvP.cpp
+@@ -325,7 +325,7 @@ bool OPvPCapturePoint::Update(uint32 diff)
+     }
+ 
+     // get the difference of numbers
+-    float fact_diff = ((float)m_activePlayers[0].size() - (float)m_activePlayers[1].size()) * diff / OUTDOORPVP_OBJECTIVE_UPDATE_INTERVAL;
++    float fact_diff = ((float)m_activePlayers[0].size() - (float)m_activePlayers[1].size() + GetSimulatedPresence()) * diff / OUTDOORPVP_OBJECTIVE_UPDATE_INTERVAL;
+     if (!fact_diff)
+         return false;
+ 
+diff --git a/src/server/game/OutdoorPvP/OutdoorPvP.h b/src/server/game/OutdoorPvP/OutdoorPvP.h
+index 8d74428..9ab0e3e 100644
+--- a/src/server/game/OutdoorPvP/OutdoorPvP.h
++++ b/src/server/game/OutdoorPvP/OutdoorPvP.h
+@@ -125,6 +125,9 @@ class TC_GAME_API OPvPCapturePoint
+ 
+         virtual void ChangeTeam(TeamId /*oldTeam*/) { }
+ 
++        // NPCs that push the capture bar like players do (in players): positive = towards Alliance, negative = towards Horde
++        virtual float GetSimulatedPresence() const { return 0.0f; }
++
+         virtual void SendChangePhase();
+ 
+         virtual bool HandleGossipOption(Player* /*player*/, Creature* /*guid*/, uint32 /*gossipId*/) { return false; }
+diff --git a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp
+index 5dd2748..4a17351 100644
+--- a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp
++++ b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp
+@@ -16,10 +16,16 @@
+  */
+ 
+ #include "ScriptMgr.h"
++#include "Creature.h"
++#include "Containers.h"
++#include "CreatureAI.h"
+ #include "GameObject.h"
+ #include "MapManager.h"
++#include "ObjectAccessor.h"
+ #include "OutdoorPvPHP.h"
+ #include "Player.h"
++#include "Random.h"
++#include "TemporarySummon.h"
+ #include "WorldStatePackets.h"
+ 
+ const uint32 HP_LANG_CAPTURE_A[HP_TOWER_NUM] = { TEXT_BROKEN_HILL_TAKEN_ALLIANCE, TEXT_OVERLOOK_TAKEN_ALLIANCE, TEXT_STADIUM_TAKEN_ALLIANCE };
+@@ -27,7 +33,7 @@ const uint32 HP_LANG_CAPTURE_A[HP_TOWER_NUM] = { TEXT_BROKEN_HILL_TAKEN_ALLIANCE
+ const uint32 HP_LANG_CAPTURE_H[HP_TOWER_NUM] = { TEXT_BROKEN_HILL_TAKEN_HORDE, TEXT_OVERLOOK_TAKEN_HORDE, TEXT_STADIUM_TAKEN_HORDE };
+ 
+ OPvPCapturePointHP::OPvPCapturePointHP(OutdoorPvP* pvp, OutdoorPvPHPTowerType type)
+-: OPvPCapturePoint(pvp), m_TowerType(type)
++: OPvPCapturePoint(pvp), m_TowerType(type), m_skirmishTeam(TEAM_NEUTRAL), m_skirmishWave(0), m_skirmishTimer(0), m_skirmishIdle(0)
+ {
+     SetCapturePointData(HPCapturePoints[type].entry,
+         HPCapturePoints[type].map,
+@@ -57,6 +63,7 @@ OutdoorPvPHP::OutdoorPvPHP()
+     m_TypeId = OUTDOOR_PVP_HP;
+     m_AllianceTowersControlled = 0;
+     m_HordeTowersControlled = 0;
++    m_allTowersTimer = 0;
+ }
+ 
+ bool OutdoorPvPHP::SetupOutdoorPvP()
+@@ -111,6 +118,22 @@ void OutdoorPvPHP::HandlePlayerLeaveZone(Player* player, uint32 zone)
+ bool OutdoorPvPHP::Update(uint32 diff)
+ {
+     bool changed = OutdoorPvP::Update(diff);
++
++    // one side has held all three towers for 10 minutes: they all go back to neutral
++    if (m_AllianceTowersControlled >= HP_TOWER_NUM || m_HordeTowersControlled >= HP_TOWER_NUM)
++    {
++        m_allTowersTimer += diff;
++        if (m_allTowersTimer >= HP_ALL_TOWERS_RESET_TIME)
++        {
++            m_allTowersTimer = 0;
++            for (OPvPCapturePointMap::iterator itr = m_capturePoints.begin(); itr != m_capturePoints.end(); ++itr)
++                static_cast<OPvPCapturePointHP*>(itr->second)->ResetToNeutral();
++            changed = true;
++        }
++    }
++    else
++        m_allTowersTimer = 0;
++
+     if (changed)
+     {
+         if (m_AllianceTowersControlled == 3)
+@@ -286,6 +309,16 @@ void OPvPCapturePointHP::FillInitialWorldStates(WorldPackets::WorldState::InitWo
+ 
+ void OutdoorPvPHP::HandleKillImpl(Player* player, Unit* killed)
+ {
++    // tower skirmishers count like enemy players: Mark of Honor Hold / Thrallmar
++    if (Creature* creature = killed->ToCreature())
++    {
++        if (!(creature->GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_HONOR_KILL))
++            return;
++
++        player->CastSpell(player, player->GetTeam() == ALLIANCE ? AlliancePlayerKillReward : HordePlayerKillReward, true);
++        return;
++    }
++
+     if (killed->GetTypeId() != TYPEID_PLAYER)
+         return;
+ 
+@@ -295,6 +328,205 @@ void OutdoorPvPHP::HandleKillImpl(Player* player, Unit* killed)
+         player->CastSpell(player, HordePlayerKillReward, true);
+ }
+ 
++bool OPvPCapturePointHP::Update(uint32 diff)
++{
++    bool changed = OPvPCapturePoint::Update(diff);
++    UpdateSkirmish(diff);
++    return changed;
++}
++
++float OPvPCapturePointHP::GetSimulatedPresence() const
++{
++    if (!m_capturePoint || m_skirmishTeam == TEAM_NEUTRAL)
++        return 0.0f;
++
++    float radius = float(m_capturePoint->GetGOInfo()->controlZone.radius);
++    bool alive = false;
++    bool contested = false;
++    for (ObjectGuid const& guid : m_skirmishNpcs)
++        if (Creature* npc = ObjectAccessor::GetCreature(*m_capturePoint, guid))
++            if (npc->IsAlive())
++            {
++                alive = true;
++                if (m_capturePoint->IsWithinDistInMap(npc, radius))
++                {
++                    contested = true;
++                    break;
++                }
++            }
++
++    float const players = float(m_activePlayers[m_skirmishTeam].size());
++
++    // the tower holds just short of the capture line until the final wave is beaten
++    // (each update, about once a second, moves the bar by about one point per player)
++    if (m_skirmishWave < HP_SKIRMISH_FINAL_WAVE || alive)
++    {
++        float const progress = m_skirmishTeam == TEAM_ALLIANCE ? m_value : -m_value;
++        if (progress >= m_minValue - 2.0f * (players + 1.0f))
++            return m_skirmishTeam == TEAM_ALLIANCE ? -players : players;
++    }
++
++    if (!contested)
++        return 0.0f;
++
++    // soldiers alive on the point halve the capture speed (they never push it back)
++    float const slow = 0.5f * players;
++    return m_skirmishTeam == TEAM_ALLIANCE ? -slow : slow;
++}
++
++void OPvPCapturePointHP::UpdateSkirmish(uint32 diff)
++{
++    if (!m_capturePoint)
++        return;
++
++    // forget soldiers that died or despawned
++    m_skirmishNpcs.remove_if([this](ObjectGuid const& guid)
++    {
++        Creature* npc = ObjectAccessor::GetCreature(*m_capturePoint, guid);
++        return !npc || !npc->IsAlive();
++    });
++
++    // only players of one faction on the point (no real enemies): they get attacked
++    TeamId attackers = TEAM_NEUTRAL;
++    if (!m_activePlayers[TEAM_ALLIANCE].empty() && m_activePlayers[TEAM_HORDE].empty())
++        attackers = TEAM_ALLIANCE;
++    else if (m_activePlayers[TEAM_ALLIANCE].empty() && !m_activePlayers[TEAM_HORDE].empty())
++        attackers = TEAM_HORDE;
++
++    bool const captured = (attackers == TEAM_ALLIANCE && m_State == OBJECTIVESTATE_ALLIANCE)
++        || (attackers == TEAM_HORDE && m_State == OBJECTIVESTATE_HORDE);
++
++    if (attackers != TEAM_NEUTRAL && !captured)
++    {
++        if (m_skirmishTeam != attackers)
++        {
++            DespawnSkirmish();
++            m_skirmishTeam = attackers;
++            m_skirmishWave = 0;
++            m_skirmishTimer = HP_SKIRMISH_FIRST_WAVE_DELAY;
++        }
++
++        m_skirmishIdle = 0;
++
++        if (m_skirmishNpcs.empty() && m_skirmishWave < HP_SKIRMISH_FINAL_WAVE)
++        {
++            m_skirmishTimer -= int32(diff);
++            if (m_skirmishTimer <= 0)
++            {
++                std::vector<ObjectGuid> targets(m_activePlayers[attackers].begin(), m_activePlayers[attackers].end());
++                if (Player* target = ObjectAccessor::FindPlayer(Trinity::Containers::SelectRandomContainerElement(targets)))
++                    SpawnSkirmishWave(target);
++                ++m_skirmishWave;
++                m_skirmishTimer = HP_SKIRMISH_NEXT_WAVE_DELAY;
++            }
++        }
++        return;
++    }
++
++    if (captured)
++    {
++        // point taken: the soldiers fall back and the waves stop
++        if (m_skirmishTeam != TEAM_NEUTRAL)
++        {
++            DespawnSkirmish();
++            m_skirmishTeam = TEAM_NEUTRAL;
++            m_skirmishWave = 0;
++        }
++        return;
++    }
++
++    // nobody capturing, or both factions there (real PvP): no new waves; give up after a while
++    if (m_skirmishTeam == TEAM_NEUTRAL)
++        return;
++
++    m_skirmishIdle += diff;
++    if (m_skirmishIdle >= HP_SKIRMISH_IDLE_RESET)
++    {
++        DespawnSkirmish();
++        m_skirmishTeam = TEAM_NEUTRAL;
++        m_skirmishWave = 0;
++        m_skirmishIdle = 0;
++    }
++}
++
++void OPvPCapturePointHP::SpawnSkirmishWave(Player* target)
++{
++    // warriors, mages, elites per wave; after the last one the last wave repeats
++    static uint8 const waves[][3] =
++    {
++        { 1, 0, 0 },
++        { 2, 0, 0 },
++        { 2, 1, 0 },
++        { 0, 1, 1 },
++        { 1, 1, 1 },
++        { 0, 0, 2 },
++        { 1, 0, 2 },
++        { 1, 1, 2 },
++        { 0, 1, 3 },
++        { 1, 1, 3 }
++    };
++    uint32 const waveCount = sizeof(waves) / sizeof(waves[0]);
++    uint8 const* wave = waves[std::min(m_skirmishWave, waveCount - 1)];
++
++    // Alliance players are attacked by Thrallmar, Horde players by Honor Hold
++    bool const horde = m_skirmishTeam == TEAM_ALLIANCE;
++    uint32 const entries[3] =
++    {
++        horde ? uint32(NPC_HP_HORDE_SKIRMISHER) : uint32(NPC_HP_ALLIANCE_SKIRMISHER),
++        horde ? uint32(NPC_HP_HORDE_BATTLEMAGE) : uint32(NPC_HP_ALLIANCE_BATTLEMAGE),
++        horde ? uint32(NPC_HP_HORDE_WARBRINGER) : uint32(NPC_HP_ALLIANCE_VANGUARD)
++    };
++
++    for (uint8 type = 0; type < 3; ++type)
++    {
++        for (uint8 i = 0; i < wave[type]; ++i)
++        {
++            // come in from a random side, 22-30 yards out
++            Position pos = target->GetPosition();
++            target->MovePositionToFirstCollision(pos, frand(22.0f, 30.0f), frand(0.0f, float(2 * M_PI)));
++            pos.SetOrientation(pos.GetAngle(target));
++
++            if (TempSummon* npc = m_capturePoint->SummonCreature(entries[type], pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, HP_SKIRMISH_CORPSE_DESPAWN))
++            {
++                npc->SetPvP(true);
++                if (npc->IsAIEnabled)
++                    npc->AI()->AttackStart(target);
++                m_skirmishNpcs.push_back(npc->GetGUID());
++            }
++        }
++    }
++}
++
++void OPvPCapturePointHP::DespawnSkirmish()
++{
++    if (m_capturePoint)
++        for (ObjectGuid const& guid : m_skirmishNpcs)
++            if (Creature* npc = ObjectAccessor::GetCreature(*m_capturePoint, guid))
++                npc->DespawnOrUnsummon();
++
++    m_skirmishNpcs.clear();
++}
++
++void OPvPCapturePointHP::ResetToNeutral()
++{
++    DespawnSkirmish();
++    m_skirmishTeam = TEAM_NEUTRAL;
++    m_skirmishWave = 0;
++    m_skirmishIdle = 0;
++
++    TeamId oldTeam = m_team;
++    m_OldState = m_State;
++    m_State = OBJECTIVESTATE_NEUTRAL;
++    m_team = TEAM_NEUTRAL;
++    m_value = 0.0f;
++
++    if (oldTeam != m_team)
++        ChangeTeam(oldTeam);
++    if (m_OldState != m_State)
++        ChangeState();
++    SendChangePhase();
++}
++
+ uint32 OutdoorPvPHP::GetAllianceTowersControlled() const
+ {
+     return m_AllianceTowersControlled;
+diff --git a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h
+index 0c57fef..197c83e 100644
+--- a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h
++++ b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h
+@@ -52,6 +52,25 @@ enum OutdoorPvPHPTowerType
+ 
+ const uint32 HP_CREDITMARKER[HP_TOWER_NUM] = {19032, 19028, 19029};
+ 
++// Tower skirmishes: while players of only one faction capture a tower, waves of the other faction's soldiers
++// attack them. Our own addition, not Blizzard's; numbers are tuning.
++enum OutdoorPvPHPSkirmish
++{
++    NPC_HP_HORDE_SKIRMISHER         = 9100101, // regular warrior
++    NPC_HP_HORDE_BATTLEMAGE         = 9100102, // regular mage
++    NPC_HP_HORDE_WARBRINGER         = 9100103, // elite
++    NPC_HP_ALLIANCE_SKIRMISHER      = 9100104,
++    NPC_HP_ALLIANCE_BATTLEMAGE      = 9100105,
++    NPC_HP_ALLIANCE_VANGUARD        = 9100106,
++
++    HP_SKIRMISH_FIRST_WAVE_DELAY    = 10 * IN_MILLISECONDS,  // after someone starts capturing
++    HP_SKIRMISH_NEXT_WAVE_DELAY     = 20 * IN_MILLISECONDS,  // after the last soldier of a wave dies
++    HP_SKIRMISH_FINAL_WAVE          = 4,                     // wave 4 (elite + mage) is the finale: the tower holds until it is dead
++    HP_SKIRMISH_IDLE_RESET          = 60 * IN_MILLISECONDS,  // nobody capturing: soldiers leave, waves start over
++    HP_SKIRMISH_CORPSE_DESPAWN      = 30 * IN_MILLISECONDS,
++    HP_ALL_TOWERS_RESET_TIME        = 10 * MINUTE * IN_MILLISECONDS // one side holding all 3 towers: back to neutral
++};
++
+ const uint32 HP_CapturePointEvent_Enter[HP_TOWER_NUM] = {11404, 11396, 11388};
+ 
+ const uint32 HP_CapturePointEvent_Leave[HP_TOWER_NUM] = {11403, 11395, 11387};
+@@ -100,8 +119,25 @@ class OPvPCapturePointHP : public OPvPCapturePoint
+ 
+         void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
+ 
++        bool Update(uint32 diff) override;
++
++        float GetSimulatedPresence() const override;
++
++        // tower back to neutral (all three held for 10 minutes)
++        void ResetToNeutral();
++
+     private:
++        void UpdateSkirmish(uint32 diff);
++        void SpawnSkirmishWave(Player* target);
++        void DespawnSkirmish();
++
+         OutdoorPvPHPTowerType m_TowerType;
++
++        GuidList m_skirmishNpcs;
++        TeamId m_skirmishTeam;      // team of the players being attacked
++        uint32 m_skirmishWave;
++        int32 m_skirmishTimer;
++        uint32 m_skirmishIdle;
+ };
+ 
+ class OutdoorPvPHP : public OutdoorPvP
+@@ -132,6 +168,9 @@ class OutdoorPvPHP : public OutdoorPvP
+         // how many towers are controlled
+         uint32 m_AllianceTowersControlled;
+         uint32 m_HordeTowersControlled;
++
++        // how long one side has held all three towers
++        uint32 m_allTowersTimer;
+ };
+ 
+ #endif

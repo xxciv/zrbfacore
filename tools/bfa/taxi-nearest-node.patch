@@ -1,0 +1,19 @@
+diff --git a/src/server/game/Globals/ObjectMgr.cpp b/src/server/game/Globals/ObjectMgr.cpp
+--- a/src/server/game/Globals/ObjectMgr.cpp
++++ b/src/server/game/Globals/ObjectMgr.cpp
+@@ -6557,9 +6557,14 @@
+         if (!node || !(node->Flags & requireFlag))
+             continue;
+ 
++        // only nodes on this continent (garrison maps count as Draenor); nodes on other maps sitting at
++        // nearby coordinates were picked as the "current" node (Shatter Point opened an empty flight map)
+         if (node->ContinentID != mapid)
+-            if (mapOverrides.find(node->ContinentID) != mapOverrides.end() && mapOverrides[node->ContinentID] != mapid)
++        {
++            auto itr = mapOverrides.find(node->ContinentID);
++            if (itr == mapOverrides.end() || itr->second != mapid)
+                 continue;
++        }
+ 
+         uint32 field   = uint32((node->ID - 1) / 8);
+         uint32 submask = 1 << ((node->ID - 1) % 8);

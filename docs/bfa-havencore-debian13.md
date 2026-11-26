@@ -161,6 +161,8 @@ git apply ../tools-repo/tools/bfa/blackrock-depths.patch
 git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
 git apply ../tools-repo/tools/bfa/loot-guid.patch
 git apply ../tools-repo/tools/bfa/cannonball-runner.patch
+git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
+git apply ../tools-repo/tools/bfa/hellfire-tower-skirmish.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -613,6 +615,31 @@ creature dies (`Unit.cpp`) or when the loot window opens (`Player::SendLoot`).
 Crimson Cannon in front of you for 10 seconds, which fires Cannon Fire every 2 seconds at the enemy you
 hit (or the nearest one), for the trinket's scaled damage. It only touches `spell_item.cpp` and needs
 `sql/fixes/world/2026_11_23_90_cannonball_runner.sql` (script binding and proc rate).
+
+`taxi-nearest-node.patch` makes flight masters pick their own flight point. To find "the flight point you
+are standing at", the core looked through every flight point in the game, and its continent check only
+skipped garrison maps, so a flight point on another continent at nearby coordinates could win. Runetog
+Wildhammer at Shatter Point then opened an empty flight map and never taught Shatter Point. Now only
+flight points on your own continent count (garrison maps still count as Draenor), as in upstream
+TrinityCore. It only touches `ObjectMgr::GetNearestTaxiNode` in `ObjectMgr.cpp`.
+
+`hellfire-tower-skirmish.patch` turns the Hellfire Peninsula towers (Broken Hill, the Overlook, the Stadium)
+into a solo PvP fight. It also makes `/pvp` work again: the core ignored it ("handled by War Mode"), but
+War Mode never sets the PvP flag here, so nobody could be flagged and the towers could not be captured.
+It also links capture banners to their outdoor PvP script: `GameObject::Create` looked up the zone
+script before it knew the object's zone, so no capture point in any outdoor PvP zone ever ran (upstream
+works out the position first).
+While players of only one faction capture a tower and no enemy players are there, waves of the other
+faction's soldiers come in from 22-30 yards (Thrallmar against Alliance, Honor Hold against Horde), 10
+seconds after capturing starts and 20 seconds after the last wave died, each harder than the last; the
+fourth wave (an elite and a mage) is the finale, and the tower cannot flip until it is dead. While
+soldiers are alive on the tower the capture bar moves at half speed (never backwards). Once
+the tower is taken the soldiers leave; if nobody is capturing for a minute they leave and the waves
+start over. A soldier counts as an enemy player of its level: honor, an honorable kill (and its
+achievements) and a Mark of Honor Hold or Thrallmar. When one faction has held all three towers for 10
+minutes, all three go back to neutral. New `flags_extra` bit 0x800 (`CREATURE_FLAG_EXTRA_HONOR_KILL`)
+marks the soldiers. Needs `sql/fixes/world/2026_11_25_30_hellfire_tower_skirmishers.sql`. Our own
+design, not Blizzard's.
 
 `zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
 solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
@@ -1176,6 +1203,8 @@ git apply ../tools-repo/tools/bfa/blackrock-depths.patch
 git apply ../tools-repo/tools/bfa/terrain-status-no-gridmap.patch
 git apply ../tools-repo/tools/bfa/loot-guid.patch
 git apply ../tools-repo/tools/bfa/cannonball-runner.patch
+git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
+git apply ../tools-repo/tools/bfa/hellfire-tower-skirmish.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -1409,6 +1438,13 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_20_37_western_plaguelands_review.sql` | Western Plaguelands zone review: extras and stacked copies removed, rares pooled, missing spawns added, movement as 8.3.7 |
 | `2026_11_23_30_pilgrims_bounty_feast_chairs.sql` | Pilgrim's Bounty: 159 loose (doubled) feast chairs removed, table/chair flags as 8.3.7, no names over the feast |
 | `2026_11_23_31_holiday_quests_only_in_season.sql` | 212 holiday quests offered only during their holiday (always-on starter rows removed), Costumed Orphan Matron on Hallow's End |
+| `2026_11_24_30_dark_portal_to_outland.sql` | Blasted Lands: the Dark Portal (trigger 4354) teleports players above level 57 to Hellfire Peninsula, as in 8.3.7 |
+| `2026_11_24_31_dark_portal_walk_in.sql` | Dark Portal, both sides: invisible bunnies in the opening teleport players who walk in (Blasted Lands side above level 57 only, phase 318); the core never spawns the `areatrigger` table's portal triggers |
+| `2026_11_24_32_hellfire_peninsula_review.sql` | Hellfire Peninsula zone review against TDB 8.3.7: 126 extra mobs removed, 200 missing spawns added, wander fixed on 408 (quest givers and target dummies stand still) |
+| `2026_11_24_33_northern_barrens_second_pass.sql` | Northern Barrens second pass: 159 extras removed incl. the 8 Horde Guards 51914 stacked on Thork at the Crossroads, friendly NPCs and smaller surpluses checked against 8.3.7 |
+| `2026_11_24_34_runetog_wildhammer.sql` | Runetog Wildhammer (Shatter Point): SmartAI back to TDB 8.3.7, so accepting Wing Commander Gryphongar flies you to Gryphongar instead of summoning an Enraged Gryphon |
+| `2026_11_24_35_zethgor_towers.sql` | Zeth'Gor: towers no longer burn from the start (52 always-on fire objects removed, TDB Tower Spell Focus back); the Crusher and Sundered Rumblers at the towers are the tower markers again; tower and building markers, bomber controllers and gryphon riders as TDB 8.3.7, so a Smoke Beacon sets a tower on fire and calls a bomber |
+| `2026_11_25_30_hellfire_tower_skirmishers.sql` | Hellfire towers: the six wave soldiers for `hellfire-tower-skirmish.patch` (Thrallmar / Honor Hold Skirmisher, Battlemage and elite Warbringer / Vanguard, level-scaled, honor kill, no XP); removes three dead duplicate capture banners |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_23_20_fishing_calendar.sql` shows the Stranglethorn Fishing Extravaganza (Sundays) and the Kalu'ak Fishing Derby (Saturdays) on the calendar, weekly to May 2027 (the client's own rows are hidden or dated 2005). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills, `2026_11_09_02_profession_tier_levels.sql` gates them by expansion level, `2026_11_15_80_profession_trainer_recipes.sql` gives every crafting trainer its recipes).
 
