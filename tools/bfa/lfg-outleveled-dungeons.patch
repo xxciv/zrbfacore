@@ -1,0 +1,50 @@
+diff --git a/src/server/game/DungeonFinding/LFGMgr.cpp b/src/server/game/DungeonFinding/LFGMgr.cpp
+index da30de1..08da795 100644
+--- a/src/server/game/DungeonFinding/LFGMgr.cpp
++++ b/src/server/game/DungeonFinding/LFGMgr.cpp
+@@ -16,6 +16,7 @@
+  */
+ 
+ #include "LFGMgr.h"
++#include "Config.h"
+ #include "DatabaseEnv.h"
+ #include "DB2Stores.h"
+ #include "DisableMgr.h"
+@@ -1722,6 +1723,8 @@ LfgLockMap LFGMgr::GetLockedDungeons(ObjectGuid guid)
+     uint8 expansion = player->GetSession()->GetExpansion();
+     LfgDungeonSet const& dungeons = GetDungeonsByRandom(0);
+     bool denyJoin = !player->GetSession()->HasPermission(rbac::RBAC_PERM_JOIN_DUNGEON_FINDER);
++    // outleveled normal dungeons stay in the finder (creatures still stop at the dungeon's own max level)
++    static bool const outleveledNormals = sConfigMgr->GetBoolDefault("DungeonFinder.OutleveledNormalDungeons", true);
+ 
+     for (LfgDungeonSet::const_iterator it = dungeons.begin(); it != dungeons.end(); ++it)
+     {
+@@ -1742,7 +1745,7 @@ LfgLockMap LFGMgr::GetLockedDungeons(ObjectGuid guid)
+             lockStatus = LFG_LOCKSTATUS_RAID_LOCKED;
+         else if (dungeon->minlevel > level)
+             lockStatus = LFG_LOCKSTATUS_TOO_LOW_LEVEL;
+-        else if (dungeon->maxlevel < level)
++        else if (dungeon->maxlevel < level && !(outleveledNormals && dungeon->type == LFG_TYPE_DUNGEON && dungeon->difficulty == DIFFICULTY_NORMAL))
+             lockStatus = LFG_LOCKSTATUS_TOO_HIGH_LEVEL;
+         else if (dungeon->seasonal && !IsSeasonActive(dungeon->id))
+             lockStatus = LFG_LOCKSTATUS_NOT_IN_SEASON;
+diff --git a/src/server/worldserver/worldserver.conf.dist b/src/server/worldserver/worldserver.conf.dist
+index 013a22b..6f5beff 100644
+--- a/src/server/worldserver/worldserver.conf.dist
++++ b/src/server/worldserver/worldserver.conf.dist
+@@ -1257,6 +1257,15 @@ Command.LookupMaxResults = 0
+ 
+ DungeonFinder.OptionsMask = 1
+ 
++#
++#     DungeonFinder.OutleveledNormalDungeons
++#        Description: Keep normal dungeons in the dungeon finder after you outlevel them (Classic
++#                     dungeons past 60 and so on). Creatures still stop at the dungeon's own max level.
++#        Default:     1 - (Enabled)
++#                     0 - (Disabled, blizzlike: the finder drops them above their level range)
++
++DungeonFinder.OutleveledNormalDungeons = 1
++
+ #
+ #   DBC.EnforceItemAttributes
+ #        Description: Disallow overriding item attributes stored in DBC files with values from the
