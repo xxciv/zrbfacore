@@ -3,6 +3,27 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-27 (World: deprecated and stacked fishing pools)
+
+Draft PR, not merged yet.
+
+### DB: "(DEPRECATED)" fishing schools and pools stacked on each other
+- **Found** (2026-11-27, Wetlands/Hillsbrad coast): one spot showed "(DEPRECATED) Sparse Firefin Snapper School",
+  "(DEPRECATED) Sparse Oily Blackmouth School" and "Schooner Wreckage" on top of each other.
+- **Cause:** the world DB still spawns 266 pre-Cataclysm schools (Lesser/Sparse/Teeming/Abundant Oily Blackmouth and
+  Firefin Snapper, entries 180582 180657 180664 180750 180752 180900 180902) that Blizzard renamed "(DEPRECATED)" and
+  stopped spawning; TDB 8.3.7 has none. The old data also put 2 to 5 alternative schools on one spot without a spawn
+  pool, so all of them appear at once (about 360 spots, e.g. 46 Wetlands/Hillsbrad triples, 84 Zangarmarsh
+  Brackish/Sporefish/Flotsam stacks, 68 Floating Debris + Lesser Sagefish).
+- **Changed** (`sql/fixes/world/2026_11_27_50_fishing_pools_deprecated_and_stacked.sql`):
+  - Deprecated Oily Blackmouth schools become Oily Blackmouth School 180682, deprecated Firefin Snapper schools become
+    Firefin Snapper School 180683 (both have loot from upstream `2026_08_20_00_world_fishing_loot_restore`).
+  - Every group of fishing holes closer than 5 yards becomes a pool (5200001-5200361, max_limit 1, equal chance):
+    one school shows per spot, and a fished-out spot respawns as a random member. Holes already in a pool or linked
+    to a game event (Stranglethorn Fishing Extravaganza) are left alone. Nothing is deleted; revert lines in the file.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
 ## 2026-11-27 (Core: conditional loot was never shown)
 
 Draft PR, not merged yet (same PR as the Helboar and Cursed Talisman changes below).
