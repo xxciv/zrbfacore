@@ -3,6 +3,20 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-27 (World fixes: Burning Steppes)
+
+### World: Burning Steppes zone review, and the Blackrock army only for its quest
+- **Found** (Four, 2026-11-27, flying from the Explorers' League Digsite to Flamestar Post): "CRAZY amounts of overspawns", a lot of spawns with 2 or 3 extra copies. Against TDB 8.3.7:
+  - 271 extra mobs: sniffed spots spawned two or three times (Greater Obsidian Elemental 41, Black Wyrmkin 37, Venomtip Scorpid 24, Black Dragonspawn 22, Giant Ember Worg 21, Ember Worg 14, the Flamekin 39, Blackrock Warlocks, Sorcerers and Slayers, Firegut ogres, War Reavers and more), plus a second Ner'gosh the Shadow 3.6 yards from the first.
+  - 14 Firegut Ogres (7033): TDB has none anywhere; its Dreadmaul ogres are Firegut Brutes, Ogre Mages and Reavers, and most of ours stood 0-3 yards from one of those.
+  - The army under the flight path: about 680 Blackrock Invaders (48432, 48414) around Dreadmaul Rock, the targets of Assault on Dreadmaul Rock (28320 Alliance, 28454 Horde: slay 200 Blackrock Invaders from the vehicle). TDB has none of them while it has the Necromancers, dragonspawn and ogres standing in the same place, so retail shows them only to players on that quest.
+  - Nine rares with 2-5 unpooled spawn points each, all up at once (Terrorspark, Thauris Balgarr, Deathmaw, Gruklash, Malfunctioning Reaver, Gorgon'och, Hahk'Zor, Hematos, Volchan).
+  - 15 TDB spawns missing (Smolderthorn Assassin 12, Thaurissan Spy 3), and 644 mobs shuffling 3 yards where TDB has them standing still.
+- **Changed** (`sql/fixes/world/2026_11_27_31_burning_steppes_review.sql`): the 271 extras and the 14 Firegut Ogres removed; the army in a new phase 319 that Burning Steppes gives while either Assault on Dreadmaul Rock is taken or completed (not after it is turned in), with phase 169 next to it so every other spawn stays visible; 3 stacked invader copies (under half a yard apart) removed; each rare in its own pool (5100645-5100653), one spawn point up at a time; the 15 missing TDB spawns added (guids 735401761-735401775); wander as TDB on 644 spawns. Zone total 2231 to 1958.
+- **Not changed:** critters and battle pets, the Midsummer bonfires (event spawns), quest givers (Keeshan, Troteman, Ariok, Eitrigg), the invaders outside Burning Steppes (Redridge and others: one zone at a time), and spawns tied to pools, formations, scripts or a fight.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-27 (World fixes: Hellfire Peninsula leftovers)
 
 ### World: Zeth'Gor gryphons and scarabs, Expedition Point miners, Darkness Released in the Honor Hold inn
