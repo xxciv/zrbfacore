@@ -1,0 +1,224 @@
+diff --git a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp
+index 6d1d5b7..afe16e4 100644
+--- a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp
++++ b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.cpp
+@@ -32,27 +32,26 @@ const uint32 HP_LANG_CAPTURE_A[HP_TOWER_NUM] = { TEXT_BROKEN_HILL_TAKEN_ALLIANCE
+ 
+ const uint32 HP_LANG_CAPTURE_H[HP_TOWER_NUM] = { TEXT_BROKEN_HILL_TAKEN_HORDE, TEXT_OVERLOOK_TAKEN_HORDE, TEXT_STADIUM_TAKEN_HORDE };
+ 
+-// warrior, frost mage, fire mage, hunter (+ pet), shaman, warlock (+ imp), rogue; elite
+-static OPvPSkirmishSoldiers const HPAllianceSoldiers =
++// warrior, frost mage, fire mage, hunter (+ pet), shaman, warlock (+ imp), rogue; the rest of the pool
++// (paladin, priest, death knight, monk, druid, demon hunter and the elites) comes from the faction's block
++static uint32 const HPAllianceFirst[OPVP_SKIRMISH_FIRST_CLASSES] =
+ {
+-    {
+-        { NPC_HP_ALLIANCE_SKIRMISHER, 0 }, { NPC_HP_ALLIANCE_BATTLEMAGE, 0 }, { NPC_HP_ALLIANCE_PYROMANCER, 0 },
+-        { NPC_HP_ALLIANCE_TRACKER, NPC_SKIRMISH_ALLIANCE_NIGHTSABER }, { NPC_HP_ALLIANCE_EARTHCALLER, 0 },
+-        { NPC_HP_ALLIANCE_SHADOWCALLER, NPC_SKIRMISH_ALLIANCE_IMP }, { NPC_HP_ALLIANCE_CUTTHROAT, 0 }
+-    },
+-    NPC_HP_ALLIANCE_VANGUARD
++    NPC_HP_ALLIANCE_SKIRMISHER, NPC_HP_ALLIANCE_BATTLEMAGE, NPC_HP_ALLIANCE_PYROMANCER, NPC_HP_ALLIANCE_TRACKER,
++    NPC_HP_ALLIANCE_EARTHCALLER, NPC_HP_ALLIANCE_SHADOWCALLER, NPC_HP_ALLIANCE_CUTTHROAT
+ };
+ 
+-static OPvPSkirmishSoldiers const HPHordeSoldiers =
++static uint32 const HPHordeFirst[OPVP_SKIRMISH_FIRST_CLASSES] =
+ {
+-    {
+-        { NPC_HP_HORDE_SKIRMISHER, 0 }, { NPC_HP_HORDE_BATTLEMAGE, 0 }, { NPC_HP_HORDE_PYROMANCER, 0 },
+-        { NPC_HP_HORDE_TRACKER, NPC_SKIRMISH_HORDE_WORG }, { NPC_HP_HORDE_EARTHCALLER, 0 },
+-        { NPC_HP_HORDE_SHADOWCALLER, NPC_SKIRMISH_HORDE_IMP }, { NPC_HP_HORDE_CUTTHROAT, 0 }
+-    },
+-    NPC_HP_HORDE_WARBRINGER
++    NPC_HP_HORDE_SKIRMISHER, NPC_HP_HORDE_BATTLEMAGE, NPC_HP_HORDE_PYROMANCER, NPC_HP_HORDE_TRACKER,
++    NPC_HP_HORDE_EARTHCALLER, NPC_HP_HORDE_SHADOWCALLER, NPC_HP_HORDE_CUTTHROAT
+ };
+ 
++static OPvPSkirmishSoldiers const HPAllianceSoldiers = MakeSkirmishSoldiers(HPAllianceFirst, NPC_HP_ALLIANCE_VANGUARD,
++    NPC_HP_ALLIANCE_POOL, NPC_SKIRMISH_ALLIANCE_NIGHTSABER, NPC_SKIRMISH_ALLIANCE_IMP);
++
++static OPvPSkirmishSoldiers const HPHordeSoldiers = MakeSkirmishSoldiers(HPHordeFirst, NPC_HP_HORDE_WARBRINGER,
++    NPC_HP_HORDE_POOL, NPC_SKIRMISH_HORDE_WORG, NPC_SKIRMISH_HORDE_IMP);
++
+ OPvPCapturePointHP::OPvPCapturePointHP(OutdoorPvP* pvp, OutdoorPvPHPTowerType type)
+ : OPvPSkirmishCapturePoint(pvp, HPAllianceSoldiers, HPHordeSoldiers), m_TowerType(type)
+ {
+diff --git a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h
+index 04e1064..ce0128a 100644
+--- a/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h
++++ b/src/server/scripts/OutdoorPvP/OutdoorPvPHP.h
+@@ -73,6 +73,9 @@ enum OutdoorPvPHPSkirmish
+     NPC_HP_ALLIANCE_EARTHCALLER     = 9100120,
+     NPC_HP_ALLIANCE_SHADOWCALLER    = 9100121,
+     NPC_HP_ALLIANCE_CUTTHROAT       = 9100122,
++    // first of each faction's 18 all-classes entries (see MakeSkirmishSoldiers in OutdoorPvPSkirmish.h)
++    NPC_HP_HORDE_POOL               = 9100137,
++    NPC_HP_ALLIANCE_POOL            = 9100155,
+ 
+     HP_ALL_TOWERS_RESET_TIME        = 10 * MINUTE * IN_MILLISECONDS // one side holding all 3 towers: back to neutral
+ };
+diff --git a/src/server/scripts/OutdoorPvP/OutdoorPvPSkirmish.h b/src/server/scripts/OutdoorPvP/OutdoorPvPSkirmish.h
+index e22a3cc..ad9f6b1 100644
+--- a/src/server/scripts/OutdoorPvP/OutdoorPvPSkirmish.h
++++ b/src/server/scripts/OutdoorPvP/OutdoorPvPSkirmish.h
+@@ -19,8 +19,9 @@
+ #define OUTDOOR_PVP_SKIRMISH_
+ 
+ // Solo PvP at outdoor capture points: while players of only one faction capture a
+-// point, waves of the other faction's soldiers attack them. Waves 1-3 are one soldier
+-// each, picked at random (no repeats) from a pool of classes; wave 4 is one elite.
++// point, waves of the other faction's soldiers attack them. Each wave is one soldier of
++// a class picked at random from all thirteen player classes, no class twice in a run;
++// waves 1-3 are regulars, wave 4 is the elite of the fourth class.
+ // Hunters and warlocks bring a pet. Shared by Hellfire Peninsula and Terokkar Forest.
+ // Header only, so adding it needs no CMake rerun.
+ 
+@@ -36,11 +37,24 @@
+ #include <algorithm>
+ #include <vector>
+ 
+-// the regular soldiers of one faction: warrior, frost mage, fire mage, hunter, shaman,
+-// warlock, rogue (any order); pet = companion summoned with it, 0 for none
+-enum OPvPSkirmishPool
++// the classes of the pool, in table order; pet = companion summoned with a soldier, 0 for none
++enum OPvPSkirmishClass
+ {
+-    OPVP_SKIRMISH_POOL_SIZE     = 7
++    OPVP_SKIRMISH_WARRIOR       = 0,
++    OPVP_SKIRMISH_FROST_MAGE,
++    OPVP_SKIRMISH_FIRE_MAGE,
++    OPVP_SKIRMISH_HUNTER,
++    OPVP_SKIRMISH_SHAMAN,
++    OPVP_SKIRMISH_WARLOCK,
++    OPVP_SKIRMISH_ROGUE,
++    OPVP_SKIRMISH_FIRST_CLASSES,    // the seven above came first (the class-pool patch)
++    OPVP_SKIRMISH_PALADIN       = OPVP_SKIRMISH_FIRST_CLASSES,
++    OPVP_SKIRMISH_PRIEST,
++    OPVP_SKIRMISH_DEATH_KNIGHT,
++    OPVP_SKIRMISH_MONK,
++    OPVP_SKIRMISH_DRUID,
++    OPVP_SKIRMISH_DEMON_HUNTER,
++    OPVP_SKIRMISH_POOL_SIZE
+ };
+ 
+ // pets, shared by every zone (sql/fixes/world/2026_11_26_31_tower_skirmish_class_pool.sql)
+@@ -61,14 +75,31 @@ struct OPvPSkirmishSoldier
+ struct OPvPSkirmishSoldiers
+ {
+     OPvPSkirmishSoldier regulars[OPVP_SKIRMISH_POOL_SIZE];
+-    uint32 elite;
++    OPvPSkirmishSoldier elites[OPVP_SKIRMISH_POOL_SIZE];
+ };
+ 
++// one faction's pool: first = the seven first regulars (warrior .. rogue) and warriorElite their elite;
++// block = the first of the 18 entries of sql/fixes/world/2026_11_26_32_tower_skirmish_all_classes.sql
++// for this faction and zone: block + 0-5 the regular paladin .. demon hunter, block + 6-17 the elite
++// frost mage .. demon hunter (table order)
++inline OPvPSkirmishSoldiers MakeSkirmishSoldiers(uint32 const (&first)[OPVP_SKIRMISH_FIRST_CLASSES], uint32 warriorElite, uint32 block, uint32 hunterPet, uint32 warlockPet)
++{
++    OPvPSkirmishSoldiers soldiers = { };
++    for (uint8 i = 0; i < OPVP_SKIRMISH_POOL_SIZE; ++i)
++    {
++        soldiers.regulars[i].entry = i < OPVP_SKIRMISH_FIRST_CLASSES ? first[i] : block + (i - OPVP_SKIRMISH_FIRST_CLASSES);
++        soldiers.elites[i].entry = i == OPVP_SKIRMISH_WARRIOR ? warriorElite : block + (OPVP_SKIRMISH_POOL_SIZE - OPVP_SKIRMISH_FIRST_CLASSES) + (i - 1);
++    }
++    soldiers.regulars[OPVP_SKIRMISH_HUNTER].pet = soldiers.elites[OPVP_SKIRMISH_HUNTER].pet = hunterPet;
++    soldiers.regulars[OPVP_SKIRMISH_WARLOCK].pet = soldiers.elites[OPVP_SKIRMISH_WARLOCK].pet = warlockPet;
++    return soldiers;
++}
++
+ enum OPvPSkirmishMisc
+ {
+     OPVP_SKIRMISH_FIRST_WAVE_DELAY  = 10 * IN_MILLISECONDS,  // after someone starts capturing
+     OPVP_SKIRMISH_NEXT_WAVE_DELAY   = 20 * IN_MILLISECONDS,  // after the last soldier of a wave dies
+-    OPVP_SKIRMISH_FINAL_WAVE        = 4,                     // wave 4 (elite + mage) is the finale: the point holds until it is dead
++    OPVP_SKIRMISH_FINAL_WAVE        = 4,                     // wave 4 (one elite) is the finale: the point holds until it is dead
+     OPVP_SKIRMISH_IDLE_RESET        = 60 * IN_MILLISECONDS,  // nobody capturing: soldiers leave, waves start over
+     OPVP_SKIRMISH_CORPSE_DESPAWN    = 30 * IN_MILLISECONDS
+ };
+@@ -183,7 +214,7 @@ class OPvPSkirmishCapturePoint : public OPvPCapturePoint
+                     m_skirmishWave = 0;
+                     m_skirmishTimer = OPVP_SKIRMISH_FIRST_WAVE_DELAY;
+ 
+-                    // a new run: the classes of waves 1-3 in random order, no repeats
++                    // a new run: the classes of the four waves in random order, no repeats
+                     m_skirmishOrder.clear();
+                     for (uint8 i = 0; i < OPVP_SKIRMISH_POOL_SIZE; ++i)
+                         m_skirmishOrder.push_back(i);
+@@ -238,10 +269,9 @@ class OPvPSkirmishCapturePoint : public OPvPCapturePoint
+             // the other faction's soldiers
+             OPvPSkirmishSoldiers const* soldiers = m_soldiers[m_skirmishTeam == TEAM_ALLIANCE ? TEAM_HORDE : TEAM_ALLIANCE];
+ 
+-            // waves 1-3: one soldier of the next class in this run's order; the finale: one elite
+-            OPvPSkirmishSoldier soldier = { soldiers->elite, 0 };
+-            if (m_skirmishWave + 1 < OPVP_SKIRMISH_FINAL_WAVE && m_skirmishWave < m_skirmishOrder.size())
+-                soldier = soldiers->regulars[m_skirmishOrder[m_skirmishWave]];
++            // one soldier of the next class in this run's order: a regular in waves 1-3, the elite in the finale
++            uint8 const cls = m_skirmishWave < m_skirmishOrder.size() ? m_skirmishOrder[m_skirmishWave] : uint8(urand(0, OPVP_SKIRMISH_POOL_SIZE - 1));
++            OPvPSkirmishSoldier const& soldier = m_skirmishWave + 1 < OPVP_SKIRMISH_FINAL_WAVE ? soldiers->regulars[cls] : soldiers->elites[cls];
+ 
+             // come in from a random side, 22-30 yards out
+             Position pos = target->GetPosition();
+diff --git a/src/server/scripts/OutdoorPvP/OutdoorPvPTF.cpp b/src/server/scripts/OutdoorPvP/OutdoorPvPTF.cpp
+index 91d183e..637df88 100644
+--- a/src/server/scripts/OutdoorPvP/OutdoorPvPTF.cpp
++++ b/src/server/scripts/OutdoorPvP/OutdoorPvPTF.cpp
+@@ -39,27 +39,26 @@ OutdoorPvPTF::OutdoorPvPTF()
+     first_digit = 0;
+ }
+ 
+-// warrior, frost mage, fire mage, hunter (+ pet), shaman, warlock (+ imp), rogue; elite
+-static OPvPSkirmishSoldiers const TFAllianceSoldiers =
++// warrior, frost mage, fire mage, hunter (+ pet), shaman, warlock (+ imp), rogue; the rest of the pool
++// (paladin, priest, death knight, monk, druid, demon hunter and the elites) comes from the faction's block
++static uint32 const TFAllianceFirst[OPVP_SKIRMISH_FIRST_CLASSES] =
+ {
+-    {
+-        { NPC_TF_ALLIANCE_SKIRMISHER, 0 }, { NPC_TF_ALLIANCE_BATTLEMAGE, 0 }, { NPC_TF_ALLIANCE_PYROMANCER, 0 },
+-        { NPC_TF_ALLIANCE_TRACKER, NPC_SKIRMISH_ALLIANCE_NIGHTSABER }, { NPC_TF_ALLIANCE_EARTHCALLER, 0 },
+-        { NPC_TF_ALLIANCE_SHADOWCALLER, NPC_SKIRMISH_ALLIANCE_IMP }, { NPC_TF_ALLIANCE_CUTTHROAT, 0 }
+-    },
+-    NPC_TF_ALLIANCE_VANGUARD
++    NPC_TF_ALLIANCE_SKIRMISHER, NPC_TF_ALLIANCE_BATTLEMAGE, NPC_TF_ALLIANCE_PYROMANCER, NPC_TF_ALLIANCE_TRACKER,
++    NPC_TF_ALLIANCE_EARTHCALLER, NPC_TF_ALLIANCE_SHADOWCALLER, NPC_TF_ALLIANCE_CUTTHROAT
+ };
+ 
+-static OPvPSkirmishSoldiers const TFHordeSoldiers =
++static uint32 const TFHordeFirst[OPVP_SKIRMISH_FIRST_CLASSES] =
+ {
+-    {
+-        { NPC_TF_HORDE_SKIRMISHER, 0 }, { NPC_TF_HORDE_BATTLEMAGE, 0 }, { NPC_TF_HORDE_PYROMANCER, 0 },
+-        { NPC_TF_HORDE_TRACKER, NPC_SKIRMISH_HORDE_WORG }, { NPC_TF_HORDE_EARTHCALLER, 0 },
+-        { NPC_TF_HORDE_SHADOWCALLER, NPC_SKIRMISH_HORDE_IMP }, { NPC_TF_HORDE_CUTTHROAT, 0 }
+-    },
+-    NPC_TF_HORDE_WARBRINGER
++    NPC_TF_HORDE_SKIRMISHER, NPC_TF_HORDE_BATTLEMAGE, NPC_TF_HORDE_PYROMANCER, NPC_TF_HORDE_TRACKER,
++    NPC_TF_HORDE_EARTHCALLER, NPC_TF_HORDE_SHADOWCALLER, NPC_TF_HORDE_CUTTHROAT
+ };
+ 
++static OPvPSkirmishSoldiers const TFAllianceSoldiers = MakeSkirmishSoldiers(TFAllianceFirst, NPC_TF_ALLIANCE_VANGUARD,
++    NPC_TF_ALLIANCE_POOL, NPC_SKIRMISH_ALLIANCE_NIGHTSABER, NPC_SKIRMISH_ALLIANCE_IMP);
++
++static OPvPSkirmishSoldiers const TFHordeSoldiers = MakeSkirmishSoldiers(TFHordeFirst, NPC_TF_HORDE_WARBRINGER,
++    NPC_TF_HORDE_POOL, NPC_SKIRMISH_HORDE_WORG, NPC_SKIRMISH_HORDE_IMP);
++
+ OPvPCapturePointTF::OPvPCapturePointTF(OutdoorPvP* pvp, OutdoorPvPTF_TowerType type)
+ : OPvPSkirmishCapturePoint(pvp, TFAllianceSoldiers, TFHordeSoldiers), m_TowerType(type), m_TowerState(TF_TOWERSTATE_N)
+ {
+diff --git a/src/server/scripts/OutdoorPvP/OutdoorPvPTF.h b/src/server/scripts/OutdoorPvP/OutdoorPvPTF.h
+index 205df3a..8582a1f 100644
+--- a/src/server/scripts/OutdoorPvP/OutdoorPvPTF.h
++++ b/src/server/scripts/OutdoorPvP/OutdoorPvPTF.h
+@@ -73,7 +73,10 @@ enum OutdoorPvPTFSkirmish
+     NPC_TF_ALLIANCE_TRACKER         = 9100129,
+     NPC_TF_ALLIANCE_EARTHCALLER     = 9100130,
+     NPC_TF_ALLIANCE_SHADOWCALLER    = 9100131,
+-    NPC_TF_ALLIANCE_CUTTHROAT       = 9100132
++    NPC_TF_ALLIANCE_CUTTHROAT       = 9100132,
++    // first of each faction's 18 all-classes entries (see MakeSkirmishSoldiers in OutdoorPvPSkirmish.h)
++    NPC_TF_HORDE_POOL               = 9100173,
++    NPC_TF_ALLIANCE_POOL            = 9100191
+ };
+ 
+ enum OutdoorPvPTF_TowerType

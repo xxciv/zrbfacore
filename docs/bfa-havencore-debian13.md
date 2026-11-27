@@ -165,6 +165,10 @@ git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
 git apply ../tools-repo/tools/bfa/hellfire-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/terokkar-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-class-pool.patch
+git apply ../tools-repo/tools/bfa/shutdown-zone-script.patch
+git apply ../tools-repo/tools/bfa/tower-skirmish-all-classes.patch
+git apply ../tools-repo/tools/bfa/lfg-outleveled-dungeons.patch
+git apply ../tools-repo/tools/bfa/personal-xp-rate.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -658,6 +662,32 @@ with no repeats, from a pool of seven: warrior, frost mage, fire mage, hunter wi
 warlock with an imp and rogue. The wave ends when the soldier and its pet are both dead. It changes only
 `OutdoorPvPSkirmish.h` and the two scripts. Needs
 `sql/fixes/world/2026_11_26_31_tower_skirmish_class_pool.sql`. Our own design and tuning.
+
+`shutdown-zone-script.patch` (after `tower-skirmish-class-pool.patch`) fixes a segmentation fault on
+`server shutdown`. At shutdown the outdoor PvP scripts are deleted before the maps unload, and since
+`hellfire-tower-skirmish.patch` links capture banners to their script, unloading those banners
+called into the deleted script. Objects leaving the map no longer call their zone script once the
+server is stopping. Only `GameObject.cpp` and `Creature.cpp`.
+
+`tower-skirmish-all-classes.patch` (after `shutdown-zone-script.patch`) grows the pool to all
+thirteen classes (adding paladin, priest, death knight, monk, druid and demon hunter) and gives wave 4
+a pool too: each run shuffles the classes, waves 1-3 are regulars of the first three and wave 4 is the
+elite of the fourth, so no class comes twice. Every class has an elite now, and every kit has a skill
+or two more. It changes only `OutdoorPvPSkirmish.h` and the two scripts. Needs
+`sql/fixes/world/2026_11_26_32_tower_skirmish_all_classes.sql`. Our own design and tuning.
+
+`lfg-outleveled-dungeons.patch` (after `tower-skirmish-all-classes.patch`) keeps normal dungeons
+joinable in the dungeon finder after you outlevel them, such as Classic dungeons past 60. Blizzlike, the
+finder drops a dungeon once you are above its level range. The creatures still stop at the dungeon's
+own max level. Set `DungeonFinder.OutleveledNormalDungeons = 0` in `worldserver.conf` for the
+blizzlike behavior. Random dungeons and heroics are unchanged. Only `LFGMgr.cpp`.
+
+`personal-xp-rate.patch` (after `lfg-outleveled-dungeons.patch`) lets each character slow its own
+leveling: `.zrxp rate 0.5` halves all XP (kills, quests, exploration), `.zrxp rate 0` stops it, `.zrxp
+rate 1` is normal and `.zrxp rate` shows the current rate. The rate applies after the weekend double
+XP and is saved per character in the characters database. Needs
+`sql/fixes/characters/2026_11_27_90_character_xp_rate.sql` (run against `bfa_characters`). Only
+`scripts/Custom/XpWeekend.cpp`.
 
 `zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
 solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
@@ -1225,6 +1255,10 @@ git apply ../tools-repo/tools/bfa/taxi-nearest-node.patch
 git apply ../tools-repo/tools/bfa/hellfire-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/terokkar-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-class-pool.patch
+git apply ../tools-repo/tools/bfa/shutdown-zone-script.patch
+git apply ../tools-repo/tools/bfa/tower-skirmish-all-classes.patch
+git apply ../tools-repo/tools/bfa/lfg-outleveled-dungeons.patch
+git apply ../tools-repo/tools/bfa/personal-xp-rate.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -1464,6 +1498,8 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_24_33_northern_barrens_second_pass.sql` | Northern Barrens second pass: 159 extras removed incl. the 8 Horde Guards 51914 stacked on Thork at the Crossroads, friendly NPCs and smaller surpluses checked against 8.3.7 |
 | `2026_11_24_34_runetog_wildhammer.sql` | Runetog Wildhammer (Shatter Point): SmartAI back to TDB 8.3.7, so accepting Wing Commander Gryphongar flies you to Gryphongar instead of summoning an Enraged Gryphon |
 | `2026_11_24_35_zethgor_towers.sql` | Zeth'Gor: towers no longer burn from the start (52 always-on fire objects removed, TDB Tower Spell Focus back); the Crusher and Sundered Rumblers at the towers are the tower markers again; tower and building markers, bomber controllers and gryphon riders as TDB 8.3.7, so a Smoke Beacon sets a tower on fire and calls a bomber |
+| `2026_11_27_30_hellfire_leftover_spawns.sql` | Hellfire Peninsula: 20 static Gryphon Brigadiers (the Zeth'Gor bombers, summoned in TDB), the Cursed Scarabs at the Zeth'Gor cauldron and 8 Darkness Released in the Honor Hold inn removed; Expedition Point miners and guard as TDB, miners with a Mining Pick |
+| `2026_11_26_32_tower_skirmish_all_classes.sql` | Tower skirmishes: every class for `tower-skirmish-all-classes.patch` (Crusader, Confessor, Runeblade, Windwalker, Grovewarden, Felblade and an elite of every class for Thrallmar, Honor Hold, Stonebreaker and Allerian; 9100137-9100208); bigger kits for the first seven classes |
 | `2026_11_26_31_tower_skirmish_class_pool.sql` | Tower skirmishes: the class pool for `tower-skirmish-class-pool.patch` (Pyromancer, Tracker + pet, Earthcaller, Shadowcaller + imp, Cutthroat for Thrallmar, Honor Hold, Stonebreaker and Allerian; 9100113-9100136) |
 | `2026_11_26_30_terokkar_tower_skirmishers.sql` | Terokkar Spirit Towers: the six wave soldiers for `terokkar-tower-skirmish.patch` (Stonebreaker / Allerian Skirmisher, Battlemage and elite Warbringer / Vanguard, level-scaled 62-83, honor kill, no XP); removes five dead duplicate capture banners |
 | `2026_11_25_30_hellfire_tower_skirmishers.sql` | Hellfire towers: the six wave soldiers for `hellfire-tower-skirmish.patch` (Thrallmar / Honor Hold Skirmisher, Battlemage and elite Warbringer / Vanguard, level-scaled, honor kill, no XP); removes three dead duplicate capture banners |

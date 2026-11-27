@@ -1,0 +1,136 @@
+diff --git a/src/server/scripts/Custom/XpWeekend.cpp b/src/server/scripts/Custom/XpWeekend.cpp
+index 1424cf4..fd03aca 100644
+--- a/src/server/scripts/Custom/XpWeekend.cpp
++++ b/src/server/scripts/Custom/XpWeekend.cpp
+@@ -3,7 +3,13 @@
+ #include "Chat.h"
+ #include "Config.h"
+ #include "GameTime.h"
++#include "DatabaseEnv.h"
++#include "RBAC.h"
++#include "WorldSession.h"
+ #include <atomic>
++#include <cstdlib>
++#include <mutex>
++#include <unordered_map>
+ 
+ namespace
+ {
+@@ -11,6 +17,26 @@ namespace
+ 
+     std::atomic<bool> _doubleXpActive{ false };
+ 
++    // zrbfacore: personal XP rate (.zrxp rate 0..1), kept in characters.character_xp_rate
++    std::mutex _xpRateLock;
++    std::unordered_map<ObjectGuid::LowType, float> _xpRates;
++
++    float GetXpRate(Player* player)
++    {
++        std::lock_guard<std::mutex> lock(_xpRateLock);
++        auto itr = _xpRates.find(player->GetGUID().GetCounter());
++        return itr != _xpRates.end() ? itr->second : 1.0f;
++    }
++
++    void SetXpRate(ObjectGuid::LowType guid, float rate)
++    {
++        std::lock_guard<std::mutex> lock(_xpRateLock);
++        if (rate >= 1.0f)
++            _xpRates.erase(guid);
++        else
++            _xpRates[guid] = rate;
++    }
++
+     class XpWeekendWorld : public WorldScript
+     {
+     public:
+@@ -35,17 +61,83 @@ namespace
+     public:
+         XpWeekend() : PlayerScript("XpWeekend") { }
+ 
+-        void OnGiveXP(Player* /*player*/, uint32& amount, Unit* /*victim*/) override
++        void OnGiveXP(Player* player, uint32& amount, Unit* /*victim*/) override
+         {
+             if (_doubleXpActive.load(std::memory_order_relaxed))
+                 amount *= WEEKEND_XP_MULTIPLIER;
++
++            float rate = GetXpRate(player);
++            if (rate < 1.0f)
++                amount = uint32(amount * rate + 0.5f);
+         }
+ 
+         void OnLogin(Player* player, bool /*firstLogin*/) override
+         {
++            if (QueryResult result = CharacterDatabase.PQuery("SELECT rate FROM character_xp_rate WHERE guid = " UI64FMTD, player->GetGUID().GetCounter()))
++                SetXpRate(player->GetGUID().GetCounter(), std::min(std::max((*result)[0].GetFloat(), 0.0f), 1.0f));
++
++            float rate = GetXpRate(player);
++            if (rate < 1.0f)
++                ChatHandler(player->GetSession()).PSendSysMessage("|cffffd000Your XP rate is %.2f.|r Change it with .zrxp rate 0-1.", rate);
++
+             if (_doubleXpActive.load(std::memory_order_relaxed))
+                 ChatHandler(player->GetSession()).PSendSysMessage("Double XP has started now! Call your friends and keep leveling faster!");
+         }
++
++        void OnLogout(Player* player) override
++        {
++            std::lock_guard<std::mutex> lock(_xpRateLock);
++            _xpRates.erase(player->GetGUID().GetCounter());
++        }
++    };
++
++    class XpRateCommands : public CommandScript
++    {
++    public:
++        XpRateCommands() : CommandScript("XpRateCommands") { }
++
++        std::vector<ChatCommand> GetCommands() const override
++        {
++            static std::vector<ChatCommand> zrxpCommandTable =
++            {
++                { "rate", rbac::RBAC_PERM_COMMAND_NPC_INFO, false, &HandleRateCommand, "" },
++            };
++            static std::vector<ChatCommand> commandTable =
++            {
++                { "zrxp", rbac::RBAC_PERM_COMMAND_NPC_INFO, false, nullptr, "", zrxpCommandTable },
++            };
++            return commandTable;
++        }
++
++        // .zrxp rate [0-1]: show or set your own XP rate (1 = normal, 0.5 = half, 0 = none)
++        static bool HandleRateCommand(ChatHandler* handler, char const* args)
++        {
++            Player* player = handler->GetSession()->GetPlayer();
++            if (!args || !*args)
++            {
++                handler->PSendSysMessage("Your XP rate is %.2f (1 = normal, 0 = no XP). Set it with .zrxp rate 0-1.", GetXpRate(player));
++                return true;
++            }
++
++            char* end = nullptr;
++            float rate = std::strtof(args, &end);
++            if (end == args || rate < 0.0f || rate > 1.0f)
++            {
++                handler->PSendSysMessage("Use a number from 0 to 1, for example .zrxp rate 0.5");
++                handler->SetSentErrorMessage(true);
++                return false;
++            }
++
++            ObjectGuid::LowType guid = player->GetGUID().GetCounter();
++            SetXpRate(guid, rate);
++            if (rate >= 1.0f)
++                CharacterDatabase.PExecute("DELETE FROM character_xp_rate WHERE guid = " UI64FMTD, guid);
++            else
++                CharacterDatabase.PExecute("REPLACE INTO character_xp_rate (guid, rate) VALUES (" UI64FMTD ", %f)", guid, rate);
++
++            handler->PSendSysMessage("Your XP rate is now %.2f%s.", rate, rate <= 0.0f ? " (no XP)" : "");
++            return true;
++        }
+     };
+ }
+ 
+@@ -53,4 +145,5 @@ void AddSC_XpWeekend()
+ {
+     new XpWeekendWorld();
+     new XpWeekend();
++    new XpRateCommands();
+ }

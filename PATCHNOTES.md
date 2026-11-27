@@ -39,6 +39,63 @@ Draft PR, not merged yet.
   - Worgs and boars keep their tiny chances.
 - **Status:** untested.
 - **Pick up:** run the SQL, restart worldserver.
+## 2026-11-27 (Core: personal XP rate)
+
+### Core: `.zrxp rate` slows your own leveling
+- **Asked** (Four, 2026-11-27): a way for a player to set their own XP rate from 0 to 1, to slow progression and test zones fully. Also asked what the weekend XP option does.
+- **Found:** the weekend option is upstream's `scripts/Custom/XpWeekend.cpp`. It doubles XP only, every Saturday and Sunday (server local time), for every XP source that goes through `Player::GiveXP` (kills, quests, exploration). Reputation, profession skill-ups and money are not changed. It is on by default and turned off with `DynamicXP.Enable = 0` in `worldserver.conf` (the option is not in `worldserver.conf.dist`).
+- **Changed** (`tools/bfa/personal-xp-rate.patch`, after `lfg-outleveled-dungeons.patch`; only `XpWeekend.cpp`): new command `.zrxp rate <0-1>` (same permission as `.dungeonscale`) sets the character's own XP multiplier. It applies to every XP source after the weekend doubling: 0.5 = half, 0 = no XP. `.zrxp rate` with no number shows the current rate. The rate is saved per character and reported at login when it is below 1. Rested XP still works, but its bonus is based on the reduced kill XP.
+- **Changed** (`sql/fixes/characters/2026_11_27_90_character_xp_rate.sql`): new table `character_xp_rate` (guid, rate) in the characters database. No row = rate 1.
+- **Status:** confirmed in game by Four (2026-11-27).
+- **Pick up:** apply the patch, run the SQL against `bfa_characters`, build (`XpWeekend.cpp` rebuilds), restart `worldserver`.
+
+## 2026-11-27 (Core: outleveled dungeons in the dungeon finder)
+
+### Core: Classic dungeons stay in the dungeon finder past 60
+- **Asked** (Four, 2026-11-27): at 63 the dungeon finder stopped listing Classic dungeons. Four wanted them back in the list to click, join and pop in for testing, not scaled past 60.
+- **Cause:** blizzlike. `LFGMgr::GetLockedDungeons` locks every dungeon whose `LFGDungeons` max level is below yours (`LFG_LOCKSTATUS_TOO_HIGH_LEVEL`), and the client hides locked dungeons.
+- **Changed** (`tools/bfa/lfg-outleveled-dungeons.patch`, after `tower-skirmish-all-classes.patch`; only `LFGMgr.cpp` and `worldserver.conf.dist`): normal dungeons (type dungeon, normal difficulty, any expansion) no longer get the too-high-level lock. They are listed and joinable at any level above their minimum. Creature levels still come from the dungeon's own content tuning, so Classic dungeons stay at 60. Random dungeons, heroics and raids are unchanged. New option `DungeonFinder.OutleveledNormalDungeons` (default 1; 0 = blizzlike). It doesn't need to be in `worldserver.conf` to be on.
+- **Status:** confirmed in game by Four (2026-11-27): Classic dungeons are listed and joinable past 60.
+- **Pick up:** apply the patch, build (`LFGMgr.cpp` rebuilds), restart `worldserver`.
+
+## 2026-11-27 (World fixes: Hellfire Peninsula leftovers)
+
+### World: Zeth'Gor gryphons and scarabs, Expedition Point miners, Darkness Released in the Honor Hold inn
+- **Found** (Four, 2026-11-26, walking Hellfire Peninsula), against TDB 8.3.7:
+  - Gryphons over Zeth'Gor flying back and forth on the spot, and two stacked, stationary ones near Expedition Point: Honor Hold Gryphon Brigadiers (North 22404, Forge 22405, Foothill 22406, South 21170). TDB spawns none; the Zeth'Gor bomber controller summons them when a Smoke Beacon hits a tower (Zeth'Gor Must Burn!), and they fly their bombing path and despawn. Ours had 20 static ones (4 Foothill riders wandering 5 yards in the air, the stacked North/Forge pair 307699/315331). They also took the controller's "start your bombing path" signal, which goes to the closest rider.
+  - 17 Cursed Scarabs at a cauldron in Zeth'Gor: a Cursed Scarab Summoner 21308 (casts Summon Cursed Scarabs on spawn) and 15 Cursed Scarabs 21306. TDB has neither.
+  - "Darkness Released" upstairs in the Honor Hold inn, hostile: 8 static Darkness Released 22507. TDB has none; Colonel Jules' script summons them during The Exorcism of Colonel Jules (10935).
+  - Expedition Point, by Forward Commander Kingston: the female dwarf guard (59047) had the mining emote with her sword and shield. In TDB she stands guard there and four soldiers by the rocks mine instead; ours had only 2 of those 4 mining, one of them the wrong NPC, and the fourth missing.
+- **Changed** (`sql/fixes/world/2026_11_27_30_hellfire_leftover_spawns.sql`): the 20 static brigadiers, the summoner and 15 scarabs, and the 8 Darkness Released removed. Expedition Point as TDB: the guard 59047 stands at Four's spot (-677.083, 1865.630, facing 0.419) without the mining emote; the four miners (59036 Honor Hold Defender, 59038 and 59039 Stormwind Infantry, new GUID 735401760 for TDB 58138) mine, holding a Mining Pick 2901 (our tuning; equipment set 3 of 16842/16864).
+- **Not changed:** the bombing runs (controller, tower markers, summoned riders), the Colonel Jules exorcism.
+- **Status:** confirmed in game by Four (2026-11-26).
+- **Pick up:** run the SQL, restart `worldserver`.
+
+## 2026-11-26 (World fixes: tower skirmishes get every class)
+
+### Core + world: all thirteen classes, bigger kits, and a pool of elites for wave 4
+- **Asked** (Four, 2026-11-26, after the class pool, on "is wave 4 always a warrior?" (yes)): "expand the pool to all player classes, expand their kit and give them an additional skill or two. and yes, give the last wave a pool just like the others ... but keeping the last wave elite".
+- **Changed** (`tools/bfa/tower-skirmish-all-classes.patch`, after `shutdown-zone-script.patch`; only `OutdoorPvPSkirmish.h`, `OutdoorPvPHP.cpp/.h`, `OutdoorPvPTF.cpp/.h`):
+  - The pool has all thirteen classes. Each run shuffles them and uses the first four: waves 1-3 are regulars of the first three classes, wave 4 is the **elite** of the fourth. So no class comes twice in a run, and the elite is never a class you already fought.
+  - Every class has a regular and an elite for each faction in both zones. Hunter and warlock elites bring their pet too.
+  - Timing, capture speed, the finale hold and the resets are unchanged.
+- **Changed** (`sql/fixes/world/2026_11_26_32_tower_skirmish_all_classes.sql`, run after `_31`): 72 new soldiers, 18 for each of Thrallmar, Honor Hold, Stonebreaker and Allerian (entries 9100137-9100208).
+  - New regulars: **Crusader** (paladin: Devotion Aura 8258 on aggro, Crusader Strike 14518, Holy Strike 13953, Exorcism 17149, Hammer of Justice 13005, Holy Light 15493 below 35%), **Confessor** (priest: Power Word: Shield 17139 on aggro, Smite 9734, Shadow Word: Pain 11639, Mind Blast 13860, Psychic Scream 13704 within 8 yards, Renew 11640 below 50%), **Runeblade** (death knight: Icy Touch 55331, Plague Strike 50688, Death Coil 79903, Death and Decay 61112), **Windwalker** (monk: Flying Serpent Kick 119500 on aggro, Jab 128630, Blackout Kick 128631, Spinning Crane Kick 118592 within 8 yards), **Grovewarden** (druid: Wrath 9739, Moonfire 15798, Starfire 78907, Entangling Roots 11922, Rejuvenation 12160 below 50%), **Felblade** (demon hunter: Fel Strike 188105, Blade Dance 30739 within 8 yards, Eye Beam 26134, Chaos Nova 36255). Health x1.2 to x1.5, damage x1 to x1.2, like the others.
+  - Bigger kits for the first seven: warrior + Rend 13445, Demoralizing Shout 13730; frost mage + Frost Armor 12544 on aggro, Cone of Cold 20828 within 10 yards; fire mage + Flamestrike 11829; hunter + Arcane Shot 78754, Wing Clip 32908 and Raptor Strike 32915 within 5 yards; shaman + Flame Shock 15616, Chain Lightning 12058; warlock + Curse of Agony 14868, Drain Life 17173; rogue + Gouge 12540, Evasion 79853 once below 50%.
+  - New elites (same kit as their regular, plus Enrage 8599 once below 30%): Frostweaver, Flameweaver, Huntmaster (+ pet), Stormcaller, Doomcaller (+ imp), Nightblade, Justicar, High Confessor, Deathlord, Grandmaster, Archdruid, Felreaver. They take the warrior elite's step up from their regular (health x2.27, damage x1.33, so x2.7 to x3.4 health), one level above you, scale 1.1.
+  - Looks from TDB 8.3.7 NPCs: Blood Knights / Ironforge Paladins, Expeditionary / Dun Garok Priests, Knights of the Ebon Blade, Huojin / Tushui Monks, Bloodhoof Healers / Darnassian Druids, Illidari. Elites wear their regular's looks.
+- **Not changed:** the warrior elite (Warbringer / Vanguard, health x3.4, its kit), the pets, honor and honorable kills.
+- **Status:** confirmed in game by Four (2026-11-26: a priest in the regular waves, a death knight elite in wave 4). All spells and numbers are our own tuning.
+- **Pick up:** apply the patch, build (only the two outdoor PvP scripts rebuild), run the SQL, restart `worldserver`.
+
+## 2026-11-26 (Core fixes: segmentation fault on shutdown)
+
+### Core: `server shutdown` crashed the worldserver
+- **Found** (Four, 2026-11-26): `worldserver` ends with a segmentation fault while running `server shutdown 5`, not while playing, since the recent changes.
+- **Cause:** at shutdown `Main.cpp` deletes the outdoor PvP scripts (`sOutdoorPvPMgr->Die()`) and only then unloads the maps. `hellfire-tower-skirmish.patch` made capture banners link to their outdoor PvP script (`GameObject::Create` now knows the zone first), so when the maps unloaded, each banner's `GameObject::RemoveFromWorld` called `OnGameObjectRemove` on the deleted script. Before that patch no object was linked, so nothing crashed.
+- **Changed** (`tools/bfa/shutdown-zone-script.patch`, after `tower-skirmish-class-pool.patch`): `GameObject::RemoveFromWorld` and `Creature::RemoveFromWorld` skip the zone script call once the world is stopping (`World::IsStopped()`). Nothing needs those calls at shutdown. Playing is unchanged.
+- **Status:** confirmed by Four (2026-11-26): the backtrace pointed at `GameObject.cpp:241` (the `OnGameObjectRemove` call), and with the patch `server shutdown 5` exits cleanly after playing.
+- **Pick up:** apply the patch, build (`GameObject.cpp` and `Creature.cpp` rebuild), restart `worldserver`.
 
 ## 2026-11-26 (World fixes: tower skirmish class pool)
 
@@ -50,7 +107,7 @@ Draft PR, not merged yet.
   - Timing, capture speed, the finale hold and the resets are unchanged.
 - **Changed** (`sql/fixes/world/2026_11_26_31_tower_skirmish_class_pool.sql`): five new classes for each of Thrallmar, Honor Hold, Stonebreaker and Allerian. **Pyromancer** (fire mage: Fireball 9053, Fire Blast 20795), **Tracker** (hunter: Shoot 6660, Multi-Shot 14443), **Earthcaller** (shaman: Lightning Shield 12550 on aggro, Lightning Bolt 26098, Earth Shock 13728, Healing Wave 12491 below 40% health), **Shadowcaller** (warlock: Shadow Bolt 20825, Corruption 32063) and **Cutthroat** (rogue: Sinister Strike 14873, Eviscerate 15691, Kick 15610 when you cast). Health x1.2 to x1.4 and damage x1 to x1.2, like the existing Skirmisher and Battlemage, which stay in the pool as warrior and frost mage. Pets: Tracker's Worg / Nightsaber (health x0.8, damage x0.7), Shadowcaller's Imp (health x0.5, Firebolt 20801); pets give no honor and no XP. Entries 9100113-9100136. Levels scale like the zone (Hellfire 58-83, Terokkar 62-83). Looks from TDB 8.3.7 faction NPCs.
 - **Not changed:** elites (health x3.4), Marks of Honor Hold / Thrallmar in Hellfire, honor and honorable kills.
-- **Status:** played by Four (2026-11-25, "tons better"); more feedback to come before merging. All spells and numbers are our own tuning.
+- **Status:** played by Four (2026-11-25, "tons better"); merged (PR #116). All spells and numbers are our own tuning.
 - **Pick up:** apply the patch, build (only the two outdoor PvP scripts rebuild), run the SQL, restart `worldserver`.
 
 ## 2026-11-26 (World fixes: Terokkar Spirit Tower skirmishes)
