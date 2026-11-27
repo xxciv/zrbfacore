@@ -10,17 +10,18 @@
 --    Snapper + Sparse Oily Blackmouth + Schooner Wreckage, 46 times along the Wetlands and Hillsbrad
 --    coast; Brackish Mixed + Sporefish + Steam Pump Flotsam in Zangarmarsh) but never put them in a
 --    pool, so all of them spawn at once on top of each other. Every group of fishing holes closer than
---    5 yards on the same map (361 spots, 974 spawns) becomes a pool that shows one of them at a
---    time (max_limit 1, equal chance), pools 5200001 to 5200361. When a school is fished out, the
+--    5 yards on the same map (360 spots, 972 spawns) becomes a pool that shows one of them at a
+--    time (max_limit 1, equal chance), pools 5200001 to 5200360. When a school is fished out, the
 --    spot respawns as a random member of its pool.
 --    Fishing holes already in an upstream pool (9, pools 347/350) or linked to a game event (20 Stranglethorn
---    Fishing Extravaganza schools, event 15) are left alone.
+--    Fishing Extravaganza schools, event 15) are left alone, and so are 3 spawns with guids above
+--    4294967295 (pool_gameobject.guid is INT UNSIGNED in this core).
 --
 -- Nothing is deleted. Safe to run twice.
 --
 -- Revert:
--- DELETE FROM `pool_gameobject` WHERE `pool_entry` BETWEEN 5200001 AND 5200361;
--- DELETE FROM `pool_template` WHERE `entry` BETWEEN 5200001 AND 5200361;
+-- DELETE FROM `pool_gameobject` WHERE `pool_entry` BETWEEN 5200001 AND 5200999;
+-- DELETE FROM `pool_template` WHERE `entry` BETWEEN 5200001 AND 5200999;
 -- UPDATE `gameobject` SET `id` = 180582 WHERE `guid` IN (4715, 4716, 4717, 4722, 4724, 4739, 4749, 4762, 4782, 4783, 4784, 4785, 26462, 26463, 26464, 26465, 26466, 26467, 26468, 26469, 26478, 26479, 26480, 26481, 26482, 26483, 26484, 26485, 26486, 26487, 26488, 26489, 26490, 26491, 26492, 26493, 26494, 26495, 26496, 26497, 26498, 26499, 26500, 26501, 26502, 26503, 26504, 26505, 26506, 26507, 26508, 26509, 26510, 26511, 26512, 26513, 26514, 26515, 26516, 26517, 26518, 26519, 26520, 26521, 26522, 26523, 26524, 26525, 26526, 26527, 26528, 47469, 47474);
 -- UPDATE `gameobject` SET `id` = 180664 WHERE `guid` IN (4242, 4243, 4245, 4249, 4250, 4251, 4253, 4255, 4263, 4268, 26628, 26629, 26630, 26631, 26632, 26633, 26634, 26635, 26636, 26637, 26638, 26639, 26640, 26641, 26642, 26643, 26644, 26645, 26646, 26647, 40635, 40636, 40637, 40638, 40639, 40640, 40641, 40642, 40643, 40644, 40645, 40646, 40647, 40648, 40649, 40650, 40651, 40652, 47471);
 -- UPDATE `gameobject` SET `id` = 180657 WHERE `guid` IN (4334, 4335, 4336, 4337, 4342, 4343, 4346, 4348, 4351, 4354, 4356, 4357, 4358, 4362, 4365, 4367, 4368, 4371, 26754, 26755, 26756, 26757, 26758, 26759, 26760, 26761, 26762, 26763, 26764, 26765, 26766, 26767, 26768, 26769, 26770, 26771, 26772, 26773, 26774, 26775, 26776, 26777, 26778, 26779, 40623, 40624, 40625, 40626, 40627);
@@ -39,8 +40,8 @@ UPDATE `gameobject` SET `id` = 180682 WHERE `id` = 180900; -- (DEPRECATED) Abund
 UPDATE `gameobject` SET `id` = 180683 WHERE `id` = 180902; -- (DEPRECATED) Abundant Firefin Snapper School -> Firefin Snapper School
 
 -- 2. One school per stacked fishing spot
-DELETE FROM `pool_gameobject` WHERE `pool_entry` BETWEEN 5200001 AND 5200361;
-DELETE FROM `pool_template` WHERE `entry` BETWEEN 5200001 AND 5200361;
+DELETE FROM `pool_gameobject` WHERE `pool_entry` BETWEEN 5200001 AND 5200999; -- range kept wide: clears pool 5200361 from the first version
+DELETE FROM `pool_template` WHERE `entry` BETWEEN 5200001 AND 5200999; -- range kept wide: clears pool 5200361 from the first version
 INSERT INTO `pool_template` (`entry`, `max_limit`, `description`) VALUES
 (5200001, 1, 'Fishing spot map 0 -12701.0 -2943.6'),
 (5200002, 1, 'Fishing spot map 0 -10532.5 -3689.8'),
@@ -401,8 +402,7 @@ INSERT INTO `pool_template` (`entry`, `max_limit`, `description`) VALUES
 (5200357, 1, 'Fishing spot map 1643 1272.0 -160.4'),
 (5200358, 1, 'Fishing spot map 1643 -537.5 1405.2'),
 (5200359, 1, 'Fishing spot map 1643 -949.9 1297.6'),
-(5200360, 1, 'Fishing spot map 1643 -490.6 -686.5'),
-(5200361, 1, 'Fishing spot map 1718 828.3 -226.3');
+(5200360, 1, 'Fishing spot map 1643 -490.6 -686.5');
 
 DROP TEMPORARY TABLE IF EXISTS `zr_fishing_spot`;
 CREATE TEMPORARY TABLE `zr_fishing_spot` (`guid` BIGINT UNSIGNED NOT NULL PRIMARY KEY, `pool_entry` INT UNSIGNED NOT NULL);
@@ -1378,9 +1378,7 @@ INSERT INTO `zr_fishing_spot` (`guid`, `pool_entry`) VALUES
 (210310158, 5200359),
 (210413909, 5200359),
 (25663006, 5200360),
-(210305125, 5200360),
-(3100000000043, 5200361),
-(3400000000042, 5200361);
+(210305125, 5200360);
 
 -- Only spawns that still exist, are not in another pool and are not event spawns; descriptions from the live template name.
 INSERT INTO `pool_gameobject` (`guid`, `pool_entry`, `chance`, `description`)
@@ -1389,17 +1387,18 @@ FROM `zr_fishing_spot` s
 JOIN `gameobject` g ON g.`guid` = s.`guid`
 JOIN `gameobject_template` t ON t.`entry` = g.`id`
 WHERE NOT EXISTS (SELECT 1 FROM `pool_gameobject` p WHERE p.`guid` = s.`guid`)
+  AND g.`guid` <= 4294967295
   AND NOT EXISTS (SELECT 1 FROM `game_event_gameobject` e WHERE e.`guid` = s.`guid`);
 DROP TEMPORARY TABLE `zr_fishing_spot`;
 
 -- Drop pools left with fewer than 2 members (spawn deleted by another fix).
 DELETE FROM `pool_gameobject` WHERE `pool_entry` IN (
-  SELECT `pool_entry` FROM (SELECT `pool_entry` FROM `pool_gameobject` WHERE `pool_entry` BETWEEN 5200001 AND 5200361
+  SELECT `pool_entry` FROM (SELECT `pool_entry` FROM `pool_gameobject` WHERE `pool_entry` BETWEEN 5200001 AND 5200360
   GROUP BY `pool_entry` HAVING COUNT(*) < 2) x);
-DELETE FROM `pool_template` WHERE `entry` BETWEEN 5200001 AND 5200361
-  AND `entry` NOT IN (SELECT `pool_entry` FROM `pool_gameobject` WHERE `pool_entry` BETWEEN 5200001 AND 5200361);
+DELETE FROM `pool_template` WHERE `entry` BETWEEN 5200001 AND 5200360
+  AND `entry` NOT IN (SELECT `pool_entry` FROM `pool_gameobject` WHERE `pool_entry` BETWEEN 5200001 AND 5200360);
 
--- Check: pools and pooled fishing holes (expect about 361 and 974), deprecated spawns left (expect 0)
-SELECT (SELECT COUNT(*) FROM `pool_template` WHERE `entry` BETWEEN 5200001 AND 5200361) AS `pools`,
-       (SELECT COUNT(*) FROM `pool_gameobject` WHERE `pool_entry` BETWEEN 5200001 AND 5200361) AS `pooled_holes`,
+-- Check: pools and pooled fishing holes (expect about 360 and 972), deprecated spawns left (expect 0)
+SELECT (SELECT COUNT(*) FROM `pool_template` WHERE `entry` BETWEEN 5200001 AND 5200360) AS `pools`,
+       (SELECT COUNT(*) FROM `pool_gameobject` WHERE `pool_entry` BETWEEN 5200001 AND 5200360) AS `pooled_holes`,
        (SELECT COUNT(*) FROM `gameobject` WHERE `id` IN (180582, 180657, 180664, 180750, 180752, 180900, 180902)) AS `deprecated_left`;

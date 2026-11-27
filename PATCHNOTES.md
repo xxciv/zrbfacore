@@ -18,9 +18,11 @@ Draft PR, not merged yet.
 - **Changed** (`sql/fixes/world/2026_11_27_50_fishing_pools_deprecated_and_stacked.sql`):
   - Deprecated Oily Blackmouth schools become Oily Blackmouth School 180682, deprecated Firefin Snapper schools become
     Firefin Snapper School 180683 (both have loot from upstream `2026_08_20_00_world_fishing_loot_restore`).
-  - Every group of fishing holes closer than 5 yards becomes a pool (5200001-5200361, max_limit 1, equal chance):
+  - Every group of fishing holes closer than 5 yards becomes a pool (5200001-5200360, max_limit 1, equal chance):
     one school shows per spot, and a fished-out spot respawns as a random member. Holes already in a pool or linked
     to a game event (Stranglethorn Fishing Extravaganza) are left alone. Nothing is deleted; revert lines in the file.
+- **Fix** (same day): the first version stopped with `Duplicate entry '4294967295'`: 3 fishing holes have 64-bit
+  guids, but `pool_gameobject.guid` is INT UNSIGNED. Those 3 stay unpooled; rerunning the file is safe.
 - **Status:** untested.
 - **Pick up:** run the SQL, restart worldserver.
 
