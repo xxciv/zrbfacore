@@ -17,6 +17,10 @@ Draft PR, not merged yet (same PR as the Cursed Talisman change below).
   - Quest 9361 lists 23270 as its drop item (ItemDrop1, quantity 0 = up to a full stack).
   - 100% on Deranged 16863, Starving 16879 and Hulking Helboar 16880, as in TDB. Each purification uses one meat and
     works half the time, so expect about 16 meat for 8 purified.
+  - Follow-up (`sql/fixes/world/2026_11_27_71_helboar_meat_loot_conditions.sql`): still nothing after that (Four).
+    The meat's loot rows also had a loot condition (quest 9361 taken), and this core never shows a loot item that has
+    any loot condition (Loot::BuildLootResponse only lists items with an empty condition list). The condition only
+    repeated the quest gate, so it is removed for the four boars.
 - **Status:** untested.
 - **Pick up:** run the SQL, restart worldserver.
 
