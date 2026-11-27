@@ -167,6 +167,7 @@ git apply ../tools-repo/tools/bfa/terokkar-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-class-pool.patch
 git apply ../tools-repo/tools/bfa/shutdown-zone-script.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-all-classes.patch
+git apply ../tools-repo/tools/bfa/lfg-outleveled-dungeons.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -673,6 +674,12 @@ a pool too: each run shuffles the classes, waves 1-3 are regulars of the first t
 elite of the fourth, so no class comes twice. Every class has an elite now, and every kit has a skill
 or two more. It changes only `OutdoorPvPSkirmish.h` and the two scripts. Needs
 `sql/fixes/world/2026_11_26_32_tower_skirmish_all_classes.sql`. Our own design and tuning.
+
+`lfg-outleveled-dungeons.patch` (after `tower-skirmish-all-classes.patch`) keeps normal dungeons
+joinable in the dungeon finder after you outlevel them, such as Classic dungeons past 60. Blizzlike, the
+finder drops a dungeon once you are above its level range. The creatures still stop at the dungeon's
+own max level. Set `DungeonFinder.OutleveledNormalDungeons = 0` in `worldserver.conf` for the
+blizzlike behavior. Random dungeons and heroics are unchanged. Only `LFGMgr.cpp`.
 
 `zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
 solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
@@ -1242,6 +1249,7 @@ git apply ../tools-repo/tools/bfa/terokkar-tower-skirmish.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-class-pool.patch
 git apply ../tools-repo/tools/bfa/shutdown-zone-script.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-all-classes.patch
+git apply ../tools-repo/tools/bfa/lfg-outleveled-dungeons.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

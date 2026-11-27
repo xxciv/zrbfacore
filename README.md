@@ -97,6 +97,9 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
 - [`tools/bfa/tower-skirmish-all-classes.patch`](tools/bfa/tower-skirmish-all-classes.patch): the
   pool grows to all thirteen classes with bigger kits, and wave 4 is the elite of a fourth, random
   class. Needs `sql/fixes/world/2026_11_26_32_tower_skirmish_all_classes.sql`.
+- [`tools/bfa/lfg-outleveled-dungeons.patch`](tools/bfa/lfg-outleveled-dungeons.patch): outleveled
+  normal dungeons (Classic past 60 and so on) stay in the dungeon finder
+  (`DungeonFinder.OutleveledNormalDungeons`, default on).
 - [`tools/bfa/taxi-nearest-node.patch`](tools/bfa/taxi-nearest-node.patch): flight masters use their
   own flight point, not one on another continent (Shatter Point's empty flight map).
 - [`tools/bfa/cannonball-runner.patch`](tools/bfa/cannonball-runner.patch): the Cannonball Runner

@@ -3,6 +3,15 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-27 (Core: outleveled dungeons in the dungeon finder)
+
+### Core: Classic dungeons stay in the dungeon finder past 60
+- **Asked** (Four, 2026-11-27): at 63 the dungeon finder stopped listing Classic dungeons. Four wanted them back in the list to click, join and pop in for testing, not scaled past 60.
+- **Cause:** blizzlike. `LFGMgr::GetLockedDungeons` locks every dungeon whose `LFGDungeons` max level is below yours (`LFG_LOCKSTATUS_TOO_HIGH_LEVEL`), and the client hides locked dungeons.
+- **Changed** (`tools/bfa/lfg-outleveled-dungeons.patch`, after `tower-skirmish-all-classes.patch`; only `LFGMgr.cpp` and `worldserver.conf.dist`): normal dungeons (type dungeon, normal difficulty, any expansion) no longer get the too-high-level lock. They are listed and joinable at any level above their minimum. Creature levels still come from the dungeon's own content tuning, so Classic dungeons stay at 60. Random dungeons, heroics and raids are unchanged. New option `DungeonFinder.OutleveledNormalDungeons` (default 1; 0 = blizzlike). It doesn't need to be in `worldserver.conf` to be on.
+- **Status:** untested. If the client still hides them by its own level data, the fallback is a teleporter NPC.
+- **Pick up:** apply the patch, build (`LFGMgr.cpp` rebuilds), restart `worldserver`.
+
 ## 2026-11-27 (World fixes: Hellfire Peninsula leftovers)
 
 ### World: Zeth'Gor gryphons and scarabs, Expedition Point miners, Darkness Released in the Honor Hold inn
