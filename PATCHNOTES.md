@@ -5,7 +5,7 @@ to do to pick it up (rebuild, restart, run SQL).
 
 ## 2026-11-27 (World: deprecated and stacked fishing pools)
 
-Draft PR, not merged yet.
+PR #123, not merged yet.
 
 ### DB: "(DEPRECATED)" fishing schools and pools stacked on each other
 - **Found** (2026-11-27, Wetlands/Hillsbrad coast): one spot showed "(DEPRECATED) Sparse Firefin Snapper School",
@@ -23,7 +23,7 @@ Draft PR, not merged yet.
     to a game event (Stranglethorn Fishing Extravaganza) are left alone. Nothing is deleted; revert lines in the file.
 - **Fix** (same day): the first version stopped with `Duplicate entry '4294967295'`: 3 fishing holes have 64-bit
   guids, but `pool_gameobject.guid` is INT UNSIGNED. Those 3 stay unpooled; rerunning the file is safe.
-- **Status:** untested.
+- **Status:** confirmed in game 2026-11-27 (Four).
 - **Pick up:** run the SQL, restart worldserver.
 
 ## 2026-11-27 (Core: conditional loot was never shown)
