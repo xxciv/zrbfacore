@@ -3,6 +3,23 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-27 (Quest fixes: Helboar meat)
+
+Draft PR, not merged yet (same PR as the Cursed Talisman change below).
+
+### DB: Tainted Helboar Meat never drops
+- **Found** (Four, 2026-11-27): Helboar, the Other White Meat (9361): over 10 boars killed, no Tainted Helboar Meat.
+- **Cause:** the meat 23270 is a quest-only drop. The core only lets a quest-only item drop when it is one of the
+  quest's objectives or listed as the quest's drop item (ItemDrop1-4). The objective is the Purified Helboar Meat
+  23248 you make with the Purification Mixture, and the tainted meat wasn't listed, so it never dropped for anyone.
+  The chances were also low: 42.8% Deranged, 4.6% Starving, 1.3% Hulking Helboar (TDB 8.3.7 has 100%).
+- **Changed** (`sql/fixes/world/2026_11_27_70_helboar_other_white_meat.sql`):
+  - Quest 9361 lists 23270 as its drop item (ItemDrop1, quantity 0 = up to a full stack).
+  - 100% on Deranged 16863, Starving 16879 and Hulking Helboar 16880, as in TDB. Each purification uses one meat and
+    works half the time, so expect about 16 meat for 8 purified.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
 ## 2026-11-26 (Quest fixes: Cursed Talisman drop rate)
 
 Draft PR, not merged yet.
