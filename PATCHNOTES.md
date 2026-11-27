@@ -3,6 +3,16 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-27 (Core: personal XP rate)
+
+### Core: `.zrxp rate` slows your own leveling
+- **Asked** (Four, 2026-11-27): a way for a player to set their own XP rate from 0 to 1, to slow progression and test zones fully. Also asked what the weekend XP option does.
+- **Found:** the weekend option is upstream's `scripts/Custom/XpWeekend.cpp`. It doubles XP only, every Saturday and Sunday (server local time), for every XP source that goes through `Player::GiveXP` (kills, quests, exploration). Reputation, profession skill-ups and money are not changed. It is on by default and turned off with `DynamicXP.Enable = 0` in `worldserver.conf` (the option is not in `worldserver.conf.dist`).
+- **Changed** (`tools/bfa/personal-xp-rate.patch`, after `lfg-outleveled-dungeons.patch`; only `XpWeekend.cpp`): new command `.zrxp rate <0-1>` (same permission as `.dungeonscale`) sets the character's own XP multiplier. It applies to every XP source after the weekend doubling: 0.5 = half, 0 = no XP. `.zrxp rate` with no number shows the current rate. The rate is saved per character and reported at login when it is below 1. Rested XP still works, but its bonus is based on the reduced kill XP.
+- **Changed** (`sql/fixes/characters/2026_11_27_90_character_xp_rate.sql`): new table `character_xp_rate` (guid, rate) in the characters database. No row = rate 1.
+- **Status:** untested.
+- **Pick up:** apply the patch, run the SQL against `bfa_characters`, build (`XpWeekend.cpp` rebuilds), restart `worldserver`.
+
 ## 2026-11-27 (Core: outleveled dungeons in the dungeon finder)
 
 ### Core: Classic dungeons stay in the dungeon finder past 60
