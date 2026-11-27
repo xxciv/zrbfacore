@@ -169,6 +169,7 @@ git apply ../tools-repo/tools/bfa/shutdown-zone-script.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-all-classes.patch
 git apply ../tools-repo/tools/bfa/lfg-outleveled-dungeons.patch
 git apply ../tools-repo/tools/bfa/personal-xp-rate.patch
+git apply ../tools-repo/tools/bfa/loot-conditions.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -688,6 +689,12 @@ rate 1` is normal and `.zrxp rate` shows the current rate. The rate applies afte
 XP and is saved per character in the characters database. Needs
 `sql/fixes/characters/2026_11_27_90_character_xp_rate.sql` (run against `bfa_characters`). Only
 `scripts/Custom/XpWeekend.cpp`.
+
+`loot-conditions.patch` (after `personal-xp-rate.patch`) shows loot items that have loot conditions
+(`conditions` source type 1, for example "has quest", "knows skill", "is Horde") to the players who meet them.
+Before, `Loot::BuildLootResponse` only listed items whose condition list was empty, so every conditional drop
+(about 715 creature loot rows) was rolled but never shown. Such items are also counted in the loot's unlooted
+count now, since looting one decrements it. Only `Loot/Loot.cpp`.
 
 `zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
 solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
@@ -1259,6 +1266,7 @@ git apply ../tools-repo/tools/bfa/shutdown-zone-script.patch
 git apply ../tools-repo/tools/bfa/tower-skirmish-all-classes.patch
 git apply ../tools-repo/tools/bfa/lfg-outleveled-dungeons.patch
 git apply ../tools-repo/tools/bfa/personal-xp-rate.patch
+git apply ../tools-repo/tools/bfa/loot-conditions.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

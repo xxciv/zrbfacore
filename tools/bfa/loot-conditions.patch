@@ -1,0 +1,47 @@
+diff --git a/src/server/game/Loot/Loot.cpp b/src/server/game/Loot/Loot.cpp
+index fc3bdee..e478bd9 100644
+--- a/src/server/game/Loot/Loot.cpp
++++ b/src/server/game/Loot/Loot.cpp
+@@ -140,7 +140,8 @@ uint32 Loot::GetUnlootedCount(Player const* player /*= nullptr*/) const
+             for (LootItem const& item : itr->second)
+             {
+                 // Match the visibility rules used by BuildLootResponse().
+-                if (!item.is_looted && item.conditions.empty() && item.AllowedForPlayer(player))
++                // AllowedForPlayer() checks the item's loot conditions
++                if (!item.is_looted && item.AllowedForPlayer(player))
+                     ++unlootedCount;
+             }
+         }
+@@ -155,7 +156,7 @@ uint32 Loot::GetUnlootedCount(Player const* player /*= nullptr*/) const
+         {
+             Player const* looter = ObjectAccessor::FindConnectedPlayer(itemItr.first);
+             for (LootItem const& item : itemItr.second)
+-                if (!item.is_looted && (!looter || (item.conditions.empty() && item.AllowedForPlayer(looter))))
++                if (!item.is_looted && (!looter || item.AllowedForPlayer(looter)))
+                     ++unlootedCount;
+         }
+     }
+@@ -320,10 +321,9 @@ void Loot::AddItem(LootStoreItem const& item, Player const* player /*= nullptr*/
+         items[player->GetGUID()].push_back(generatedLoot);
+         count -= proto->GetMaxStackSize();
+ 
+-        // non-conditional one-player only items are counted here,
+-        // free for all items are counted in FillFFALoot(),
+-        // non-ffa conditionals are counted in FillNonQuestNonFFAConditionalLoot()
+-        if (item.conditions.empty() && !(proto->GetFlags() & ITEM_FLAG_MULTI_DROP))
++        // Every item is listed per looter here (conditional items too, there is no separate
++        // conditional list any more), so count them all; looting one decrements the count.
++        if (!(proto->GetFlags() & ITEM_FLAG_MULTI_DROP))
+             ++unlootedCount;
+     }
+ }
+@@ -401,7 +401,8 @@ void Loot::BuildLootResponse(WorldPackets::Loot::LootResponse& packet, Player* v
+     for (LootItem const& item : playerItems)
+     {
+         ++lootIndex;
+-        if (!item.is_looted && item.conditions.empty() && item.AllowedForPlayer(viewer))
++        // AllowedForPlayer() checks the item's loot conditions (an item with conditions was never shown before)
++        if (!item.is_looted && item.AllowedForPlayer(viewer))
+         {
+             if (!item.currency)
+             {

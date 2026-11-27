@@ -3,6 +3,62 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-27 (Core: conditional loot was never shown)
+
+Draft PR, not merged yet (same PR as the Helboar and Cursed Talisman changes below).
+
+### Core: loot items with loot conditions never appear
+- **Found** (2026-11-27, while fixing Tainted Helboar Meat): a loot item with any loot condition attached
+  (`conditions` source type 1: has quest, knows a skill, faction, has an item, has an aura...) is rolled but never
+  shown in the loot window. About 715 creature loot rows have such conditions (163 skill, 172 faction, 127 item,
+  126 aura, about 120 quest).
+- **Cause:** `Loot::BuildLootResponse` and `Loot::GetUnlootedCount` only list items whose condition list is empty.
+  Upstream had a separate list for conditional items, which this core dropped, so the filter now hides them for good.
+  `LootItem::AllowedForPlayer` already checks the conditions.
+- **Changed** (`tools/bfa/loot-conditions.patch`, after `personal-xp-rate.patch`, only `Loot/Loot.cpp`):
+  - The loot window and the unlooted count use `AllowedForPlayer` alone, so a conditional item shows for players
+    who meet its conditions.
+  - Conditional items are counted in the loot's unlooted count too (looting one decrements it, so leaving them out
+    would underflow the count).
+- **Status:** untested. Compiles (Loot.cpp on 2c13546 with the full chain).
+- **Pick up:** rebuild (new patch only), restart worldserver.
+
+## 2026-11-27 (Quest fixes: Helboar meat)
+
+Draft PR, not merged yet (same PR as the Cursed Talisman change below).
+
+### DB: Tainted Helboar Meat never drops
+- **Found** (Four, 2026-11-27): Helboar, the Other White Meat (9361): over 10 boars killed, no Tainted Helboar Meat.
+- **Cause:** the meat 23270 is a quest-only drop. The core only lets a quest-only item drop when it is one of the
+  quest's objectives or listed as the quest's drop item (ItemDrop1-4). The objective is the Purified Helboar Meat
+  23248 you make with the Purification Mixture, and the tainted meat wasn't listed, so it never dropped for anyone.
+  The chances were also low: 42.8% Deranged, 4.6% Starving, 1.3% Hulking Helboar (TDB 8.3.7 has 100%).
+- **Changed** (`sql/fixes/world/2026_11_27_70_helboar_other_white_meat.sql`):
+  - Quest 9361 lists 23270 as its drop item (ItemDrop1, quantity 0 = up to a full stack).
+  - 100% on Deranged 16863, Starving 16879 and Hulking Helboar 16880, as in TDB. Each purification uses one meat and
+    works half the time, so expect about 16 meat for 8 purified.
+  - Follow-up (`sql/fixes/world/2026_11_27_71_helboar_meat_loot_conditions.sql`): still nothing after that (Four).
+    The meat's loot rows also had a loot condition (quest 9361 taken), and this core never shows a loot item that has
+    any loot condition (Loot::BuildLootResponse only lists items with an empty condition list). The condition only
+    repeated the quest gate, so it is removed for the four boars.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
+## 2026-11-26 (Quest fixes: Cursed Talisman drop rate)
+
+Draft PR, not merged yet.
+
+### DB: Cursed Talismans drop too rarely
+- **Found** (Four, 2026-11-26): Cursed Talisman 30157 drops far too rarely for Cursed Talismans (10484, needs 12),
+  and for Ill Omens (10483, needs 1) before it.
+- **Cause:** 17-25% chance on the Bleeding Hollow orcs, about 55 kills for 12 talismans.
+- **Changed** (`sql/fixes/world/2026_11_26_70_cursed_talisman_drop_rate.sql`):
+  - 50% on Bleeding Hollow Grunt 16871, Dark Shaman 16873, Peon 16907, Necrolyte 19422, Tormentor 19424
+    (about 24 kills for 12).
+  - 100% on the named orcs Worg Master Kruush 19442 and Grillok "Darkeye" 19457.
+  - Worgs and boars keep their tiny chances.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
 ## 2026-11-27 (Core: personal XP rate)
 
 ### Core: `.zrxp rate` slows your own leveling
