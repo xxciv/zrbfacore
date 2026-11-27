@@ -3,6 +3,15 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-27 (World fixes: Dun Modr)
+
+### World: the Twilight Riflemen at the Dun Modr camp lie dead
+- **Found** (Four, 2026-11-27): "Dun Modr has a fair bit of enemy mobs near the camp. Looks like it may be wrong." Our 15 Twilight Riflemen (42155) stand on exactly TDB 8.3.7's spots, some among the camp NPCs, but alive, hostile and wandering. In TDB they carry the feign-death flag and stand still: bodies left from the fight for the camp. No quest needs them (the Twilight Converts are the kill target and stay alive).
+- **Changed** (`sql/fixes/world/2026_11_27_32_dun_modr_dead_riflemen.sql`): the riflemen lie dead (Permanent Feign Death 29266, like our other corpses) and stand still.
+- **Not changed:** the Twilight Converts in and around Dun Modr.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-27 (World fixes: Burning Steppes)
 
 ### World: Burning Steppes zone review, and the Blackrock army only for its quest
