@@ -3,6 +3,24 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-27 (Quest fixes: Recruitment)
+
+Draft PR, not merged yet.
+
+### DB: Recruitment corpses can be clicked over and over, Darnell never comes
+- **Found** (Four, 2026-11-27): on Recruitment (26800, Deathknell) a Scarlet Corpse stays after you click it and can
+  be clicked again for credit, with no cooldown. Darnell is supposed to come along and pick the corpses up.
+- **Cause:**
+  - Deathguard Saltain 1740 runs action lists 174001 (on accept) and 174000 (on reward), but both were missing, so
+    Darnell 49337 was never summoned.
+  - The corpse's click script was credit -> "enter vehicle" -> despawn, but the middle row used the teleport action
+    with a target that doesn't exist, which stopped the chain before the despawn.
+- **Changed** (`sql/fixes/world/2026_11_27_72_recruitment_darnell_corpses.sql`):
+  - Saltain's two action lists added from TDB 8.3.7: on accept you cast Summon Darnell 91938 after 3 seconds; on
+    reward Darnell and nearby corpses despawn.
+  - Scarlet Corpse 49340 click: credit, then the corpse can't be clicked again, rides Darnell (Ride Vehicle
+    Hardcoded 46598, as in TDB) and despawns after 5 seconds. It respawns after 5 minutes as before.
+- **Status:** confirmed in game by Four, 2026-11-27.
 ## 2026-11-27 (World: deprecated and stacked fishing pools)
 
 PR #123, not merged yet.
@@ -64,7 +82,7 @@ Draft PR, not merged yet (same PR as the Cursed Talisman change below).
     The meat's loot rows also had a loot condition (quest 9361 taken), and this core never shows a loot item that has
     any loot condition (Loot::BuildLootResponse only lists items with an empty condition list). The condition only
     repeated the quest gate, so it is removed for the four boars.
-- **Status:** untested.
+- **Status:** confirmed in game by Four, 2026-11-27.
 - **Pick up:** run the SQL, restart worldserver.
 
 ## 2026-11-26 (Quest fixes: Cursed Talisman drop rate)
