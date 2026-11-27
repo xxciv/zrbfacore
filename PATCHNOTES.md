@@ -3,6 +3,19 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-27 (World fixes: Hellfire Peninsula leftovers)
+
+### World: Zeth'Gor gryphons and scarabs, Expedition Point miners, Darkness Released in the Honor Hold inn
+- **Found** (Four, 2026-11-26, walking Hellfire Peninsula), against TDB 8.3.7:
+  - Gryphons over Zeth'Gor flying back and forth on the spot, and two stacked, stationary ones near Expedition Point: Honor Hold Gryphon Brigadiers (North 22404, Forge 22405, Foothill 22406, South 21170). TDB spawns none; the Zeth'Gor bomber controller summons them when a Smoke Beacon hits a tower (Zeth'Gor Must Burn!), and they fly their bombing path and despawn. Ours had 20 static ones (4 Foothill riders wandering 5 yards in the air, the stacked North/Forge pair 307699/315331). They also took the controller's "start your bombing path" signal, which goes to the closest rider.
+  - 17 Cursed Scarabs at a cauldron in Zeth'Gor: a Cursed Scarab Summoner 21308 (casts Summon Cursed Scarabs on spawn) and 15 Cursed Scarabs 21306. TDB has neither.
+  - "Darkness Released" upstairs in the Honor Hold inn, hostile: 8 static Darkness Released 22507. TDB has none; Colonel Jules' script summons them during The Exorcism of Colonel Jules (10935).
+  - Expedition Point, by Forward Commander Kingston: the female dwarf guard (59047) had the mining emote with her sword and shield. In TDB she stands guard there and four soldiers by the rocks mine instead; ours had only 2 of those 4 mining, one of them the wrong NPC, and the fourth missing.
+- **Changed** (`sql/fixes/world/2026_11_27_30_hellfire_leftover_spawns.sql`): the 20 static brigadiers, the summoner and 15 scarabs, and the 8 Darkness Released removed. Expedition Point as TDB: the guard 59047 stands at Four's spot (-677.083, 1865.630, facing 0.419) without the mining emote; the four miners (59036 Honor Hold Defender, 59038 and 59039 Stormwind Infantry, new GUID 735401760 for TDB 58138) mine, holding a Mining Pick 2901 (our tuning; equipment set 3 of 16842/16864).
+- **Not changed:** the bombing runs (controller, tower markers, summoned riders), the Colonel Jules exorcism.
+- **Status:** untested in game.
+- **Pick up:** run the SQL, restart `worldserver`.
+
 ## 2026-11-26 (World fixes: tower skirmishes get every class)
 
 ### Core + world: all thirteen classes, bigger kits, and a pool of elites for wave 4
