@@ -102,6 +102,8 @@ Warcraft: Battle for Azeroth 8.3.7 (build 35662) server emulator, on Debian 13.
   (`DungeonFinder.OutleveledNormalDungeons`, default on).
 - [`tools/bfa/personal-xp-rate.patch`](tools/bfa/personal-xp-rate.patch): `.zrxp rate 0-1` sets a
   character's own XP rate (0 = no XP). Needs `sql/fixes/characters/2026_11_27_90_character_xp_rate.sql`.
+- [`tools/bfa/loot-conditions.patch`](tools/bfa/loot-conditions.patch): loot with loot conditions
+  (quest, skill, faction...) is shown to players who meet them (it was never shown).
 - [`tools/bfa/taxi-nearest-node.patch`](tools/bfa/taxi-nearest-node.patch): flight masters use their
   own flight point, not one on another continent (Shatter Point's empty flight map).
 - [`tools/bfa/cannonball-runner.patch`](tools/bfa/cannonball-runner.patch): the Cannonball Runner

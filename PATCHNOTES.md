@@ -3,6 +3,26 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-27 (Core: conditional loot was never shown)
+
+Draft PR, not merged yet (same PR as the Helboar and Cursed Talisman changes below).
+
+### Core: loot items with loot conditions never appear
+- **Found** (2026-11-27, while fixing Tainted Helboar Meat): a loot item with any loot condition attached
+  (`conditions` source type 1: has quest, knows a skill, faction, has an item, has an aura...) is rolled but never
+  shown in the loot window. About 715 creature loot rows have such conditions (163 skill, 172 faction, 127 item,
+  126 aura, about 120 quest).
+- **Cause:** `Loot::BuildLootResponse` and `Loot::GetUnlootedCount` only list items whose condition list is empty.
+  Upstream had a separate list for conditional items, which this core dropped, so the filter now hides them for good.
+  `LootItem::AllowedForPlayer` already checks the conditions.
+- **Changed** (`tools/bfa/loot-conditions.patch`, after `personal-xp-rate.patch`, only `Loot/Loot.cpp`):
+  - The loot window and the unlooted count use `AllowedForPlayer` alone, so a conditional item shows for players
+    who meet its conditions.
+  - Conditional items are counted in the loot's unlooted count too (looting one decrements it, so leaving them out
+    would underflow the count).
+- **Status:** untested. Compiles (Loot.cpp on 2c13546 with the full chain).
+- **Pick up:** rebuild (new patch only), restart worldserver.
+
 ## 2026-11-27 (Quest fixes: Helboar meat)
 
 Draft PR, not merged yet (same PR as the Cursed Talisman change below).
