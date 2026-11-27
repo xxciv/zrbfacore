@@ -20,7 +20,7 @@ Draft PR, not merged yet.
     reward Darnell and nearby corpses despawn.
   - Scarlet Corpse 49340 click: credit, then the corpse can't be clicked again, rides Darnell (Ride Vehicle
     Hardcoded 46598, as in TDB) and despawns after 5 seconds. It respawns after 5 minutes as before.
-- **Status:** untested. If you already have the quest, abandon it and take it again from Saltain to get Darnell.
+- **Status:** confirmed in game by Four, 2026-11-27.
 - **Pick up:** run the SQL, restart worldserver.
 
 ## 2026-11-27 (Core: conditional loot was never shown)
