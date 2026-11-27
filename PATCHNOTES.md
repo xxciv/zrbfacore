@@ -13,7 +13,7 @@ to do to pick it up (rebuild, restart, run SQL).
   - Expedition Point, by Forward Commander Kingston: the female dwarf guard (59047) had the mining emote with her sword and shield. In TDB she stands guard there and four soldiers by the rocks mine instead; ours had only 2 of those 4 mining, one of them the wrong NPC, and the fourth missing.
 - **Changed** (`sql/fixes/world/2026_11_27_30_hellfire_leftover_spawns.sql`): the 20 static brigadiers, the summoner and 15 scarabs, and the 8 Darkness Released removed. Expedition Point as TDB: the guard 59047 stands at Four's spot (-677.083, 1865.630, facing 0.419) without the mining emote; the four miners (59036 Honor Hold Defender, 59038 and 59039 Stormwind Infantry, new GUID 735401760 for TDB 58138) mine, holding a Mining Pick 2901 (our tuning; equipment set 3 of 16842/16864).
 - **Not changed:** the bombing runs (controller, tower markers, summoned riders), the Colonel Jules exorcism.
-- **Status:** untested in game.
+- **Status:** confirmed in game by Four (2026-11-26).
 - **Pick up:** run the SQL, restart `worldserver`.
 
 ## 2026-11-26 (World fixes: tower skirmishes get every class)
