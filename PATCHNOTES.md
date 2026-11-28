@@ -3,9 +3,19 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-28 (Quest fixes: The Finest Down, Avruu's Orb)
+## 2026-11-28 (Quest fixes: The Finest Down, Avruu's Orb, Burning Legion Missive)
 
 Draft PR, not merged yet.
+
+### DB: Burning Legion Missive never drops
+- **Found** (Four, 2026-11-28): Warbringer Arix'Amal never drops the Burning Legion Missive.
+- **Cause:** same as Avruu's Orb: the missive starts its quest but the loot row had QuestRequired=1. Both faction
+  versions were affected: Alliance 29588 on Arix'Amal 19298 (The Dark Missive 10395, 41.8%) and Horde 29590 on
+  Razorsaw 20798 (Vile Plans 10393, 51.4%).
+- **Changed** (`sql/fixes/world/2026_11_28_75_burning_legion_missives.sql`): QuestRequired 0, Chance 100 on both, as
+  TDB 8.3.7. The team conditions on the rows stay (they need loot-conditions.patch to show at all).
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
 
 ### DB: Avruu never drops Avruu's Orb
 - **Found** (Four, 2026-11-28): Avruu's Orb (9418), 8 Avruu kills, only money and grey items.
