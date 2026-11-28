@@ -3,6 +3,22 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-28 (Quest fixes: The Dreghood Elders)
+
+Draft PR, not merged yet.
+
+### DB: Aylaan the Waterwaker can't be freed
+- **Found** (Four, 2026-11-28): The Dreghood Elders (10368) can't be finished. Aylaan's gossip asks about Levia
+  Laurence and freeing him does nothing.
+- **Cause:** Aylaan 20679 used gossip menu 20679, which is an innkeeper's menu (Levia Laurence, inn and vendor
+  lines), so the "free" line never showed and his credit row (gossip select on menu 20679) never matched. Morod and
+  Akoru have working menus of their own.
+- **Changed** (`sql/fixes/world/2026_11_28_70_dreghood_elders_aylaan.sql`): Aylaan gets TDB 8.3.7's menu 8161
+  ("Walk free, elder. Bring the spirits back to your tribe.", shown only while on 10368), and his credit row listens
+  on 8161.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
 ## 2026-11-27 (Quest fixes: Recruitment)
 
 Draft PR, not merged yet.
