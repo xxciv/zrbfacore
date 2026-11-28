@@ -3,6 +3,49 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-28 (Quest fixes: The Dreghood Elders, Arzeth's Demise, The Seer's Relic)
+
+Draft PR, not merged yet.
+
+### DB: The Seer's Relic vision never plays
+- **Found** (Four, 2026-11-28): The Seer's Relic (9545) gives credit for the relic, and Vindicator Sedai is already
+  standing there with a "You are free" gossip, but nothing else happens.
+- **Cause:** the vision event was missing. Sedai (307814) was a plain standing spawn with a stand-in gossip credit,
+  Krun Spinebreaker (373556) stood on a hill to the north, the two Mag'har Escorts (17417) and two Laughing Skull
+  Ambushers (17418) had no spawns, and none of the actors or the Sedai Quest Credit Marker (17413) had their SAI.
+  Their factions were also neutral (7/14) instead of TDB's Mag'har 1683 and Laughing Skull 1684.
+- **Changed** (`sql/fixes/world/2026_11_28_72_seers_relic_vision.sql`): TDB 8.3.7 event. Sedai 307814 and Krun
+  373556 moved to the TDB event spots (TDB guids 78644/78647), escorts 735490002/3 and ambushers 735490004/5 added,
+  all 2 minute respawn. All six stay invisible until the relic's marker 17413 appears; then the escorts walk Sedai
+  down and kick him, Sedai talks, the ambushers attack the escorts, Krun walks in and executes Sedai, and everyone
+  despawns 7 seconds later. TDB factions and IMMUNE_TO_PC flags on 17404/17405/17417/17418; Sedai's stand-in gossip
+  (npcflag, menu 17404, SAI credit row) removed because the relic itself gives the credit (event 10745).
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
+### DB: Arzeth the Merciless missing
+- **Found** (Four, 2026-11-28): Arzeth's Demise (10369) can't be done, Arzeth isn't spawned anywhere.
+- **Cause:** Arzeth the Merciless 19354 had no spawn at all. TDB 8.3.7 spawns him at Ruins of Sha'naar
+  (-617.6, 4800.3) on patrol path 690510, which was still in waypoint_data but unused. His SAI was also missing the
+  shouts and the reset back to 19354 after the staff turns him into Arzeth the Powerless 20680.
+- **Changed** (`sql/fixes/world/2026_11_28_71_arzeths_demise.sql`): spawn guid 735490001 (TDB guid 69051 is taken
+  here) with path 690510, 5 minute respawn; SAI 19354 rows 3-5 (OOC shout, Powerless shout linked from the staff
+  hit, reset to 19354 on evade); TDB condition that spell 35460 only targets 19354.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
+### DB: Aylaan the Waterwaker can't be freed
+- **Found** (Four, 2026-11-28): The Dreghood Elders (10368) can't be finished. Aylaan's gossip asks about Levia
+  Laurence and freeing him does nothing.
+- **Cause:** Aylaan 20679 used gossip menu 20679, which is an innkeeper's menu (Levia Laurence, inn and vendor
+  lines), so the "free" line never showed and his credit row (gossip select on menu 20679) never matched. Morod and
+  Akoru have working menus of their own.
+- **Changed** (`sql/fixes/world/2026_11_28_70_dreghood_elders_aylaan.sql`): Aylaan gets TDB 8.3.7's menu 8161
+  ("Walk free, elder. Bring the spirits back to your tribe.", shown only while on 10368), and his credit row listens
+  on 8161.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
 ## 2026-11-27 (Quest fixes: Recruitment)
 
 Draft PR, not merged yet.
