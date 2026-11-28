@@ -3,9 +3,20 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-28 (Quest fixes: The Dreghood Elders)
+## 2026-11-28 (Quest fixes: The Dreghood Elders, Arzeth's Demise)
 
 Draft PR, not merged yet.
+
+### DB: Arzeth the Merciless missing
+- **Found** (Four, 2026-11-28): Arzeth's Demise (10369) can't be done, Arzeth isn't spawned anywhere.
+- **Cause:** Arzeth the Merciless 19354 had no spawn at all. TDB 8.3.7 spawns him at Ruins of Sha'naar
+  (-617.6, 4800.3) on patrol path 690510, which was still in waypoint_data but unused. His SAI was also missing the
+  shouts and the reset back to 19354 after the staff turns him into Arzeth the Powerless 20680.
+- **Changed** (`sql/fixes/world/2026_11_28_71_arzeths_demise.sql`): spawn guid 735490001 (TDB guid 69051 is taken
+  here) with path 690510, 5 minute respawn; SAI 19354 rows 3-5 (OOC shout, Powerless shout linked from the staff
+  hit, reset to 19354 on evade); TDB condition that spell 35460 only targets 19354.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
 
 ### DB: Aylaan the Waterwaker can't be freed
 - **Found** (Four, 2026-11-28): The Dreghood Elders (10368) can't be finished. Aylaan's gossip asks about Levia
