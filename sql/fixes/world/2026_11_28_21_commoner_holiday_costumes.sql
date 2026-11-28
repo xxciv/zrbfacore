@@ -1,4 +1,5 @@
--- Holiday commoners wear the costume of the holiday that is on (Four, 2026-11-28).
+-- Holiday commoners wear the costume of the holiday that is on (Four, 2026-11-28: a Thunder Bluff Tauren
+-- Commoner in his green and white Christmas outfit during Pilgrim's Bounty).
 --
 -- The commoners in the capital cities (Human 18927, Dwarf 19148, Blood Elf 19169, Draenei 19171, Gnome 19172,
 -- Night Elf 19173, Orc 19175, Tauren 19176, Troll 19177, Forsaken 19178, Goblin 20102) come out for the holidays
@@ -18,7 +19,7 @@
 --   Pirates' Day (50) morphs; the Midsummer Celebrant Costume (1). Each id N runs only while condition group N+1
 --   (conditions source 22, event active) holds; those conditions are rewritten from TDB too (unchanged for 9
 --   entries, new for Human and Blood Elf). No costume for the other holidays (Noblegarden, Pilgrim's Bounty):
---   commoners wear their everyday clothes then (the male Tauren's is green and white).
+--   commoners wear their everyday clothes then.
 --   The holiday appearance auras above are removed; the plain per-gender appearance auras (33411, 33426,
 --   33432, 33473, 33476, 34847, 34850) and the Gossip NPC Periodic auras 33207-33209 stay. Templates 18927 and
 --   19177 get Default 65523 like the others instead of Midsummer 65526.

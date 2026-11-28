@@ -8,9 +8,9 @@ to do to pick it up (rebuild, restart, run SQL).
 Draft PR, not merged yet.
 
 ### DB: Holiday commoners wear the right costume
-- **Found** (Four, 2026-11-28): the Tauren Commoner in Orgrimmar looks like he's in a winter outfit during Pilgrim's
-  Bounty. That green and white outfit (Resilient Tunic, Cord and Leggings) is his everyday look, but checking it
-  turned up costumes stuck on all year, whichever holiday is on:
+- **Found** (Four, 2026-11-28): a Tauren Commoner in Thunder Bluff wears a green and white winter outfit during
+  Pilgrim's Bounty. It was his Christmas costume (aura 33465), one of several costumes stuck on all year, whichever
+  holiday is on:
   - Christmas outfits on Thunder Bluff Tauren 138126, Blood Elf 138132 and Gnomes 138118/138106.
   - Lunar Festival outfits on Blood Elf 138151 and five Goblins.
   - Day of the Dead on 93882/93889, Pirates' Day on 93829/93836/93857, and Midsummer on five spawns plus the
@@ -24,7 +24,8 @@ Draft PR, not merged yet.
   and Blood Elf). The stuck holiday auras are removed. The plain per-gender appearance auras and the Gossip NPC
   Periodic auras stay, and the Human and Troll templates get Default 65523 instead of Midsummer. Noblegarden and
   Pilgrim's Bounty have no costume, so commoners wear their everyday clothes then. The gossip rows are unchanged.
-- **Status:** untested.
+- **Status:** confirmed in game 2026-11-28 (the Thunder Bluff Tauren is back in everyday clothes); holiday
+  costumes themselves to check from Winter Veil (2026-12-15).
 - **Pick up:** run the SQL, restart worldserver. Commoners dress on spawn, so the ones out now change after the
   restart.
 
