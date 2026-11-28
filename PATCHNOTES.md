@@ -3,6 +3,57 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-28 (Quest fixes: The Finest Down, Avruu's Orb, Burning Legion Missive, quest-starting drops)
+
+Draft PR, not merged yet.
+
+### DB: quest-starting drops that could never drop (game-wide)
+- **Found** (Four, 2026-11-28): after Avruu's Orb and the Burning Legion Missive, the Crimson Crystal Shard from the
+  Raging Colossus (Crimson Crystal Clue 10134) never dropped either.
+- **Cause:** same bug at scale. 2,643 loot rows for 303 items that start a quest had QuestRequired=1. A QuestRequired
+  item only shows when a quest in the log needs it, and most of these are the objective of the very quest they
+  start, so nobody could ever loot them.
+- **Changed** (`sql/fixes/world/2026_11_28_76_quest_starter_loot_questrequired.sql`): QuestRequired 0 on 2,554
+  creature and 89 gameobject loot rows whose item starts a live (not retired) quest and isn't needed by some other
+  quest. Drop chances unchanged (Crimson Crystal Shard stays 20%, TDB 19%). The core still hides each item once its
+  quest is taken or done. Includes TBC named-mob starters (Conjurer Luminrath, Cohlien Frostweaver and friends),
+  Ashenvale's Ursangous, Shadumbra and Sharptalon trophies, Damaged Necklace, Battered Hilt, many WoD/Legion/BFA starters and
+  the Ancient Pilgrimage Scrollcasing (The Great Sea Scrolls) from BFA chests.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
+### DB: Burning Legion Missive never drops
+- **Found** (Four, 2026-11-28): Warbringer Arix'Amal never drops the Burning Legion Missive.
+- **Cause:** same as Avruu's Orb: the missive starts its quest but the loot row had QuestRequired=1. Both faction
+  versions were affected: Alliance 29588 on Arix'Amal 19298 (The Dark Missive 10395, 41.8%) and Horde 29590 on
+  Razorsaw 20798 (Vile Plans 10393, 51.4%).
+- **Changed** (`sql/fixes/world/2026_11_28_75_burning_legion_missives.sql`): QuestRequired 0, Chance 100 on both, as
+  TDB 8.3.7. The team conditions on the rows stay (they need loot-conditions.patch to show at all).
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
+### DB: Avruu never drops Avruu's Orb
+- **Found** (Four, 2026-11-28): Avruu's Orb (9418), 8 Avruu kills, only money and grey items.
+- **Cause:** Avruu's Orb 23580 starts the quest, but its loot row on Avruu 17084 had QuestRequired=1. A QuestRequired
+  item only shows when a quest already in the log needs it (Player::HasQuestForItem), so an item that starts a
+  quest can never drop with that flag. TDB 8.3.7 has QuestRequired=0 (80%).
+- **Changed** (`sql/fixes/world/2026_11_28_74_avruus_orb_drop.sql`): QuestRequired 0, Chance 100 (named single-source
+  quest drop). The core still hides the orb once the quest is taken or done (StartQuestID check).
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
+### DB: Kaliri Nests do nothing
+- **Found** (Four, 2026-11-28): The Finest Down (9420), no feathers from the Kaliri Nests.
+- **Cause:** the feathers (Kaliri Feathers 23588) come from Kaliri Hatchlings that hatch out of the nests, and the
+  nests had no SAI, so opening one did nothing. TDB 8.3.7 hatches them through Invisible Location Trigger 19656
+  casting 29396/29397, but those spells are missing from the 8.3.7 client data, and 19656 is a shared trigger
+  (49 static Hellfire spawns, Amanitar in Ahn'kahet), so it can't carry a kaliri script.
+- **Changed** (`sql/fixes/world/2026_11_28_73_finest_down_kaliri_nests.sql`): Kaliri Nest 181582 runs a random
+  action list on open (18158200/18158201) that summons a Female (17034, 35.6% feather) or Male (17039, 22.6%)
+  Kaliri Hatchling at the nest; it despawns after 2 minutes if left alone.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
 ## 2026-11-28 (Quest fixes: The Dreghood Elders, Arzeth's Demise, The Seer's Relic)
 
 Draft PR, not merged yet.
