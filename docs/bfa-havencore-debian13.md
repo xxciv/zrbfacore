@@ -170,6 +170,7 @@ git apply ../tools-repo/tools/bfa/tower-skirmish-all-classes.patch
 git apply ../tools-repo/tools/bfa/lfg-outleveled-dungeons.patch
 git apply ../tools-repo/tools/bfa/personal-xp-rate.patch
 git apply ../tools-repo/tools/bfa/loot-conditions.patch
+git apply ../tools-repo/tools/bfa/pilgrims-bounty-turkey-tracker.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -695,6 +696,12 @@ XP and is saved per character in the characters database. Needs
 Before, `Loot::BuildLootResponse` only listed items whose condition list was empty, so every conditional drop
 (about 715 creature loot rows) was rolled but never shown. Such items are also counted in the loot's unlooted
 count now, since looting one decrements it. Only `Loot/Loot.cpp`.
+
+`pilgrims-bounty-turkey-tracker.patch` (after `loot-conditions.patch`) makes The Turkinator (Pilgrim's Bounty)
+completable: a dying Wild Turkey now casts Turkey Tracker (62014) on its killer, or the killer's owner for a pet,
+instead of the killer casting it on themselves. The tracker's spell script only counts kills with a creature caster,
+so the 10/20/30/40 kill emotes and Turkey Triumph (62021) at 40 never happened. Only
+`scripts/Events/pilgrims_bounty.cpp`.
 
 `zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
 solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
@@ -1267,6 +1274,7 @@ git apply ../tools-repo/tools/bfa/tower-skirmish-all-classes.patch
 git apply ../tools-repo/tools/bfa/lfg-outleveled-dungeons.patch
 git apply ../tools-repo/tools/bfa/personal-xp-rate.patch
 git apply ../tools-repo/tools/bfa/loot-conditions.patch
+git apply ../tools-repo/tools/bfa/pilgrims-bounty-turkey-tracker.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 
@@ -1511,6 +1519,8 @@ mysql -u root -p bfa_world < ../tools-repo/sql/fixes/world/2026_10_10_00_bandage
 | `2026_11_26_31_tower_skirmish_class_pool.sql` | Tower skirmishes: the class pool for `tower-skirmish-class-pool.patch` (Pyromancer, Tracker + pet, Earthcaller, Shadowcaller + imp, Cutthroat for Thrallmar, Honor Hold, Stonebreaker and Allerian; 9100113-9100136) |
 | `2026_11_26_30_terokkar_tower_skirmishers.sql` | Terokkar Spirit Towers: the six wave soldiers for `terokkar-tower-skirmish.patch` (Stonebreaker / Allerian Skirmisher, Battlemage and elite Warbringer / Vanguard, level-scaled 62-83, honor kill, no XP); removes five dead duplicate capture banners |
 | `2026_11_25_30_hellfire_tower_skirmishers.sql` | Hellfire towers: the six wave soldiers for `hellfire-tower-skirmish.patch` (Thrallmar / Honor Hold Skirmisher, Battlemage and elite Warbringer / Vanguard, level-scaled, honor kill, no XP); removes three dead duplicate capture banners |
+| `2026_11_28_20_pilgrims_bounty_wild_turkey_assist.sql` | Pilgrim's Bounty: Wild Turkeys no longer pull their neighbours in (civilian, like Plump Turkey) |
+| `2026_11_28_21_commoner_holiday_costumes.sql` | Holiday commoners (11 races) dress for the holiday that is on (TDB 8.3.7 SmartAI); costumes stuck on all year removed |
 
 Hotfix fixes live in `sql/fixes/hotfixes` and run against `bfa_hotfixes` the same way (`mysql -u root -p bfa_hotfixes < file`). `2026_11_04_00_darkmoon_faire_calendar.sql` puts the Darkmoon Faire back on the in-game calendar (the client's own dates end in 2020) for the Faires of November 2026 to December 2028. `2026_11_05_00_holiday_calendar_dates.sql` does the same for Lunar Festival, Love is in the Air, Noblegarden, Children's Week, Harvest Festival and Pilgrim's Bounty (2026 to 2030). `2026_11_23_20_fishing_calendar.sql` shows the Stranglethorn Fishing Extravaganza (Sundays) and the Kalu'ak Fishing Derby (Saturdays) on the calendar, weekly to May 2027 (the client's own rows are hidden or dated 2005). `2026_11_06_00_darkmoon_balloon_cart_seat.sql` moves Carl Goodup's Balloon Cart one foot further in front of him (VehicleSeat 10236). `2026_11_08_00_gathering_tier_locks.sql` adds the per-expansion herb and ore locks (section 3, with its world fix of the same name, and `2026_11_09_00_profession_tier_trainers.sql` plus `2026_11_09_01_profession_trainer_options.sql` let trainers teach the expansion skills, `2026_11_09_02_profession_tier_levels.sql` gates them by expansion level, `2026_11_15_80_profession_trainer_recipes.sql` gives every crafting trainer its recipes).
 

@@ -3,6 +3,56 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-28 (Holidays: Pilgrim's Bounty turkeys, commoner costumes)
+
+Draft PR, not merged yet.
+
+### DB: Holiday commoners wear the right costume
+- **Found** (Four, 2026-11-28): a Tauren Commoner in Thunder Bluff wears a green and white winter outfit during
+  Pilgrim's Bounty. It was his Christmas costume (aura 33465), one of several costumes stuck on all year, whichever
+  holiday is on:
+  - Christmas outfits on Thunder Bluff Tauren 138126, Blood Elf 138132 and Gnomes 138118/138106.
+  - Lunar Festival outfits on Blood Elf 138151 and five Goblins.
+  - Day of the Dead on 93882/93889, Pirates' Day on 93829/93836/93857, and Midsummer on five spawns plus the
+    Human and Troll commoner templates.
+  - The SmartAI that dresses commoners for the current holiday was missing (its conditions were there).
+- **Changed** (`sql/fixes/world/2026_11_28_21_commoner_holiday_costumes.sql`): TrinityCore 8.3.7's on-spawn SmartAI
+  for all 11 commoners (Human, Dwarf, Blood Elf, Draenei, Gnome, Night Elf, Orc, Tauren, Troll, Forsaken, Goblin):
+  ids 13-19 and 132 action list rows. A random male or female costume is chosen for Winter Veil, Hallow's End and
+  Lunar Festival, plus the Brewfest Reveler, Day of the Dead and Pirates' Day morphs and the Midsummer Celebrant
+  Costume. Each part runs only while its holiday is active (conditions source 22 rewritten from TDB, new for Human
+  and Blood Elf). The stuck holiday auras are removed. The plain per-gender appearance auras and the Gossip NPC
+  Periodic auras stay, and the Human and Troll templates get Default 65523 instead of Midsummer. Noblegarden and
+  Pilgrim's Bounty have no costume, so commoners wear their everyday clothes then. The gossip rows are unchanged.
+- **Status:** confirmed in game 2026-11-28 (the Thunder Bluff Tauren is back in everyday clothes); holiday
+  costumes themselves to check from Winter Veil (2026-12-15).
+- **Pick up:** run the SQL, restart worldserver. Commoners dress on spawn, so the ones out now change after the
+  restart.
+
+### Core: The Turkinator never completes
+- **Found** (2026-11-28, while answering Four's question about the turkey kill credit): The Turkinator (3578) is
+  awarded for Turkey Triumph (62021), which spell_pilgrims_bounty_turkey_tracker casts at 40 stacks of Turkey
+  Tracker (62014), with the turkey's emotes at 10/20/30/40.
+- **Cause:** `npc_wild_turkey` made the killer cast Turkey Tracker on themselves. The tracker script returns at
+  once when its caster isn't a creature, so stacks were added but no emote and no Triumph ever came.
+- **Changed** (`tools/bfa/pilgrims-bounty-turkey-tracker.patch`, after `loot-conditions.patch`, only
+  `scripts/Events/pilgrims_bounty.cpp`): the dying turkey casts Turkey Tracker (triggered) on its killer, or on the
+  killer's owner when a pet or totem gets the kill, as TrinityCore's turkey SAI does.
+- **Status:** untested. Compiles.
+- **Pick up:** apply the patch, rebuild, restart worldserver.
+
+### DB: Wild Turkeys pull in flocks
+- **Found** (Four, 2026-11-28): attacking one Wild Turkey in Tirisfal Glades / Undercity pulls the turkeys
+  around it too.
+- **Cause:** Wild Turkey 32820 (game event 26; about 1,350 spawns in Tirisfal, 1,230 in Elwynn) is a level 1
+  beast with the default aggressive react state. When one is attacked, every turkey of the same faction within the
+  10-yard assistance radius joins in, and they stand close together for The Turkinator achievement.
+- **Changed** (`sql/fixes/world/2026_11_28_20_pilgrims_bounty_wild_turkey_assist.sql`): `flags_extra` 64 -> 66
+  (adds CIVILIAN 0x2, as Plump Turkey 32818 already has). A civilian never comes to help and never starts a fight,
+  but still fights back when attacked. Kill credit for The Turkinator (Turkey Tracker 62014) unchanged.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
 ## 2026-11-28 (Quest fixes: The Dreghood Elders, Arzeth's Demise, The Seer's Relic)
 
 Draft PR, not merged yet.
