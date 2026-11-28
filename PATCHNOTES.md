@@ -3,9 +3,30 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-28 (Holidays: Pilgrim's Bounty turkeys)
+## 2026-11-28 (Holidays: Pilgrim's Bounty turkeys, commoner costumes)
 
 Draft PR, not merged yet.
+
+### DB: Holiday commoners wear the right costume
+- **Found** (Four, 2026-11-28): the Tauren Commoner in Orgrimmar looks like he's in a winter outfit during Pilgrim's
+  Bounty. That green and white outfit (Resilient Tunic, Cord and Leggings) is his everyday look, but checking it
+  turned up costumes stuck on all year, whichever holiday is on:
+  - Christmas outfits on Thunder Bluff Tauren 138126, Blood Elf 138132 and Gnomes 138118/138106.
+  - Lunar Festival outfits on Blood Elf 138151 and five Goblins.
+  - Day of the Dead on 93882/93889, Pirates' Day on 93829/93836/93857, and Midsummer on five spawns plus the
+    Human and Troll commoner templates.
+  - The SmartAI that dresses commoners for the current holiday was missing (its conditions were there).
+- **Changed** (`sql/fixes/world/2026_11_28_21_commoner_holiday_costumes.sql`): TrinityCore 8.3.7's on-spawn SmartAI
+  for all 11 commoners (Human, Dwarf, Blood Elf, Draenei, Gnome, Night Elf, Orc, Tauren, Troll, Forsaken, Goblin):
+  ids 13-19 and 132 action list rows. A random male or female costume is chosen for Winter Veil, Hallow's End and
+  Lunar Festival, plus the Brewfest Reveler, Day of the Dead and Pirates' Day morphs and the Midsummer Celebrant
+  Costume. Each part runs only while its holiday is active (conditions source 22 rewritten from TDB, new for Human
+  and Blood Elf). The stuck holiday auras are removed. The plain per-gender appearance auras and the Gossip NPC
+  Periodic auras stay, and the Human and Troll templates get Default 65523 instead of Midsummer. Noblegarden and
+  Pilgrim's Bounty have no costume, so commoners wear their everyday clothes then. The gossip rows are unchanged.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver. Commoners dress on spawn, so the ones out now change after the
+  restart.
 
 ### Core: The Turkinator never completes
 - **Found** (2026-11-28, while answering Four's question about the turkey kill credit): The Turkinator (3578) is
