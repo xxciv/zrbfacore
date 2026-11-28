@@ -7,15 +7,27 @@ to do to pick it up (rebuild, restart, run SQL).
 
 Draft PR, not merged yet.
 
+### Core: The Turkinator never completes
+- **Found** (2026-11-28, while answering Four's question about the turkey kill credit): The Turkinator (3578) is
+  awarded for Turkey Triumph (62021), which spell_pilgrims_bounty_turkey_tracker casts at 40 stacks of Turkey
+  Tracker (62014), with the turkey's emotes at 10/20/30/40.
+- **Cause:** `npc_wild_turkey` made the killer cast Turkey Tracker on themselves. The tracker script returns at
+  once when its caster isn't a creature, so stacks were added but no emote and no Triumph ever came.
+- **Changed** (`tools/bfa/pilgrims-bounty-turkey-tracker.patch`, after `loot-conditions.patch`, only
+  `scripts/Events/pilgrims_bounty.cpp`): the dying turkey casts Turkey Tracker (triggered) on its killer, or on the
+  killer's owner when a pet or totem gets the kill, as TrinityCore's turkey SAI does.
+- **Status:** untested. Compiles.
+- **Pick up:** apply the patch, rebuild, restart worldserver.
+
 ### DB: Wild Turkeys pull in flocks
 - **Found** (Four, 2026-11-28): attacking one Wild Turkey in Tirisfal Glades / Undercity pulls the turkeys
   around it too.
 - **Cause:** Wild Turkey 32820 (game event 26; about 1,350 spawns in Tirisfal, 1,230 in Elwynn) is a level 1
   beast with the default aggressive react state. When one is attacked, every turkey of the same faction within the
-  10-yard assistance radius joins in, and they stand close together for the Turkey Hunter achievement.
+  10-yard assistance radius joins in, and they stand close together for The Turkinator achievement.
 - **Changed** (`sql/fixes/world/2026_11_28_20_pilgrims_bounty_wild_turkey_assist.sql`): `flags_extra` 64 -> 66
   (adds CIVILIAN 0x2, as Plump Turkey 32818 already has). A civilian never comes to help and never starts a fight,
-  but still fights back when attacked. Turkey Hunter credit (spell 62014) unchanged.
+  but still fights back when attacked. Kill credit for The Turkinator (Turkey Tracker 62014) unchanged.
 - **Status:** untested.
 - **Pick up:** run the SQL, restart worldserver.
 

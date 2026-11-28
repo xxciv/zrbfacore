@@ -3,10 +3,11 @@
 -- Wild Turkey 32820 (game event 26, about 1,350 spawns in Tirisfal and 1,230 in Elwynn) is a level 1
 -- beast with the default aggressive react state, so when one is attacked every unengaged turkey of the
 -- same faction within the assistance radius (10 yards) joins in (Creature::CanAssistTo). They stand
--- close together for the Turkey Hunter achievement, so one shot pulls a flock.
+-- close together for The Turkinator achievement, so one shot pulls a flock.
 --
 -- Flag the turkeys CIVILIAN (flags_extra 0x2, as Plump Turkey 32818 already is): a civilian never helps
 -- (CanAssistTo returns false) and never starts a fight, but still fights back when attacked. The
--- existing 0x40 (no XP at kill) stays. Kill credit for Turkey Hunter (spell 62014 from npc_wild_turkey)
+-- existing 0x40 (no XP at kill) stays. Kill credit for The Turkinator (Turkey Tracker 62014, see
+-- pilgrims-bounty-turkey-tracker.patch)
 -- is unchanged.
 UPDATE `creature_template` SET `flags_extra`=`flags_extra`|0x2 WHERE `entry`=32820;

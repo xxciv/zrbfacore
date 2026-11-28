@@ -170,6 +170,7 @@ git apply ../tools-repo/tools/bfa/tower-skirmish-all-classes.patch
 git apply ../tools-repo/tools/bfa/lfg-outleveled-dungeons.patch
 git apply ../tools-repo/tools/bfa/personal-xp-rate.patch
 git apply ../tools-repo/tools/bfa/loot-conditions.patch
+git apply ../tools-repo/tools/bfa/pilgrims-bounty-turkey-tracker.patch
 ```
 
 Upstream is built with MSVC, which accepts two things GCC 14 doesn't, and its CMake can't build the
@@ -695,6 +696,12 @@ XP and is saved per character in the characters database. Needs
 Before, `Loot::BuildLootResponse` only listed items whose condition list was empty, so every conditional drop
 (about 715 creature loot rows) was rolled but never shown. Such items are also counted in the loot's unlooted
 count now, since looting one decrements it. Only `Loot/Loot.cpp`.
+
+`pilgrims-bounty-turkey-tracker.patch` (after `loot-conditions.patch`) makes The Turkinator (Pilgrim's Bounty)
+completable: a dying Wild Turkey now casts Turkey Tracker (62014) on its killer, or the killer's owner for a pet,
+instead of the killer casting it on themselves. The tracker's spell script only counts kills with a creature caster,
+so the 10/20/30/40 kill emotes and Turkey Triumph (62021) at 40 never happened. Only
+`scripts/Events/pilgrims_bounty.cpp`.
 
 `zulfarrak.patch` makes Zul'Farrak's dungeon scenario finishable and sizes the pyramid event for a
 solo player. The scenario's first step waits for two events, "Shadowpriest Sezz'ziz defeated" (23316)
@@ -1267,6 +1274,7 @@ git apply ../tools-repo/tools/bfa/tower-skirmish-all-classes.patch
 git apply ../tools-repo/tools/bfa/lfg-outleveled-dungeons.patch
 git apply ../tools-repo/tools/bfa/personal-xp-rate.patch
 git apply ../tools-repo/tools/bfa/loot-conditions.patch
+git apply ../tools-repo/tools/bfa/pilgrims-bounty-turkey-tracker.patch
 cmake --build build -j"$(nproc)" && cmake --build build --target install
 ```
 

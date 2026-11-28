@@ -1,0 +1,21 @@
+diff --git a/src/server/scripts/Events/pilgrims_bounty.cpp b/src/server/scripts/Events/pilgrims_bounty.cpp
+index 2b3ac1b..d21be3c 100644
+--- a/src/server/scripts/Events/pilgrims_bounty.cpp
++++ b/src/server/scripts/Events/pilgrims_bounty.cpp
+@@ -43,8 +43,14 @@ public:
+ 
+         void JustDied(Unit* killer) override
+         {
+-            if (killer && killer->GetTypeId() == TYPEID_PLAYER)
+-                killer->CastSpell(killer, SPELL_TURKEY_TRACKER);
++            // zrbfacore: the turkey casts Turkey Tracker on its killer (as TrinityCore's SAI does).
++            // spell_pilgrims_bounty_turkey_tracker needs a creature caster for the 10/20/30/40 kill
++            // emotes and Turkey Triumph (62021, The Turkinator); with the player as caster it returned
++            // at once. Triggered, so the dead turkey can still cast. A pet's kill counts for its owner.
++            if (!killer)
++                return;
++            if (Player* player = killer->GetCharmerOrOwnerPlayerOrPlayerItself())
++                me->CastSpell(player, SPELL_TURKEY_TRACKER, true);
+         }
+     };
+ 
