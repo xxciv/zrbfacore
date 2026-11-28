@@ -3,9 +3,24 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-28 (Quest fixes: The Finest Down, Avruu's Orb, Burning Legion Missive)
+## 2026-11-28 (Quest fixes: The Finest Down, Avruu's Orb, Burning Legion Missive, quest-starting drops)
 
 Draft PR, not merged yet.
+
+### DB: quest-starting drops that could never drop (game-wide)
+- **Found** (Four, 2026-11-28): after Avruu's Orb and the Burning Legion Missive, the Crimson Crystal Shard from the
+  Raging Colossus (Crimson Crystal Clue 10134) never dropped either.
+- **Cause:** same bug at scale. 2,643 loot rows for 303 items that start a quest had QuestRequired=1. A QuestRequired
+  item only shows when a quest in the log needs it, and most of these are the objective of the very quest they
+  start, so nobody could ever loot them.
+- **Changed** (`sql/fixes/world/2026_11_28_76_quest_starter_loot_questrequired.sql`): QuestRequired 0 on 2,554
+  creature and 89 gameobject loot rows whose item starts a live (not retired) quest and isn't needed by some other
+  quest. Drop chances unchanged (Crimson Crystal Shard stays 20%, TDB 19%). The core still hides each item once its
+  quest is taken or done. Includes TBC named-mob starters (Conjurer Luminrath, Cohlien Frostweaver and friends),
+  Ashenvale's Ursangous, Shadumbra and Sharptalon trophies, Damaged Necklace, Battered Hilt, many WoD/Legion/BFA starters and
+  the Ancient Pilgrimage Scrollcasing (The Great Sea Scrolls) from BFA chests.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
 
 ### DB: Burning Legion Missive never drops
 - **Found** (Four, 2026-11-28): Warbringer Arix'Amal never drops the Burning Legion Missive.
