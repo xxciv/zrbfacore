@@ -3,6 +3,22 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-28 (Holidays: Pilgrim's Bounty turkeys)
+
+Draft PR, not merged yet.
+
+### DB: Wild Turkeys pull in flocks
+- **Found** (Four, 2026-11-28): attacking one Wild Turkey in Tirisfal Glades / Undercity pulls the turkeys
+  around it too.
+- **Cause:** Wild Turkey 32820 (game event 26; about 1,350 spawns in Tirisfal, 1,230 in Elwynn) is a level 1
+  beast with the default aggressive react state. When one is attacked, every turkey of the same faction within the
+  10-yard assistance radius joins in, and they stand close together for the Turkey Hunter achievement.
+- **Changed** (`sql/fixes/world/2026_11_28_20_pilgrims_bounty_wild_turkey_assist.sql`): `flags_extra` 64 -> 66
+  (adds CIVILIAN 0x2, as Plump Turkey 32818 already has). A civilian never comes to help and never starts a fight,
+  but still fights back when attacked. Turkey Hunter credit (spell 62014) unchanged.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
 ## 2026-11-28 (Quest fixes: The Dreghood Elders, Arzeth's Demise, The Seer's Relic)
 
 Draft PR, not merged yet.
