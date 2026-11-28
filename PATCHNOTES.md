@@ -3,9 +3,19 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
-## 2026-11-28 (Quest fixes: The Finest Down)
+## 2026-11-28 (Quest fixes: The Finest Down, Avruu's Orb)
 
 Draft PR, not merged yet.
+
+### DB: Avruu never drops Avruu's Orb
+- **Found** (Four, 2026-11-28): Avruu's Orb (9418), 8 Avruu kills, only money and grey items.
+- **Cause:** Avruu's Orb 23580 starts the quest, but its loot row on Avruu 17084 had QuestRequired=1. A QuestRequired
+  item only shows when a quest already in the log needs it (Player::HasQuestForItem), so an item that starts a
+  quest can never drop with that flag. TDB 8.3.7 has QuestRequired=0 (80%).
+- **Changed** (`sql/fixes/world/2026_11_28_74_avruus_orb_drop.sql`): QuestRequired 0, Chance 100 (named single-source
+  quest drop). The core still hides the orb once the quest is taken or done (StartQuestID check).
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
 
 ### DB: Kaliri Nests do nothing
 - **Found** (Four, 2026-11-28): The Finest Down (9420), no feathers from the Kaliri Nests.
