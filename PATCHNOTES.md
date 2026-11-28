@@ -3,6 +3,22 @@
 Newest first. Each entry says what changed, the exact values and files it touches, and what you need
 to do to pick it up (rebuild, restart, run SQL).
 
+## 2026-11-28 (Quest fixes: The Finest Down)
+
+Draft PR, not merged yet.
+
+### DB: Kaliri Nests do nothing
+- **Found** (Four, 2026-11-28): The Finest Down (9420), no feathers from the Kaliri Nests.
+- **Cause:** the feathers (Kaliri Feathers 23588) come from Kaliri Hatchlings that hatch out of the nests, and the
+  nests had no SAI, so opening one did nothing. TDB 8.3.7 hatches them through Invisible Location Trigger 19656
+  casting 29396/29397, but those spells are missing from the 8.3.7 client data, and 19656 is a shared trigger
+  (49 static Hellfire spawns, Amanitar in Ahn'kahet), so it can't carry a kaliri script.
+- **Changed** (`sql/fixes/world/2026_11_28_73_finest_down_kaliri_nests.sql`): Kaliri Nest 181582 runs a random
+  action list on open (18158200/18158201) that summons a Female (17034, 35.6% feather) or Male (17039, 22.6%)
+  Kaliri Hatchling at the nest; it despawns after 2 minutes if left alone.
+- **Status:** untested.
+- **Pick up:** run the SQL, restart worldserver.
+
 ## 2026-11-28 (Quest fixes: The Dreghood Elders, Arzeth's Demise, The Seer's Relic)
 
 Draft PR, not merged yet.
